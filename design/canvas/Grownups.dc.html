@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Grown-ups corner</title>
+<title>Settings</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -12,24 +12,24 @@
 <style>body{margin:0}</style>
 </helmet>
 <div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; gap: 12px;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 12px; position: relative;">
 
-<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px; flex-shrink: 0;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
 <div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Grown-ups corner</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Progress and settings for each child</div>
+<div style="font-size: 24px; font-weight: 800;">Settings</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">For grown-ups</div>
 </div>
 <span></span>
 </div>
 
 <sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
-<div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center;">
+<div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; padding-bottom: 60px;">
 <div style="font-size: 22px; font-weight: 800;">This area is for grown-ups</div>
-<div style="font-size: 16px; font-weight: 600; color: #c9c2ff; max-width: 280px;">Press and hold the button for 2 seconds to open it.</div>
-<button onPointerDown="{{holdStart}}" onPointerUp="{{holdEnd}}" onPointerLeave="{{holdEnd}}" onPointerCancel="{{holdEnd}}" aria-label="Press and hold to open" style="border: 0; cursor: pointer; width: 140px; height: 140px; border-radius: 50%; display: grid; place-items: center; touch-action: none; background: conic-gradient(#ffc21a {{holdDeg}}deg, #30257a 0deg); box-shadow: 0 6px 0 #241a63;">
+<div style="font-size: 16px; font-weight: 600; color: #c9c2ff; max-width: 280px;">Press and hold the button for 2 seconds to open settings.</div>
+<button onPointerDown="{{holdStart}}" onPointerUp="{{holdEnd}}" onPointerLeave="{{holdEnd}}" onPointerCancel="{{holdEnd}}" aria-label="Press and hold to open settings" style="border: 0; cursor: pointer; width: 140px; height: 140px; border-radius: 50%; display: grid; place-items: center; touch-action: none; background: conic-gradient(#ffc21a {{holdDeg}}deg, #30257a 0deg); box-shadow: 0 6px 0 #241a63;">
 <span style="width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(180deg, #5444b8, #3a2d8f);">
 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
 </span>
@@ -38,22 +38,73 @@
 </sc-if>
 
 <sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
-<div style="display: flex; flex-direction: column; gap: 12px; flex-grow: 1;">
+<div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px;">
 
-<div style="display: flex; gap: 8px;">
+<div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span style="width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; font-weight: 800; background: #14c8c0;">S</span>
+<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1; min-width: 0;">
+<span style="font-size: 18px; font-weight: 800;">Sam's family</span>
+<span style="font-size: 14px; font-weight: 700; color: #c9c2ff;">[parent@email.com] · account owner</span>
+</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 14px; background: #1d1550;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{syncColor}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19.5 10 4 4 0 0 1 18 18z"></path><path d="M9.5 13.5l2 2 3.5-3.5"></path></svg>
+<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1;">
+<span style="font-size: 15px; font-weight: 800;">{{syncText}}</span>
+<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">Progress for every child stays the same on all your devices.</span>
+</span>
+<button onClick="{{syncNow}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 14px; font-weight: 800; padding: 6px 12px; border-radius: 12px; background: #4b3eaa; white-space: nowrap;">Sync now</button>
+</div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap;">
+<sc-for list="{{devices}}" as="d" hint-placeholder-count="2">
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #1d1550; font-size: 13px; font-weight: 800; color: #c9c2ff;">
+<span style="width: 8px; height: 8px; border-radius: 50%; background: #5fe06e;"></span>{{d.name}}
+</span>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<div style="font-size: 16px; font-weight: 800; color: #c9c2ff;">Children</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
 <sc-for list="{{kids}}" as="k" hint-placeholder-count="2">
-<button onClick="{{k.pick}}" aria-pressed="{{k.on}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 18px; color: #ffffff; {{k.style}}">
-<span style="width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; font-weight: 800; background: {{k.color}};">{{k.initial}}</span>
-<span style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1;">
-<span style="font-size: 18px; font-weight: 800;">{{k.name}}</span>
-<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">Age {{k.age}}</span>
+<button onClick="{{k.pick}}" aria-pressed="{{k.on}}" style="border: 0; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 16px; color: #ffffff; {{k.style}}">
+<span style="width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 19px; font-weight: 800; background: {{k.color}};">{{k.initial}}</span>
+<span style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05;">
+<span style="font-size: 16px; font-weight: 800;">{{k.name}}</span>
+<span style="font-size: 12px; font-weight: 700; color: #c9c2ff;">Age {{k.age}}</span>
 </span>
 </button>
 </sc-for>
+<button onClick="{{startAdd}}" style="border: 2px dashed #6d5fd0; cursor: pointer; font-family: inherit; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 16px; color: #c9c2ff; background: transparent; font-size: 15px; font-weight: 800;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+Add a child
+</button>
+</div>
 </div>
 
+<sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 0 0 3px #ffc21a;">
+<div style="font-size: 17px; font-weight: 800;">Add a child</div>
+<label for="kidname" style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Child's first name</label>
+<input id="kidname" value="{{newName}}" onChange="{{setName}}" placeholder="First name" style="font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; outline: none;">
+<span style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Age</span>
+<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px;">
+<sc-for list="{{ages}}" as="a" hint-placeholder-count="8">
+<button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Age {{a.n}}" style="border: 0; cursor: pointer; font-family: inherit; height: 40px; border-radius: 12px; font-size: 18px; font-weight: 800; {{a.style}}">{{a.n}}</button>
+</sc-for>
+</div>
+<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">The timer, level start and reading help are set from the age. You can change them later.</span>
+<div style="display: flex; gap: 8px;">
+<button onClick="{{cancelAdd}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{saveKid}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Add child</button>
+</div>
+</div>
+</sc-if>
+
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
-<div style="font-size: 16px; font-weight: 800;">Game timer</div>
+<div style="font-size: 16px; font-weight: 800;">{{kidName}}'s game timer</div>
 <div style="display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: #1d1550;">
 <sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
 <button onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 800; padding: 8px 4px; border-radius: 11px; {{m.style}}">{{m.label}}</button>
@@ -68,11 +119,20 @@
 </div>
 </sc-for>
 </div>
+<div style="display: flex; gap: 10px; align-items: center; padding-top: 4px;">
+<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1;">
+<span style="font-size: 15px; font-weight: 800;">Daily play limit</span>
+<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">Then a friendly break screen</span>
+</span>
+<button onClick="{{limitDown}}" aria-label="Less time" style="border: 0; cursor: pointer; width: 40px; height: 40px; border-radius: 12px; font-size: 24px; font-weight: 800; color: #ffffff; background: #4b3eaa;">−</button>
+<span style="min-width: 62px; text-align: center; font-size: 19px; font-weight: 800;">{{limit}} min</span>
+<button onClick="{{limitUp}}" aria-label="More time" style="border: 0; cursor: pointer; width: 40px; height: 40px; border-radius: 12px; font-size: 24px; font-weight: 800; color: #ffffff; background: #4b3eaa;">+</button>
+</div>
 </div>
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 9px;">
 <div style="display: flex; justify-content: space-between; align-items: baseline;">
-<span style="font-size: 16px; font-weight: 800;">Skills this month</span>
+<span style="font-size: 16px; font-weight: 800;">{{kidName}}'s skills</span>
 <span style="font-size: 14px; font-weight: 800; color: #ffc21a;">{{summary}}</span>
 </div>
 <sc-for list="{{skills}}" as="sk" hint-placeholder-count="5">
@@ -88,16 +148,31 @@
 </sc-for>
 </div>
 
-<div style="display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 20px; background: #30257a;">
-<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1;">
-<span style="font-size: 16px; font-weight: 800;">Daily play limit</span>
-<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">A friendly "time for a break" screen</span>
-</span>
-<button onClick="{{limitDown}}" aria-label="Less time" style="border: 0; cursor: pointer; width: 40px; height: 40px; border-radius: 12px; font-size: 24px; font-weight: 800; color: #ffffff; background: #4b3eaa;">−</button>
-<span style="min-width: 62px; text-align: center; font-size: 20px; font-weight: 800;">{{limit}} min</span>
-<button onClick="{{limitUp}}" aria-label="More time" style="border: 0; cursor: pointer; width: 40px; height: 40px; border-radius: 12px; font-size: 24px; font-weight: 800; color: #ffffff; background: #4b3eaa;">+</button>
+<div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-size: 16px; font-weight: 800;">Progress</div>
+<button onClick="{{askReset}}" style="border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">Reset {{kidName}}'s progress</button>
+<button onClick="{{askResetAll}}" style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 14px; font-weight: 800; padding: 6px; border-radius: 12px; background: transparent; text-decoration: underline;">Reset every child's progress</button>
 </div>
 
+<button style="align-self: center; border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 15px; font-weight: 800; padding: 10px 22px; border-radius: 14px; background: #30257a;">Sign out of this device</button>
+
+</div>
+</sc-if>
+
+<sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 16px; right: 16px; bottom: 20px; padding: 12px 16px; border-radius: 16px; background: #1f9a44; font-size: 16px; font-weight: 800; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.35);">{{toastText}}</div>
+</sc-if>
+
+<sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.7); display: grid; place-items: center; padding: 16px;">
+<div role="alertdialog" aria-label="Confirm reset" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 22px 18px 18px; border-radius: 24px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
+<div style="font-size: 24px; font-weight: 800; line-height: 1.15;">{{confirmTitle}}</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff; margin: 8px 0 16px; line-height: 1.35;">Stars, levels and stickers go back to the start on every synced device. This can't be undone.</div>
+<div style="display: flex; gap: 10px;">
+<button onClick="{{cancelReset}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #4b3eaa;">Keep it</button>
+<button onClick="{{doReset}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #d92f45; box-shadow: 0 4px 0 #8f1f2e;">Reset</button>
+</div>
+</div>
 </div>
 </sc-if>
 
@@ -109,20 +184,27 @@ class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
-      unlocked: false, hold: 0, kid: 0,
+      unlocked: false, hold: 0, kid: 0, adding: false, newName: '', newAge: 6,
+      confirm: null, toast: '', syncing: false, syncedAgo: '2 min ago',
       kids: [
         { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35] },
         { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30] }
       ]
     };
   }
-  componentWillUnmount() { clearInterval(this.holdT); }
+  componentWillUnmount() { clearInterval(this.holdT); clearTimeout(this.toastT); clearTimeout(this.syncT); }
   factor(age) { return age <= 4 ? 0 : age <= 6 ? 2 : age <= 8 ? 1.5 : 1; }
   fmt(sec) { var m = Math.floor(sec / 60), s = Math.round(sec % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
   updateKid(patch) {
     var kids = this.state.kids.slice();
     kids[this.state.kid] = Object.assign({}, kids[this.state.kid], patch);
     this.setState({ kids: kids });
+  }
+  showToast(text) {
+    var self = this;
+    this.setState({ toast: text });
+    clearTimeout(this.toastT);
+    this.toastT = setTimeout(function () { self.setState({ toast: '' }); }, 2600);
   }
   renderVals() {
     var self = this;
@@ -138,6 +220,7 @@ class Component extends DCLogic {
         : 'Time is set by the level (harder levels get more) times ' + k.name + "'s age factor (x" + f + '). Running out never ends the game; it only skips the speed star.';
     var skillNames = ['Planning (Brick Escape)', 'Shapes and space (Brick Drop)', 'Letters and spelling', 'Colors and shapes', 'Numbers and math'];
     var skillColors = ['#5fe06e', '#c79bff', '#ffab5e', '#ff9fd4', '#6aeee4'];
+    var swatch = ['#2f8cff', '#ff7a1a', '#ff5fb4', '#14c8c0', '#9b4dff', '#1fb53c'];
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
@@ -152,13 +235,38 @@ class Component extends DCLogic {
         }, 100);
       },
       holdEnd: function () { clearInterval(self.holdT); if (!self.state.unlocked) self.setState({ hold: 0 }); },
+      syncText: s.syncing ? 'Syncing...' : 'Synced ' + s.syncedAgo + ' · 2 devices',
+      syncColor: s.syncing ? '#ffc21a' : '#5fe06e',
+      syncNow: function () {
+        self.setState({ syncing: true });
+        clearTimeout(self.syncT);
+        self.syncT = setTimeout(function () { self.setState({ syncing: false, syncedAgo: 'just now' }); }, 1400);
+      },
+      devices: [{ name: 'Family iPad (this device)' }, { name: "Sam's phone" }],
       kids: s.kids.map(function (c, i) {
         return {
           name: c.name, age: c.age, color: c.color, initial: c.name.charAt(0), on: i === s.kid,
           style: i === s.kid ? 'background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 0 0 3px #ffc21a;' : 'background: #30257a;',
-          pick: function () { self.setState({ kid: i }); }
+          pick: function () { self.setState({ kid: i, adding: false }); }
         };
       }),
+      adding: s.adding,
+      startAdd: function () { self.setState({ adding: true, newName: '', newAge: 6 }); },
+      cancelAdd: function () { self.setState({ adding: false }); },
+      newName: s.newName,
+      setName: function (e) { self.setState({ newName: e.target.value }); },
+      ages: [3, 4, 5, 6, 7, 8, 9, 10].map(function (n) {
+        var on = n === s.newAge;
+        return { n: n, on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: #1d1550; color: #c9c2ff;', pick: function () { self.setState({ newAge: n }); } };
+      }),
+      saveKid: function () {
+        var name = (s.newName || '').trim() || 'Child ' + (s.kids.length + 1);
+        var kid = { name: name, age: s.newAge, color: swatch[s.kids.length % swatch.length], mode: s.newAge <= 4 ? 'relaxed' : 'auto', limit: 20, stars: 0, skills: [0, 0, 0, 0, 0] };
+        var kids = s.kids.concat([kid]);
+        self.setState({ kids: kids, kid: kids.length - 1, adding: false });
+        self.showToast(name + ' was added. They can now pick their brick on any of your devices.');
+      },
+      kidName: k.name,
       modes: [['auto', 'Auto by age'], ['relaxed', 'Relaxed'], ['off', 'Off']].map(function (m) {
         var on = k.mode === m[0];
         return { label: m[1], on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;', pick: function () { self.updateKid({ mode: m[0] }); } };
@@ -168,13 +276,25 @@ class Component extends DCLogic {
         var timed = k.mode === 'auto' && f > 0;
         return { level: l.level, time: timed ? self.fmt(l.base * f) : k.mode === 'off' ? 'Off' : 'Relaxed', color: timed ? '#ffffff' : '#8e85d6' };
       }),
-      summary: k.stars + ' stars',
-      skills: k.skills.map(function (p, i) {
-        return { name: skillNames[i], pct: p, color: skillColors[i], note: p >= 70 ? 'Strong' : p >= 40 ? 'Growing' : 'Just started' };
-      }),
       limit: k.limit,
       limitDown: function () { self.updateKid({ limit: Math.max(10, k.limit - 5) }); },
-      limitUp: function () { self.updateKid({ limit: Math.min(90, k.limit + 5) }); }
+      limitUp: function () { self.updateKid({ limit: Math.min(90, k.limit + 5) }); },
+      summary: k.stars + ' stars',
+      skills: k.skills.map(function (p, i) {
+        return { name: skillNames[i], pct: p, color: skillColors[i], note: p >= 70 ? 'Strong' : p >= 40 ? 'Growing' : p > 0 ? 'Just started' : 'Not yet' };
+      }),
+      askReset: function () { self.setState({ confirm: 'one' }); },
+      askResetAll: function () { self.setState({ confirm: 'all' }); },
+      confirming: !!s.confirm,
+      confirmTitle: s.confirm === 'all' ? "Reset every child's progress?" : 'Reset ' + k.name + "'s progress?",
+      cancelReset: function () { self.setState({ confirm: null }); },
+      doReset: function () {
+        var all = s.confirm === 'all';
+        var kids = s.kids.map(function (c, i) { return all || i === s.kid ? Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0] }) : c; });
+        self.setState({ kids: kids, confirm: null });
+        self.showToast(all ? 'Everyone starts fresh. Synced to all devices.' : k.name + "'s progress was reset on all devices.");
+      },
+      toast: !!s.toast, toastText: s.toast
     };
   }
 }

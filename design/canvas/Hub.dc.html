@@ -18,12 +18,14 @@
 <a href="{{whoHref}}" aria-label="Switch player" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; text-decoration: none; color: #ffffff; font-size: 28px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{avatar}}">M</a>
 <div style="display: flex; flex-direction: column; line-height: 1.1; flex-grow: 1;">
 <span style="font-size: 24px; font-weight: 800;">Hi Maya!</span>
-<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Age 7 · Standard timer</span>
-</div>
-<span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: #30257a; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); font-size: 18px; font-weight: 800;">
-<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="#ffb21f"></path></svg>
-42
+<span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; font-weight: 800; color: #c9c2ff;">
+<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="#ffb21f"></path></svg>
+42 stars · 12/40 stickers
 </span>
+</div>
+<a href="{{grownHref}}" aria-label="Settings for grown-ups" style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+</a>
 </div>
 
 <a href="{{mixerHref}}" style="text-decoration: none; color: #5a3500; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
@@ -74,17 +76,8 @@
 <span style="font-size: 15px; font-weight: 800; line-height: 1.1; text-align: center;">{{x.title}}</span>
 </a>
 </sc-for>
-<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 104px; box-sizing: border-box; border-radius: 20px; border: 3px dashed #4b3eaa; color: #8e85d6; text-align: center; padding: 6px;">
-<span style="font-size: 26px; font-weight: 800; line-height: 1;">12/40</span>
-<span style="font-size: 13px; font-weight: 800; line-height: 1.1;">stickers found</span>
-</div>
 </div>
 
-<div style="flex-grow: 1;"></div>
-<a href="{{grownHref}}" style="align-self: center; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #c9c2ff; font-size: 16px; font-weight: 800; padding: 10px 18px; border-radius: 14px; background: #30257a;">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
-Grown-ups
-</a>
 </div>
 </div>
 </x-dc>
@@ -178,6 +171,17 @@ class Component extends DCLogic {
             { t: '1', style: this.at(0, 14, 18, 24, b('green', 0) + ' font-size: 15px;') },
             { t: '2', style: this.at(20, 8, 18, 30, b('yellow', 0) + ' font-size: 15px;') },
             { t: '3', style: this.at(40, 2, 18, 36, b('red', 0) + ' font-size: 15px;') }
+          ]
+        },
+        {
+          title: 'Picture Builder', href: 'Builder' + t + '.dc.html',
+          art: [
+            { t: '', style: this.at(14, 0, 14, 14, b('red', 7)) },
+            { t: '', style: this.at(30, 0, 14, 14, b('red', 7)) },
+            { t: '', style: this.at(6, 16, 14, 14, b('yellow', 7)) },
+            { t: '', style: this.at(22, 16, 14, 14, b('blue', 7)) },
+            { t: '', style: this.at(38, 16, 14, 14, b('yellow', 7)) },
+            { t: '', style: this.at(6, 32, 46, 14, 'border-radius: 4px; background: #ffc21a;') }
           ]
         },
         {

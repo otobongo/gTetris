@@ -49,8 +49,16 @@
 <div style="position: absolute; background: #30257a; box-shadow: inset 0 3px 6px rgba(0,0,0,0.35); {{w.style}}"></div>
 </sc-for>
 <sc-for list="{{gates}}" as="g" hint-placeholder-count="4">
-<div aria-label="{{g.label}}" style="position: absolute; border-radius: 8px; display: grid; place-items: center; {{g.style}}">
+<div aria-label="{{g.label}}" style="position: absolute; border-radius: 8px; display: grid; place-items: center; transition: background 0.4s, box-shadow 0.4s; {{g.style}}">
+<sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.arrow}}"></path></svg>
+</sc-if>
+<sc-if value="{{g.locked}}" hint-placeholder-val="{{ false }}">
+<span style="display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 6px; font-size: 12px; font-weight: 800; line-height: 1; {{g.badge}} {{g.dir}}">
+<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<span>{{g.count}}</span>
+</span>
+</sc-if>
 </div>
 </sc-for>
 <sc-for list="{{bricks}}" as="b" hint-placeholder-count="4">
@@ -125,9 +133,9 @@ class Component extends DCLogic {
   gateList() {
     return [
       { key: 'B', side: 'right', at: 0, len: 2 }, { key: 'A', side: 'right', at: 2, len: 2 },
-      { key: 'D', side: 'top', at: 0, len: 2 }, { key: 'E', side: 'top', at: 2, len: 2 },
+      { key: 'D', side: 'top', at: 0, len: 2, lockColor: 'green' }, { key: 'E', side: 'top', at: 2, len: 2 },
       { key: 'F', side: 'top', at: 4, len: 2 }, { key: 'C', side: 'top', at: 6, len: 2 },
-      { key: 'G', side: 'left', at: 4, len: 4 }
+      { key: 'G', side: 'left', at: 4, len: 4, lockCount: 5 }
     ];
   }
   pal() {
@@ -162,10 +170,18 @@ class Component extends DCLogic {
     for (var i = 0; i < d.h; i++) for (var j = 0; j < d.w; j++) if (occ[(r + i) + ',' + (c + j)]) return false;
     return true;
   }
+  /** color lock: shut until every brick of that color is out. count lock: shut until that many bricks are out. */
+  locked(g, gone) {
+    var defs = this.defs();
+    if (g.lockColor) return Object.keys(defs).some(function (k) { return defs[k].color === g.lockColor && !gone[k]; });
+    if (g.lockCount) return Object.keys(gone).length < g.lockCount;
+    return false;
+  }
   /** the side this brick can leave through from (r, c), or null */
   exitSide(k, r, c) {
     var d = this.defs()[k];
     var g = this.gateList().filter(function (x) { return x.key === k; })[0];
+    if (this.locked(g, this.state.gone)) return null;
     var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
     var acrossCols = c >= g.at && c + d.w <= g.at + g.len;
     if (g.side === 'right' && acrossRows && c + d.w === 8) return 'right';
@@ -215,6 +231,16 @@ class Component extends DCLogic {
     var order = ['B', 'C', 'A', 'E', 'D', 'F', 'G'];
     var starsWon = s.moves <= 7 ? 3 : s.moves <= 10 ? 2 : 1;
     var inTime = s.tLeft > 0;
+    var lockMsg = '';
+    var gl = this.gateList();
+    for (var gi = 0; gi < gl.length && !lockMsg; gi++) {
+      var gx = gl[gi];
+      if (!this.locked(gx, s.gone)) continue;
+      var dc = defs[gx.key].color;
+      lockMsg = gx.lockColor
+        ? 'The ' + dc + ' door opens when every ' + gx.lockColor + ' brick is out.'
+        : 'The ' + dc + ' door opens after ' + (gx.lockCount - Object.keys(s.gone).length) + ' more bricks leave.';
+    }
     var wells = [];
     for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) wells.push({ style: 'left: ' + (c * cell) + 'px; top: ' + (r * cell) + 'px; width: ' + cell + 'px; height: ' + cell + 'px;' });
     return {
@@ -236,7 +262,18 @@ class Component extends DCLogic {
             : g.side === 'bottom'
               ? 'left: ' + (g.at * cell + 4) + 'px; top: ' + (grid + 2) + 'px; width: ' + span + 'px; height: ' + (pad - 4) + 'px;'
               : 'left: ' + (g.at * cell + 4) + 'px; top: ' + (-pad + 2) + 'px; width: ' + span + 'px; height: ' + (pad - 4) + 'px;';
-        return { label: d.color + ' door', arrow: arrows[g.side], style: st + ' ' + self.brick(d.color, 0) };
+        var lk = self.locked(g, s.gone);
+        var needHex = g.lockColor ? p[g.lockColor][0] : '';
+        var dp = p[d.color];
+        var iceStyle = 'background: repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 5px, transparent 5px 11px), linear-gradient(160deg, ' + dp[1] + ' -30%, ' + dp[0] + ' 45%, ' + dp[2] + ' 140%); box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.25);';
+        return {
+          label: d.color + ' door' + (lk ? (g.lockColor ? ', opens when every ' + g.lockColor + ' brick is out' : ', opens after ' + (g.lockCount - Object.keys(s.gone).length) + ' more bricks leave') : ''),
+          arrow: arrows[g.side], open: !lk, locked: lk,
+          badge: g.lockColor ? 'background: ' + needHex + '; color: #ffffff; box-shadow: 0 0 0 2px #ffffff, 0 1px 0 rgba(0,0,0,0.3);' : 'background: #ffffff; color: #241a63; box-shadow: 0 1px 0 rgba(0,0,0,0.3);',
+          count: g.lockCount ? String(g.lockCount - Object.keys(s.gone).length) : '',
+          dir: g.side === 'left' || g.side === 'right' ? 'flex-direction: column;' : '',
+          style: st + ' ' + (lk ? iceStyle : self.brick(d.color, 0))
+        };
       }),
       bricks: Object.keys(defs).filter(function (k) { return !s.gone[k]; }).map(function (k) {
         var d = defs[k];
@@ -250,7 +287,7 @@ class Component extends DCLogic {
         var glow = s.hintKey === k ? ' box-shadow: 0 0 0 4px #ffffff, 0 0 22px #ffffff;' : ' box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22), 0 3px 0 rgba(0,0,0,0.25);';
         return {
           label: d.color + ' brick',
-          style: 'width: ' + (d.w * cell - 4) + 'px; height: ' + (d.h * cell - 4) + 'px; transform: translate(' + x + 'px, ' + y + 'px); opacity: ' + (ex ? 0 : 1) + '; ' + self.brick(d.color, cell / 2) + 'background-position: -2px -2px;' + glow,
+          style: 'width: ' + (d.w * cell - 4) + 'px; height: ' + (d.h * cell - 4) + 'px; transform: translate(' + x + 'px, ' + y + 'px); opacity: ' + (ex ? 0 : 1) + '; ' + self.brick(d.color, cell) + 'background-position: -2px -2px;' + glow,
           down: function (e) {
             if (s.won || s.exiting) return;
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
@@ -288,7 +325,7 @@ class Component extends DCLogic {
           up: function () { self.drag = null; }
         };
       }),
-      help: s.tLeft <= 0 && !s.won ? "Time's up! Keep going, you can still finish." : s.hintKey ? 'Try the glowing brick first.' : 'Drag each brick to the door of its color.',
+      help: s.tLeft <= 0 && !s.won ? "Time's up! Keep going, you can still finish." : s.hintKey ? 'Try the glowing brick first.' : lockMsg || 'Drag each brick to the door of its color.',
       undo: function () {
         if (!s.history.length || s.exiting) return;
         var last = s.history[s.history.length - 1];

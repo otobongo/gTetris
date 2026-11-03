@@ -11,7 +11,7 @@
  "pages": [],
  "boards": {
   "Main.dc.html": {
-   "x": 0,
+   "x": 470,
    "y": 0,
    "w": 390,
    "h": 844,
@@ -19,7 +19,7 @@
    "is_interactive": true
   },
   "Hub.dc.html": {
-   "x": 470,
+   "x": 940,
    "y": 0,
    "w": 390,
    "h": 844,
@@ -27,7 +27,7 @@
    "is_interactive": true
   },
   "MainTablet.dc.html": {
-   "x": 940,
+   "x": 2324,
    "y": 0,
    "w": 834,
    "h": 1194,
@@ -35,7 +35,7 @@
    "is_interactive": true
   },
   "HubTablet.dc.html": {
-   "x": 1854,
+   "x": 3238,
    "y": 0,
    "w": 834,
    "h": 1194,
@@ -143,7 +143,7 @@
    "y": 6400,
    "w": 390,
    "h": 844,
-   "title": "Grown-ups corner (phone)",
+   "title": "Settings (phone)",
    "is_interactive": true
   },
   "GrownupsTablet.dc.html": {
@@ -151,7 +151,7 @@
    "y": 6400,
    "w": 834,
    "h": 1194,
-   "title": "Grown-ups corner (tablet)",
+   "title": "Settings (tablet)",
    "is_interactive": true
   },
   "Numbers.dc.html": {
@@ -171,7 +171,7 @@
    "is_interactive": true
   },
   "NumbersTablet.dc.html": {
-   "x": 940,
+   "x": 1410,
    "y": 4800,
    "w": 834,
    "h": 1194,
@@ -179,19 +179,53 @@
    "is_interactive": true
   },
   "MathTablet.dc.html": {
-   "x": 1854,
+   "x": 2324,
    "y": 4800,
    "w": 834,
    "h": 1194,
    "title": "Brick Calculator (tablet)",
+   "is_interactive": true
+  },
+  "Builder.dc.html": {
+   "x": 940,
+   "y": 4800,
+   "w": 390,
+   "h": 844,
+   "title": "Picture Builder (phone)",
+   "is_interactive": true
+  },
+  "BuilderTablet.dc.html": {
+   "x": 3238,
+   "y": 4800,
+   "w": 834,
+   "h": 1194,
+   "title": "Picture Builder (tablet)",
+   "is_interactive": true
+  },
+  "Signup.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Grown-up sign up (phone)",
+   "is_interactive": true
+  },
+  "SignupTablet.dc.html": {
+   "x": 1410,
+   "y": 0,
+   "w": 834,
+   "h": 1194,
+   "title": "Grown-up sign up (tablet)",
    "is_interactive": true
   }
  },
  "order": [
   "Main.dc.html",
   "Hub.dc.html",
+  "Signup.dc.html",
   "MainTablet.dc.html",
   "HubTablet.dc.html",
+  "SignupTablet.dc.html",
   "Escape.dc.html",
   "Drop.dc.html",
   "Letters.dc.html",
@@ -206,8 +240,10 @@
   "PatternTablet.dc.html",
   "Numbers.dc.html",
   "Math.dc.html",
+  "Builder.dc.html",
   "NumbersTablet.dc.html",
   "MathTablet.dc.html",
+  "BuilderTablet.dc.html",
   "Grownups.dc.html",
   "GrownupsTablet.dc.html"
  ],
@@ -215,9 +251,9 @@
   "row1": {
    "x": 0,
    "y": -300,
-   "text": "1. Start: pick a player, set their age",
+   "text": "1. Start: a grown-up signs up and adds children, each child picks their brick",
    "kind": "title1",
-   "maxW": 2688
+   "maxW": 4072
   },
   "row2": {
    "x": 0,
@@ -236,14 +272,14 @@
   "row4": {
    "x": 0,
    "y": 4500,
-   "text": "4. Explore: numbers and simple math",
+   "text": "4. Explore: numbers, math and building",
    "kind": "title1",
-   "maxW": 2688
+   "maxW": 4072
   },
   "row5": {
    "x": 0,
    "y": 6100,
-   "text": "5. Grown-ups: each child's progress",
+   "text": "5. Settings: family account, sync, children and progress",
    "kind": "title1",
    "maxW": 1304
   }
