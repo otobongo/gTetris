@@ -19,8 +19,8 @@
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
 <div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Level 9</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Escape · Think first</div>
+<div style="font-size: 24px; font-weight: 800;">{{lvTitle}}</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Escape · {{lvSub}}</div>
 </div>
 <button onClick="{{restart}}" aria-label="Restart level" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
@@ -33,12 +33,12 @@
 <span style="font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;">{{clock}}</span>
 <span style="flex-grow: 1;"></span>
 <span style="font-size: 16px; font-weight: 800;">Moves {{moves}}</span>
-<span style="font-size: 16px; font-weight: 800; color: #ffc21a;">Best 7</span>
+<span style="font-size: 16px; font-weight: 800; color: #ffc21a;">Best {{best}}</span>
 </div>
 <div style="height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
 <div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timePct}}%; background: {{timerColor}};"></div>
 </div>
-<div style="font-size: 13px; font-weight: 700; color: #8e85d6;">Maya, age 7: level 9 gets 60s x 1.5 = 1:30 · bricks 2x2 to 4x4</div>
+<div style="font-size: 13px; font-weight: 700; color: #8e85d6;">{{caption}}</div>
 </div>
 
 <div style="flex-grow: 1; display: grid; place-items: center; width: 100%;">
@@ -51,7 +51,7 @@
 <sc-for list="{{gates}}" as="g" hint-placeholder-count="4">
 <div aria-label="{{g.label}}" style="position: absolute; border-radius: 8px; display: grid; place-items: center; transition: background 0.4s, box-shadow 0.4s; {{g.style}}">
 <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.arrow}}"></path></svg>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{g.arrowColor}}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.arrow}}"></path></svg>
 </sc-if>
 <sc-if value="{{g.locked}}" hint-placeholder-val="{{ false }}">
 <span style="display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 6px; font-size: 12px; font-weight: 800; line-height: 1; {{g.badge}} {{g.dir}}">
@@ -91,7 +91,7 @@
 <div style="font-size: 17px; font-weight: 700; color: #c9c2ff;">{{winText}}</div>
 <div style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
 <button onClick="{{restart}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Replay</button>
-<a href="{{hubHref}}" style="text-decoration: none; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next level</a>
+<button onClick="{{nextLevel}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}</button>
 </div>
 </div>
 </div>
@@ -100,20 +100,62 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"timeLimit":{"editor":"int","min":20,"max":300,"default":90,"unit":"s"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","5","9"],"default":"1"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = this.fresh();
+    this.state = this.fresh(this.props.level ?? '1');
     this.drag = null;
   }
-  limit() { return this.props.timeLimit ?? 90; }
-  fresh() {
+  /** Three sample levels showing the climb: 2 colors, then 3 colors with a lock, then 7 colors with chained locks. */
+  levels() {
     return {
-      pos: { A: [0, 0], B: [0, 4], C: [2, 6], D: [4, 0], E: [4, 2], F: [6, 2], G: [4, 4] },
-      gone: {}, exiting: null, moves: 0, history: [], hintKey: null,
-      tLeft: this.limit(), won: false
+      '1': {
+        title: 'Level 1', sub: 'Two colors', N: 4, base: 30, best: 3, next: '5', order: ['A', 'B', 'C'],
+        bricks: {
+          A: { color: 'white', w: 2, h: 2, at: [0, 0] }, C: { color: 'black', w: 2, h: 2, at: [0, 2] },
+          B: { color: 'white', w: 2, h: 2, at: [2, 2] }
+        },
+        gates: [{ color: 'white', side: 'bottom', at: 0, len: 2 }, { color: 'black', side: 'left', at: 2, len: 2 }]
+      },
+      '5': {
+        title: 'Level 5', sub: 'Three colors, one locked door', N: 6, base: 40, best: 5, next: '9', order: ['D', 'C', 'B', 'A', 'E'],
+        bricks: {
+          A: { color: 'black', w: 2, h: 2, at: [0, 0] }, B: { color: 'white', w: 3, h: 2, at: [0, 2] },
+          C: { color: 'red', w: 2, h: 2, at: [2, 0] }, D: { color: 'black', w: 2, h: 2, at: [2, 4] },
+          E: { color: 'white', w: 2, h: 2, at: [4, 2] }
+        },
+        gates: [
+          { color: 'black', side: 'right', at: 2, len: 2 }, { color: 'red', side: 'bottom', at: 0, len: 2 },
+          { color: 'white', side: 'top', at: 3, len: 3, lockCount: 2 }
+        ]
+      },
+      '9': {
+        title: 'Level 9', sub: 'Color locks, one at a time', N: 8, base: 60, best: 7, next: null, order: ['B', 'C', 'A', 'E', 'D', 'F', 'G'],
+        bricks: {
+          A: { color: 'purple', w: 4, h: 2, at: [0, 0] }, B: { color: 'orange', w: 3, h: 2, at: [0, 4] },
+          C: { color: 'white', w: 2, h: 2, at: [2, 6] }, D: { color: 'yellow', w: 2, h: 4, at: [4, 0] },
+          E: { color: 'green', w: 2, h: 2, at: [4, 2] }, F: { color: 'black', w: 2, h: 2, at: [6, 2] },
+          G: { color: 'red', w: 4, h: 4, at: [4, 4] }
+        },
+        gates: [
+          { color: 'orange', side: 'right', at: 0, len: 2 }, { color: 'purple', side: 'right', at: 2, len: 2 },
+          { color: 'yellow', side: 'top', at: 0, len: 2, lockColor: 'green' }, { color: 'green', side: 'top', at: 2, len: 2 },
+          { color: 'black', side: 'top', at: 4, len: 2 }, { color: 'white', side: 'top', at: 6, len: 2 },
+          { color: 'red', side: 'left', at: 4, len: 4, lockColor: 'yellow' }
+        ]
+      }
     };
+  }
+  lv() { return this.levels()[this.state.level]; }
+  limit() { return Math.round(this.lv().base * 1.5); }
+  fresh(level) {
+    var all = this.levels();
+    var key = all[level] ? level : '1';
+    var L = all[key];
+    var pos = {};
+    Object.keys(L.bricks).forEach(function (k) { pos[k] = L.bricks[k].at; });
+    return { level: key, pos: pos, gone: {}, exiting: null, moves: 0, history: [], hintKey: null, tLeft: Math.round(L.base * 1.5), won: false };
   }
   componentDidMount() {
     var self = this;
@@ -123,27 +165,15 @@ class Component extends DCLogic {
     }, 1000);
   }
   componentWillUnmount() { clearInterval(this.timer); }
-  defs() {
-    return {
-      A: { color: 'purple', w: 4, h: 2 }, B: { color: 'orange', w: 3, h: 2 }, C: { color: 'pink', w: 2, h: 2 },
-      D: { color: 'yellow', w: 2, h: 4 }, E: { color: 'green', w: 2, h: 2 }, F: { color: 'blue', w: 2, h: 2 },
-      G: { color: 'red', w: 4, h: 4 }
-    };
-  }
-  gateList() {
-    return [
-      { key: 'B', side: 'right', at: 0, len: 2 }, { key: 'A', side: 'right', at: 2, len: 2 },
-      { key: 'D', side: 'top', at: 0, len: 2, lockColor: 'green' }, { key: 'E', side: 'top', at: 2, len: 2 },
-      { key: 'F', side: 'top', at: 4, len: 2 }, { key: 'C', side: 'top', at: 6, len: 2 },
-      { key: 'G', side: 'left', at: 4, len: 4, lockCount: 5 }
-    ];
-  }
+  defs() { return this.lv().bricks; }
+  gateList() { return this.lv().gates; }
   pal() {
     return {
       red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
       green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
       purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
-      pink: ['#ff5fb4', '#ff9fd4', '#c72f84']
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84'],
+      white: ['#f1eef7', '#ffffff', '#b9b3c9'], black: ['#3a3a46', '#5c5c6c', '#1d1d24']
     };
   }
   brick(color, stud) {
@@ -165,7 +195,8 @@ class Component extends DCLogic {
   }
   fits(k, r, c, pos, gone) {
     var d = this.defs()[k];
-    if (r < 0 || c < 0 || r + d.h > 8 || c + d.w > 8) return false;
+    var N = this.lv().N;
+    if (r < 0 || c < 0 || r + d.h > N || c + d.w > N) return false;
     var occ = this.occupied(pos, gone, k);
     for (var i = 0; i < d.h; i++) for (var j = 0; j < d.w; j++) if (occ[(r + i) + ',' + (c + j)]) return false;
     return true;
@@ -180,14 +211,18 @@ class Component extends DCLogic {
   /** the side this brick can leave through from (r, c), or null */
   exitSide(k, r, c) {
     var d = this.defs()[k];
-    var g = this.gateList().filter(function (x) { return x.key === k; })[0];
-    if (this.locked(g, this.state.gone)) return null;
-    var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
-    var acrossCols = c >= g.at && c + d.w <= g.at + g.len;
-    if (g.side === 'right' && acrossRows && c + d.w === 8) return 'right';
-    if (g.side === 'left' && acrossRows && c === 0) return 'left';
-    if (g.side === 'bottom' && acrossCols && r + d.h === 8) return 'bottom';
-    if (g.side === 'top' && acrossCols && r === 0) return 'top';
+    var N = this.lv().N;
+    var gates = this.gateList();
+    for (var i = 0; i < gates.length; i++) {
+      var g = gates[i];
+      if (g.color !== d.color || this.locked(g, this.state.gone)) continue;
+      var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
+      var acrossCols = c >= g.at && c + d.w <= g.at + g.len;
+      if (g.side === 'right' && acrossRows && c + d.w === N) return 'right';
+      if (g.side === 'left' && acrossRows && c === 0) return 'left';
+      if (g.side === 'bottom' && acrossCols && r + d.h === N) return 'bottom';
+      if (g.side === 'top' && acrossCols && r === 0) return 'top';
+    }
     return null;
   }
   leave(k, side) {
@@ -196,7 +231,7 @@ class Component extends DCLogic {
     setTimeout(function () {
       var gone = Object.assign({}, self.state.gone);
       gone[k] = true;
-      var won = Object.keys(gone).length === 7;
+      var won = Object.keys(gone).length === Object.keys(self.defs()).length;
       self.setState({ gone: gone, exiting: null, won: won });
     }, 320);
   }
@@ -222,27 +257,29 @@ class Component extends DCLogic {
     var self = this;
     var s = this.state;
     var tablet = this.props.device === 'tablet';
-    var cell = 38, pad = 22, grid = cell * 8;
+    var L = this.lv();
+    var N = L.N;
+    var cell = Math.floor(304 / N), pad = 22, grid = cell * N;
     var defs = this.defs();
     var limit = this.limit();
     var mm = Math.floor(Math.max(0, s.tLeft) / 60), ss = Math.max(0, s.tLeft) % 60;
     var arrows = { right: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', bottom: 'M6 9l6 6 6-6', top: 'M6 15l6-6 6 6' };
     var p = this.pal();
-    var order = ['B', 'C', 'A', 'E', 'D', 'F', 'G'];
-    var starsWon = s.moves <= 7 ? 3 : s.moves <= 10 ? 2 : 1;
+    var order = L.order;
+    var starsWon = s.moves <= L.best ? 3 : s.moves <= L.best + 3 ? 2 : 1;
     var inTime = s.tLeft > 0;
     var lockMsg = '';
     var gl = this.gateList();
     for (var gi = 0; gi < gl.length && !lockMsg; gi++) {
       var gx = gl[gi];
       if (!this.locked(gx, s.gone)) continue;
-      var dc = defs[gx.key].color;
+      var dc = gx.color;
       lockMsg = gx.lockColor
         ? 'The ' + dc + ' door opens when every ' + gx.lockColor + ' brick is out.'
         : 'The ' + dc + ' door opens after ' + (gx.lockCount - Object.keys(s.gone).length) + ' more bricks leave.';
     }
     var wells = [];
-    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) wells.push({ style: 'left: ' + (c * cell) + 'px; top: ' + (r * cell) + 'px; width: ' + cell + 'px; height: ' + cell + 'px;' });
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) wells.push({ style: 'left: ' + (c * cell) + 'px; top: ' + (r * cell) + 'px; width: ' + cell + 'px; height: ' + cell + 'px;' });
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
@@ -253,7 +290,7 @@ class Component extends DCLogic {
       moves: s.moves,
       wells: wells,
       gates: this.gateList().map(function (g) {
-        var d = defs[g.key];
+        var d = { color: g.color };
         var span = g.len * cell - 8;
         var st = g.side === 'right'
           ? 'left: ' + (grid + 2) + 'px; top: ' + (g.at * cell + 4) + 'px; width: ' + (pad - 4) + 'px; height: ' + span + 'px;'
@@ -268,7 +305,7 @@ class Component extends DCLogic {
         var iceStyle = 'background: repeating-linear-gradient(45deg, rgba(0,0,0,0.16) 0 5px, transparent 5px 11px), linear-gradient(160deg, ' + dp[1] + ' -30%, ' + dp[0] + ' 45%, ' + dp[2] + ' 140%); box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.25);';
         return {
           label: d.color + ' door' + (lk ? (g.lockColor ? ', opens when every ' + g.lockColor + ' brick is out' : ', opens after ' + (g.lockCount - Object.keys(s.gone).length) + ' more bricks leave') : ''),
-          arrow: arrows[g.side], open: !lk, locked: lk,
+          arrow: arrows[g.side], arrowColor: g.color === 'white' ? '#6b6585' : '#ffffff', open: !lk, locked: lk,
           badge: g.lockColor ? 'background: ' + needHex + '; color: #ffffff; box-shadow: 0 0 0 2px #ffffff, 0 1px 0 rgba(0,0,0,0.3);' : 'background: #ffffff; color: #241a63; box-shadow: 0 1px 0 rgba(0,0,0,0.3);',
           count: g.lockCount ? String(g.lockCount - Object.keys(s.gone).length) : '',
           dir: g.side === 'left' || g.side === 'right' ? 'flex-direction: column;' : '',
@@ -335,7 +372,11 @@ class Component extends DCLogic {
         var next = order.filter(function (k) { return !s.gone[k]; })[0];
         self.setState({ hintKey: next || null });
       },
-      restart: function () { self.drag = null; self.setState(self.fresh()); },
+      restart: function () { self.drag = null; self.setState(self.fresh(s.level)); },
+      lvTitle: L.title, lvSub: L.sub, best: L.best,
+      caption: 'Maya, age 7: ' + L.title.toLowerCase() + ' gets ' + L.base + 's x 1.5 = ' + Math.floor(limit / 60) + ':' + (limit % 60 < 10 ? '0' : '') + (limit % 60),
+      nextLabel: L.next ? 'Next: ' + this.levels()[L.next].title : 'Play again',
+      nextLevel: function () { self.drag = null; self.setState(self.fresh(L.next || '1')); },
       won: s.won,
       winTitle: starsWon === 3 ? 'Brilliant!' : 'Great job!',
       stars: [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
