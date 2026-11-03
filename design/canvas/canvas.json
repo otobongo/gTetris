@@ -234,24 +234,8 @@
    "title": "Escape: stone blocks and shaped tray (phone)",
    "is_interactive": true
   },
-  "EscapeFrozen.dc.html": {
-   "x": 940,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: frozen bricks (phone)",
-   "is_interactive": true
-  },
-  "EscapeArrows.dc.html": {
-   "x": 1410,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: one-way bricks (phone)",
-   "is_interactive": true
-  },
   "EscapeMaster.dc.html": {
-   "x": 1880,
+   "x": 940,
    "y": 3200,
    "w": 390,
    "h": 844,
@@ -274,8 +258,6 @@
   "LettersTablet.dc.html",
   "EscapeIce.dc.html",
   "EscapeWalls.dc.html",
-  "EscapeFrozen.dc.html",
-  "EscapeArrows.dc.html",
   "EscapeMaster.dc.html",
   "Mixer.dc.html",
   "Sorter.dc.html",
@@ -333,7 +315,7 @@
    "y": 2900,
    "text": "3. Brick Escape explorations: colors and obstacles",
    "kind": "title1",
-   "maxW": 2270
+   "maxW": 1330
   }
  },
  "designSystems": []

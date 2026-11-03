@@ -2,7 +2,7 @@ const fs = require('fs');
 const P = __dirname + '/../canvas/';
 const levels = {};
 for (const f of fs.readdirSync(__dirname).filter(f => /^out.*\.json$/.test(f))) Object.assign(levels, JSON.parse(fs.readFileSync(__dirname + '/' + f, 'utf8')));
-const want = ['1', '5', '9', 'ice', 'walls', 'frozen', 'arrows', 'master'];
+const want = ['1', '5', '9', 'ice', 'walls', 'master'];
 const missing = want.filter(k => !levels[k]);
 if (missing.length) { console.log('missing', missing); process.exit(1); }
 // re-verify every level with the solver before shipping
