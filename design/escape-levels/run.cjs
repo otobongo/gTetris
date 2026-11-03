@@ -1,7 +1,9 @@
 const generate = require('./gen.cjs');
 const fs = require('fs');
 const specs = {
-  '1': [{ title: 'Level 1', corners: true, sub: 'Two colors', N: 4, base: 30, next: '5', colors: ['white', 'black'], sizes: ['s22'], prefer: 'easy' }, [4, 6]],
+  '1': [{ title: 'Level 1', corners: true, sub: 'Two colors', N: 4, base: 30, next: '5', colors: ['white', 'black'], sizes: ['s22'], prefer: 'easy',
+    fixed: { A: { color: 'white', w: 2, h: 2, at: [0, 0] }, B: { color: 'black', w: 2, h: 2, at: [0, 2] }, C: { color: 'white', w: 2, h: 2, at: [2, 0] }, D: { color: 'black', w: 2, h: 2, at: [2, 2] } },
+    gates: [{ color: 'white', side: 'left', at: 0, len: 2 }, { color: 'black', side: 'left', at: 2, len: 2 }] }, [4, 6]],
   '5': [{ title: 'Level 5', corners: true, sub: 'Three colors, one icy door', N: 6, base: 45, next: '9', colors: ['black', 'white', 'red'], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: 1, maxCount: 2 }, [6, 10]],
   '9': [{ title: 'Level 9', sub: 'Color locks, one at a time', N: 8, base: 60, colors: ['white', 'black', 'blue', 'yellow', 'green', 'red'], colorChain: 2, seedDoors: true, seconds: 240,
     fixed: {
