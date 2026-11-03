@@ -66,7 +66,9 @@ function build(opt, rand) {
       const need = Math.max(...mine.map(b => horiz ? b.h : b.w));
       const len = need + (rand() < 0.3 && need < N ? 1 : 0);
       if (len > N) continue;
-      const at = seed ? Math.max(0, Math.min(N - len, seed[1] - Math.floor(rand() * (len - need + 1)))) : Math.floor(rand() * (N - len + 1));
+      // easier boards put every door at a corner; advanced boards may use the middle of a side
+      const at = opt.corners ? (rand() < 0.5 ? 0 : N - len)
+        : seed ? Math.max(0, Math.min(N - len, seed[1] - Math.floor(rand() * (len - need + 1)))) : Math.floor(rand() * (N - len + 1));
       if (!edgeOk(N, map, side, at, len)) continue;
       // doors keep at least one free square between them, and never meet at a corner
       let clash = false; for (let i = -1; i <= len; i++) if (used[side + (at + i)]) clash = true;
