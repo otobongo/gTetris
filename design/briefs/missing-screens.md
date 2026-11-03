@@ -294,4 +294,6 @@ Phone boards are 390x844 and tablet boards 834x1194, with 80px between frames. W
 3. Limit reached mid-level: save the board and show Break at once.
 5. Home brain-game tiles open Levels.
 6. Home: all nine games are brain games, shown in one list with the same card (section 3.6); every game opens Levels.
-Still open: question 4 (what earns a sticker; with every game a brain game, the recommendation becomes one per finished chapter of any game plus one per Today's discovery) and the 9 to 10 unlock rule. The brief is not yet approved for building.
+4. Stickers: one per finished chapter of any game, plus one per Today's discovery. 40 stays sample data.
+7. Ages 9 to 10: the first level of every chapter starts open; later levels unlock in order.
+**Approved for building on 2026-11-03.**

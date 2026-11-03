@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Break time</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0} button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } .bw-press, .bw-go { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .bw-press:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; } .bw-go:active { transform: translateY(3px); box-shadow: 0 2px 0 #0f7a26 !important; } @keyframes bwDrop { from { transform: translateY(-36px); opacity: 0; } to { transform: none; opacity: 1; } } @keyframes bwFade { from { opacity: 0; } to { opacity: 1; } } .bw-drop { animation: bwDrop 260ms cubic-bezier(0.16,1,0.3,1) backwards; } @media (prefers-reduced-motion: reduce) { .bw-drop { animation: bwFade 150ms linear backwards; animation-delay: 0ms !important; } .bw-press, .bw-go { transition: none; } }</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+
+<div style="width: 100%; min-height: 54px; display: flex; justify-content: flex-end; flex-shrink: 0;">
+<sc-if value="{{childView}}" hint-placeholder-val="{{ true }}">
+<button class="bw-press" onClick="{{speak}}" aria-label="Hear it again" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+</div>
+
+<div style="flex-grow: {{growTop}};"></div>
+
+<div style="width: 100%; max-width: {{colW}}px; display: flex; flex-direction: column; align-items: center; text-align: center; flex-shrink: 0;">
+
+<div aria-hidden="true" style="position: relative; width: 200px; height: 140px; flex-shrink: 0;">
+<span style="position: absolute; left: 14px; top: 62px; width: 172px; height: 24px; border-radius: 12px 12px 0 0; background: #1d1550;"></span>
+<sc-for list="{{bricks}}" as="b" hint-placeholder-count="4">
+<span class="bw-drop" style="position: absolute; border-radius: 5px; {{b.style}}"></span>
+</sc-for>
+<span style="position: absolute; left: 68px; top: 12px; width: 64px; height: 64px;">
+<span style="position: absolute; top: -6px; left: 16px; width: 12px; height: 8px; border-radius: 5px 5px 0 0; background: {{studColor}};"></span>
+<span style="position: absolute; top: -6px; right: 16px; width: 12px; height: 8px; border-radius: 5px 5px 0 0; background: {{studColor}};"></span>
+<span style="position: absolute; left: 0; top: 0; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 32px; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{face}}">{{initial}}</span>
+</span>
+<span style="position: absolute; left: 6px; top: 78px; width: 188px; height: 62px; border-radius: 12px 12px 20px 20px; background: #30257a; box-shadow: inset 0 4px 0 #4b3eaa; display: flex; align-items: center; justify-content: center; gap: 4px;">
+<sc-for list="{{logo}}" as="l" hint-placeholder-count="4">
+<span style="width: 14px; height: 14px; border-radius: 4px; background: {{l.c}};"></span>
+</sc-for>
+</span>
+</div>
+
+<h1 style="margin: 16px 0 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{heading}}</h1>
+<p style="margin: 8px 0 0; max-width: 320px; font-size: 18px; font-weight: 700; line-height: 1.35; color: #c9c2ff; text-wrap: balance;">{{message}}</p>
+
+<sc-if value="{{midLevel}}" hint-placeholder-val="{{ false }}">
+<div style="margin-top: 16px; width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: #30257a; text-align: left;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M6 3h12v18l-6-4-6 4z"></path><path d="M9.5 9.5l2 2 3.5-3.5"></path></svg>
+<span style="font-size: 16px; font-weight: 700; line-height: 1.35;">{{savedText}}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{showChips}}" hint-placeholder-val="{{ true }}">
+<div aria-label="Today" role="group" style="margin-top: 16px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
+<sc-for list="{{chips}}" as="c" hint-placeholder-count="2">
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; background: #30257a; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="{{c.fill}}" stroke="{{c.stroke}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{c.icon}}"></path></svg>
+{{c.text}}
+</span>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{childView}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 20px 0 0; max-width: 300px; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Build something with real bricks and show a grown-up.</p>
+</sc-if>
+
+</div>
+
+<div style="flex-grow: 1;"></div>
+
+<sc-if value="{{childView}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; max-width: {{colW}}px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;">
+<sc-if value="{{showSwitch}}" hint-placeholder-val="{{ true }}">
+<a href="{{whoHref}}" class="bw-press" style="display: flex; align-items: center; justify-content: center; min-height: 56px; box-sizing: border-box; text-decoration: none; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Switch player</a>
+</sc-if>
+<button onClick="{{openGate}}" style="align-self: center; border: 0; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Grown-ups: add time</button>
+</div>
+</sc-if>
+
+<sc-if value="{{gateView}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="bw-gate-h" style="width: 100%; max-width: {{colW}}px; box-sizing: border-box; padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+<h2 id="bw-gate-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Grown-up check</h2>
+<sc-if value="{{wrong}}" hint-placeholder-val="{{ false }}">
+<div id="bw-gate-err" role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+That number doesn't match. Try this one instead.
+</div>
+</sc-if>
+<p style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35;">{{askText}}</p>
+<label for="bw-gate-num" style="font-size: 14px; font-weight: 800; color: #c9c2ff; margin-bottom: -6px;">Number</label>
+<input id="bw-gate-num" name="gate-number" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="3" value="{{answer}}" onChange="{{setAnswer}}" onKeyDown="{{gateKey}}" aria-invalid="{{wrongAttr}}" aria-describedby="{{errId}}" style="width: 160px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; {{fieldRing}}">
+<div style="display: flex; gap: 8px; padding-top: 4px;">
+<button onClick="{{cancelGate}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{checkGate}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Check</button>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{extendView}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="bw-ext-h" style="width: 100%; max-width: {{colW}}px; box-sizing: border-box; padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+<h2 id="bw-ext-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">{{extendTitle}}</h2>
+<sc-if value="{{hadExtra}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 15px; font-weight: 700; line-height: 1.3; color: #c9c2ff;">{{extraText}}</p>
+</sc-if>
+<div role="group" aria-label="Extra minutes" style="display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: #1d1550;">
+<sc-for list="{{amounts}}" as="m" hint-placeholder-count="3">
+<button onClick="{{m.pick}}" aria-pressed="{{m.on}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; padding: 8px 4px; border-radius: 11px; {{m.style}}">{{m.label}}</button>
+</sc-for>
+</div>
+<a href="{{addHref}}" class="bw-go" style="display: block; text-align: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{addLabel}}</a>
+<button onClick="{{keepBreak}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #4b3eaa;">Keep the break</button>
+<p style="margin: 0; font-size: 13px; font-weight: 700; line-height: 1.3; color: #c9c2ff;">Only for today. Change the daily limit in <a href="{{settingsHref}}" style="display: inline-block; padding: 12px 2px; margin: -12px 0; color: #c9c2ff; text-decoration: underline;">Settings</a>.</p>
+</section>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"leo4"},"state":{"editor":"enum","options":["break","gate","extend"],"default":"break"},"when":{"editor":"enum","options":["betweenLevels","midLevel"],"default":"betweenLevels"},"siblings":{"editor":"enum","options":["1","2"],"default":"2"},"addedToday":{"editor":"enum","options":["no","yes"],"default":"no"},"voice":{"editor":"enum","options":["on","off"],"default":"on"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: null, viewProp: null, amount: 0, answer: '', ask: 0, wrong: false };
+  }
+  componentDidMount() {
+    var self = this;
+    // Ages 3 to 4 with Voice on: heading and message are read aloud on arrival.
+    if (this.kid().age <= 4 && this.props.voice !== 'off' && this.viewOf() === 'break') {
+      this.readT = setTimeout(function () { self.say(self.readText()); }, 400);
+    }
+  }
+  componentWillUnmount() {
+    clearTimeout(this.readT);
+    clearTimeout(this.focusT);
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+  pal() {
+    return {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
+      purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84'], teal: ['#14c8c0', '#6aeee4', '#0b8c87']
+    };
+  }
+  brick(color, stud) {
+    var p = this.pal()[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    var size = stud ? stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%' : '100% 100%';
+    return 'background: ' + (stud ? studs : '') + base + '; background-size: ' + size + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  at(x, y, w, h, extra) {
+    return 'left: ' + x + 'px; top: ' + y + 'px; width: ' + w + 'px; height: ' + h + 'px; ' + extra;
+  }
+  kids() {
+    // Sample data. Maya and Leo match Who's playing and Settings (colour, age, daily limit).
+    // Nia and Theo, and every "today" count and saved level, are sample data for the levers.
+    return {
+      leo4: { name: 'Leo', age: 4, color: 'orange', limit: 20, stars: 4, stickers: 1, game: 'Letters', level: 'Level 5' },
+      nia6: { name: 'Nia', age: 6, color: 'pink', limit: 30, stars: 0, stickers: 0, game: 'Drop', level: 'Stage 2' },
+      maya7: { name: 'Maya', age: 7, color: 'blue', limit: 30, stars: 6, stickers: 1, game: 'Escape', level: 'Level 9' },
+      theo10: { name: 'Theo', age: 10, color: 'teal', limit: 45, stars: 9, stickers: 0, game: 'Escape', level: 'Level 23' }
+    };
+  }
+  kid() {
+    var all = this.kids();
+    return all[this.props.kid] || all.leo4;
+  }
+  asks() {
+    // The first check always uses 47; a wrong answer moves to the next number.
+    return [[47, 'forty-seven'], [62, 'sixty-two'], [38, 'thirty-eight'], [85, 'eighty-five'], [29, 'twenty-nine'], [74, 'seventy-four']];
+  }
+  propView() {
+    var v = this.props.state;
+    return v === 'gate' || v === 'extend' ? v : 'break';
+  }
+  viewOf() {
+    var s = this.state;
+    var pv = this.propView();
+    return s.view && s.viewProp === pv ? s.view : pv;
+  }
+  go(view, extra) {
+    this.setState(Object.assign({ view: view, viewProp: this.propView() }, extra || {}));
+  }
+  focusField() {
+    clearTimeout(this.focusT);
+    this.focusT = setTimeout(function () {
+      try { var el = document.getElementById('bw-gate-num'); if (el) el.focus(); } catch (e) {}
+    }, 0);
+  }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  played() {
+    return this.kid().limit + (this.props.addedToday === 'yes' ? 10 : 0);
+  }
+  savedLine() {
+    return this.kid().level + ' is saved. Next time you start right where you stopped.';
+  }
+  readText() {
+    var k = this.kid();
+    // When the day resets is [PLACEHOLDER: daily reset time, e.g. midnight on this device].
+    var t = 'Time for a break, ' + k.name + '. You played ' + this.played() + ' minutes today. Your bricks will be here tomorrow.';
+    if (this.props.when === 'midLevel') t += ' ' + this.savedLine();
+    return t;
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var t = tablet ? 'Tablet' : '';
+    var k = this.kid();
+    var view = this.viewOf();
+    var p = this.pal()[k.color];
+    var ask = this.asks()[s.ask % this.asks().length];
+    var mins = [10, 20, 30];
+    var amount = mins[s.amount] || 10;
+    var b = function (c, st) { return 'border-radius: 5px; ' + self.brick(c, st); };
+    var chips = [];
+    if (k.stars > 0) chips.push({ text: k.stars + (k.stars === 1 ? ' star today' : ' stars today'), fill: '#ffb21f', stroke: 'none', icon: 'M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z' });
+    if (k.stickers > 0) chips.push({ text: k.stickers + (k.stickers === 1 ? ' new sticker' : ' new stickers'), fill: 'none', stroke: '#c9c2ff', icon: 'M5 4h10l4 4v12H5z M15 4v4h4' });
+    var check = function () {
+      var v = String(self.state.answer || '').trim();
+      var cur = self.asks()[self.state.ask % self.asks().length];
+      if (/^[0-9]+$/.test(v) && parseInt(v, 10) === cur[0]) {
+        self.go('extend', { answer: '', wrong: false, amount: 0 });
+      } else {
+        self.go('gate', { answer: '', wrong: true, ask: self.state.ask + 1 });
+        self.focusField();
+      }
+    };
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      colW: tablet ? 440 : 358,
+      childView: view === 'break', gateView: view === 'gate', extendView: view === 'extend',
+      growTop: view === 'break' ? 1 : 0,
+      whoHref: 'Main' + t + '.dc.html',
+      settingsHref: 'Grownups' + t + '.dc.html',
+      // After extra time the child goes straight back into the saved game.
+      addHref: k.game + t + '.dc.html',
+      speak: function () { self.say(self.readText()); },
+      face: this.brick(k.color, 0),
+      studColor: p[1],
+      initial: k.name.charAt(0),
+      bricks: [
+        { style: this.at(18, 52, 44, 30, b('red', 15) + ' animation-delay: 0ms;') },
+        { style: this.at(140, 48, 42, 34, b('green', 15) + ' animation-delay: 40ms;') },
+        { style: this.at(48, 62, 30, 22, b('yellow', 15) + ' animation-delay: 80ms;') },
+        { style: this.at(124, 62, 30, 22, b('purple', 15) + ' animation-delay: 120ms;') }
+      ],
+      logo: [{ c: '#f03a3a' }, { c: '#ffc21a' }, { c: '#1fb53c' }, { c: '#2f8cff' }],
+      heading: 'Time for a break, ' + k.name,
+      message: 'You played ' + this.played() + ' minutes today. Your bricks will be here tomorrow.',
+      midLevel: this.props.when === 'midLevel',
+      savedText: this.savedLine(),
+      showChips: view === 'break' && chips.length > 0,
+      chips: chips,
+      showSwitch: this.props.siblings !== '1',
+      openGate: function () { self.go('gate', { answer: '', wrong: false, ask: 0 }); self.focusField(); },
+      askText: 'Type the number ' + ask[1] + '.',
+      answer: s.answer,
+      setAnswer: function (e) { self.setState({ answer: e.target.value }); },
+      gateKey: function (e) { if (e && e.key === 'Enter') check(); },
+      checkGate: check,
+      cancelGate: function () { self.go('break', { answer: '', wrong: false }); },
+      wrong: s.wrong,
+      wrongAttr: s.wrong ? 'true' : 'false',
+      errId: s.wrong ? 'bw-gate-err' : '',
+      fieldRing: s.wrong ? 'box-shadow: 0 0 0 2px #ff4d5e;' : '',
+      extendTitle: 'Add time for ' + k.name + ' today',
+      hadExtra: this.props.addedToday === 'yes',
+      extraText: k.name + ' had 10 extra minutes today.',
+      amounts: mins.map(function (m, i) {
+        var on = i === s.amount;
+        return {
+          label: m + ' min', on: on,
+          style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
+          pick: function () { self.setState({ amount: i }); }
+        };
+      }),
+      addLabel: 'Add ' + amount + ' minutes',
+      keepBreak: function () { self.go('break', { amount: 0 }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

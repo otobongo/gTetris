@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0} button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } [data-pw]:focus-within { outline: 3px solid #ffc21a; outline-offset: 2px; } [data-pw] input:focus-visible { outline: none; } [data-press] { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } [data-press="raised"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; } [data-press="green"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #0f7a26 !important; } [data-press][aria-disabled="true"]:active { transform: none; box-shadow: 0 5px 0 #0f7a26 !important; } @media (prefers-reduced-motion: reduce) { [data-press] { transition: none; } }</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 24px 20px 22px; display: flex; flex-direction: column; gap: 14px;">
+
+<div style="display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px; flex-shrink: 0;">
+<div style="width: 54px; height: 54px;">
+<sc-if value="{{backLeaves}}" hint-placeholder-val="{{ true }}">
+<a href="{{backHref}}" aria-label="{{backLabel}}" data-press="raised" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+</sc-if>
+<sc-if value="{{backToForm}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{toForm}}" aria-label="Back to sign in" data-press="raised" style="border: 0; cursor: pointer; padding: 0; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</button>
+</sc-if>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+<div style="display: flex; gap: 4px;" aria-hidden="true">
+<span style="width: 24px; height: 24px; border-radius: 6px; background: #f03a3a;"></span>
+<span style="width: 24px; height: 24px; border-radius: 6px; background: #ffc21a;"></span>
+<span style="width: 24px; height: 24px; border-radius: 6px; background: #1fb53c;"></span>
+<span style="width: 24px; height: 24px; border-radius: 6px; background: #2f8cff;"></span>
+</div>
+<div style="font-size: 34px; font-weight: 800; line-height: 1; text-shadow: 0 4px 0 #241a63;">Brickwise</div>
+</div>
+<span></span>
+</div>
+
+<sc-if value="{{isForm}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 6px;">
+<div style="text-align: center;">
+<h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.1;">Welcome back</h1>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff; line-height: 1.35; margin-top: 4px;">Sign in to your family account. Your children's stars, levels and stickers come with you.</div>
+</div>
+
+<sc-if value="{{showProviderError}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 20px; background: #30257a; border: 2px solid #ff4d5e;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff9fd4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+<span style="display: flex; flex-direction: column; line-height: 1.3;">
+<span style="font-size: 16px; font-weight: 800;">{{providerName}} sign-in didn't finish.</span>
+<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Try again, or use another way to sign in.</span>
+</span>
+</div>
+</sc-if>
+
+<sc-if value="{{showOffline}}" hint-placeholder-val="{{ false }}">
+<div role="status" style="flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 20px; background: #30257a;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M2 2l20 20"></path><path d="M8.5 16.4a5 5 0 0 1 7 0"></path><path d="M5 12.9a10 10 0 0 1 5-2.7"></path><path d="M16.7 10.8a10 10 0 0 1 2.3 2.1"></path><path d="M2 9.3a15 15 0 0 1 4.3-2.7"></path><path d="M10.6 4.6A15 15 0 0 1 22 9.3"></path><path d="M12 20h.01"></path></svg>
+<span style="display: flex; flex-direction: column; line-height: 1.3;">
+<span style="font-size: 16px; font-weight: 800;">No internet connection.</span>
+<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Connect to sign in. Children can still play on this device.</span>
+</span>
+</div>
+</sc-if>
+
+<button onClick="{{withApple}}" style="border: 0; cursor: pointer; font-family: inherit; flex-shrink: 0; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 16px; background: #ffffff; color: #17171d;">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#000000" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"></path></svg>
+Continue with Apple
+</button>
+<button onClick="{{withGoogle}}" style="border: 0; cursor: pointer; font-family: inherit; flex-shrink: 0; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 16px; background: #ffffff; color: #17171d;">
+<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+Continue with Google
+</button>
+<button onClick="{{withFacebook}}" style="border: 0; cursor: pointer; font-family: inherit; flex-shrink: 0; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 16px; background: #1877F2; color: #ffffff;">
+<svg width="20" height="20" viewBox="-96 0 512 512" aria-hidden="true"><path fill="#ffffff" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"></path></svg>
+Continue with Facebook
+</button>
+
+<div style="flex-shrink: 0; display: flex; align-items: center; gap: 10px; color: #c9c2ff; font-size: 14px; font-weight: 800;"><span style="flex: 1; height: 2px; background: #3a2d8f;"></span>or use email<span style="flex: 1; height: 2px; background: #3a2d8f;"></span></div>
+
+<label for="si-email" style="font-size: 14px; font-weight: 800; color: #c9c2ff; line-height: 1.2; margin-bottom: -8px;">Email</label>
+<input id="si-email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="{{email}}" onChange="{{setEmail}}" placeholder="you@example.com" aria-invalid="{{invalid}}" style="flex-shrink: 0; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #30257a; color: #ffffff; {{fieldShadow}}">
+
+<label for="si-pw" style="font-size: 14px; font-weight: 800; color: #c9c2ff; line-height: 1.2; margin-bottom: -8px;">Password</label>
+<div data-pw="1" style="flex-shrink: 0; display: flex; align-items: center; padding: 2px; border-radius: 14px; background: #30257a; {{fieldShadow}}">
+<input id="si-pw" name="password" type="{{pwType}}" autocomplete="current-password" value="{{pw}}" onChange="{{setPw}}" aria-invalid="{{invalid}}" aria-describedby="{{pwDescribedBy}}" style="flex: 1; min-width: 0; font-family: inherit; font-size: 18px; font-weight: 700; padding: 8px 12px; border: 0; background: transparent; color: #ffffff;">
+<button onClick="{{togglePw}}" aria-pressed="{{pwShown}}" aria-label="{{pwToggle}} password" aria-controls="si-pw" style="flex-shrink: 0; border: 0; cursor: pointer; font-family: inherit; height: 44px; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 15px; font-weight: 800;">{{pwToggle}}</button>
+</div>
+
+<sc-if value="{{showFieldError}}" hint-placeholder-val="{{ false }}">
+<div id="si-err" role="alert" style="flex-shrink: 0; display: flex; gap: 8px; align-items: flex-start; margin-top: -4px; font-size: 15px; font-weight: 700; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+<span>{{fieldError}}</span>
+</div>
+</sc-if>
+
+<button onClick="{{toReset}}" style="flex-shrink: 0; align-self: flex-start; border: 0; cursor: pointer; font-family: inherit; min-height: 44px; margin: -4px 0 0 -10px; padding: 0 10px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Forgot password?</button>
+
+<div style="flex-grow: 1;"></div>
+
+<button onClick="{{signIn}}" aria-disabled="{{signInDisabled}}" data-press="green" style="flex-shrink: 0; border: 0; cursor: {{signInCursor}}; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; opacity: {{signInOpacity}};">{{signInLabel}}</button>
+
+<div style="flex-shrink: 0; display: flex; flex-direction: column; align-items: center;">
+<div style="display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; font-size: 14px; font-weight: 700; color: #c9c2ff;">
+<span>New here?</span>
+<a href="{{signupHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 6px; border-radius: 12px; color: #ffe266; font-weight: 800;">Create a family account</a>
+</div>
+<nav aria-label="Help and legal" style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap;">
+<a href="{{helpHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Support</a>
+<span aria-hidden="true" style="color: #c9c2ff; font-weight: 800;">·</span>
+<a href="{{docHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Terms</a>
+<span aria-hidden="true" style="color: #c9c2ff; font-weight: 800;">·</span>
+<a href="{{docHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Privacy</a>
+</nav>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{isReset}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 12px; flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 6px;">
+<div style="text-align: center;">
+<h1 style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.1;">Reset your password</h1>
+</div>
+<label for="re-email" style="font-size: 14px; font-weight: 800; color: #c9c2ff; line-height: 1.2; margin-bottom: -8px;">Email</label>
+<input id="re-email" name="email" type="email" autocomplete="email" autocapitalize="off" spellcheck="false" value="{{email}}" onChange="{{setEmail}}" placeholder="you@example.com" style="flex-shrink: 0; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #30257a; color: #ffffff; box-shadow: inset 0 3px 6px rgba(0,0,0,0.35);">
+<div style="flex-grow: 1;"></div>
+<button onClick="{{sendReset}}" data-press="green" style="flex-shrink: 0; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Send reset link</button>
+<button onClick="{{toForm}}" style="flex-shrink: 0; align-self: center; border: 0; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 17px; font-weight: 800; text-decoration: underline;">Back to sign in</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isResetSent}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1;">
+<h1 style="margin: 10px 0 0; font-size: 26px; font-weight: 800; line-height: 1.1; text-align: center;">Check your email</h1>
+<div role="status" style="display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 20px; background: #30257a;">
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffe266" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3.5 7l8.5 6 8.5-6"></path></svg>
+<span style="font-size: 16px; font-weight: 700; line-height: 1.35; overflow-wrap: anywhere;">If {{emailOr}} has a family account, a reset link is on its way.</span>
+</div>
+<div style="flex-grow: 1;"></div>
+<button onClick="{{toForm}}" data-press="green" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to sign in</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isDone}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1; align-items: center; text-align: center;">
+<h1 style="margin: 10px 0 0; font-size: 30px; font-weight: 800; line-height: 1.1;">You're signed in</h1>
+<div role="status" style="font-size: 16px; font-weight: 700; color: #c9c2ff; line-height: 1.35;">{{doneText}}</div>
+<sc-if value="{{hasKids}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+<sc-for list="{{kids}}" as="k" hint-placeholder-count="2">
+<span style="display: inline-flex; flex-direction: column; align-items: center; gap: 4px;">
+<span style="width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 30px; font-weight: 800; background: {{k.color}}; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);">{{k.initial}}</span>
+<span style="font-size: 15px; font-weight: 800;">{{k.name}}</span>
+</span>
+</sc-for>
+</div>
+</sc-if>
+<div style="flex-grow: 1;"></div>
+<a href="{{doneHref}}" data-press="green" style="width: 100%; box-sizing: border-box; display: block; text-decoration: none; color: #063510; font-size: 22px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{doneLabel}}</a>
+</div>
+</sc-if>
+
+<sc-if value="{{isMerge}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1;">
+<h1 style="margin: 10px 0 0; font-size: 30px; font-weight: 800; line-height: 1.1; text-align: center;">You're signed in</h1>
+<div style="display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 20px; background: #30257a;">
+<span aria-hidden="true" style="width: 64px; height: 64px; flex-shrink: 0; border-radius: 20px; display: grid; place-items: center; font-size: 30px; font-weight: 800; background: #ff7a1a; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);">L</span>
+<span style="font-size: 16px; font-weight: 700; line-height: 1.35;">This device has progress for Leo, age 4, who isn't on your family account.</span>
+</div>
+<div style="flex-grow: 1;"></div>
+<button onClick="{{addLocal}}" data-press="green" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Add Leo to your family</button>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
+<button onClick="{{skipLocal}}" aria-describedby="mg-help" style="border: 0; cursor: pointer; font-family: inherit; min-height: 44px; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 17px; font-weight: 800; text-decoration: underline;">Skip for now</button>
+<div id="mg-help" style="font-size: 13px; font-weight: 700; color: #c9c2ff; text-align: center;">Skipped progress stays on this device only.</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"from":{"editor":"enum","options":["signup","settings"],"default":"signup"},"state":{"editor":"enum","options":["default","wrongPassword","providerFailed","offline","tooManyTries","reset","resetSent","signedIn","noChildren","merge"],"default":"default"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = this.fresh(this.lever());
+  }
+  componentWillUnmount() { clearTimeout(this.signT); }
+  lever() {
+    var ok = ['default', 'wrongPassword', 'providerFailed', 'offline', 'tooManyTries', 'reset', 'resetSent', 'signedIn', 'noChildren', 'merge'];
+    var v = this.props && this.props.state;
+    return ok.indexOf(v) >= 0 ? v : 'default';
+  }
+  // Sample data: Maya is on the family account; Leo too, except in the merge state, where his progress is local to this device.
+  fresh(lv) {
+    var filled = ['wrongPassword', 'tooManyTries', 'reset', 'resetSent'].indexOf(lv) >= 0;
+    return {
+      key: lv, view: lv,
+      email: filled ? 'sam@example.com' : '',
+      pw: filled && lv !== 'reset' && lv !== 'resetSent' ? 'brickhouse' : '',
+      showPw: false, loading: false, provider: 'Apple',
+      family: lv === 'merge' ? ['maya'] : lv === 'noChildren' ? [] : ['maya', 'leo']
+    };
+  }
+  cur() {
+    var lv = this.lever();
+    return this.state && this.state.key === lv ? this.state : this.fresh(lv);
+  }
+  patch(obj) {
+    this.setState(Object.assign({}, this.cur(), obj));
+  }
+  renderVals() {
+    var self = this;
+    var s = this.cur();
+    var tablet = this.props.device === 'tablet';
+    var t = tablet ? 'Tablet' : '';
+    var fromSettings = this.props.from === 'settings';
+    var people = { maya: { name: 'Maya', color: '#2f8cff' }, leo: { name: 'Leo', color: '#ff7a1a' } };
+    var v = s.view;
+    var isForm = ['default', 'wrongPassword', 'providerFailed', 'offline', 'tooManyTries'].indexOf(v) >= 0;
+    var locked = v === 'tooManyTries';
+    var kids = s.family.map(function (id) { var p = people[id]; return { name: p.name, initial: p.name.charAt(0), color: p.color }; });
+    var names = kids.map(function (k) { return k.name; });
+    var doneText = !kids.length
+      ? 'Your family account has no children yet.'
+      : names.length === 1
+        ? names[0] + ' is ready on this device.'
+        : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' are ready on this device.';
+    var fieldError = v === 'wrongPassword'
+      ? "That email and password don't match an account. Check them, or reset your password."
+      : locked
+        ? 'Too many tries. Wait [PLACEHOLDER: lockout minutes] minutes, or reset your password.'
+        : '';
+    var provider = function (name) {
+      return function () { clearTimeout(self.signT); self.patch({ view: 'signedIn', provider: name, loading: false }); };
+    };
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      backLeaves: isForm,
+      backToForm: v === 'reset' || v === 'resetSent',
+      backHref: fromSettings ? 'Grownups' + t + '.dc.html' : 'Signup' + t + '.dc.html',
+      backLabel: fromSettings ? 'Back to settings' : 'Back to sign up',
+      signupHref: 'Signup' + t + '.dc.html',
+      helpHref: 'Help' + t + '.dc.html',
+      docHref: 'HelpDoc.dc.html',
+      isForm: isForm,
+      isReset: v === 'reset',
+      isResetSent: v === 'resetSent',
+      isDone: v === 'signedIn' || v === 'noChildren',
+      isMerge: v === 'merge',
+      showProviderError: v === 'providerFailed',
+      providerName: s.provider,
+      showOffline: v === 'offline',
+      withApple: provider('Apple'),
+      withGoogle: provider('Google'),
+      withFacebook: provider('Facebook'),
+      email: s.email,
+      pw: s.pw,
+      setEmail: function (e) { self.patch({ email: e.target.value }); },
+      setPw: function (e) { self.patch({ pw: e.target.value }); },
+      invalid: v === 'wrongPassword' ? 'true' : 'false',
+      fieldShadow: v === 'wrongPassword'
+        ? 'box-shadow: inset 0 3px 6px rgba(0,0,0,0.35), 0 0 0 2px #ff4d5e;'
+        : 'box-shadow: inset 0 3px 6px rgba(0,0,0,0.35);',
+      pwType: s.showPw ? 'text' : 'password',
+      pwShown: s.showPw ? 'true' : 'false',
+      pwToggle: s.showPw ? 'Hide' : 'Show',
+      togglePw: function () { self.patch({ showPw: !self.cur().showPw }); },
+      pwDescribedBy: fieldError ? 'si-err' : '',
+      showFieldError: !!fieldError,
+      fieldError: fieldError,
+      toReset: function () { clearTimeout(self.signT); self.patch({ view: 'reset', loading: false }); },
+      signInLabel: s.loading ? 'Signing in…' : 'Sign in',
+      signInDisabled: locked ? 'true' : 'false',
+      signInOpacity: locked ? 0.45 : 1,
+      signInCursor: locked ? 'not-allowed' : 'pointer',
+      signIn: function () {
+        var c = self.cur();
+        if (c.view === 'tooManyTries' || c.view === 'offline' || c.loading) return;
+        self.patch({ loading: true });
+        clearTimeout(self.signT);
+        self.signT = setTimeout(function () { self.patch({ loading: false, view: 'signedIn' }); }, 1200);
+      },
+      toForm: function () { self.patch({ view: 'default', loading: false }); },
+      sendReset: function () { self.patch({ view: 'resetSent' }); },
+      emailOr: (s.email || '').trim() || 'your email address',
+      kids: kids,
+      hasKids: kids.length > 0,
+      doneText: doneText,
+      doneLabel: kids.length ? 'Start playing' : 'Add a child',
+      doneHref: kids.length ? 'Main' + t + '.dc.html' : 'Grownups' + t + '.dc.html',
+      addLocal: function () { self.patch({ view: 'signedIn', family: ['maya', 'leo'] }); },
+      skipLocal: function () { self.patch({ view: 'signedIn', family: ['maya'] }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

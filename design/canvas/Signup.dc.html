@@ -57,11 +57,15 @@ Continue with Facebook
 <input id="pp" type="password" value="{{pw}}" onChange="{{setPw}}" placeholder="At least 8 characters" style="font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #30257a; color: #ffffff; outline: none; box-shadow: inset 0 3px 6px rgba(0,0,0,0.35);">
 <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; font-weight: 700; color: #c9c2ff; line-height: 1.3; cursor: pointer;">
 <input type="checkbox" checked="{{adult}}" onChange="{{toggleAdult}}" style="width: 22px; height: 22px; margin: 0; accent-color: #1fb53c; flex-shrink: 0;">
-I am a parent or guardian, 18 or older, and I agree to the [Terms] and [Privacy Policy].
+I am a parent or guardian, 18 or older, and I agree to the Terms of use and Privacy policy.
 </label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 0 22px;">
+<a href="{{docHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 12px; color: #c9c2ff; font-size: 14px; font-weight: 800; text-decoration: underline;">Terms of use</a>
+<a href="{{docHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 10px; border-radius: 12px; color: #c9c2ff; font-size: 14px; font-weight: 800; text-decoration: underline;">Privacy policy</a>
+</div>
 <div style="flex-grow: 1;"></div>
-<button onClick="{{createAccount}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; opacity: {{createOpacity}};">Create account</button>
-<div style="text-align: center; font-size: 14px; font-weight: 700; color: #c9c2ff;">Already have one? <a href="{{whoHref}}" style="color: #ffe266;">Sign in</a> and your children's progress appears.</div>
+<button onClick="{{createAccount}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; opacity: {{createOpacity}};">Create account</button>
+<div style="text-align: center; font-size: 14px; font-weight: 700; color: #c9c2ff;">Already have one? <a href="{{signinHref}}" style="color: #ffe266;">Sign in</a> and your children's progress appears.</div>
 </div>
 </sc-if>
 
@@ -92,7 +96,7 @@ I am a parent or guardian, 18 or older, and I agree to the [Terms] and [Privacy 
 <button onClick="{{addKid}}" style="border: 0; cursor: pointer; font-family: inherit; color: #5a3500; font-size: 17px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 4px 0 #d48a00;">Add {{knameOr}}</button>
 </div>
 <div style="flex-grow: 1;"></div>
-<button onClick="{{toDone}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; opacity: {{doneOpacity}};">Continue</button>
+<button onClick="{{toDone}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; opacity: {{doneOpacity}};">Continue</button>
 </div>
 </sc-if>
 
@@ -116,7 +120,7 @@ I am a parent or guardian, 18 or older, and I agree to the [Terms] and [Privacy 
 </sc-for>
 </div>
 <div style="flex-grow: 1;"></div>
-<a href="{{whoHref}}" style="width: 100%; box-sizing: border-box; display: block; text-decoration: none; color: #ffffff; font-size: 22px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Start playing</a>
+<a href="{{whoHref}}" style="width: 100%; box-sizing: border-box; display: block; text-decoration: none; color: #063510; font-size: 22px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Start playing</a>
 </div>
 </sc-if>
 
@@ -143,6 +147,8 @@ class Component extends DCLogic {
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       whoHref: tablet ? 'MainTablet.dc.html' : 'Main.dc.html',
+      signinHref: tablet ? 'SigninTablet.dc.html' : 'Signin.dc.html',
+      docHref: 'HelpDoc.dc.html',
       stepNo: s.step + 1,
       steps: [0, 1, 2].map(function (i) { return { fill: i <= s.step ? '#ffc21a' : '#30257a' }; }),
       isAccount: s.step === 0, isKids: s.step === 1, isDone: s.step === 2,

@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sticker book</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; }
+.stk-press { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); }
+.stk-press:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; }
+.stk-press.stk-go:active { box-shadow: 0 2px 0 #0f7a26 !important; }
+.stk-face { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); }
+.stk-slot:active .stk-got { transform: translateY(1px); box-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+@keyframes stk-settle { from { opacity: 0; transform: translateY(-12px) rotate(-8deg) scale(1.08); } to { opacity: 1; transform: none; } }
+@keyframes stk-fade { from { opacity: 0; } to { opacity: 1; } }
+.stk-settle { animation: stk-settle 360ms cubic-bezier(0.16,1,0.3,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .stk-settle { animation: stk-fade 150ms ease-out both; }
+  .stk-press, .stk-face { transition: none; }
+}
+</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div data-stk-root="1" style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 12px; position: relative;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px; flex-shrink: 0;">
+<a href="{{hubHref}}" class="stk-press" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<h1 style="margin: 0; font-size: 24px; font-weight: 800; line-height: 1.1;">Sticker book</h1>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff; font-variant-numeric: tabular-nums;">{{sub}}</div>
+</div>
+<sc-if value="{{young}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{readPage}}" class="stk-press" aria-label="Read this page aloud" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+<sc-if value="{{older}}" hint-placeholder-val="{{ true }}">
+<span></span>
+</sc-if>
+</div>
+
+<div style="flex: 1; min-height: 0; overflow-y: auto; margin: 0 -16px; padding: 4px 16px 18px; display: flex; flex-direction: column; gap: 12px; scrollbar-color: #4b3eaa transparent;">
+
+<sc-if value="{{isEmpty}}" hint-placeholder-val="{{ false }}">
+<div style="flex-shrink: 0; padding: 16px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;">
+<h2 style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">No stickers yet</h2>
+<p style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; color: #c9c2ff;">Finish a chapter in any game to get your first sticker.</p>
+<a href="{{hubHref}}" class="stk-press stk-go" style="margin-top: 10px; align-self: stretch; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+Play a game
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
+</a>
+</div>
+</sc-if>
+
+<sc-if value="{{allFound}}" hint-placeholder-val="{{ false }}">
+<div style="flex-shrink: 0; padding: 12px 16px; border-radius: 20px; background: #30257a; display: flex; align-items: center; justify-content: center; gap: 10px;">
+<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="#ffb21f"></path></svg>
+<span style="font-size: 20px; font-weight: 800; line-height: 1.15;">Every sticker found!</span>
+</div>
+</sc-if>
+
+<div role="tablist" aria-label="Sticker pages" style="flex-shrink: 0; display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: #1d1550;">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="2">
+<button role="tab" aria-selected="{{t.on}}" tabindex="{{t.tabindex}}" data-stk-tab="{{t.key}}" onClick="{{t.pick}}" onKeyDown="{{t.keys}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; font-size: 17px; font-weight: 800; line-height: 1.2; min-height: 48px; padding: 6px 4px; border-radius: 11px; {{t.style}}">{{t.label}}</button>
+</sc-for>
+</div>
+
+<section role="tabpanel" aria-label="{{pageName}}" style="flex-shrink: 0; padding: 14px; border-radius: 26px; background: #1d1550; display: flex; flex-direction: column; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; line-height: 1.3; color: #c9c2ff; font-variant-numeric: tabular-nums;">
+<sc-if value="{{pageDone}}" hint-placeholder-val="{{ false }}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+</sc-if>
+<span>{{pageLine}}</span>
+</div>
+<div style="display: grid; grid-template-columns: {{cols}}; gap: 10px;">
+<sc-for list="{{slots}}" as="sl" hint-placeholder-count="12">
+<button class="stk-slot" data-stk-slot="{{sl.id}}" onClick="{{sl.open}}" aria-label="{{sl.label}}" aria-haspopup="dialog" style="border: 0; padding: 0; margin: 0; background: transparent; cursor: pointer; font-family: inherit; color: #ffffff; display: flex; flex-direction: column; align-items: stretch; gap: 6px; border-radius: 16px; position: relative; min-width: 0;">
+<span class="{{sl.faceClass}}" aria-hidden="true" style="aspect-ratio: 1 / 1; box-sizing: border-box; border-radius: 16px; display: grid; place-items: center; {{sl.face}}">
+<span style="{{sl.mosaic}}">
+<sc-for list="{{sl.cells}}" as="c" hint-placeholder-count="25">
+<span style="{{c.style}}"></span>
+</sc-for>
+</span>
+</span>
+<sc-if value="{{sl.got}}" hint-placeholder-val="{{ true }}">
+<span aria-hidden="true" style="font-size: 13px; font-weight: 700; line-height: 1.15; text-align: center; overflow-wrap: anywhere;">{{sl.name}}</span>
+</sc-if>
+<sc-if value="{{sl.isNew}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="position: absolute; top: -7px; right: -7px; padding: 0 8px; border-radius: 999px; font-size: 14px; font-weight: 800; line-height: 22px; color: #5a3500; background: #ffc21a; box-shadow: 0 2px 0 #d48a00;">New</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</section>
+
+</div>
+
+<sc-if value="{{open}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; box-sizing: border-box;">
+<div onClick="{{closeDlg}}" aria-hidden="true" style="position: absolute; inset: 0; background: rgba(10,6,30,0.65);"></div>
+<div role="dialog" aria-modal="true" aria-label="{{dlg.title}}" onKeyDown="{{trapKey}}" style="position: relative; width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+<span aria-hidden="true" style="width: 160px; height: 160px; box-sizing: border-box; border-radius: 16px; display: grid; place-items: center; {{dlg.face}}">
+<span style="{{dlg.mosaic}}">
+<sc-for list="{{dlg.cells}}" as="c" hint-placeholder-count="25">
+<span style="{{c.style}}"></span>
+</sc-for>
+</span>
+</span>
+<h2 style="margin: 8px 0 0; font-size: 26px; font-weight: 800; line-height: 1.1;">{{dlg.title}}</h2>
+<p style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; color: #ffffff;">{{dlg.line}}</p>
+
+<sc-if value="{{dlg.got}}" hint-placeholder-val="{{ true }}">
+<div style="align-self: stretch; display: flex; gap: 10px; margin-top: 10px;">
+<button data-stk-first="1" onClick="{{dlg.say}}" class="stk-press" style="flex: 1; min-width: 0; border: 0; cursor: pointer; font-family: inherit; min-height: 54px; padding: 0 12px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.1; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+Say the name
+</button>
+<button onClick="{{closeDlg}}" class="stk-press" style="flex-shrink: 0; border: 0; cursor: pointer; font-family: inherit; min-height: 54px; padding: 0 20px; color: #ffffff; font-size: 17px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Close</button>
+</div>
+</sc-if>
+
+<sc-if value="{{dlg.missing}}" hint-placeholder-val="{{ false }}">
+<a data-stk-first="1" href="{{dlg.href}}" class="stk-press stk-go" style="align-self: stretch; margin-top: 10px; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+{{dlg.cta}}
+<sc-if value="{{dlg.playIcon}}" hint-placeholder-val="{{ true }}">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
+</sc-if>
+</a>
+<div style="align-self: stretch; display: flex; gap: 10px; margin-top: 6px;">
+<sc-if value="{{dlg.young}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{dlg.say}}" class="stk-press" aria-label="Hear how to get it" style="flex-shrink: 0; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+<button onClick="{{closeDlg}}" class="stk-press" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; min-height: 54px; padding: 0 20px; color: #ffffff; font-size: 17px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Close</button>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"kid":{"editor":"enum","options":["maya7","leo4","nia6","theo10"],"default":"maya7"},"state":{"editor":"enum","options":["some","empty","pageFull","allFound"],"default":"some"},"tab":{"editor":"enum","options":["games","discoveries"],"default":"games"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: null, tabProp: null, openId: null, settled: false };
+  }
+  componentDidMount() {
+    var self = this;
+    this.settleT = setTimeout(function () { self.setState({ settled: true }); }, 700);
+  }
+  componentWillUnmount() {
+    clearTimeout(this.settleT);
+    clearTimeout(this.focusT);
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+  pal() {
+    return {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
+      purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84'], teal: ['#14c8c0', '#6aeee4', '#0b8c87']
+    };
+  }
+  brick(color, stud) {
+    var p = this.pal()[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    var size = stud ? stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%' : '100% 100%';
+    return 'background: ' + (stud ? studs : '') + base + '; background-size: ' + size + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  games() {
+    // Where a missing sticker sends the child. Games without their own Levels board link straight into the game (brief 3.6).
+    return {
+      escape: { name: 'Brick Escape', href: ['Levels.dc.html', 'LevelsTablet.dc.html'], chapters: ['Getting started', 'Think first', 'Icy doors', '[PLACEHOLDER: chapter name]', 'Big bricks'] },
+      drop: { name: 'Brick Drop', href: ['Drop.dc.html', 'DropTablet.dc.html'], chapters: ['Small bricks', 'Four-square bricks', 'Big bricks'] },
+      letters: { name: 'Letter Builder', href: ['LevelsLetters.dc.html', 'LettersTablet.dc.html'], chapters: ['Alphabet Train', 'Big and small', 'First sounds', 'Spell it'] },
+      mixer: { name: 'Color Mixer', href: ['Mixer.dc.html', 'MixerTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2', 'Chapter 3'] },
+      sorter: { name: 'Shape Sorter', href: ['Sorter.dc.html', 'SorterTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2', 'Chapter 3'] },
+      pattern: { name: 'Pattern Train', href: ['Pattern.dc.html', 'PatternTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2', 'Chapter 3'] },
+      numbers: { name: 'Number Line-up', href: ['Numbers.dc.html', 'NumbersTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2'] },
+      builder: { name: 'Picture Builder', href: ['Builder.dc.html', 'BuilderTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2', 'Chapter 3'] },
+      math: { name: 'Brick Calculator', href: ['Math.dc.html', 'MathTablet.dc.html'], chapters: ['Chapter 1', 'Chapter 2'] }
+    };
+  }
+  book() {
+    // Sample data: 40 stickers (brief section 9: one per finished chapter of any game, plus one per Today's discovery).
+    // Escape's open-ended Master chapter has no end, so it has no sticker. Chapters of the six newer games are sample data.
+    // Art: 5x5 brick mosaics. r red, y yellow, g green, b blue, p purple, o orange, k pink, t teal, . empty.
+    return [
+      { id: 'e1', page: 'games', game: 'escape', ch: 0, name: 'Open door', art: ['ooo..', 'ooo..', 'ooyrr', 'ooo..', 'ooo..'] },
+      { id: 'e2', page: 'games', game: 'escape', ch: 1, name: 'Light bulb', art: ['.yyy.', 'yyyyy', '.yyy.', '.bbb.', '..b..'] },
+      { id: 'e3', page: 'games', game: 'escape', ch: 2, name: 'Ice key', art: ['.ttt.', '.t.t.', '.ttt.', '..t..', '..tt.'] },
+      { id: 'e4', page: 'games', game: 'escape', ch: 3, name: 'Ladder', art: ['g...g', 'ggggg', 'g...g', 'ggggg', 'g...g'] },
+      { id: 'e5', page: 'games', game: 'escape', ch: 4, name: 'Big brick', art: ['.....', 'rrrrr', 'rrrrr', 'rrrrr', '.....'] },
+      { id: 'd1', page: 'games', game: 'drop', ch: 0, name: 'Tiny tower', art: ['..k..', '.kkk.', '.kkk.', '.kkk.', 'kkkkk'] },
+      { id: 'd2', page: 'games', game: 'drop', ch: 1, name: 'Full row', art: ['..p..', '.ppp.', '.....', 'ttyyb', 'ttyyb'] },
+      { id: 'd3', page: 'games', game: 'drop', ch: 2, name: 'Rocket', art: ['..r..', '.bbb.', '.byb.', '.bbb.', 'o.o.o'] },
+      { id: 'l1', page: 'games', game: 'letters', ch: 0, name: 'Big A', art: ['.ooo.', 'o...o', 'ooooo', 'o...o', 'o...o'] },
+      { id: 'l2', page: 'games', game: 'letters', ch: 1, name: 'Little b', art: ['k....', 'k....', 'kkkk.', 'k..k.', 'kkkk.'] },
+      { id: 'l3', page: 'games', game: 'letters', ch: 2, name: 'Bell', art: ['..y..', '.yyy.', '.yyy.', 'yyyyy', '..o..'] },
+      { id: 'l4', page: 'games', game: 'letters', ch: 3, name: 'Pencil', art: ['.kkk.', '.yyy.', '.yyy.', '.yyy.', '..o..'] },
+      { id: 'm1', page: 'games', game: 'mixer', ch: 0, name: 'Paint pot', art: ['.rrr.', 'ttttt', '.ttt.', '.ttt.', '.ttt.'] },
+      { id: 'm2', page: 'games', game: 'mixer', ch: 1, name: 'Paintbrush', art: ['.ppp.', '.ppp.', '..o..', '..o..', '..o..'] },
+      { id: 'm3', page: 'games', game: 'mixer', ch: 2, name: 'Rainbow', art: ['rrrrr', 'ooooo', 'yy.yy', 'gg.gg', 'bb.bb'] },
+      { id: 's1', page: 'games', game: 'sorter', ch: 0, name: 'Star', art: ['..y..', '.yyy.', 'yyyyy', '.yyy.', '.y.y.'] },
+      { id: 's2', page: 'games', game: 'sorter', ch: 1, name: 'Heart', art: ['.k.k.', 'kkkkk', 'kkkkk', '.kkk.', '..k..'] },
+      { id: 's3', page: 'games', game: 'sorter', ch: 2, name: 'Diamond', art: ['..t..', '.ttt.', 'ttttt', '.ttt.', '..t..'] },
+      { id: 'p1', page: 'games', game: 'pattern', ch: 0, name: 'Train', art: ['o....', 'o.bbb', 'rrbbb', 'rrrrr', '.g.g.'] },
+      { id: 'p2', page: 'games', game: 'pattern', ch: 1, name: 'Carriage', art: ['.....', 'rbrbr', 'brbrb', 'rbrbr', '.y.y.'] },
+      { id: 'p3', page: 'games', game: 'pattern', ch: 2, name: 'Signal', art: ['..r..', '..y..', '..g..', '..p..', '.ppp.'] },
+      { id: 'n1', page: 'games', game: 'numbers', ch: 0, name: 'Number 1', art: ['..g..', '.gg..', '..g..', '..g..', '.ggg.'] },
+      { id: 'n2', page: 'games', game: 'numbers', ch: 1, name: 'Steps', art: ['....b', '...yb', '..gyb', '.rgyb', 'orgyb'] },
+      { id: 'b1', page: 'games', game: 'builder', ch: 0, name: 'House', art: ['..r..', '.rrr.', 'rrrrr', 'yybyy', 'yybyy'] },
+      { id: 'b2', page: 'games', game: 'builder', ch: 1, name: 'Tree', art: ['.ggg.', 'ggggg', 'ggggg', '..o..', '..o..'] },
+      { id: 'b3', page: 'games', game: 'builder', ch: 2, name: 'Boat', art: ['..r..', '..rr.', '..o..', 'ooooo', '.bbb.'] },
+      { id: 'c1', page: 'games', game: 'math', ch: 0, name: 'Plus sign', art: ['..b..', '..b..', 'bbbbb', '..b..', '..b..'] },
+      { id: 'c2', page: 'games', game: 'math', ch: 1, name: 'Calculator', art: ['ttttt', 'tyyyt', 'ttttt', 'tbtbt', 'ttttt'] },
+      { id: 'x1', page: 'discoveries', name: 'Green drop', art: ['..g..', '.ggg.', 'ggggg', 'ggggg', '.ggg.'] },
+      { id: 'x2', page: 'discoveries', name: 'Sun', art: ['y.y.y', '.ooo.', 'yoooy', '.ooo.', 'y.y.y'] },
+      { id: 'x3', page: 'discoveries', name: 'Moon', art: ['.yyy.', 'yy...', 'yy...', 'yy...', '.yyy.'] },
+      { id: 'x4', page: 'discoveries', name: 'Fish', art: ['.....', '.oo.o', 'ooooo', '.oo.o', '.....'] },
+      { id: 'x5', page: 'discoveries', name: 'Flower', art: ['.kkk.', 'kkykk', '.kkk.', '..g..', '.gg..'] },
+      { id: 'x6', page: 'discoveries', name: 'Apple', art: ['..g..', '.rrr.', 'rrrrr', 'rrrrr', '.rrr.'] },
+      { id: 'x7', page: 'discoveries', name: 'Rain cloud', art: ['.....', '..bb.', '.bbbb', 'bbbbb', 'b.b.b'] },
+      { id: 'x8', page: 'discoveries', name: 'Leaf', art: ['...gg', '..ggg', '.ggg.', 'ggg..', 'g....'] },
+      { id: 'x9', page: 'discoveries', name: 'Butterfly', art: ['kk.kk', 'kkpkk', '..p..', 'kkpkk', 'kk.kk'] },
+      { id: 'x10', page: 'discoveries', name: 'Ice cream', art: ['.kkk.', 'kkkkk', '.ooo.', '..o..', '..o..'] },
+      { id: 'x11', page: 'discoveries', name: 'Ladybug', art: ['..p..', '.rpr.', 'rrprr', 'rrprr', '.rpr.'] },
+      { id: 'x12', page: 'discoveries', name: 'Mushroom', art: ['.rrr.', 'rrrrr', 'rrrrr', '..y..', '.yyy.'] }
+    ];
+  }
+  kids() {
+    // Sample data. Maya's 12 matches Home ("12/40 stickers"); her newest sticker is from finishing Getting started (Escape Level 8).
+    return {
+      maya7: { name: 'Maya', age: 7, got: ['e1', 'l1', 'l2', 'l3', 'm1', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7'], fresh: 'e1' },
+      leo4: { name: 'Leo', age: 4, got: ['l1', 'm1', 'x2', 'x6'], fresh: 'm1' },
+      nia6: { name: 'Nia', age: 6, got: ['e1', 'd1', 's1', 'x1', 'x2', 'x3'], fresh: 's1' },
+      theo10: { name: 'Theo', age: 10, got: ['e1', 'e2', 'e3', 'e4', 'd1', 'd2', 'l1', 'l2', 'l3', 'l4', 'm1', 's1', 'p1', 'n1', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'x8', 'x9'], fresh: 'n1' }
+    };
+  }
+  colorOf(ch) {
+    return { r: 'red', y: 'yellow', g: 'green', b: 'blue', p: 'purple', o: 'orange', k: 'pink', t: 'teal' }[ch] || null;
+  }
+  cells(art, got, px) {
+    var self = this;
+    var out = [];
+    art.join('').split('').forEach(function (ch) {
+      var c = self.colorOf(ch);
+      if (!c) { out.push({ style: '' }); return; }
+      out.push({ style: got ? 'border-radius: 2px; ' + self.brick(c, px) : 'border-radius: 2px; background: #30257a;' });
+    });
+    return out;
+  }
+  mosaic(px, gap) {
+    return 'display: grid; grid-template-columns: repeat(5, ' + px + 'px); grid-auto-rows: ' + px + 'px; gap: ' + gap + 'px;';
+  }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  rootFrom(e) {
+    var t = e && (e.currentTarget || e.target);
+    var r = t && t.closest ? t.closest('[data-stk-root]') : null;
+    if (r) this.rootEl = r;
+  }
+  focusLater(sel) {
+    var self = this;
+    clearTimeout(this.focusT);
+    this.focusT = setTimeout(function () {
+      var el = self.rootEl && self.rootEl.querySelector(sel);
+      if (el && el.focus) el.focus();
+    }, 40);
+  }
+  renderVals() {
+    var self = this;
+    var p = this.props || {};
+    var s = this.state;
+    var tablet = p.device === 'tablet';
+    var t = tablet ? 1 : 0;
+    var kid = this.kids()[p.kid] || this.kids().maya7;
+    var young = kid.age <= 6;
+    var mode = ['some', 'empty', 'pageFull', 'allFound'].indexOf(p.state) >= 0 ? p.state : 'some';
+    var propTab = p.tab === 'discoveries' ? 'discoveries' : 'games';
+    var tab = s.tabProp === propTab && s.tab ? s.tab : propTab;
+    var G = this.games();
+    var all = this.book();
+
+    var has = function (st) {
+      if (mode === 'empty') return false;
+      if (mode === 'allFound') return true;
+      if (mode === 'pageFull' && st.page === tab) return true;
+      return kid.got.indexOf(st.id) >= 0;
+    };
+    var total = all.filter(has).length;
+    var onPage = all.filter(function (st) { return st.page === tab; });
+    var gotOnPage = onPage.filter(has).length;
+    var pageDone = mode !== 'empty' && gotOnPage === onPage.length;
+    var px = tablet ? 11 : 10;
+
+    var gotFace = 'border: 4px solid #ffffff; background: #30257a; box-shadow: 0 3px 0 rgba(0,0,0,0.3);';
+    var missFace = 'border: 2px dashed #6d5fd0; background: transparent;';
+
+    var where = function (st) {
+      if (st.page === 'discoveries') return { from: "From Today's discovery", how: "Today's discovery on Home gives you a sticker. Try a new one each day.", href: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html', cta: 'Go to Home', play: false, game: "Today's discovery" };
+      var g = G[st.game];
+      var chap = g.chapters[st.ch];
+      return { from: 'From ' + g.name + ' · ' + chap, how: 'Finish ' + chap + ' in ' + g.name + ' to get this sticker.', href: g.href[t], cta: 'Play ' + g.name, play: true, game: g.name };
+    };
+
+    var slots = onPage.map(function (st) {
+      var got = has(st);
+      var fresh = got && st.id === kid.fresh && mode === 'some';
+      var w = where(st);
+      return {
+        id: st.id,
+        got: got,
+        isNew: fresh,
+        name: st.name,
+        label: got ? st.name + (fresh ? ', new sticker' : '') : 'Sticker not found yet, from ' + w.game,
+        faceClass: got ? 'stk-face stk-got' + (fresh && !s.settled ? ' stk-settle' : '') : 'stk-face',
+        face: got ? gotFace : missFace,
+        mosaic: self.mosaic(px, 1),
+        cells: self.cells(st.art, got, px),
+        open: function (e) {
+          self.rootFrom(e);
+          self.setState({ openId: st.id, settled: true });
+          self.focusLater('[data-stk-first]');
+        }
+      };
+    });
+
+    var cur = null;
+    all.forEach(function (st) { if (st.id === s.openId) cur = st; });
+    var closeDlg = function () {
+      var id = self.state.openId;
+      try { window.speechSynthesis.cancel(); } catch (e) {}
+      self.setState({ openId: null });
+      if (id) self.focusLater('[data-stk-slot="' + id + '"]');
+    };
+    var dlg = { got: false, missing: false, title: '', line: '', face: missFace, mosaic: this.mosaic(24, 2), cells: [], href: '', cta: '', playIcon: false, young: young, say: function () {} };
+    if (cur) {
+      var cGot = has(cur);
+      var cw = where(cur);
+      dlg = {
+        got: cGot,
+        missing: !cGot,
+        title: cGot ? cur.name : 'Not found yet',
+        line: cGot ? cw.from : cw.how,
+        face: cGot ? gotFace : 'border: 2px dashed #6d5fd0; background: #1d1550;',
+        mosaic: this.mosaic(24, 2),
+        cells: this.cells(cur.art, cGot, 24),
+        href: cw.href,
+        cta: cw.cta,
+        playIcon: cw.play,
+        young: young,
+        say: function () { self.say(cGot ? cur.name : cw.how); }
+      };
+    }
+
+    var tabDefs = [['games', 'Games'], ['discoveries', 'Discoveries']];
+    var pageLine;
+    if (mode === 'empty') pageLine = tab === 'games' ? 'Each game chapter you finish adds a sticker here.' : "Today's discovery on Home gives you a sticker.";
+    else if (pageDone) pageLine = 'You found every sticker on this page.';
+    else pageLine = gotOnPage + ' of ' + onPage.length + ' on this page';
+
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      sub: total + ' of ' + all.length + ' stickers',
+      young: young,
+      older: !young,
+      readPage: function () {
+        self.say('Sticker book. You have ' + total + ' of ' + all.length + ' stickers. Tap a sticker to see it.');
+      },
+      isEmpty: mode === 'empty',
+      allFound: mode === 'allFound',
+      tabs: tabDefs.map(function (d, i) {
+        var on = d[0] === tab;
+        var other = tabDefs[1 - i][0];
+        return {
+          key: d[0], label: d[1], on: on, tabindex: on ? 0 : -1,
+          style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
+          pick: function () { self.setState({ tab: d[0], tabProp: propTab, settled: true }); },
+          keys: function (e) {
+            if (!e || (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft')) return;
+            if (e.preventDefault) e.preventDefault();
+            self.rootFrom(e);
+            self.setState({ tab: other, tabProp: propTab, settled: true });
+            self.focusLater('[data-stk-tab="' + other + '"]');
+          }
+        };
+      }),
+      pageName: tab === 'games' ? 'Games stickers' : 'Discoveries stickers',
+      pageDone: pageDone,
+      pageLine: pageLine,
+      cols: tablet ? 'repeat(6, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))',
+      slots: slots,
+      open: !!cur,
+      dlg: dlg,
+      closeDlg: closeDlg,
+      trapKey: function (e) {
+        if (!e) return;
+        if (e.key === 'Escape') { if (e.preventDefault) e.preventDefault(); closeDlg(); return; }
+        if (e.key !== 'Tab') return;
+        var box = e.currentTarget;
+        if (!box || !box.querySelectorAll) return;
+        var f = box.querySelectorAll('a[href], button');
+        if (!f.length) return;
+        var rootNode = box.getRootNode ? box.getRootNode() : document;
+        var active = rootNode.activeElement || document.activeElement;
+        var first = f[0];
+        var last = f[f.length - 1];
+        if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+        else if (!box.contains(active)) { e.preventDefault(); first.focus(); }
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -58,7 +58,7 @@ Continue with Google
 <svg width="20" height="20" viewBox="-96 0 512 512" aria-hidden="true"><path fill="#ffffff" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"></path></svg>
 Continue with Facebook
 </button>
-<a href="{{signupHref}}" style="align-self: center; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Use email instead</a>
+<a href="{{signinHref}}" style="align-self: center; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Use email instead</a>
 </div>
 </sc-if>
 
@@ -122,7 +122,7 @@ Add a child
 <span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">The timer, level start and reading help are set from the age. You can change them later.</span>
 <div style="display: flex; gap: 8px;">
 <button onClick="{{cancelAdd}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
-<button onClick="{{saveKid}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Add child</button>
+<button onClick="{{saveKid}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Add child</button>
 </div>
 </div>
 </sc-if>
@@ -202,9 +202,9 @@ Add a child
 <button style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 15px; font-weight: 800; padding: 10px 22px; border-radius: 14px; background: #30257a;">Sign out of this device</button>
 </sc-if>
 <nav aria-label="Help and legal" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
-<a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Support</a>
-<a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Terms</a>
-<a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Privacy</a>
+<a href="{{helpHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Support</a>
+<a href="{{termsHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Terms</a>
+<a href="{{privacyHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Privacy</a>
 </nav>
 <sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
 <button onClick="{{askDelete}}" style="border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 12px; background: transparent; color: #ff9fd4; font-size: 15px; font-weight: 800;">
@@ -300,6 +300,12 @@ class Component extends DCLogic {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       signupHref: tablet ? 'SignupTablet.dc.html' : 'Signup.dc.html',
+      signinHref: tablet ? 'SigninTablet.dc.html' : 'Signin.dc.html',
+      // Canvas links point at files only: on phone Terms and Privacy both open HelpDoc (Privacy is its page lever);
+      // on tablet all three open HelpTablet, whose Legal rows switch to each document.
+      helpHref: tablet ? 'HelpTablet.dc.html' : 'Help.dc.html',
+      termsHref: tablet ? 'HelpTablet.dc.html' : 'HelpDoc.dc.html',
+      privacyHref: tablet ? 'HelpTablet.dc.html' : 'HelpDoc.dc.html',
       guest: guest, signedIn: !guest,
       signInApple: signInWith('Apple'),
       signInGoogle: signInWith('Google'),
