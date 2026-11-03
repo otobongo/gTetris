@@ -1,0 +1,229 @@
+/* Shared components (src/shared/ui). Values come from src/styles/tokens.css only. */
+
+/* ---------- Screen ---------- */
+.bw-screen {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+  font-family: var(--bw-font);
+  color: var(--bw-text);
+}
+.bw-screen__frame {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.bw-screen--phone .bw-screen__frame { max-width: var(--bw-phone-max); }
+.bw-screen--phone.bw-screen--fit-viewport .bw-screen__frame { height: 100dvh; }
+.bw-screen--phone.bw-screen--fit-content .bw-screen__frame { min-height: 100dvh; }
+.bw-screen--tablet .bw-screen__frame { width: var(--bw-tablet-inner-w); }
+.bw-screen--fit-viewport { height: 100dvh; overflow: hidden; }
+
+.bw-screen__frame--standard { padding: 20px 16px 18px; }
+.bw-screen__frame--roomy { padding: 24px 20px 22px; }
+.bw-screen__frame--home { padding: 22px 16px 0; }
+.bw-screen__frame--none { padding: 0; }
+/* Notches and home indicators on phones: add the safe areas to the frame's own padding. */
+.bw-screen--phone .bw-screen__frame--standard { padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+.bw-screen--phone .bw-screen__frame--roomy { padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
+.bw-screen--phone .bw-screen__frame--home { padding: max(22px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+
+/* ---------- Brick ---------- */
+.bw-brick {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  color: var(--bw-text);
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
+  background: linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+  box-shadow: var(--bw-brick-face);
+}
+.bw-brick--studs {
+  background:
+    radial-gradient(circle at 46% 42%, var(--cl) 0 19%, transparent 21%),
+    radial-gradient(circle at 50% 50%, var(--c) 0 25%, transparent 27%),
+    radial-gradient(circle at 54% 58%, rgb(0 0 0 / 0.28) 0 26%, transparent 28%),
+    linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+  background-size: var(--stud) var(--stud), var(--stud) var(--stud), var(--stud) var(--stud), 100% 100%;
+}
+
+/* ---------- Raised press surfaces (PressButton, IconButton) ---------- */
+.bw-press,
+.bw-iconbtn {
+  /* Colour roles come from data-tone (purple, yellow, green) in tokens.css; the components always set it. */
+  position: relative;
+  box-sizing: border-box;
+  border: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  color: var(--tone-ink);
+  background: linear-gradient(180deg, var(--tone-top), var(--tone-bottom));
+  box-shadow: 0 var(--bw-raise) 0 var(--tone-edge);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--bw-fast) var(--bw-ease),
+    box-shadow var(--bw-fast) var(--bw-ease);
+}
+.bw-press:active:not(:disabled):not([aria-disabled='true']),
+.bw-iconbtn:active:not(:disabled),
+.bw-press.is-pressed,
+.bw-iconbtn.is-pressed {
+  transform: translateY(var(--bw-press-shift));
+  box-shadow: 0 var(--bw-raise-pressed) 0 var(--tone-edge);
+}
+.bw-press:focus-visible,
+.bw-iconbtn:focus-visible {
+  outline: var(--bw-focus);
+  outline-offset: var(--bw-focus-offset);
+}
+.bw-press:disabled,
+.bw-iconbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.bw-press {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.15;
+  border-radius: var(--bw-r-md);
+}
+.bw-press--block { display: flex; width: 100%; }
+.bw-press--sm { min-height: var(--bw-target); padding: 8px 14px; font-size: var(--bw-fs-btn-sm); }
+.bw-press--md { min-height: 48px; padding: 10px 18px; font-size: var(--bw-fs-btn-md); }
+.bw-press--lg { min-height: 56px; padding: 14px 20px; font-size: var(--bw-fs-btn-lg); }
+.bw-press--xl {
+  min-height: 64px;
+  padding: 16px;
+  font-size: var(--bw-fs-title);
+  border-radius: var(--bw-r-lg);
+  box-shadow: 0 var(--bw-raise-big) 0 var(--tone-edge);
+}
+
+/* Label and loading label share one grid cell, so the button keeps its width while loading. */
+.bw-press__label { display: inline-grid; }
+.bw-press__text {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.bw-press.is-loading { cursor: progress; }
+.bw-press.is-loading .bw-press__text:not(.bw-press__loading) { visibility: hidden; }
+
+.bw-iconbtn {
+  width: var(--bw-target-kid);
+  height: var(--bw-target-kid);
+  flex-shrink: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--bw-r-md);
+}
+.bw-iconbtn__badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 8px;
+  background: var(--bw-danger);
+  border: 2px solid var(--bw-text);
+  color: var(--bw-text);
+  font-size: var(--bw-fs-helper);
+  line-height: 20px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Top bar ---------- */
+.bw-topbar {
+  width: 100%;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: var(--bw-target-kid) minmax(0, 1fr) var(--bw-target-kid);
+  align-items: center;
+  gap: 10px;
+}
+.bw-topbar__title { min-width: 0; text-align: center; }
+.bw-topbar__title h1 {
+  margin: 0;
+  font-size: var(--bw-fs-title);
+  font-weight: 800;
+  line-height: var(--bw-lh-title);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.bw-topbar__title p {
+  margin: 0;
+  font-size: var(--bw-fs-sub);
+  font-weight: var(--bw-fw-sub);
+  line-height: 1.3;
+  color: var(--bw-text-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Panel ---------- */
+.bw-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--bw-r-lg);
+  background: var(--bw-panel);
+  color: var(--bw-text);
+}
+.bw-panel--well {
+  background: var(--bw-well);
+  border-radius: var(--bw-r-xl);
+  padding: 14px;
+}
+.bw-panel__heading {
+  margin: 0;
+  font-size: var(--bw-fs-panel);
+  font-weight: 800;
+  line-height: var(--bw-lh-panel);
+}
+
+/* ---------- Pill ---------- */
+.bw-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-panel);
+  color: var(--bw-text);
+  font-size: var(--bw-fs-label);
+  font-weight: 800;
+  line-height: 1.4;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.bw-pill--yellow { background: var(--bw-accent); color: var(--bw-on-yellow); }
+.bw-pill--well { background: var(--bw-well); color: var(--bw-text-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bw-press,
+  .bw-iconbtn {
+    transition: none;
+  }
+}

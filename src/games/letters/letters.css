@@ -21,7 +21,7 @@
   row-gap: 6px;
   align-items: center;
 }
-.lb-bar .btn--icon { grid-row: 1 / span 2; }
+.lb-bar .btn--icon, .lb-bar .bw-iconbtn { grid-row: 1 / span 2; }
 .lb-instruction { margin: 0; font-size: 21px; font-weight: 800; line-height: 1.15; }
 .lb-pips { display: flex; gap: 6px; }
 .lb-pip {
