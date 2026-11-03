@@ -1,5 +1,5 @@
 const fs = require('fs');
-const src = fs.readFileSync(__dirname + '/../escape-script.js', 'utf8');
+const src = fs.readFileSync(__dirname + '/escape-script.js', 'utf8');
 module.exports = function check(levels, onlyKeys) {
   class DCLogic { constructor(p) { this.props = p; } setState(x) { this.state = Object.assign({}, this.state, x); } }
   const C = new Function('DCLogic', 'LEVELS_JSON', src + '; return Component;')(DCLogic, levels);
