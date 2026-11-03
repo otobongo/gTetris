@@ -29,7 +29,7 @@
 
 <p style="margin: 0; font-size: 18px; font-weight: 800; text-align: center; transition: color 0.2s; color: {{promptColor}};">{{prompt}}</p>
 
-<div style="width: 100%; box-sizing: border-box; padding: 18px; border-radius: 30px; background: linear-gradient(180deg, #ff9a3d, #ff7a1a); box-shadow: inset 0 3px 0 rgba(255,255,255,0.35), 0 8px 0 #c4500a;">
+<div style="width: 100%; box-sizing: border-box; padding: 18px; border-radius: 30px; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
 <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; justify-items: center;">
 <sc-for list="{{holes}}" as="h" hint-placeholder-count="5">
 <button onClick="{{h.tap}}" data-hole="{{h.key}}" aria-label="{{h.label}}" style="border: 0; padding: 0; cursor: pointer; width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; transition: transform 0.07s, box-shadow 0.2s, background 0.2s; {{h.wrap}}">
@@ -147,14 +147,15 @@ class Component extends DCLogic {
       holes: holeOrder.map(function (pc) {
         var filled = !!s.placed[pc.id];
         var wrong = s.wrongHole === pc.id;
-        var holeTint = L.colorMatters ? K[pc.color].hole : '#6e2d07';
+        // a hole is drawn in its own shape's color, sunk in so it still reads as empty
+        var hex = K[pc.color].hex;
         return {
           key: pc.id,
           label: (filled ? 'filled ' : '') + self.name(pc) + ' hole',
           wrap: wrong
             ? 'transform: translateX(' + s.shake + 'px); background: rgba(255,77,94,0.35); box-shadow: 0 0 0 4px #ff4d5e;'
             : filled ? 'background: rgba(0,0,0,0.12); box-shadow: 0 0 0 3px rgba(255,255,255,0.6);' : 'background: rgba(0,0,0,0.12);',
-          style: S[pc.shape].clip + (filled ? ' background: ' + K[pc.color].hex + '; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2);' : ' background: ' + holeTint + ';'),
+          style: S[pc.shape].clip + ' background: ' + hex + ';' + (filled ? ' box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2), inset 0 4px 0 rgba(255,255,255,0.3);' : ' box-shadow: inset 0 10px 14px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.25);'),
           tap: function () { if (!s.picked || filled) return; self.tryPlace(s.picked, pc.id); }
         };
       }),
