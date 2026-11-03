@@ -92,7 +92,7 @@
   },
   "Mixer.dc.html": {
    "x": 0,
-   "y": 3200,
+   "y": 4800,
    "w": 390,
    "h": 844,
    "title": "Color Mixer (phone)",
@@ -100,7 +100,7 @@
   },
   "Sorter.dc.html": {
    "x": 470,
-   "y": 3200,
+   "y": 4800,
    "w": 390,
    "h": 844,
    "title": "Shape Sorter (phone)",
@@ -108,7 +108,7 @@
   },
   "Pattern.dc.html": {
    "x": 940,
-   "y": 3200,
+   "y": 4800,
    "w": 390,
    "h": 844,
    "title": "Pattern Train (phone)",
@@ -116,7 +116,7 @@
   },
   "MixerTablet.dc.html": {
    "x": 1410,
-   "y": 3200,
+   "y": 4800,
    "w": 834,
    "h": 1194,
    "title": "Color Mixer (tablet)",
@@ -124,7 +124,7 @@
   },
   "SorterTablet.dc.html": {
    "x": 2324,
-   "y": 3200,
+   "y": 4800,
    "w": 834,
    "h": 1194,
    "title": "Shape Sorter (tablet)",
@@ -132,7 +132,7 @@
   },
   "PatternTablet.dc.html": {
    "x": 3238,
-   "y": 3200,
+   "y": 4800,
    "w": 834,
    "h": 1194,
    "title": "Pattern Train (tablet)",
@@ -140,7 +140,7 @@
   },
   "Grownups.dc.html": {
    "x": 0,
-   "y": 6400,
+   "y": 8000,
    "w": 390,
    "h": 844,
    "title": "Settings (phone)",
@@ -148,7 +148,7 @@
   },
   "GrownupsTablet.dc.html": {
    "x": 470,
-   "y": 6400,
+   "y": 8000,
    "w": 834,
    "h": 1194,
    "title": "Settings (tablet)",
@@ -156,7 +156,7 @@
   },
   "Numbers.dc.html": {
    "x": 0,
-   "y": 4800,
+   "y": 6400,
    "w": 390,
    "h": 844,
    "title": "Number Line-up (phone)",
@@ -164,7 +164,7 @@
   },
   "Math.dc.html": {
    "x": 470,
-   "y": 4800,
+   "y": 6400,
    "w": 390,
    "h": 844,
    "title": "Brick Calculator (phone)",
@@ -172,7 +172,7 @@
   },
   "NumbersTablet.dc.html": {
    "x": 1410,
-   "y": 4800,
+   "y": 6400,
    "w": 834,
    "h": 1194,
    "title": "Number Line-up (tablet)",
@@ -180,7 +180,7 @@
   },
   "MathTablet.dc.html": {
    "x": 2324,
-   "y": 4800,
+   "y": 6400,
    "w": 834,
    "h": 1194,
    "title": "Brick Calculator (tablet)",
@@ -188,7 +188,7 @@
   },
   "Builder.dc.html": {
    "x": 940,
-   "y": 4800,
+   "y": 6400,
    "w": 390,
    "h": 844,
    "title": "Picture Builder (phone)",
@@ -196,7 +196,7 @@
   },
   "BuilderTablet.dc.html": {
    "x": 3238,
-   "y": 4800,
+   "y": 6400,
    "w": 834,
    "h": 1194,
    "title": "Picture Builder (tablet)",
@@ -217,6 +217,46 @@
    "h": 1194,
    "title": "Grown-up sign up (tablet)",
    "is_interactive": true
+  },
+  "EscapeIce.dc.html": {
+   "x": 0,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Escape: frozen doors (phone)",
+   "is_interactive": true
+  },
+  "EscapeWalls.dc.html": {
+   "x": 470,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Escape: stone blocks and shaped tray (phone)",
+   "is_interactive": true
+  },
+  "EscapeFrozen.dc.html": {
+   "x": 940,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Escape: frozen bricks (phone)",
+   "is_interactive": true
+  },
+  "EscapeArrows.dc.html": {
+   "x": 1410,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Escape: one-way bricks (phone)",
+   "is_interactive": true
+  },
+  "EscapeMaster.dc.html": {
+   "x": 1880,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Escape: master mix (phone)",
+   "is_interactive": true
   }
  },
  "order": [
@@ -232,6 +272,11 @@
   "EscapeTablet.dc.html",
   "DropTablet.dc.html",
   "LettersTablet.dc.html",
+  "EscapeIce.dc.html",
+  "EscapeWalls.dc.html",
+  "EscapeFrozen.dc.html",
+  "EscapeArrows.dc.html",
+  "EscapeMaster.dc.html",
   "Mixer.dc.html",
   "Sorter.dc.html",
   "Pattern.dc.html",
@@ -264,24 +309,31 @@
   },
   "row3": {
    "x": 0,
-   "y": 2900,
-   "text": "3. Explore: shapes and colors",
+   "y": 4500,
+   "text": "4. Explore: shapes and colors",
    "kind": "title1",
    "maxW": 4072
   },
   "row4": {
    "x": 0,
-   "y": 4500,
-   "text": "4. Explore: numbers, math and building",
+   "y": 6100,
+   "text": "5. Explore: numbers, math and building",
    "kind": "title1",
    "maxW": 4072
   },
   "row5": {
    "x": 0,
-   "y": 6100,
-   "text": "5. Settings: family account, sync, children and progress",
+   "y": 7700,
+   "text": "6. Settings: family account, sync, children and progress",
    "kind": "title1",
    "maxW": 1304
+  },
+  "rowEsc": {
+   "x": 0,
+   "y": 2900,
+   "text": "3. Brick Escape explorations: colors and obstacles",
+   "kind": "title1",
+   "maxW": 2270
   }
  },
  "designSystems": []
