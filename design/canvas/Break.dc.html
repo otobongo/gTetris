@@ -16,7 +16,7 @@
 
 <div style="width: 100%; min-height: 54px; display: flex; justify-content: flex-end; flex-shrink: 0;">
 <sc-if value="{{childView}}" hint-placeholder-val="{{ true }}">
-<button class="bw-press" onClick="{{speak}}" aria-label="Hear it again" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<button class="bw-press" onClick="{{speak}}" aria-label="Read it aloud" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
 </button>
 </sc-if>
@@ -126,15 +126,9 @@ class Component extends DCLogic {
     super(props);
     this.state = { view: null, viewProp: null, amount: 0, answer: '', ask: 0, wrong: false };
   }
-  componentDidMount() {
-    var self = this;
-    // Ages 3 to 4 with Voice on: heading and message are read aloud on arrival.
-    if (this.kid().age <= 4 && this.props.voice !== 'off' && this.viewOf() === 'break') {
-      this.readT = setTimeout(function () { self.say(self.readText()); }, 400);
-    }
-  }
+  // In the app, ages 3 to 4 with Voice on hear the heading and message read aloud on arrival.
+  // On the canvas it reads only when the speaker button is tapped, so boards stay quiet on load.
   componentWillUnmount() {
-    clearTimeout(this.readT);
     clearTimeout(this.focusT);
     try { window.speechSynthesis.cancel(); } catch (e) {}
   }
