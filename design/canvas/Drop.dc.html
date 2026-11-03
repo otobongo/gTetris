@@ -209,7 +209,7 @@ class Component extends DCLogic {
     var cells = [];
     Object.keys(s.stack).forEach(function (k) {
       var rc = k.split(',').map(Number);
-      cells.push({ style: box(rc[0], rc[1], cell, self.brick(s.stack[k], cell / 2)) });
+      cells.push({ style: box(rc[0], rc[1], cell, self.brick(s.stack[k], cell - 2)) });
     });
     var color = this.shapes()[s.kind].color;
     var gr = this.ghostRow();
@@ -218,12 +218,12 @@ class Component extends DCLogic {
       if (gr + x[0] >= 0) cells.push({ style: box(gr + x[0], s.c + x[1], cell, 'border: 3px dashed ' + p[1] + '; box-sizing: border-box; background: rgba(255,255,255,0.06);') });
     });
     this.cellsOf(s.kind, s.rot).forEach(function (x) {
-      if (s.r + x[0] >= 0) cells.push({ style: box(s.r + x[0], s.c + x[1], cell, self.brick(color, cell / 2)) });
+      if (s.r + x[0] >= 0) cells.push({ style: box(s.r + x[0], s.c + x[1], cell, self.brick(color, cell - 2)) });
     });
     var nk = s.queue[0];
     var ns = this.shapes()[nk];
     var nextCells = this.cellsOf(nk, 0).map(function (x) {
-      return { style: 'left: ' + (8 + x[1] * 18) + 'px; top: ' + (6 + x[0] * 18) + 'px; width: 16px; height: 16px; ' + self.brick(ns.color, 8) };
+      return { style: 'left: ' + (8 + x[1] * 18) + 'px; top: ' + (6 + x[0] * 18) + 'px; width: 16px; height: 16px; ' + self.brick(ns.color, 16) };
     });
     var mm = Math.floor(s.tLeft / 60), ss = s.tLeft % 60;
     return {
