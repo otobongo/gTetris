@@ -9,26 +9,29 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } a[data-press] { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } a[data-press="tile"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; } a[data-press="yellow"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #d48a00 !important; } @media (prefers-reduced-motion: reduce) { a[data-press] { transition: none; } }</style>
 </helmet>
 <div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 22px 16px 18px; display: flex; flex-direction: column; gap: 14px;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px;">
 
-<div style="display: flex; align-items: center; gap: 12px;">
-<a href="{{whoHref}}" aria-label="Switch player" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; text-decoration: none; color: #ffffff; font-size: 28px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{avatar}}">M</a>
-<div style="display: flex; flex-direction: column; line-height: 1.1; flex-grow: 1;">
-<span style="font-size: 24px; font-weight: 800;">Hi Maya!</span>
-<span style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; font-weight: 800; color: #c9c2ff;">
+<div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+<a href="{{whoHref}}" aria-label="Switch player" style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; text-decoration: none; color: #ffffff; font-size: 28px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{avatar}}">M</a>
+<div style="display: flex; flex-direction: column; align-items: flex-start; flex-grow: 1; min-width: 0;">
+<h1 style="margin: 0; font-size: 24px; font-weight: 800; line-height: 1.1;">Hi Maya!</h1>
+<a href="{{stickersHref}}" aria-label="42 stars and 12 of 40 stickers. Open the sticker book" style="min-height: 44px; margin: -6px 0; display: inline-flex; align-items: center; gap: 6px; border-radius: 12px; text-decoration: none; font-size: 15px; font-weight: 800; line-height: 1.2; color: #c9c2ff;">
 <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="#ffb21f"></path></svg>
-42 stars · 12/40 stickers
-</span>
+<span>42 stars · 12/40 stickers</span>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
 </div>
 <a href="{{grownHref}}" aria-label="Settings for grown-ups" style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
 </a>
 </div>
 
-<a href="{{mixerHref}}" style="text-decoration: none; color: #5a3500; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
+<div style="flex: 1; min-height: 0; overflow-y: auto; margin: -6px -6px 0; padding: 6px 6px 24px; display: flex; flex-direction: column;">
+
+<a href="{{mixerHref}}" data-press="yellow" style="flex-shrink: 0; text-decoration: none; color: #5a3500; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
 <span style="position: relative; width: 56px; height: 44px; flex-shrink: 0;" aria-hidden="true">
 <span style="position: absolute; left: 0; top: 4px; width: 34px; height: 34px; border-radius: 50%; background: #f03a3a; opacity: 0.9;"></span>
 <span style="position: absolute; left: 20px; top: 4px; width: 34px; height: 34px; border-radius: 50%; background: #2f8cff; opacity: 0.85; mix-blend-mode: multiply;"></span>
@@ -40,42 +43,24 @@
 <span style="font-size: 14px; font-weight: 800; white-space: nowrap;">+1 sticker</span>
 </a>
 
-<div style="display: flex; align-items: baseline; gap: 8px;">
-<h2 style="margin: 0; font-size: 20px; font-weight: 800;">Brain games</h2>
-<span style="font-size: 14px; font-weight: 700; color: #8e85d6;">think and plan</span>
-</div>
-<div style="display: grid; grid-template-columns: {{gameCols}}; gap: 10px;">
-<sc-for list="{{games}}" as="g" hint-placeholder-count="3">
-<a href="{{g.href}}" style="text-decoration: none; color: #ffffff; display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 20px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<span style="position: relative; width: 66px; height: 50px; flex-shrink: 0;" aria-hidden="true">
+<h2 style="margin: 22px 0 10px; font-size: 20px; font-weight: 800; line-height: 1.1;">Games</h2>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gameCols}}; grid-auto-rows: 1fr; gap: 10px;">
+<sc-for list="{{games}}" as="g" hint-placeholder-count="9">
+<li style="display: grid; min-width: 0;">
+<a href="{{g.href}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardgrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<span style="grid-area: art; position: relative; width: 56px; height: 44px; align-self: center;" aria-hidden="true">
 <sc-for list="{{g.art}}" as="a" hint-placeholder-count="3">
 <span style="position: absolute; display: grid; place-items: center; font-weight: 800; color: #ffffff; {{a.style}}">{{a.t}}</span>
 </sc-for>
 </span>
-<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1; min-width: 0;">
-<span style="font-size: 20px; font-weight: 800;">{{g.title}}</span>
-<span style="font-size: 14px; font-weight: 600; color: #c9c2ff;">{{g.sub}}</span>
-</span>
-<span style="font-size: 14px; font-weight: 800; padding: 2px 10px; border-radius: 999px; background: #30257a; white-space: nowrap;">{{g.level}}</span>
+<span style="grid-area: title; min-width: 0; align-self: end; font-size: 19px; font-weight: 800; line-height: 1.15;">{{g.title}}</span>
+<span style="grid-area: sub; min-width: 0; align-self: start; font-size: 14px; font-weight: 600; line-height: 1.15; color: #ffffff;">{{g.sub}}</span>
+<span style="grid-area: pill; justify-self: end; align-self: center; font-size: 14px; font-weight: 800; line-height: 1.4; padding: 2px 10px; border-radius: 999px; background: #30257a; white-space: nowrap;">{{g.level}}</span>
 </a>
+</li>
 </sc-for>
-</div>
+</ul>
 
-<div style="display: flex; align-items: baseline; gap: 8px;">
-<h2 style="margin: 0; font-size: 20px; font-weight: 800;">Explore</h2>
-<span style="font-size: 14px; font-weight: 700; color: #8e85d6;">colors, shapes and numbers</span>
-</div>
-<div style="display: grid; grid-template-columns: {{exploreCols}}; gap: 10px;">
-<sc-for list="{{explore}}" as="x" hint-placeholder-count="5">
-<a href="{{x.href}}" style="text-decoration: none; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding: 10px 6px; height: 104px; box-sizing: border-box; border-radius: 20px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<span style="position: relative; width: 60px; height: 46px;" aria-hidden="true">
-<sc-for list="{{x.art}}" as="a" hint-placeholder-count="3">
-<span style="position: absolute; display: grid; place-items: center; font-weight: 800; color: #ffffff; {{a.style}}">{{a.t}}</span>
-</sc-for>
-</span>
-<span style="font-size: 15px; font-weight: 800; line-height: 1.1; text-align: center;">{{x.title}}</span>
-</a>
-</sc-for>
 </div>
 
 </div>
@@ -108,57 +93,62 @@ class Component extends DCLogic {
     var b = function (c, s) { return 'border-radius: 5px; ' + self.brick(c, s); };
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
-      gameCols: 'repeat(1, minmax(0, 1fr))',
-      exploreCols: tablet ? 'repeat(6, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))',
+      // Phone: one row per game, pill beside the title. Tablet: two columns are only 277px wide,
+      // so the art and pill sit on top and the title and subtitle get the full card width.
+      gameCols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
+      cardgrid: tablet
+        ? "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: 44px 6px auto auto; grid-template-areas: 'art . pill' '. . .' 'title title title' 'sub sub sub';"
+        : "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: 'art title pill' 'art sub sub';",
       whoHref: tablet ? 'MainTablet.dc.html' : 'Main.dc.html',
+      stickersHref: 'Stickers' + t + '.dc.html',
       mixerHref: 'Mixer' + t + '.dc.html',
       grownHref: 'Grownups' + t + '.dc.html',
       avatar: this.brick('blue', 0),
+      // Pills are sample data. In the app every card opens that game's Levels screen; on the
+      // canvas only Brick Escape and Letter Builder have Levels boards, the rest open the game.
       games: [
         {
-          title: 'Brick Escape', sub: 'Slide bricks out their doors', level: 'Level 9', href: 'Escape' + t + '.dc.html',
+          title: 'Brick Escape', sub: 'Slide bricks out their doors', level: 'Level 9', href: 'Levels' + t + '.dc.html',
           art: [
-            { t: '', style: this.at(0, 0, 40, 20, b('red', 10)) },
-            { t: '', style: this.at(42, 0, 20, 40, b('yellow', 10)) },
-            { t: '', style: this.at(0, 22, 20, 20, b('green', 10)) },
-            { t: '', style: this.at(22, 22, 18, 20, b('blue', 10)) }
+            { t: '', style: this.at(0, 3, 36, 18, b('red', 9)) },
+            { t: '', style: this.at(38, 3, 18, 36, b('yellow', 9)) },
+            { t: '', style: this.at(0, 23, 18, 18, b('green', 9)) },
+            { t: '', style: this.at(20, 23, 18, 18, b('blue', 9)) }
           ]
         },
         {
           title: 'Brick Drop', sub: 'Stack falling bricks into rows', level: 'Stage 4', href: 'Drop' + t + '.dc.html',
           art: [
-            { t: '', style: this.at(10, 26, 54, 18, b('purple', 9)) },
-            { t: '', style: this.at(28, 6, 18, 18, b('purple', 9)) },
-            { t: '', style: this.at(0, 6, 18, 18, b('teal', 9)) }
+            { t: '', style: this.at(8, 26, 48, 16, b('purple', 16)) },
+            { t: '', style: this.at(24, 8, 16, 16, b('purple', 16)) },
+            { t: '', style: this.at(0, 8, 16, 16, b('teal', 16)) }
           ]
         },
         {
-          title: 'Letter Builder', sub: 'Alphabet, sounds and spelling', level: 'Level 17', href: 'Letters' + t + '.dc.html',
+          title: 'Letter Builder', sub: 'Alphabet, sounds and spelling', level: 'Level 17', href: 'LevelsLetters.dc.html',
           art: [
-            { t: 'A', style: this.at(0, 10, 20, 26, b('orange', 0) + ' font-size: 15px;') },
-            { t: 'B', style: this.at(22, 10, 20, 26, b('pink', 0) + ' font-size: 15px;') },
-            { t: 'C', style: this.at(44, 10, 20, 26, b('blue', 0) + ' font-size: 15px;') }
-          ]
-        }
-      ],
-      explore: [
-        {
-          title: 'Color Mixer', href: 'Mixer' + t + '.dc.html',
-          art: [
-            { t: '', style: this.at(6, 6, 30, 30, 'border-radius: 50%; background: #ffc21a;') },
-            { t: '', style: this.at(24, 6, 30, 30, 'border-radius: 50%; background: #2f8cff; mix-blend-mode: multiply;') }
+            { t: 'A', style: this.at(0, 9, 18, 26, b('orange', 0) + ' font-size: 15px;') },
+            { t: 'B', style: this.at(19, 9, 18, 26, b('pink', 0) + ' font-size: 15px;') },
+            { t: 'C', style: this.at(38, 9, 18, 26, b('blue', 0) + ' font-size: 15px;') }
           ]
         },
         {
-          title: 'Shape Sorter', href: 'Sorter' + t + '.dc.html',
+          title: 'Color Mixer', sub: 'Mix two colors to make a new one', level: '3 of 6', href: 'Mixer' + t + '.dc.html',
           art: [
-            { t: '', style: this.at(0, 14, 22, 22, 'border-radius: 50%; background: #ff5fb4;') },
-            { t: '', style: this.at(20, 4, 24, 22, 'clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #ffc21a;') },
-            { t: '', style: this.at(38, 20, 20, 20, 'border-radius: 4px; background: #14c8c0;') }
+            { t: '', style: this.at(6, 7, 30, 30, 'border-radius: 50%; background: #ffc21a;') },
+            { t: '', style: this.at(24, 7, 30, 30, 'border-radius: 50%; background: #2f8cff; mix-blend-mode: multiply;') }
           ]
         },
         {
-          title: 'Pattern Train', href: 'Pattern' + t + '.dc.html',
+          title: 'Shape Sorter', sub: 'Match each shape to its hole', level: 'Level 2', href: 'Sorter' + t + '.dc.html',
+          art: [
+            { t: '', style: this.at(0, 16, 22, 22, 'border-radius: 50%; background: #ff5fb4;') },
+            { t: '', style: this.at(18, 4, 24, 22, 'clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #ffc21a;') },
+            { t: '', style: this.at(36, 20, 20, 20, 'border-radius: 4px; background: #14c8c0;') }
+          ]
+        },
+        {
+          title: 'Pattern Train', sub: 'Finish the pattern on the train', level: 'Level 1', href: 'Pattern' + t + '.dc.html',
           art: [
             { t: '', style: this.at(0, 14, 16, 16, 'border-radius: 50%; background: #f03a3a;') },
             { t: '', style: this.at(20, 14, 16, 16, 'border-radius: 3px; background: #2f8cff;') },
@@ -166,30 +156,30 @@ class Component extends DCLogic {
           ]
         },
         {
-          title: 'Number Line-up', href: 'Numbers' + t + '.dc.html',
+          title: 'Number Line-up', sub: 'Put the number towers in order', level: 'Level 3', href: 'Numbers' + t + '.dc.html',
           art: [
-            { t: '1', style: this.at(0, 14, 18, 24, b('green', 0) + ' font-size: 15px;') },
-            { t: '2', style: this.at(20, 8, 18, 30, b('yellow', 0) + ' font-size: 15px;') },
-            { t: '3', style: this.at(40, 2, 18, 36, b('red', 0) + ' font-size: 15px;') }
+            { t: '1', style: this.at(0, 16, 18, 24, b('green', 0) + ' font-size: 15px;') },
+            { t: '2', style: this.at(19, 10, 18, 30, b('yellow', 0) + ' font-size: 15px;') },
+            { t: '3', style: this.at(38, 4, 18, 36, b('red', 0) + ' font-size: 15px;') }
           ]
         },
         {
-          title: 'Picture Builder', href: 'Builder' + t + '.dc.html',
+          title: 'Picture Builder', sub: 'Look, then build the picture', level: 'Level 1', href: 'Builder' + t + '.dc.html',
           art: [
-            { t: '', style: this.at(14, 0, 14, 14, b('red', 7)) },
-            { t: '', style: this.at(30, 0, 14, 14, b('red', 7)) },
-            { t: '', style: this.at(6, 16, 14, 14, b('yellow', 7)) },
-            { t: '', style: this.at(22, 16, 14, 14, b('blue', 7)) },
-            { t: '', style: this.at(38, 16, 14, 14, b('yellow', 7)) },
-            { t: '', style: this.at(6, 32, 46, 14, 'border-radius: 4px; background: #ffc21a;') }
+            { t: '', style: this.at(14, 2, 13, 13, b('red', 13)) },
+            { t: '', style: this.at(29, 2, 13, 13, b('red', 13)) },
+            { t: '', style: this.at(6, 16, 13, 13, b('yellow', 13)) },
+            { t: '', style: this.at(21, 16, 13, 13, b('blue', 13)) },
+            { t: '', style: this.at(36, 16, 13, 13, b('yellow', 13)) },
+            { t: '', style: this.at(6, 30, 43, 12, 'border-radius: 4px; background: #ffc21a;') }
           ]
         },
         {
-          title: 'Brick Calculator', href: 'Math' + t + '.dc.html',
+          title: 'Brick Calculator', sub: 'Add and take away with bricks', level: 'Level 1', href: 'Math' + t + '.dc.html',
           art: [
-            { t: '2', style: this.at(0, 10, 18, 26, b('blue', 0) + ' font-size: 15px;') },
-            { t: '+', style: this.at(19, 10, 20, 26, 'font-size: 20px; color: #c9c2ff;') },
-            { t: '3', style: this.at(40, 10, 18, 26, b('orange', 0) + ' font-size: 15px;') }
+            { t: '2', style: this.at(0, 9, 17, 26, b('blue', 0) + ' font-size: 15px;') },
+            { t: '+', style: this.at(17, 9, 22, 26, 'font-size: 20px; color: #c9c2ff;') },
+            { t: '3', style: this.at(39, 9, 17, 26, b('orange', 0) + ' font-size: 15px;') }
           ]
         }
       ]

@@ -1,262 +1,416 @@
 {
  "v": 3,
- "createdOnFiles": {
-  "v": 1,
-  "at": "2026-11-03T11:05:00Z"
+ "attachments": {},
+ "boards": {
+  "Builder.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 6400
+  },
+  "BuilderTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Picture Builder (tablet)",
+   "w": 834,
+   "x": 3238,
+   "y": 6400
+  },
+  "Drop.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Drop (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 1600
+  },
+  "DropTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Brick Drop (tablet)",
+   "w": 834,
+   "x": 2324,
+   "y": 1600
+  },
+  "Escape.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Escape (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 1600
+  },
+  "EscapeIce.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Escape: frozen doors (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 3200
+  },
+  "EscapeMaster.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Escape: master mix (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 3200
+  },
+  "EscapeTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Brick Escape (tablet)",
+   "w": 834,
+   "x": 1410,
+   "y": 1600
+  },
+  "EscapeWalls.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Escape: stone blocks and shaped tray (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 3200
+  },
+  "Grownups.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Settings (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 8000
+  },
+  "GrownupsTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Settings (tablet)",
+   "w": 834,
+   "x": 470,
+   "y": 8000
+  },
+  "Hub.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Home (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 0
+  },
+  "HubTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Home (tablet)",
+   "w": 834,
+   "x": 3238,
+   "y": 0
+  },
+  "Letters.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Letter Builder (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 1600
+  },
+  "LettersTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Letter Builder (tablet)",
+   "w": 834,
+   "x": 3238,
+   "y": 1600
+  },
+  "Main.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Who's playing (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 0
+  },
+  "MainTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Who's playing (tablet)",
+   "w": 834,
+   "x": 2324,
+   "y": 0
+  },
+  "Math.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 6400
+  },
+  "MathTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Brick Calculator (tablet)",
+   "w": 834,
+   "x": 2324,
+   "y": 6400
+  },
+  "Mixer.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 4800
+  },
+  "MixerTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Color Mixer (tablet)",
+   "w": 834,
+   "x": 1410,
+   "y": 4800
+  },
+  "Numbers.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 6400
+  },
+  "NumbersTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Number Line-up (tablet)",
+   "w": 834,
+   "x": 1410,
+   "y": 6400
+  },
+  "Pattern.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Pattern Train (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 4800
+  },
+  "PatternTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Pattern Train (tablet)",
+   "w": 834,
+   "x": 3238,
+   "y": 4800
+  },
+  "Signup.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Grown-up sign up (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 0
+  },
+  "SignupTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Grown-up sign up (tablet)",
+   "w": 834,
+   "x": 1410,
+   "y": 0
+  },
+  "Sorter.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 4800
+  },
+  "SorterTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Shape Sorter (tablet)",
+   "w": 834,
+   "x": 2324,
+   "y": 4800
+  },
+  "Signin.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Sign in (phone)",
+   "w": 390,
+   "x": 4152,
+   "y": 0
+  },
+  "SigninTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Sign in (tablet)",
+   "w": 834,
+   "x": 4622,
+   "y": 0
+  },
+  "Levels.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level select: Brick Escape (phone)",
+   "w": 390,
+   "x": 4152,
+   "y": 1600
+  },
+  "LevelsLetters.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level select: Letter Builder (phone)",
+   "w": 390,
+   "x": 4622,
+   "y": 1600
+  },
+  "LevelsTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Level select (tablet)",
+   "w": 834,
+   "x": 5092,
+   "y": 1600
+  },
+  "Help.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Support (phone)",
+   "w": 390,
+   "x": 1384,
+   "y": 8000
+  },
+  "HelpDoc.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Terms and Privacy (phone)",
+   "w": 390,
+   "x": 1854,
+   "y": 8000
+  },
+  "HelpTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Support (tablet)",
+   "w": 834,
+   "x": 2324,
+   "y": 8000
+  },
+  "Stickers.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Sticker book (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 9600
+  },
+  "StickersEmpty.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Sticker book, empty (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 9600
+  },
+  "Break.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Break time (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 9600
+  },
+  "BreakExtend.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Break time, add time (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 9600
+  },
+  "StickersTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Sticker book (tablet)",
+   "w": 834,
+   "x": 1880,
+   "y": 9600
+  },
+  "BreakTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Break time (tablet)",
+   "w": 834,
+   "x": 2794,
+   "y": 9600
+  }
  },
- "title": "Brickwise Design Direction",
+ "createdOnFiles": {
+  "at": "2026-11-03T11:05:00Z",
+  "v": 1
+ },
+ "designSystems": [],
  "launch": {
   "view": "canvas"
  },
- "pages": [],
- "boards": {
-  "Main.dc.html": {
-   "x": 470,
-   "y": 0,
-   "w": 390,
-   "h": 844,
-   "title": "Who's playing (phone)",
-   "is_interactive": true
-  },
-  "Hub.dc.html": {
-   "x": 940,
-   "y": 0,
-   "w": 390,
-   "h": 844,
-   "title": "Home (phone)",
-   "is_interactive": true
-  },
-  "MainTablet.dc.html": {
-   "x": 2324,
-   "y": 0,
-   "w": 834,
-   "h": 1194,
-   "title": "Who's playing (tablet)",
-   "is_interactive": true
-  },
-  "HubTablet.dc.html": {
-   "x": 3238,
-   "y": 0,
-   "w": 834,
-   "h": 1194,
-   "title": "Home (tablet)",
-   "is_interactive": true
-  },
-  "Escape.dc.html": {
+ "notes": {
+  "row1": {
+   "kind": "title1",
+   "maxW": 5456,
+   "text": "1. Start: a grown-up signs up and adds children, each child picks their brick",
+   "w": 240,
    "x": 0,
-   "y": 1600,
-   "w": 390,
-   "h": 844,
-   "title": "Brick Escape (phone)",
-   "is_interactive": true
+   "y": -300
   },
-  "Drop.dc.html": {
-   "x": 470,
-   "y": 1600,
-   "w": 390,
-   "h": 844,
-   "title": "Brick Drop (phone)",
-   "is_interactive": true
-  },
-  "Letters.dc.html": {
-   "x": 940,
-   "y": 1600,
-   "w": 390,
-   "h": 844,
-   "title": "Letter Builder (phone)",
-   "is_interactive": true
-  },
-  "EscapeTablet.dc.html": {
-   "x": 1410,
-   "y": 1600,
-   "w": 834,
-   "h": 1194,
-   "title": "Brick Escape (tablet)",
-   "is_interactive": true
-  },
-  "DropTablet.dc.html": {
-   "x": 2324,
-   "y": 1600,
-   "w": 834,
-   "h": 1194,
-   "title": "Brick Drop (tablet)",
-   "is_interactive": true
-  },
-  "LettersTablet.dc.html": {
-   "x": 3238,
-   "y": 1600,
-   "w": 834,
-   "h": 1194,
-   "title": "Letter Builder (tablet)",
-   "is_interactive": true
-  },
-  "Mixer.dc.html": {
+  "row2": {
+   "kind": "title1",
+   "maxW": 5926,
+   "text": "2. Games with timers tuned to age and level",
+   "w": 240,
    "x": 0,
-   "y": 4800,
-   "w": 390,
-   "h": 844,
-   "title": "Color Mixer (phone)",
-   "is_interactive": true
+   "y": 1300
   },
-  "Sorter.dc.html": {
-   "x": 470,
-   "y": 4800,
-   "w": 390,
-   "h": 844,
-   "title": "Shape Sorter (phone)",
-   "is_interactive": true
-  },
-  "Pattern.dc.html": {
-   "x": 940,
-   "y": 4800,
-   "w": 390,
-   "h": 844,
-   "title": "Pattern Train (phone)",
-   "is_interactive": true
-  },
-  "MixerTablet.dc.html": {
-   "x": 1410,
-   "y": 4800,
-   "w": 834,
-   "h": 1194,
-   "title": "Color Mixer (tablet)",
-   "is_interactive": true
-  },
-  "SorterTablet.dc.html": {
-   "x": 2324,
-   "y": 4800,
-   "w": 834,
-   "h": 1194,
-   "title": "Shape Sorter (tablet)",
-   "is_interactive": true
-  },
-  "PatternTablet.dc.html": {
-   "x": 3238,
-   "y": 4800,
-   "w": 834,
-   "h": 1194,
-   "title": "Pattern Train (tablet)",
-   "is_interactive": true
-  },
-  "Grownups.dc.html": {
+  "row3": {
+   "kind": "title1",
+   "maxW": 4072,
+   "text": "4. Games: shapes and colors",
+   "w": 240,
    "x": 0,
-   "y": 8000,
-   "w": 390,
-   "h": 844,
-   "title": "Settings (phone)",
-   "is_interactive": true
+   "y": 4500
   },
-  "GrownupsTablet.dc.html": {
-   "x": 470,
-   "y": 8000,
-   "w": 834,
-   "h": 1194,
-   "title": "Settings (tablet)",
-   "is_interactive": true
-  },
-  "Numbers.dc.html": {
+  "row4": {
+   "kind": "title1",
+   "maxW": 4072,
+   "text": "5. Games: numbers, math and building",
+   "w": 240,
    "x": 0,
-   "y": 6400,
-   "w": 390,
-   "h": 844,
-   "title": "Number Line-up (phone)",
-   "is_interactive": true
+   "y": 6100
   },
-  "Math.dc.html": {
-   "x": 470,
-   "y": 6400,
-   "w": 390,
-   "h": 844,
-   "title": "Brick Calculator (phone)",
-   "is_interactive": true
-  },
-  "NumbersTablet.dc.html": {
-   "x": 1410,
-   "y": 6400,
-   "w": 834,
-   "h": 1194,
-   "title": "Number Line-up (tablet)",
-   "is_interactive": true
-  },
-  "MathTablet.dc.html": {
-   "x": 2324,
-   "y": 6400,
-   "w": 834,
-   "h": 1194,
-   "title": "Brick Calculator (tablet)",
-   "is_interactive": true
-  },
-  "Builder.dc.html": {
-   "x": 940,
-   "y": 6400,
-   "w": 390,
-   "h": 844,
-   "title": "Picture Builder (phone)",
-   "is_interactive": true
-  },
-  "BuilderTablet.dc.html": {
-   "x": 3238,
-   "y": 6400,
-   "w": 834,
-   "h": 1194,
-   "title": "Picture Builder (tablet)",
-   "is_interactive": true
-  },
-  "Signup.dc.html": {
+  "row5": {
+   "kind": "title1",
+   "maxW": 3158,
+   "text": "6. Settings, sign in and help",
+   "w": 240,
    "x": 0,
-   "y": 0,
-   "w": 390,
-   "h": 844,
-   "title": "Grown-up sign up (phone)",
-   "is_interactive": true
+   "y": 7700
   },
-  "SignupTablet.dc.html": {
-   "x": 1410,
-   "y": 0,
-   "w": 834,
-   "h": 1194,
-   "title": "Grown-up sign up (tablet)",
-   "is_interactive": true
-  },
-  "EscapeIce.dc.html": {
+  "rowEsc": {
+   "kind": "title1",
+   "maxW": 1330,
+   "text": "3. Brick Escape explorations: colors and obstacles",
+   "w": 240,
    "x": 0,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: frozen doors (phone)",
-   "is_interactive": true
+   "y": 2900
   },
-  "EscapeWalls.dc.html": {
-   "x": 470,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: stone blocks and shaped tray (phone)",
-   "is_interactive": true
-  },
-  "EscapeFrozen.dc.html": {
-   "x": 940,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: frozen bricks (phone)",
-   "is_interactive": true
-  },
-  "EscapeArrows.dc.html": {
-   "x": 1410,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: one-way bricks (phone)",
-   "is_interactive": true
-  },
-  "EscapeMaster.dc.html": {
-   "x": 1880,
-   "y": 3200,
-   "w": 390,
-   "h": 844,
-   "title": "Escape: master mix (phone)",
-   "is_interactive": true
+  "row7": {
+   "kind": "title1",
+   "maxW": 3628,
+   "text": "7. Around the games: sticker book and break time",
+   "w": 240,
+   "x": 0,
+   "y": 9300
   }
  },
  "order": [
@@ -266,16 +420,19 @@
   "MainTablet.dc.html",
   "HubTablet.dc.html",
   "SignupTablet.dc.html",
+  "Signin.dc.html",
+  "SigninTablet.dc.html",
   "Escape.dc.html",
   "Drop.dc.html",
   "Letters.dc.html",
   "EscapeTablet.dc.html",
   "DropTablet.dc.html",
   "LettersTablet.dc.html",
+  "Levels.dc.html",
+  "LevelsLetters.dc.html",
+  "LevelsTablet.dc.html",
   "EscapeIce.dc.html",
   "EscapeWalls.dc.html",
-  "EscapeFrozen.dc.html",
-  "EscapeArrows.dc.html",
   "EscapeMaster.dc.html",
   "Mixer.dc.html",
   "Sorter.dc.html",
@@ -290,51 +447,17 @@
   "MathTablet.dc.html",
   "BuilderTablet.dc.html",
   "Grownups.dc.html",
-  "GrownupsTablet.dc.html"
+  "GrownupsTablet.dc.html",
+  "Help.dc.html",
+  "HelpDoc.dc.html",
+  "HelpTablet.dc.html",
+  "Stickers.dc.html",
+  "StickersEmpty.dc.html",
+  "Break.dc.html",
+  "BreakExtend.dc.html",
+  "StickersTablet.dc.html",
+  "BreakTablet.dc.html"
  ],
- "notes": {
-  "row1": {
-   "x": 0,
-   "y": -300,
-   "text": "1. Start: a grown-up signs up and adds children, each child picks their brick",
-   "kind": "title1",
-   "maxW": 4072
-  },
-  "row2": {
-   "x": 0,
-   "y": 1300,
-   "text": "2. Games with timers tuned to age and level",
-   "kind": "title1",
-   "maxW": 4072
-  },
-  "row3": {
-   "x": 0,
-   "y": 4500,
-   "text": "4. Explore: shapes and colors",
-   "kind": "title1",
-   "maxW": 4072
-  },
-  "row4": {
-   "x": 0,
-   "y": 6100,
-   "text": "5. Explore: numbers, math and building",
-   "kind": "title1",
-   "maxW": 4072
-  },
-  "row5": {
-   "x": 0,
-   "y": 7700,
-   "text": "6. Settings: family account, sync, children and progress",
-   "kind": "title1",
-   "maxW": 1304
-  },
-  "rowEsc": {
-   "x": 0,
-   "y": 2900,
-   "text": "3. Brick Escape explorations: colors and obstacles",
-   "kind": "title1",
-   "maxW": 2270
-  }
- },
- "designSystems": []
+ "pages": [],
+ "title": "Brickwise Design Direction"
 }

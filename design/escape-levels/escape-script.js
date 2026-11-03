@@ -170,7 +170,7 @@ class Component extends DCLogic {
     var help = s.tLeft <= 0 && !s.won ? "Time's up! Keep going, you can still finish." : s.note ? s.note : s.hintKey ? 'Try the glowing brick first.' : lockMsg || L.tip || 'Drag each brick to the door of its color.';
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
-      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      hubHref: tablet ? 'LevelsTablet.dc.html' : 'Levels.dc.html',
       cell: cell, pad: pad, gridPx: grid, boardPx: grid + pad * 2,
       clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
       timePct: Math.round((Math.max(0, s.tLeft) / limit) * 100),

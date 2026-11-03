@@ -15,12 +15,12 @@
 <div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
-<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{hubHref}}" aria-label="{{backLabel}}" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
 <div style="text-align: center; line-height: 1.1;">
 <div style="font-size: 24px; font-weight: 800;">Spell it</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Letter Builder · Level 17</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Letter Builder · {{levelLabel}}</div>
 </div>
 <button onClick="{{speak}}" aria-label="Say the word" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
@@ -28,11 +28,8 @@
 </div>
 
 <div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
-<span style="width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: #ffab5e; color: #ffffff; font-size: 18px; font-weight: 800;">L</span>
-<span style="display: flex; flex-direction: column; line-height: 1.1; flex-grow: 1;">
-<span style="font-size: 16px; font-weight: 800;">Leo, age 4 · Relaxed play</span>
-<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">No countdown. The sand just shows you are doing great.</span>
-</span>
+<span style="width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: {{kidColor}}; color: #ffffff; font-size: 18px; font-weight: 800;">{{kidInitial}}</span>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 800; line-height: 1.1;">{{kidLine}}</span>
 <div style="display: flex; gap: 5px;" aria-label="Word {{roundNo}} of 3">
 <sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
 <span style="width: 22px; height: 10px; border-radius: 999px; background: {{d.fill}};"></span>
@@ -67,11 +64,75 @@
 <path d="M30 21l40 18v14" fill="none" stroke="#f1eef7" stroke-width="6"></path>
 </svg>
 </sc-if>
+<sc-if value="{{isFish}}" hint-placeholder-val="{{ false }}">
+<svg width="170" height="130" viewBox="0 0 120 90" aria-hidden="true">
+<path d="M42 24c6-12 22-14 30-2" fill="#ffab5e" stroke="#c4500a" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M86 45l26-21v42z" fill="#ff7a1a" stroke="#c4500a" stroke-width="3" stroke-linejoin="round"></path>
+<ellipse cx="52" cy="45" rx="40" ry="26" fill="#ff7a1a" stroke="#c4500a" stroke-width="3"></ellipse>
+<path d="M46 27c-5 12-5 24 0 36" fill="none" stroke="#c4500a" stroke-width="3" stroke-linecap="round"></path>
+<circle cx="30" cy="40" r="5.5" fill="#ffffff"></circle><circle cx="29" cy="40" r="3" fill="#2e2e38"></circle>
+<path d="M15 50c3 2.5 6 2.5 9 0" fill="none" stroke="#c4500a" stroke-width="3" stroke-linecap="round"></path>
+</svg>
+</sc-if>
+<sc-if value="{{isFrog}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="140" viewBox="0 0 100 94" aria-hidden="true">
+<circle cx="31" cy="30" r="14" fill="#1fb53c" stroke="#0f7a26" stroke-width="3"></circle>
+<circle cx="69" cy="30" r="14" fill="#1fb53c" stroke="#0f7a26" stroke-width="3"></circle>
+<ellipse cx="50" cy="60" rx="40" ry="28" fill="#1fb53c" stroke="#0f7a26" stroke-width="3"></ellipse>
+<ellipse cx="50" cy="72" rx="22" ry="11" fill="#5fe06e"></ellipse>
+<circle cx="31" cy="29" r="8" fill="#ffffff"></circle><circle cx="69" cy="29" r="8" fill="#ffffff"></circle>
+<circle cx="32" cy="30" r="4" fill="#2e2e38"></circle><circle cx="68" cy="30" r="4" fill="#2e2e38"></circle>
+<path d="M32 52c10 9 26 9 36 0" fill="none" stroke="#0f7a26" stroke-width="3.5" stroke-linecap="round"></path>
+</svg>
+</sc-if>
+<sc-if value="{{isHouse}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="140" viewBox="0 0 100 94" aria-hidden="true">
+<rect x="66" y="18" width="10" height="20" fill="#b51f27"></rect>
+<rect x="20" y="44" width="60" height="42" rx="3" fill="#ffe266" stroke="#d48a00" stroke-width="3"></rect>
+<path d="M10 47L50 13l40 34z" fill="#f03a3a" stroke="#b51f27" stroke-width="3" stroke-linejoin="round"></path>
+<rect x="27" y="56" width="13" height="13" rx="2" fill="#7cc0ff"></rect><rect x="60" y="56" width="13" height="13" rx="2" fill="#7cc0ff"></rect>
+<rect x="43" y="62" width="14" height="24" rx="3" fill="#c4802f"></rect>
+</svg>
+</sc-if>
+<sc-if value="{{isRocket}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="150" viewBox="0 0 100 100" aria-hidden="true">
+<path d="M42 78q8 20 16 0z" fill="#ffc21a"></path><path d="M46 78q4 11 8 0z" fill="#ff7a1a"></path>
+<path d="M36 54L20 80l16-5z" fill="#f03a3a" stroke="#b51f27" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M64 54l16 26-16-5z" fill="#f03a3a" stroke="#b51f27" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M50 8c14 12 18 34 16 70H34C32 42 36 20 50 8z" fill="#f1eef7"></path>
+<path d="M50 8c6 5 10 11 12 19H38c2-8 6-14 12-19z" fill="#f03a3a"></path>
+<path d="M50 8c14 12 18 34 16 70H34C32 42 36 20 50 8z" fill="none" stroke="#b9b3c9" stroke-width="3" stroke-linejoin="round"></path>
+<circle cx="50" cy="46" r="9" fill="#7cc0ff" stroke="#2f8cff" stroke-width="3"></circle>
+</svg>
+</sc-if>
+<sc-if value="{{isRainbow}}" hint-placeholder-val="{{ false }}">
+<svg width="170" height="130" viewBox="0 0 120 90" aria-hidden="true">
+<g fill="none" stroke-width="8">
+<path d="M14 70a46 46 0 0 1 92 0" stroke="#f03a3a"></path>
+<path d="M22 70a38 38 0 0 1 76 0" stroke="#ffc21a"></path>
+<path d="M30 70a30 30 0 0 1 60 0" stroke="#1fb53c"></path>
+<path d="M38 70a22 22 0 0 1 44 0" stroke="#2f8cff"></path>
+<path d="M46 70a14 14 0 0 1 28 0" stroke="#9b4dff"></path>
+</g>
+<g fill="#f1eef7">
+<circle cx="10" cy="74" r="9"></circle><circle cx="21" cy="68" r="11"></circle><circle cx="31" cy="76" r="8"></circle><rect x="6" y="74" width="28" height="10" rx="5"></rect>
+<circle cx="110" cy="74" r="9"></circle><circle cx="99" cy="68" r="11"></circle><circle cx="89" cy="76" r="8"></circle><rect x="86" y="74" width="28" height="10" rx="5"></rect>
+</g>
+</svg>
+</sc-if>
+<sc-if value="{{isUmbrella}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="150" viewBox="0 0 100 100" aria-hidden="true">
+<path d="M50 46v38a8 8 0 0 1-16 0" fill="none" stroke="#ffc21a" stroke-width="6" stroke-linecap="round"></path>
+<path d="M8 50A42 40 0 0 1 92 50q-7-8-14 0q-7-8-14 0q-7-8-14 0q-7-8-14 0q-7-8-14 0q-7-8-14 0z" fill="#f03a3a" stroke="#b51f27" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M50 10q-14 16-14 40M50 10q14 16 14 40M50 10v40" fill="none" stroke="#b51f27" stroke-width="3" stroke-linecap="round"></path>
+<circle cx="50" cy="8" r="3.5" fill="#b51f27"></circle>
+</svg>
+</sc-if>
 </button>
 
-<div style="display: flex; gap: 12px; margin-top: 10px;">
+<div style="display: flex; margin-top: 10px; {{slotRow}}">
 <sc-for list="{{slots}}" as="sl" hint-placeholder-count="3">
-<div style="width: 76px; height: 84px; border-radius: 18px; display: grid; place-items: center; font-size: 46px; font-weight: 800; box-sizing: border-box; {{sl.style}}">{{sl.ch}}</div>
+<div style="display: grid; place-items: center; font-weight: 800; box-sizing: border-box; flex-shrink: 0; {{sl.style}}">{{sl.ch}}</div>
 </sc-for>
 </div>
 
@@ -79,14 +140,16 @@
 
 <div style="flex-grow: 1;"></div>
 
-<div style="width: 100%; box-sizing: border-box; padding: 18px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
-<sc-for list="{{tray}}" as="t" hint-placeholder-count="4">
-<button onClick="{{t.tap}}" aria-label="Letter {{t.ch}}" style="position: relative; border: 0; cursor: pointer; font-family: inherit; width: 70px; height: 74px; border-radius: 14px; font-size: 40px; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); transition: transform 0.12s, opacity 0.2s; {{t.style}}">
-<span style="position: absolute; top: -8px; left: 12px; width: 18px; height: 10px; border-radius: 5px 5px 0 0; background: {{t.stud}};"></span>
-<span style="position: absolute; top: -8px; right: 12px; width: 18px; height: 10px; border-radius: 5px 5px 0 0; background: {{t.stud}};"></span>
+<div style="width: 100%; box-sizing: border-box; padding: 18px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
+<div style="display: flex; justify-content: center; flex-wrap: wrap; {{trayBox}}">
+<sc-for list="{{tray}}" as="t" hint-placeholder-count="3">
+<button onClick="{{t.tap}}" aria-label="Letter {{t.ch}}" style="position: relative; border: 0; cursor: pointer; font-family: inherit; padding: 0; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); transition: transform 0.12s, opacity 0.2s; {{t.style}}">
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studL}}"></span>
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studR}}"></span>
 {{t.ch}}
 </button>
 </sc-for>
+</div>
 </div>
 
 <sc-if value="{{roundDone}}" hint-placeholder-val="{{ false }}">
@@ -94,7 +157,7 @@
 <div style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
 <div style="font-size: 32px; font-weight: 800; line-height: 1.1;">{{doneTitle}}</div>
 <div style="font-size: 18px; font-weight: 700; color: #c9c2ff; margin: 8px 0 14px;">{{doneText}}</div>
-<button onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 20px; font-weight: 800; padding: 12px 28px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}</button>
+<button onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 12px 28px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}</button>
 </div>
 </div>
 </sc-if>
@@ -102,21 +165,77 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { round: 0, filled: 0, used: {}, wrong: null, slips: 0, roundDone: false, finished: false };
+    this.state = this.fresh(this.stageOf(props));
   }
-  rounds() {
-    return [
-      { word: 'SUN', tray: ['U', 'N', 'S', 'M'] },
-      { word: 'BUS', tray: ['S', 'B', 'T', 'U'] },
-      { word: 'BOX', tray: ['O', 'X', 'D', 'B'] }
-    ];
+  fresh(stage) {
+    return { stage: stage, round: 0, filled: 0, used: {}, wrong: null, slips: 0, roundDone: false };
+  }
+  stageOf(props) {
+    var st = props && props.stage;
+    return st === 'growing' || st === 'advanced' ? st : 'starter';
+  }
+  stages() {
+    return {
+      starter: {
+        level: 'Level 3', kid: 'Leo', initial: 'L', color: '#ffab5e', // age 4: no countdown, the sand only fills
+        words: ['SUN', 'BUS', 'BOX']
+      },
+      growing: {
+        level: 'Level 17', kid: 'Nia', initial: 'N', color: '#14c8c0', // age 6: double time, can still finish after it runs out
+        words: ['FISH', 'FROG', 'HOUSE']
+      },
+      advanced: {
+        level: 'Level 32', kid: 'Maya', initial: 'M', color: '#2f8cff', // age 7: standard timer, longer words get more time
+        words: ['ROCKET', 'RAINBOW', 'UMBRELLA']
+      }
+    };
+  }
+  // One tile per letter of the word, shuffled the same way every time, never in spelling order.
+  shuffled(word) {
+    var a = word.split('');
+    var seed = 7;
+    for (var k = 0; k < word.length; k++) seed = (seed * 31 + word.charCodeAt(k)) % 2147483647;
+    for (var i = a.length - 1; i > 0; i--) {
+      seed = (seed * 16807) % 2147483647;
+      var j = seed % (i + 1);
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    if (a.join('') === word) a.push(a.shift());
+    return a;
+  }
+  // Slot and tile sizes come from the word length and the inner width.
+  sizes(n, innerW) {
+    var avail = innerW - 32;
+    var sGap = n <= 4 ? 12 : n <= 6 ? 8 : 6;
+    var sw = Math.min(76, Math.floor((avail - sGap * (n - 1)) / n));
+    var trayW = avail - 24;
+    var gap = 12;
+    var perRow = n;
+    var tw = Math.floor((trayW - gap * (n - 1)) / n);
+    if (tw >= 70) tw = 70;
+    else if (tw < 56) {
+      perRow = Math.ceil(n / 2);
+      tw = Math.min(70, Math.floor((trayW - gap * (perRow - 1)) / perRow));
+    }
+    return {
+      sw: sw, sh: Math.round(sw * 84 / 76), sGap: sGap,
+      sFont: Math.round(sw * 46 / 76), sRad: Math.max(8, Math.round(sw * 18 / 76)), sBorder: sw < 56 ? 2 : 3,
+      tw: tw, th: Math.round(tw * 74 / 70), tFont: Math.round(tw * 40 / 70), tRad: Math.round(tw * 14 / 70),
+      studW: Math.round(tw * 18 / 70), studH: Math.max(7, Math.round(tw * 10 / 70)), studIn: Math.round(tw * 12 / 70),
+      gap: gap, rowGap: 18, perRow: perRow, rows: Math.ceil(n / perRow),
+      rowW: perRow * tw + (perRow - 1) * gap, slotRowW: n * sw + (n - 1) * sGap, avail: avail, trayW: trayW
+    };
   }
   colorOf(ch) {
-    var map = { S: 'teal', U: 'purple', N: 'orange', M: 'pink', B: 'blue', T: 'green', O: 'red', X: 'pink', D: 'yellow' };
+    var map = {
+      A: 'green', B: 'blue', C: 'yellow', D: 'yellow', E: 'pink', F: 'green', G: 'teal', H: 'blue', I: 'yellow',
+      K: 'blue', L: 'teal', M: 'pink', N: 'orange', O: 'red', R: 'orange', S: 'teal', T: 'green', U: 'purple',
+      W: 'teal', X: 'pink'
+    };
     return map[ch] || 'blue';
   }
   pal() {
@@ -141,36 +260,53 @@ class Component extends DCLogic {
   }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var stage = this.stageOf(this.props);
+    var S = this.stages()[stage];
+    // A new stage starts again from word 1, without calling setState during render.
+    var s = this.state.stage === stage ? this.state : this.fresh(stage);
+    var last = S.words.length - 1;
+    var round = Math.min(Math.max(s.round, 0), last);
     var tablet = this.props.device === 'tablet';
-    var R = this.rounds()[s.round];
-    var word = R.word;
+    var IW = tablet ? 596 : 390;
+    var word = S.words[round];
+    var trayLetters = this.shuffled(word);
+    var z = this.sizes(word.length, IW);
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
-      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: IW, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'LevelsLetters.dc.html',
+      backLabel: tablet ? 'Back to home' : 'Back to levels',
+      levelLabel: S.level,
+      kidLine: S.kid, kidInitial: S.initial, kidColor: S.color,
       word: word.toLowerCase(),
-      roundNo: s.round + 1,
+      roundNo: round + 1,
       isSun: word === 'SUN', isBus: word === 'BUS', isBox: word === 'BOX',
-      dots: [0, 1, 2].map(function (i) { return { fill: i < s.round || (i === s.round && s.roundDone) ? '#ffc21a' : i === s.round ? '#7cc0ff' : '#1a1246' }; }),
+      isFish: word === 'FISH', isFrog: word === 'FROG', isHouse: word === 'HOUSE',
+      isRocket: word === 'ROCKET', isRainbow: word === 'RAINBOW', isUmbrella: word === 'UMBRELLA',
+      dots: S.words.map(function (w, i) { return { fill: i < round || (i === round && s.roundDone) ? '#ffc21a' : i === round ? '#7cc0ff' : '#1a1246' }; }),
       speak: function () { self.say(word.toLowerCase()); },
+      slotRow: 'gap: ' + z.sGap + 'px;',
       slots: word.split('').map(function (ch, i) {
         var done = i < s.filled;
-        var p = self.pal()[self.colorOf(ch)];
+        var box = 'width: ' + z.sw + 'px; height: ' + z.sh + 'px; border-radius: ' + z.sRad + 'px; font-size: ' + z.sFont + 'px; ';
         return {
           ch: done ? ch : '',
-          style: done
+          style: box + (done
             ? self.face(self.colorOf(ch)) + ' color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3);'
-            : 'border: 3px dashed ' + (i === s.filled ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);'
+            : 'border: ' + z.sBorder + 'px dashed ' + (i === s.filled ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);')
         };
       }),
-      help: s.wrong ? 'Not that one. Listen again: ' + word.toLowerCase() + '!' : s.filled === 0 ? 'Tap the letters to build the word.' : 'Great! What comes next?',
-      tray: R.tray.map(function (ch, i) {
+      help: s.wrong !== null ? 'Not that one. Listen again: ' + word.toLowerCase() + '!' : s.filled === 0 ? 'Tap the letters to build the word.' : 'Great! What comes next?',
+      trayBox: 'width: ' + z.rowW + 'px; column-gap: ' + z.gap + 'px; row-gap: ' + z.rowGap + 'px;',
+      tray: trayLetters.map(function (ch, i) {
         var used = !!s.used[i];
         var p = self.pal()[self.colorOf(ch)];
+        var stud = 'top: -' + (z.studH - 2) + 'px; width: ' + z.studW + 'px; height: ' + z.studH + 'px; background: ' + p[1] + ';';
+        var box = 'width: ' + z.tw + 'px; height: ' + z.th + 'px; border-radius: ' + z.tRad + 'px; font-size: ' + z.tFont + 'px; ';
         return {
           ch: ch,
-          stud: p[1],
-          style: self.face(self.colorOf(ch)) + (used ? ' opacity: 0.2; transform: scale(0.85);' : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + (i % 2 ? 3 : -3) + 'deg);'),
+          studL: stud + ' left: ' + z.studIn + 'px;',
+          studR: stud + ' right: ' + z.studIn + 'px;',
+          style: box + self.face(self.colorOf(ch)) + (used ? ' opacity: 0.2; transform: scale(0.85);' : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + (i % 2 ? 3 : -3) + 'deg);'),
           tap: function () {
             if (used || s.roundDone) return;
             if (ch === word.charAt(s.filled)) {
@@ -179,22 +315,22 @@ class Component extends DCLogic {
               u[i] = true;
               var filled = s.filled + 1;
               var done = filled === word.length;
-              self.setState({ filled: filled, used: u, wrong: null, roundDone: done });
+              self.setState({ stage: stage, round: round, filled: filled, used: u, wrong: null, slips: s.slips, roundDone: done });
               if (done) setTimeout(function () { self.say(word.toLowerCase()); }, 700);
             } else {
-              self.setState({ wrong: i, slips: s.slips + 1 });
+              self.setState({ stage: stage, round: round, filled: s.filled, used: s.used, wrong: i, slips: s.slips + 1, roundDone: false });
               setTimeout(function () { self.setState({ wrong: null }); }, 400);
             }
           }
         };
       }),
       roundDone: s.roundDone,
-      doneTitle: s.round === 2 ? 'You built 3 words!' : 'You built ' + word + '!',
-      doneText: s.round === 2 ? (s.slips <= 1 ? '3 stars and a new sticker for your book.' : 'Great building! You found a new sticker.') : word.split('').join('-') + '... ' + word.toLowerCase() + '. Ready for the next one?',
-      nextLabel: s.round === 2 ? 'Play again' : 'Next word',
+      doneTitle: round === last ? 'You built ' + S.words.length + ' words!' : 'You built ' + word + '!',
+      doneText: round === last ? (s.slips <= 1 ? '3 stars and a new sticker for your book.' : 'Great building! You found a new sticker.') : word.split('').join('-') + '... ' + word.toLowerCase() + '. Ready for the next one?',
+      nextLabel: round === last ? 'Play again' : 'Next word',
       next: function () {
-        if (s.round === 2) self.setState({ round: 0, filled: 0, used: {}, wrong: null, slips: 0, roundDone: false });
-        else self.setState({ round: s.round + 1, filled: 0, used: {}, wrong: null, roundDone: false });
+        if (round === last) self.setState(self.fresh(stage));
+        else self.setState({ stage: stage, round: round + 1, filled: 0, used: {}, wrong: null, slips: s.slips, roundDone: false });
       }
     };
   }

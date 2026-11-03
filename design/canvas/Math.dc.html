@@ -20,7 +20,7 @@
 </a>
 <div style="text-align: center; line-height: 1.1;">
 <div style="font-size: 24px; font-weight: 800;">Brick Calculator</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Explore · Add and take away</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Add and take away</div>
 </div>
 <button onClick="{{speak}}" aria-label="Say it" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
@@ -138,7 +138,7 @@ class Component extends DCLogic {
     var r = this.calc(s);
     var key = function (t, kind, label) {
       var st = kind === 'op' ? 'background: linear-gradient(180deg, #ffe266, #ffc21a); color: #5a3500; box-shadow: 0 5px 0 #d48a00;'
-        : kind === 'eq' ? 'background: linear-gradient(180deg, #5fe06e, #1fb53c); color: #ffffff; box-shadow: 0 5px 0 #0f7a26;'
+        : kind === 'eq' ? 'background: linear-gradient(180deg, #5fe06e, #1fb53c); color: #063510; box-shadow: 0 5px 0 #0f7a26;'
         : kind === 'clr' ? 'background: linear-gradient(180deg, #ff9fd4, #ff5fb4); color: #ffffff; box-shadow: 0 5px 0 #c72f84;'
         : kind === 'rand' ? 'background: linear-gradient(180deg, #6aeee4, #14c8c0); color: #ffffff; box-shadow: 0 5px 0 #0b8c87;'
         : 'background: linear-gradient(180deg, #5444b8, #3a2d8f); color: #ffffff; box-shadow: 0 5px 0 #241a63;';

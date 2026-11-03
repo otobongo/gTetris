@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Terms of use</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<sc-if value="{{isTerms}}" hint-placeholder-val="{{ true }}">
+<dc-import name="Help" page="terms" hint-size="390px,844px"></dc-import>
+</sc-if>
+<sc-if value="{{isPrivacy}}" hint-placeholder-val="{{ false }}">
+<dc-import name="Help" page="privacy" hint-size="390px,844px"></dc-import>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"page":{"editor":"enum","options":["terms","privacy"],"default":"terms"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var privacy = this.props.page === 'privacy';
+    return { isTerms: !privacy, isPrivacy: privacy };
+  }
+}
+</script>
+</body>
+</html>

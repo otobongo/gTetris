@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; }</style>
 </helmet>
 <div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 0; display: flex; flex-direction: column; gap: 12px; position: relative;">
@@ -40,6 +40,29 @@
 <sc-if value="{{open}}" hint-placeholder-val="{{ true }}">
 <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 24px;">
 
+<sc-if value="{{guest}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<div style="font-size: 18px; font-weight: 800; line-height: 1.15;">Save your progress</div>
+<div style="font-size: 14px; font-weight: 700; color: #c9c2ff; line-height: 1.3;">Right now, progress is saved on this device only. Sign in to keep every child's stars and levels on all your family's devices.</div>
+</div>
+<button onClick="{{signInApple}}" style="border: 0; cursor: pointer; font-family: inherit; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 14px; background: #ffffff; color: #17171d;">
+<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#000000" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"></path></svg>
+Continue with Apple
+</button>
+<button onClick="{{signInGoogle}}" style="border: 0; cursor: pointer; font-family: inherit; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 14px; background: #ffffff; color: #17171d;">
+<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+Continue with Google
+</button>
+<button onClick="{{signInFacebook}}" style="border: 0; cursor: pointer; font-family: inherit; height: 48px; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; border-radius: 14px; background: #1877F2; color: #ffffff;">
+<svg width="20" height="20" viewBox="-96 0 512 512" aria-hidden="true"><path fill="#ffffff" d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"></path></svg>
+Continue with Facebook
+</button>
+<a href="{{signinHref}}" style="align-self: center; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Use email instead</a>
+</div>
+</sc-if>
+
+<sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
 <div style="display: flex; align-items: center; gap: 12px;">
 <span style="width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; font-weight: 800; background: #14c8c0;">S</span>
@@ -64,6 +87,7 @@
 </sc-for>
 </div>
 </div>
+</sc-if>
 
 <div style="display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800; color: #c9c2ff;">Children</div>
@@ -98,7 +122,7 @@ Add a child
 <span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">The timer, level start and reading help are set from the age. You can change them later.</span>
 <div style="display: flex; gap: 8px;">
 <button onClick="{{cancelAdd}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
-<button onClick="{{saveKid}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Add child</button>
+<button onClick="{{saveKid}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Add child</button>
 </div>
 </div>
 </sc-if>
@@ -148,13 +172,47 @@ Add a child
 </sc-for>
 </div>
 
+<div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 4px;">
+<div style="font-size: 16px; font-weight: 800; padding-bottom: 4px;">Sound and alerts</div>
+<sc-for list="{{toggles}}" as="t" hint-placeholder-count="4">
+<button role="switch" aria-checked="{{t.checked}}" aria-labelledby="sw-{{t.key}}" aria-describedby="swd-{{t.key}}" onClick="{{t.flip}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; background: transparent; width: 100%; min-height: 52px; padding: 4px 0; display: flex; align-items: center; gap: 12px; text-align: left; border-radius: 12px;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="{{t.icon}}"></path></svg>
+<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1; min-width: 0;">
+<span id="sw-{{t.key}}" style="font-size: 15px; font-weight: 800;">{{t.label}}</span>
+<span id="swd-{{t.key}}" style="font-size: 13px; font-weight: 700; color: #c9c2ff;">{{t.note}}</span>
+</span>
+<span aria-hidden="true" style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+<span style="min-width: 26px; text-align: right; font-size: 14px; font-weight: 800; color: #c9c2ff;">{{t.state}}</span>
+<span style="position: relative; width: 52px; height: 32px; border-radius: 999px; {{t.track}}">
+<span style="position: absolute; top: 4px; left: 4px; width: 24px; height: 24px; border-radius: 50%; background: #ffffff; box-shadow: 0 2px 0 rgba(0,0,0,0.25); transition: transform 0.15s cubic-bezier(0.16,1,0.3,1); transform: translateX({{t.shift}}px);"></span>
+</span>
+</span>
+</button>
+</sc-for>
+</div>
+
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">Progress</div>
 <button onClick="{{askReset}}" style="border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">Reset {{kidName}}'s progress</button>
 <button onClick="{{askResetAll}}" style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 14px; font-weight: 800; padding: 6px; border-radius: 12px; background: transparent; text-decoration: underline;">Reset every child's progress</button>
 </div>
 
-<button style="align-self: center; border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 15px; font-weight: 800; padding: 10px 22px; border-radius: 14px; background: #30257a;">Sign out of this device</button>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 12px;">
+<sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
+<button style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 15px; font-weight: 800; padding: 10px 22px; border-radius: 14px; background: #30257a;">Sign out of this device</button>
+</sc-if>
+<nav aria-label="Help and legal" style="display: flex; justify-content: center; gap: 4px; flex-wrap: wrap;">
+<a href="{{helpHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Support</a>
+<a href="{{termsHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Terms</a>
+<a href="{{privacyHref}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Privacy</a>
+</nav>
+<sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{askDelete}}" style="border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 12px; background: transparent; color: #ff9fd4; font-size: 15px; font-weight: 800;">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>
+Delete my account
+</button>
+</sc-if>
+</div>
 
 </div>
 </sc-if>
@@ -165,12 +223,12 @@ Add a child
 
 <sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.7); display: grid; place-items: center; padding: 16px;">
-<div role="alertdialog" aria-label="Confirm reset" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 22px 18px 18px; border-radius: 24px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
+<div role="alertdialog" aria-label="{{confirmLabel}}" aria-describedby="confirm-body" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 22px 18px 18px; border-radius: 24px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
 <div style="font-size: 24px; font-weight: 800; line-height: 1.15;">{{confirmTitle}}</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff; margin: 8px 0 16px; line-height: 1.35;">Stars, levels and stickers go back to the start on every synced device. This can't be undone.</div>
-<div style="display: flex; gap: 10px;">
-<button onClick="{{cancelReset}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #4b3eaa;">Keep it</button>
-<button onClick="{{doReset}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #d92f45; box-shadow: 0 4px 0 #8f1f2e;">Reset</button>
+<div id="confirm-body" style="font-size: 15px; font-weight: 700; color: #c9c2ff; margin: 8px 0 16px; line-height: 1.35;">{{confirmBody}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<button onClick="{{cancelReset}}" style="flex: 1 1 0; min-width: max-content; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #4b3eaa;">{{keepLabel}}</button>
+<button onClick="{{doConfirm}}" style="flex: 1 1 0; min-width: max-content; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #d92f45; box-shadow: 0 4px 0 #8f1f2e;">{{goLabel}}</button>
 </div>
 </div>
 </div>
@@ -179,13 +237,15 @@ Add a child
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"account":{"editor":"enum","options":["signedIn","guest"],"default":"signedIn"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
       unlocked: false, hold: 0, kid: 0, adding: false, newName: '', newAge: 6,
       confirm: null, toast: '', syncing: false, syncedAgo: '2 min ago',
+      acct: null, acctProp: null,
+      sound: { sounds: true, music: true, voice: true, alerts: false },
       kids: [
         { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35] },
         { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30] }
@@ -221,9 +281,48 @@ class Component extends DCLogic {
     var skillNames = ['Planning (Brick Escape)', 'Shapes and space (Brick Drop)', 'Letters and spelling', 'Colors and shapes', 'Numbers and math'];
     var skillColors = ['#5fe06e', '#c79bff', '#ffab5e', '#ff9fd4', '#6aeee4'];
     var swatch = ['#2f8cff', '#ff7a1a', '#ff5fb4', '#14c8c0', '#9b4dff', '#1fb53c'];
+    var propAcct = this.props.account === 'guest' ? 'guest' : 'signedIn';
+    var acct = s.acct && s.acctProp === propAcct ? s.acct : propAcct;
+    var guest = acct === 'guest';
+    var signInWith = function (name) {
+      return function () {
+        self.setState({ acct: 'signedIn', acctProp: propAcct });
+        self.showToast('Signed in with ' + name + '. Progress now syncs to all your devices.');
+      };
+    };
+    var toggleRows = [
+      { key: 'sounds', label: 'Sounds', note: 'Taps and brick sounds', icon: 'M11 5L6 9H2v6h4l5 4V5z M15.5 8.5a5 5 0 0 1 0 7 M19 5a10 10 0 0 1 0 14' },
+      { key: 'music', label: 'Music', note: 'Background music in games', icon: 'M9 18V5l12-2v13 M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0 M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0' },
+      { key: 'voice', label: 'Voice', note: 'Reads letters and words aloud', icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z M8.5 10h7 M8.5 13.5h4.5' },
+      { key: 'alerts', label: 'Notifications', note: 'Reminders for grown-ups', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0' }
+    ];
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      signupHref: tablet ? 'SignupTablet.dc.html' : 'Signup.dc.html',
+      signinHref: tablet ? 'SigninTablet.dc.html' : 'Signin.dc.html',
+      // Canvas links point at files only: on phone Terms and Privacy both open HelpDoc (Privacy is its page lever);
+      // on tablet all three open HelpTablet, whose Legal rows switch to each document.
+      helpHref: tablet ? 'HelpTablet.dc.html' : 'Help.dc.html',
+      termsHref: tablet ? 'HelpTablet.dc.html' : 'HelpDoc.dc.html',
+      privacyHref: tablet ? 'HelpTablet.dc.html' : 'HelpDoc.dc.html',
+      guest: guest, signedIn: !guest,
+      signInApple: signInWith('Apple'),
+      signInGoogle: signInWith('Google'),
+      signInFacebook: signInWith('Facebook'),
+      toggles: toggleRows.map(function (r) {
+        var on = !!s.sound[r.key];
+        return {
+          key: r.key, label: r.label, note: r.note, icon: r.icon,
+          checked: on ? 'true' : 'false', state: on ? 'On' : 'Off', shift: on ? 20 : 0,
+          track: on ? 'background: #1fb53c;' : 'background: #1d1550; box-shadow: inset 0 0 0 2px #6d5fd0;',
+          flip: function () {
+            var next = Object.assign({}, self.state.sound);
+            next[r.key] = !next[r.key];
+            self.setState({ sound: next });
+          }
+        };
+      }),
       locked: !s.unlocked, open: s.unlocked,
       holdDeg: Math.round(s.hold * 3.6),
       holdStart: function () {
@@ -285,14 +384,30 @@ class Component extends DCLogic {
       }),
       askReset: function () { self.setState({ confirm: 'one' }); },
       askResetAll: function () { self.setState({ confirm: 'all' }); },
+      askDelete: function () { self.setState({ confirm: 'delete' }); },
       confirming: !!s.confirm,
-      confirmTitle: s.confirm === 'all' ? "Reset every child's progress?" : 'Reset ' + k.name + "'s progress?",
+      confirmLabel: s.confirm === 'delete' ? 'Confirm account deletion' : 'Confirm reset',
+      confirmTitle: s.confirm === 'delete' ? 'Delete your family account?' : s.confirm === 'all' ? "Reset every child's progress?" : 'Reset ' + k.name + "'s progress?",
+      confirmBody: s.confirm === 'delete'
+        ? "This deletes your family account and every child's stars, levels and stickers on every device. It can't be undone."
+        : guest
+          ? "Stars, levels and stickers go back to the start on this device. This can't be undone."
+          : "Stars, levels and stickers go back to the start on every synced device. This can't be undone.",
+      keepLabel: s.confirm === 'delete' ? 'Keep my account' : 'Keep it',
+      goLabel: s.confirm === 'delete' ? 'Delete account' : 'Reset',
       cancelReset: function () { self.setState({ confirm: null }); },
-      doReset: function () {
+      doConfirm: function () {
+        if (s.confirm === 'delete') {
+          var cleared = s.kids.map(function (c) { return Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0] }); });
+          self.setState({ kids: cleared, confirm: null, acct: 'guest', acctProp: propAcct });
+          self.showToast('Family account deleted.');
+          return;
+        }
         var all = s.confirm === 'all';
         var kids = s.kids.map(function (c, i) { return all || i === s.kid ? Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0] }) : c; });
         self.setState({ kids: kids, confirm: null });
-        self.showToast(all ? 'Everyone starts fresh. Synced to all devices.' : k.name + "'s progress was reset on all devices.");
+        if (guest) self.showToast(all ? 'Everyone starts fresh on this device.' : k.name + "'s progress was reset on this device.");
+        else self.showToast(all ? 'Everyone starts fresh. Synced to all devices.' : k.name + "'s progress was reset on all devices.");
       },
       toast: !!s.toast, toastText: s.toast
     };
