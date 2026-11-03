@@ -1,0 +1,238 @@
+/* Brick Drop. Everything is scoped under .drop-* so it never leaks into other games. */
+
+/* ---------- Stage select ---------- */
+.drop-select { gap: 12px; }
+.drop-select__hint { margin: 0; text-align: center; font-size: 16px; line-height: 1.3; max-width: 420px; }
+.drop-select__group { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.drop-select .level-tile { gap: 2px; }
+.drop-select__goal { font-size: 12px; font-weight: 800; color: rgb(255 255 255 / 0.75); letter-spacing: 0.2px; }
+
+/* ---------- Play screen: fixed to the viewport so nothing scrolls or zooms ---------- */
+.drop-play {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+.drop-play__inner {
+  width: 100%;
+  max-width: 560px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drop-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.drop-field { display: flex; align-items: stretch; }
+
+/* Recessed purple tray */
+.drop-well {
+  position: relative;
+  flex: none;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #1c1350, #241a63);
+  box-shadow:
+    inset 0 5px 12px rgb(0 0 0 / 0.55),
+    inset 0 -2px 0 rgb(255 255 255 / 0.06),
+    0 2px 0 var(--panel-hi),
+    0 0 0 3px var(--panel-edge);
+  touch-action: none;
+  cursor: pointer;
+}
+.drop-grid {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+  background-position: -0.5px -0.5px;
+}
+
+.drop-cell,
+.drop-ghost {
+  position: absolute;
+  left: 1px;
+  top: 1px;
+  width: calc(var(--cell) - 2px);
+  height: calc(var(--cell) - 2px);
+  border-radius: max(4px, calc(var(--cell) * 0.2));
+}
+.drop-ghost {
+  border: 2px dashed var(--cl);
+  background: color-mix(in srgb, var(--c) 22%, transparent);
+  opacity: 0.85;
+}
+.drop-cell.is-active { z-index: 2; filter: brightness(1.08); }
+.drop-cell.is-clearing { animation: drop-cell-flash 0.34s ease-out forwards; }
+.drop-flash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.95) 20%, rgb(255 255 255 / 0.95) 80%, transparent);
+  border-radius: 6px;
+  animation: drop-row-flash 0.34s ease-out forwards;
+}
+@keyframes drop-cell-flash {
+  0% { filter: brightness(1); }
+  40% { filter: brightness(2.2); }
+  100% { filter: brightness(2.6); opacity: 0.2; }
+}
+@keyframes drop-row-flash {
+  0% { opacity: 0; transform: scaleX(0.3); }
+  35% { opacity: 1; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleY(1.6); }
+}
+
+/* ---------- Side column: hold, next, progress ---------- */
+.drop-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drop-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--panel-2);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
+  touch-action: none;
+}
+.drop-box--hold { cursor: pointer; min-height: 48px; }
+.drop-box--hold:active { filter: brightness(1.15); }
+.drop-box__label {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--ink-soft);
+  line-height: 1;
+}
+.drop-box__slot { display: flex; align-items: center; justify-content: center; }
+.drop-box__slot.is-later { opacity: 0.75; }
+
+.drop-mini { position: relative; display: inline-block; flex: none; }
+.drop-mini.is-dim { opacity: 0.4; }
+.drop-mini__cell { position: absolute; display: block; border-radius: 3px; }
+.drop-mini__cell.brick--studs::after { inset: 10%; }
+
+.drop-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 8px;
+  border-radius: 14px;
+  background: var(--panel-2);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
+}
+.drop-stat__label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); line-height: 1.1; }
+.drop-stat__value { font-size: 24px; font-weight: 800; line-height: 1; }
+.drop-stat__value small { font-size: 15px; color: var(--ink-soft); }
+.drop-meter {
+  width: 80%;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 99px;
+  background: rgb(0 0 0 / 0.35);
+  overflow: hidden;
+}
+.drop-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--green-l), var(--green));
+  transition: width 0.3s ease-out;
+}
+
+/* ---------- Touch pad ---------- */
+.drop-pad {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding-bottom: 5px; /* room for the button shadow */
+}
+.drop-pad__btn {
+  height: 58px;
+  min-width: 48px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  touch-action: none;
+}
+.drop-pad__label { font-size: 13px; line-height: 1; font-weight: 800; letter-spacing: 0.3px; }
+.drop-pad__btn.is-down { transform: translateY(4px); box-shadow: 0 1px 0 var(--panel-edge), inset 0 2px 0 rgb(255 255 255 / 0.2); }
+.drop-pad__btn.btn--go.is-down { box-shadow: 0 1px 0 var(--green-d); }
+.drop-pad__btn.btn--warm.is-down { box-shadow: 0 1px 0 var(--yellow-d); }
+
+.drop-keys { display: none; margin: -2px 0 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink-dim); }
+.drop-keys kbd {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--ink-soft);
+}
+
+/* Wider screens: one row of six, movement on the left, actions on the right. */
+@media (min-width: 520px) {
+  .drop-pad { grid-template-columns: repeat(6, 1fr); }
+  .drop-pad__btn--left { order: 1; }
+  .drop-pad__btn--down { order: 2; }
+  .drop-pad__btn--right { order: 3; }
+  .drop-pad__btn--hold { order: 4; }
+  .drop-pad__btn--rotate { order: 5; }
+  .drop-pad__btn--drop { order: 6; }
+}
+@media (min-width: 720px) and (min-height: 700px) and (hover: hover) {
+  .drop-keys { display: block; }
+}
+/* Tall phones: spend spare height on bigger thumbs targets. */
+@media (min-height: 800px) and (max-width: 519px) {
+  .drop-pad__btn { height: 64px; }
+}
+/* Very short screens: slimmer buttons so the board stays big. */
+@media (max-height: 640px) {
+  .drop-pad__btn { height: 50px; }
+  .drop-pad__label { display: none; }
+  .drop-play__inner { gap: 8px; }
+}
+
+/* ---------- Cards ---------- */
+.drop-intro,
+.drop-result { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.drop-intro__goal { font-size: 22px; color: var(--ink); }
+.drop-intro__goal b { color: var(--accent); }
+.drop-intro__pieces { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 10px 12px; }
+.drop-intro__piece { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 10px; }
+.drop-intro__piece.is-new { background: rgb(255 255 255 / 0.12); box-shadow: 0 0 0 2px var(--accent); }
+.drop-intro__tag { font-size: 12px; line-height: 1; color: var(--accent); font-weight: 800; white-space: nowrap; }
+.drop-intro__tip { font-size: 16px; line-height: 1.3; }
+.drop-intro__rule,
+.drop-result__rule { font-size: 14px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; line-height: 1.3; }
+.card .drop-intro .stars { font-size: 16px; margin: 0; }
+.drop-result__score { color: var(--ink); }
+.drop-result__best { color: var(--accent); }

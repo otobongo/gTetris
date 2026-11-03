@@ -1,0 +1,11 @@
+{
+  "name": "Brickwise",
+  "short_name": "Brickwise",
+  "description": "Puzzle, block and word games that grow with your kids.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#24195c",
+  "theme_color": "#24195c",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
