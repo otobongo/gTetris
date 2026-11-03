@@ -13,6 +13,7 @@
     "levels:generate": "tsx scripts/generate-slide-levels.ts"
   },
   "dependencies": {
+    "@fontsource/baloo-2": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },

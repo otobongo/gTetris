@@ -1,7 +1,12 @@
-import { useCallback, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
+import { LEGACY_GAME_IDS, activePlayer, progressStore, starsFor as starsOf, toGameId, totalStars as totalOf, type ProgressState } from './progress';
 
-/** Per-device progress, kept in localStorage. Every access is guarded so private mode never breaks the game. */
-const KEY = 'brickwise:v1';
+/**
+ * v1 API, kept as thin wrappers over the progress store v2 (src/shared/progress) so the games
+ * keep working until they move to it. Everything here reads and writes the active player.
+ * Game keys are the games' own ('slide', 'drop', 'letters'); 'slide' is stored as 'escape'.
+ * Level ids are the 0-based level index the games already pass.
+ */
 
 export interface Progress {
   /** stars earned per level, keyed by `${game}:${levelId}` */
@@ -11,67 +16,58 @@ export interface Progress {
   settings: { sound: boolean; voice: boolean };
 }
 
-const empty = (): Progress => ({ stars: {}, best: {}, settings: { sound: true, voice: true } });
+const legacyName: Record<string, string> = Object.fromEntries(Object.entries(LEGACY_GAME_IDS).map(([old, id]) => [id, old]));
 
-function load(): Progress {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return empty();
-    const parsed = JSON.parse(raw) as Partial<Progress>;
-    return { ...empty(), ...parsed, settings: { ...empty().settings, ...parsed.settings } };
-  } catch {
-    return empty();
-  }
-}
+let cachedFor: ProgressState | null = null;
+let cachedView: Progress = { stars: {}, best: {}, settings: { sound: true, voice: true } };
 
-let state: Progress = load();
-const listeners = new Set<() => void>();
-
-function save() {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    /* storage unavailable: progress lives for this session only */
-  }
-  listeners.forEach((l) => l());
-}
-
+/** v1-shaped view of the active player, rebuilt only when the store changes (stable for useSyncExternalStore). */
 export function getProgress(): Progress {
-  return state;
+  const state = progressStore.getState();
+  if (state === cachedFor) return cachedView;
+  const player = activePlayer(state);
+  const stars: Record<string, number> = {};
+  const best: Record<string, number> = {};
+  for (const [id, g] of Object.entries(player?.games ?? {})) {
+    const name = legacyName[id] ?? id;
+    for (const [level, v] of Object.entries(g.stars)) stars[`${name}:${level}`] = v;
+    for (const [level, v] of Object.entries(g.best)) best[`${name}:${level}`] = v;
+  }
+  cachedFor = state;
+  cachedView = { stars, best, settings: { sound: state.settings.sound, voice: state.settings.voice } };
+  return cachedView;
 }
+
+const level = (levelId: string | number) => Number(levelId);
 
 export function recordStars(game: string, levelId: string | number, stars: number) {
-  const k = `${game}:${levelId}`;
-  if ((state.stars[k] ?? 0) >= stars) return;
-  state = { ...state, stars: { ...state.stars, [k]: stars } };
-  save();
+  const id = progressStore.ensureActivePlayer();
+  progressStore.recordStars(toGameId(game), level(levelId), stars, id);
 }
 
+/** v1 best keys look like 'drop:3' (game and level index). */
 export function recordBest(key: string, value: number) {
-  if ((state.best[key] ?? 0) >= value) return;
-  state = { ...state, best: { ...state.best, [key]: value } };
-  save();
+  const cut = key.lastIndexOf(':');
+  const game = cut > 0 ? key.slice(0, cut) : key;
+  const lvl = cut > 0 ? level(key.slice(cut + 1)) : 0;
+  const id = progressStore.ensureActivePlayer();
+  progressStore.recordBest(toGameId(game), lvl, value, id);
 }
 
 export function setSetting<K extends keyof Progress['settings']>(k: K, v: Progress['settings'][K]) {
-  state = { ...state, settings: { ...state.settings, [k]: v } };
-  save();
+  progressStore.setSetting(k, v);
 }
 
 export function starsFor(game: string, levelId: string | number): number {
-  return state.stars[`${game}:${levelId}`] ?? 0;
+  return starsOf(activePlayer(progressStore.getState()), game, level(levelId));
 }
 
 export function totalStars(game: string): number {
-  return Object.entries(state.stars)
-    .filter(([k]) => k.startsWith(`${game}:`))
-    .reduce((s, [, v]) => s + v, 0);
+  return totalOf(activePlayer(progressStore.getState()), game);
 }
 
+const subscribe = (cb: () => void) => progressStore.subscribe(cb);
+
 export function useProgress(): Progress {
-  const subscribe = useCallback((cb: () => void) => {
-    listeners.add(cb);
-    return () => listeners.delete(cb);
-  }, []);
   return useSyncExternalStore(subscribe, getProgress, getProgress);
 }

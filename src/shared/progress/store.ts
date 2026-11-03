@@ -1,0 +1,169 @@
+/**
+ * Progress store v2: keeps ProgressState in localStorage under 'brickwise:v2'.
+ * Every storage access is wrapped, so private mode, a full disk or blocked storage never
+ * breaks a game: progress then lives in memory for this session only.
+ * On first load, data under the old key 'brickwise:v1' moves into a first player (v1 is left in place).
+ */
+import * as m from './model';
+import { LEGACY_KEY, STORAGE_KEY, type NewPlayer, type Player, type PlayerPatch, type ProgressState, type SettingKey } from './types';
+
+/** The part of the Web Storage API the store uses. Tests pass an in-memory one. */
+export interface KeyValueStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export interface ProgressStoreOptions {
+  /** Defaults to window.localStorage; null keeps progress in memory only. */
+  storage?: KeyValueStorage | null;
+  /** Clock in ms. Defaults to Date.now. */
+  now?: () => number;
+  /** Id maker for new players. */
+  newId?: () => string;
+}
+
+export interface ProgressStore {
+  getState(): ProgressState;
+  subscribe(listener: () => void): () => void;
+  /** Read storage again (another tab changed it, or a test). */
+  reload(): void;
+
+  addPlayer(input: NewPlayer): Player;
+  updatePlayer(id: string, patch: PlayerPatch): void;
+  removePlayer(id: string): void;
+  setActivePlayer(id: string | null): void;
+  /** The active player's id; creates an unnamed "Player 1" first when there is none, so a game can always save. */
+  ensureActivePlayer(): string;
+
+  recordStars(gameId: string, level: number, stars: number, playerId?: string): void;
+  recordBest(gameId: string, level: number, value: number, playerId?: string): void;
+  unlockLevel(gameId: string, level: number, playerId?: string): void;
+  awardSticker(stickerId: string, playerId?: string): void;
+  markStickersSeen(playerId?: string): void;
+  addMinutesPlayed(minutes: number, playerId?: string): void;
+  addExtraMinutes(minutes: number, playerId?: string): void;
+  resetPlayerProgress(playerId: string): void;
+
+  setSetting(key: SettingKey, value: boolean): void;
+  /** Replace the whole state (used after a sync merge). */
+  replace(next: ProgressState): void;
+  now(): number;
+}
+
+function browserStorage(): KeyValueStorage | null {
+  try {
+    return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function randomId(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  } catch {
+    /* fall through */
+  }
+  return `p-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function readJSON(storage: KeyValueStorage | null, key: string): { found: boolean; value: unknown; ok: boolean } {
+  if (!storage) return { found: false, value: null, ok: true };
+  try {
+    const raw = storage.getItem(key);
+    if (raw === null) return { found: false, value: null, ok: true };
+    return { found: true, value: JSON.parse(raw), ok: true };
+  } catch {
+    return { found: true, value: null, ok: false };
+  }
+}
+
+/** Load order: v2 if present (repaired if partly broken, defaults if unreadable), else migrate v1, else defaults. */
+export function loadState(storage: KeyValueStorage | null, now: number, newId: () => string): { state: ProgressState; migrated: boolean } {
+  const v2 = readJSON(storage, STORAGE_KEY);
+  if (v2.found) return { state: v2.ok ? m.sanitize(v2.value, now) : m.emptyState(), migrated: false };
+  const v1 = readJSON(storage, LEGACY_KEY);
+  if (v1.found && v1.ok) return { state: m.migrateV1(v1.value, now, newId()), migrated: true };
+  return { state: m.emptyState(), migrated: false };
+}
+
+export function createProgressStore(options: ProgressStoreOptions = {}): ProgressStore {
+  const storage = options.storage === undefined ? browserStorage() : options.storage;
+  const now = options.now ?? (() => Date.now());
+  const newId = options.newId ?? randomId;
+  const listeners = new Set<() => void>();
+
+  let state: ProgressState;
+  const first = loadState(storage, now(), newId);
+  state = first.state;
+  if (first.migrated) persist();
+
+  function persist() {
+    if (!storage) return;
+    try {
+      storage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      /* storage unavailable or full: progress lives for this session only */
+    }
+  }
+
+  function commit(next: ProgressState) {
+    if (next === state) return;
+    state = next;
+    persist();
+    listeners.forEach((l) => l());
+  }
+
+  const target = (playerId?: string) => playerId ?? state.activePlayerId ?? '';
+
+  const store: ProgressStore = {
+    getState: () => state,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    reload() {
+      state = loadState(storage, now(), newId).state;
+      listeners.forEach((l) => l());
+    },
+
+    addPlayer(input) {
+      const id = newId();
+      commit(m.addPlayer(state, input, id, now()));
+      return m.findPlayer(state, id)!;
+    },
+    updatePlayer: (id, patch) => commit(m.updatePlayer(state, id, patch, now())),
+    removePlayer: (id) => commit(m.removePlayer(state, id)),
+    setActivePlayer: (id) => commit(m.setActivePlayer(state, id)),
+    ensureActivePlayer() {
+      if (m.activePlayer(state)) return state.activePlayerId!;
+      if (state.players[0]) {
+        commit(m.setActivePlayer(state, state.players[0].id));
+        return state.players[0].id;
+      }
+      const id = newId();
+      const player = m.makePlayer({ name: m.DEFAULT_PLAYER_NAME, ageBand: '5-6', color: 'blue' }, id, now(), true);
+      commit({ ...state, players: [player], activePlayerId: id });
+      return id;
+    },
+
+    recordStars: (g, level, stars, p) => commit(m.recordStars(state, target(p), g, level, stars)),
+    recordBest: (g, level, value, p) => commit(m.recordBest(state, target(p), g, level, value)),
+    unlockLevel: (g, level, p) => commit(m.unlockLevel(state, target(p), g, level)),
+    awardSticker: (id, p) => commit(m.awardSticker(state, target(p), id, now())),
+    markStickersSeen: (p) => commit(m.markStickersSeen(state, target(p))),
+    addMinutesPlayed: (min, p) => commit(m.addMinutesPlayed(state, target(p), min, now())),
+    addExtraMinutes: (min, p) => commit(m.addExtraMinutes(state, target(p), min, now())),
+    resetPlayerProgress: (id) => commit(m.resetPlayerProgress(state, id)),
+
+    setSetting: (key, value) => commit(m.setSetting(state, key, value, now())),
+    replace: (next) => commit(m.sanitize(next, now())),
+    now,
+  };
+  return store;
+}
+
+/** The app's one store. */
+export const progressStore: ProgressStore = createProgressStore();

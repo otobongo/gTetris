@@ -1,33 +1,35 @@
-/* Brickwise design tokens + shared UI. Dark, toy-like theme is the only theme on purpose:
-   it keeps bricks vivid and matches the playful arcade feel. */
+@import './tokens.css';
+
+/* Shared styles for the games' existing screens. Values point at tokens.css, so the canvas
+   tokens are the one source. New screens use the components in src/shared/ui/ instead. */
 :root {
-  --bg-1: #2c2170;
-  --bg-2: #1a1246;
-  --panel: #3a2d8f;
-  --panel-2: #30257a;
-  --panel-edge: #241a63;
-  --panel-hi: #5444b8;
-  --ink: #ffffff;
-  --ink-soft: #c9c2ff;
-  --ink-dim: #8e85d6;
-  --accent: #ffb21f;
+  --bg-1: var(--bw-ground-top);
+  --bg-2: var(--bw-ground-bottom);
+  --panel: var(--bw-purple-bottom);
+  --panel-2: var(--bw-panel);
+  --panel-edge: var(--bw-purple-edge);
+  --panel-hi: var(--bw-purple-top);
+  --ink: var(--bw-text);
+  --ink-soft: var(--bw-text-2);
+  --ink-dim: var(--bw-decor);
+  --accent: var(--bw-star);
   --good: #3fd46b;
   --good-dark: #1f9a44;
-  --bad: #ff4d5e;
+  --bad: var(--bw-error-border);
   --radius: 18px;
-  --font: 'Baloo 2', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --font: var(--bw-font);
 
   /* Brick palette: base / light / dark */
-  --red: #f03a3a;     --red-l: #ff7a6e;    --red-d: #b51f27;
-  --yellow: #ffc21a;  --yellow-l: #ffe266; --yellow-d: #d48a00;
-  --green: #1fb53c;   --green-l: #5fe06e;  --green-d: #0f7a26;
-  --blue: #2f8cff;    --blue-l: #7cc0ff;   --blue-d: #1557c4;
-  --purple: #9b4dff;  --purple-l: #c79bff; --purple-d: #6624c9;
-  --orange: #ff7a1a;  --orange-l: #ffab5e; --orange-d: #c4500a;
-  --pink: #ff5fb4;    --pink-l: #ff9fd4;   --pink-d: #c72f84;
-  --teal: #14c8c0;    --teal-l: #6aeee4;   --teal-d: #0b8c87;
-  --white: #f1eef7;   --white-l: #ffffff;  --white-d: #b9b3c9;
-  --black: #2e2e38;   --black-l: #4d4d5c;  --black-d: #17171d;
+  --red: var(--brick-red);       --red-l: var(--brick-red-light);       --red-d: var(--brick-red-dark);
+  --yellow: var(--brick-yellow); --yellow-l: var(--brick-yellow-light); --yellow-d: var(--brick-yellow-dark);
+  --green: var(--brick-green);   --green-l: var(--brick-green-light);   --green-d: var(--brick-green-dark);
+  --blue: var(--brick-blue);     --blue-l: var(--brick-blue-light);     --blue-d: var(--brick-blue-dark);
+  --purple: var(--brick-purple); --purple-l: var(--brick-purple-light); --purple-d: var(--brick-purple-dark);
+  --orange: var(--brick-orange); --orange-l: var(--brick-orange-light); --orange-d: var(--brick-orange-dark);
+  --pink: var(--brick-pink);     --pink-l: var(--brick-pink-light);     --pink-d: var(--brick-pink-dark);
+  --teal: var(--brick-teal);     --teal-l: var(--brick-teal-light);     --teal-d: var(--brick-teal-dark);
+  --white: var(--brick-white);   --white-l: var(--brick-white-light);   --white-d: var(--brick-white-dark);
+  --black: var(--brick-black);   --black-l: var(--brick-black-light);   --black-d: var(--brick-black-dark);
 }
 
 * { box-sizing: border-box; }
@@ -38,8 +40,10 @@ body {
   margin: 0;
   font-family: var(--font);
   color: var(--ink);
-  background: radial-gradient(120% 80% at 50% 20%, var(--bg-1), var(--bg-2));
-  background-color: var(--bg-2);
+  background: var(--bw-ground);
+  background-color: var(--bw-ground-bottom);
+  background-attachment: fixed;
+  font-synthesis: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
