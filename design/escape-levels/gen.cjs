@@ -35,13 +35,17 @@ function edgeOk(N, map, side, at, len) {
 
 function build(opt, rand) {
   const { N, map } = opt;
-  const raw = pack(N, map, opt.sizes, rand); if (!raw) return null;
   const colors = opt.colors;
-  // every color used at least once
-  const assign = raw.map((_, i) => colors[i % colors.length]).sort(() => rand() - 0.5);
-  const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const bricks = {};
-  raw.forEach((b, i) => { bricks[L[i]] = { color: assign[i], w: b.w, h: b.h, at: [b.r, b.c] }; });
+  if (opt.fixed) {
+    for (const [k, v] of Object.entries(opt.fixed)) bricks[k] = JSON.parse(JSON.stringify(v));
+  } else {
+    const raw = pack(N, map, opt.sizes, rand); if (!raw) return null;
+    // every color used at least once
+    const assign = raw.map((_, i) => colors[i % colors.length]).sort(() => rand() - 0.5);
+    const L = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    raw.forEach((b, i) => { bricks[L[i]] = { color: assign[i], w: b.w, h: b.h, at: [b.r, b.c] }; });
+  }
   // doors: one per color, wide enough for every brick of that color on that side
   const gates = []; const used = {};
   for (const color of colors) {

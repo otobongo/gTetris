@@ -7,4 +7,4 @@ Generator and solver for the Brick Escape boards on the design canvas.
 - `run.cjs <name>` generates one level into `out-<name>.json`. `assemble.cjs` merges them into `design/canvas/Escape.dc.html`.
 - `escape-script.js` is the artboard logic the levels plug into.
 
-Status: levels 1, 5, frozen doors, stone blocks, frozen bricks and one-way bricks are generated. Level 9 and the master mix were still generating when this was saved, so `design/canvas/Escape.dc.html` is mid-update until `assemble.cjs` runs.
+Status: levels 1, 5, frozen doors, stone blocks, frozen bricks, one-way bricks and the master mix are generated (see `out*.json`). Level 9 uses a fixed packed layout with six colors (white, black, blue, yellow, green, red) and still needs its door search run: `SOLVE_LIMIT=150000 node run.cjs 9`, then `node assemble.cjs`. Until then `design/canvas/Escape.dc.html` is mid-update.

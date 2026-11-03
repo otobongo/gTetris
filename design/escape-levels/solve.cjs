@@ -25,7 +25,7 @@ module.exports = function check(levels, onlyKeys) {
       const next = [];
       for (const st of frontier) {
         explored++;
-        if (explored > 400000) break outer;
+        if (explored > (+process.env.SOLVE_LIMIT || 400000)) break outer;
         for (const k of keys) {
           if (st.gone[k]) continue;
           c.state = Object.assign({}, c.state, { pos: st.pos, gone: st.gone });

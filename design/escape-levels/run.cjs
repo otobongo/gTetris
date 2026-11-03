@@ -3,7 +3,13 @@ const fs = require('fs');
 const specs = {
   '1': [{ title: 'Level 1', sub: 'Two colors', N: 4, base: 30, next: '5', colors: ['white', 'black'], sizes: ['s22'], prefer: 'easy' }, [4, 6]],
   '5': [{ title: 'Level 5', sub: 'Three colors, one icy door', N: 6, base: 45, next: '9', colors: ['black', 'white', 'red'], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: 1, maxCount: 2 }, [6, 10]],
-  '9': [{ title: 'Level 9', sub: 'Color locks, one at a time', N: 8, base: 60, colors: ['red', 'yellow', 'green', 'blue', 'purple', 'white', 'black'], sizes: ['s22', 's23', 's32', 's24', 's42', 's44'], colorChain: 2, seedDoors: true, seconds: 300 }, [9, 24]],
+  '9': [{ title: 'Level 9', sub: 'Color locks, one at a time', N: 8, base: 60, colors: ['white', 'black', 'blue', 'yellow', 'green', 'red'], colorChain: 2, seedDoors: true, seconds: 240,
+    fixed: {
+      A: { color: 'white', w: 4, h: 2, at: [0, 0] }, B: { color: 'black', w: 4, h: 2, at: [0, 4] },
+      H: { color: 'blue', w: 3, h: 2, at: [2, 0] }, I: { color: 'blue', w: 3, h: 2, at: [2, 3] }, C: { color: 'white', w: 2, h: 2, at: [2, 6] },
+      D: { color: 'yellow', w: 2, h: 4, at: [4, 0] }, E: { color: 'green', w: 2, h: 2, at: [4, 2] }, F: { color: 'black', w: 2, h: 2, at: [6, 2] },
+      G: { color: 'red', w: 4, h: 4, at: [4, 4] }
+    } }, [9, 24]],
   ice: [{ title: 'Frozen doors', sub: 'Ice hides the door color', N: 6, base: 45, colors: ['yellow', 'white', 'black'], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: 2, maxCount: 3, tip: 'Icy doors melt as bricks leave. The color only shows once it melts!' }, [7, 12]],
   walls: [{ title: 'Stone blocks', sub: 'A shaped tray with stones', N: 8, base: 60, map: ['...##...', '...##...', '...XX...', '...XX...', '........', '........', '...##...', '...##...'], colors: ['pink', 'blue', 'green', 'white'], sizes: ['s22', 's23', 's32'], tip: 'Grey stones never move. Find a way around them.' }, [9, 18]],
   frozen: [{ title: 'Frozen bricks', sub: 'Melt them by clearing others', N: 6, base: 45, colors: ['black', 'white', 'yellow', 'teal'], sizes: ['s22', 's23', 's32', 's24', 's42'], frozen: 2, tip: 'A frozen brick cannot move until its number reaches 0.' }, [7, 12]],
