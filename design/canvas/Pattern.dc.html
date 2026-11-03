@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pattern Train</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 16px;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Pattern Train</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Explore · {{levelName}}</div>
+</div>
+<span></span>
+</div>
+
+<div style="display: flex; gap: 6px;" aria-label="Round {{roundNo}} of 4">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span style="width: 30px; height: 10px; border-radius: 999px; background: {{d.fill}};"></span>
+</sc-for>
+</div>
+
+<p style="margin: 0; font-size: 20px; font-weight: 800; text-align: center;">{{prompt}}</p>
+
+<div style="width: 100%; overflow: hidden; padding: 10px 0 0;">
+<div style="display: flex; align-items: flex-end; gap: 4px; zoom: 0.78; transition: transform 0.8s ease-in; {{trainMove}}">
+<div style="flex-shrink: 0; width: 70px; height: 86px; position: relative;" aria-hidden="true">
+<div style="position: absolute; left: 6px; top: 0; width: 22px; height: 22px; border-radius: 6px 6px 0 0; background: #2e2e38;"></div>
+<div style="position: absolute; left: 0; top: 18px; width: 70px; height: 50px; border-radius: 12px 20px 8px 8px; background: linear-gradient(180deg, #ff7a6e, #f03a3a); box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);"></div>
+<div style="position: absolute; right: 8px; top: 26px; width: 20px; height: 18px; border-radius: 5px; background: #7cc0ff;"></div>
+<div style="position: absolute; left: 6px; bottom: 0; width: 20px; height: 20px; border-radius: 50%; background: #2e2e38;"></div>
+<div style="position: absolute; right: 6px; bottom: 0; width: 20px; height: 20px; border-radius: 50%; background: #2e2e38;"></div>
+</div>
+<sc-for list="{{cars}}" as="car" hint-placeholder-count="5">
+<div style="flex-shrink: 0; width: 56px; height: 86px; position: relative;">
+<div style="position: absolute; left: 0; top: 22px; width: 56px; height: 46px; border-radius: 10px; box-sizing: border-box; display: grid; place-items: center; {{car.box}}">
+<span style="width: 30px; height: 30px; {{car.shape}}"></span>
+</div>
+<div style="position: absolute; left: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
+<div style="position: absolute; right: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
+</div>
+</sc-for>
+</div>
+<div style="height: 6px; margin-top: 2px; border-radius: 3px; background: repeating-linear-gradient(90deg, #8e85d6 0 18px, transparent 18px 26px);"></div>
+</div>
+
+<p style="margin: 0; font-size: 16px; font-weight: 700; color: #c9c2ff; min-height: 22px; text-align: center;">{{help}}</p>
+
+<div style="flex-grow: 1;"></div>
+
+<div style="width: 100%; box-sizing: border-box; padding: 18px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45);">
+<div style="text-align: center; font-size: 15px; font-weight: 800; color: #c9c2ff; margin-bottom: 10px;">Which car comes next?</div>
+<div style="display: flex; justify-content: center; gap: 14px;">
+<sc-for list="{{choices}}" as="ch" hint-placeholder-count="3">
+<button onClick="{{ch.tap}}" aria-label="{{ch.label}}" style="border: 0; cursor: pointer; width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63; transition: transform 0.12s, opacity 0.2s; {{ch.wrap}}">
+<span style="width: 46px; height: 46px; {{ch.shape}}"></span>
+</button>
+</sc-for>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { round: 0, picked: null, wrong: null, leaving: false };
+  }
+  items() {
+    return {
+      rc: { label: 'red circle', css: 'border-radius: 50%; background: #f03a3a;' },
+      bs: { label: 'blue square', css: 'border-radius: 6px; background: #2f8cff;' },
+      yt: { label: 'yellow triangle', css: 'clip-path: polygon(50% 4%, 98% 94%, 2% 94%); background: #ffc21a;' },
+      gs: { label: 'green star', css: 'clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); background: #1fb53c;' },
+      pc: { label: 'pink circle', css: 'border-radius: 50%; background: #ff5fb4;' },
+      bc: { label: 'blue circle', css: 'border-radius: 50%; background: #2f8cff;' }
+    };
+  }
+  rounds() {
+    return [
+      { name: 'AB patterns', seq: ['rc', 'bs', 'rc', 'bs'], answer: 'rc', options: ['yt', 'rc', 'bs'] },
+      { name: 'AB patterns', seq: ['yt', 'gs', 'yt', 'gs'], answer: 'yt', options: ['gs', 'pc', 'yt'] },
+      { name: 'ABC patterns', seq: ['rc', 'bs', 'yt', 'rc', 'bs'], answer: 'yt', options: ['rc', 'yt', 'gs'] },
+      { name: 'Same shape, new color', seq: ['rc', 'bc', 'pc', 'rc', 'bc'], answer: 'pc', options: ['bc', 'pc', 'bs'] }
+    ];
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var I = this.items();
+    var R = this.rounds()[s.round];
+    var solved = s.picked === R.answer;
+    var cars = R.seq.map(function (k) { return { box: 'background: #f1eef7; box-shadow: inset 0 -5px 0 #b9b3c9;', shape: I[k].css }; });
+    cars.push(solved
+      ? { box: 'background: #f1eef7; box-shadow: inset 0 -5px 0 #b9b3c9, 0 0 0 3px #ffc21a;', shape: I[R.answer].css }
+      : { box: 'border: 3px dashed #ffc21a; background: rgba(255,194,26,0.08);', shape: 'border-radius: 50%; background: transparent;' });
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      levelName: R.name,
+      roundNo: s.round + 1,
+      dots: [0, 1, 2, 3].map(function (i) { return { fill: i < s.round ? '#ffc21a' : i === s.round ? '#7cc0ff' : '#1a1246' }; }),
+      prompt: solved ? 'All aboard! The pattern is complete.' : 'Look at the train. What is the pattern?',
+      help: s.wrong ? 'Hmm, say the pattern out loud and try again.' : solved ? 'Choo choo! Next train coming...' : 'Tip: say it out loud, like "circle, square, circle, square..."',
+      trainMove: s.leaving ? 'transform: translateX(420px);' : 'transform: translateX(0);',
+      cars: cars,
+      choices: R.options.map(function (k) {
+        return {
+          label: I[k].label,
+          shape: I[k].css,
+          wrap: s.wrong === k ? 'transform: translateX(-6px) rotate(-5deg); opacity: 0.5;' : solved && k === R.answer ? 'transform: translateY(-6px); box-shadow: 0 0 0 4px #ffc21a, 0 5px 0 #241a63;' : '',
+          tap: function () {
+            if (solved) return;
+            if (k === R.answer) {
+              self.setState({ picked: k, wrong: null });
+              setTimeout(function () { self.setState({ leaving: true }); }, 900);
+              setTimeout(function () { self.setState({ round: (self.state.round + 1) % 4, picked: null, leaving: false }); }, 1800);
+            } else {
+              self.setState({ wrong: k });
+              setTimeout(function () { self.setState({ wrong: null }); }, 500);
+            }
+          }
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

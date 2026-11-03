@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brick Escape</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff; position: relative;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Level 9</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Escape · Think first</div>
+</div>
+<button onClick="{{restart}}" aria-label="Restart level" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
+</button>
+</div>
+
+<div style="width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
+<div style="display: flex; align-items: center; gap: 10px;">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{timerColor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
+<span style="font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;">{{clock}}</span>
+<span style="flex-grow: 1;"></span>
+<span style="font-size: 16px; font-weight: 800;">Moves {{moves}}</span>
+<span style="font-size: 16px; font-weight: 800; color: #ffc21a;">Best 7</span>
+</div>
+<div style="height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
+<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timePct}}%; background: {{timerColor}};"></div>
+</div>
+<div style="font-size: 13px; font-weight: 700; color: #8e85d6;">Maya, age 7: level 9 gets 60s x 1.5 = 1:30 · bricks 2x2 to 4x4</div>
+</div>
+
+<div style="flex-grow: 1; display: grid; place-items: center; width: 100%;">
+<div style="position: relative; width: {{boardPx}}px; height: {{boardPx}}px; touch-action: none;">
+<div style="position: absolute; inset: 0; border-radius: 26px; background: #3a2d8f; box-shadow: 0 8px 0 #241a63, 0 18px 30px rgba(0,0,0,0.35);"></div>
+<div style="position: absolute; left: {{pad}}px; top: {{pad}}px; width: {{gridPx}}px; height: {{gridPx}}px;">
+<sc-for list="{{wells}}" as="w" hint-placeholder-count="16">
+<div style="position: absolute; background: #30257a; box-shadow: inset 0 3px 6px rgba(0,0,0,0.35); {{w.style}}"></div>
+</sc-for>
+<sc-for list="{{gates}}" as="g" hint-placeholder-count="4">
+<div aria-label="{{g.label}}" style="position: absolute; border-radius: 8px; display: grid; place-items: center; {{g.style}}">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.arrow}}"></path></svg>
+</div>
+</sc-for>
+<sc-for list="{{bricks}}" as="b" hint-placeholder-count="4">
+<button aria-label="{{b.label}}" onPointerDown="{{b.down}}" onPointerMove="{{b.move}}" onPointerUp="{{b.up}}" onPointerCancel="{{b.up}}" style="position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: grab; touch-action: none; border-radius: 9px; transition: transform 0.1s ease-out, opacity 0.3s ease-in; {{b.style}}"></button>
+</sc-for>
+</div>
+</div>
+</div>
+
+<p style="margin: 0; text-align: center; font-size: 16px; font-weight: 700; color: #c9c2ff; min-height: 22px;">{{help}}</p>
+
+<div style="display: flex; gap: 18px;">
+<button onClick="{{undo}}" aria-label="Undo" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path></svg>
+</button>
+<button onClick="{{hint}}" aria-label="Hint" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #5a3500; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
+</button>
+</div>
+
+<sc-if value="{{won}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div style="width: 100%; max-width: 340px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
+<div style="font-size: 32px; font-weight: 800; line-height: 1.1;">{{winTitle}}</div>
+<div style="display: flex; justify-content: center; gap: 4px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+</div>
+<div style="font-size: 17px; font-weight: 700; color: #c9c2ff;">{{winText}}</div>
+<div style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
+<button onClick="{{restart}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Replay</button>
+<a href="{{hubHref}}" style="text-decoration: none; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next level</a>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"timeLimit":{"editor":"int","min":20,"max":300,"default":90,"unit":"s"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = this.fresh();
+    this.drag = null;
+  }
+  limit() { return this.props.timeLimit ?? 90; }
+  fresh() {
+    return {
+      pos: { A: [0, 0], B: [0, 4], C: [2, 6], D: [4, 0], E: [4, 2], F: [6, 2], G: [4, 4] },
+      gone: {}, exiting: null, moves: 0, history: [], hintKey: null,
+      tLeft: this.limit(), won: false
+    };
+  }
+  componentDidMount() {
+    var self = this;
+    this.timer = setInterval(function () {
+      if (self.state.won || self.state.tLeft <= 0) return;
+      self.setState({ tLeft: self.state.tLeft - 1 });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  defs() {
+    return {
+      A: { color: 'purple', w: 4, h: 2 }, B: { color: 'orange', w: 3, h: 2 }, C: { color: 'pink', w: 2, h: 2 },
+      D: { color: 'yellow', w: 2, h: 4 }, E: { color: 'green', w: 2, h: 2 }, F: { color: 'blue', w: 2, h: 2 },
+      G: { color: 'red', w: 4, h: 4 }
+    };
+  }
+  gateList() {
+    return [
+      { key: 'B', side: 'right', at: 0, len: 2 }, { key: 'A', side: 'right', at: 2, len: 2 },
+      { key: 'D', side: 'top', at: 0, len: 2 }, { key: 'E', side: 'top', at: 2, len: 2 },
+      { key: 'F', side: 'top', at: 4, len: 2 }, { key: 'C', side: 'top', at: 6, len: 2 },
+      { key: 'G', side: 'left', at: 4, len: 4 }
+    ];
+  }
+  pal() {
+    return {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
+      purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84']
+    };
+  }
+  brick(color, stud) {
+    var p = this.pal()[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    var size = stud ? stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%' : '100% 100%';
+    return 'background: ' + (stud ? studs : '') + base + '; background-size: ' + size + '; ';
+  }
+  occupied(pos, gone, skip) {
+    var defs = this.defs();
+    var grid = {};
+    Object.keys(pos).forEach(function (k) {
+      if (gone[k] || k === skip) return;
+      var d = defs[k];
+      for (var r = 0; r < d.h; r++) for (var c = 0; c < d.w; c++) grid[(pos[k][0] + r) + ',' + (pos[k][1] + c)] = true;
+    });
+    return grid;
+  }
+  fits(k, r, c, pos, gone) {
+    var d = this.defs()[k];
+    if (r < 0 || c < 0 || r + d.h > 8 || c + d.w > 8) return false;
+    var occ = this.occupied(pos, gone, k);
+    for (var i = 0; i < d.h; i++) for (var j = 0; j < d.w; j++) if (occ[(r + i) + ',' + (c + j)]) return false;
+    return true;
+  }
+  /** the side this brick can leave through from (r, c), or null */
+  exitSide(k, r, c) {
+    var d = this.defs()[k];
+    var g = this.gateList().filter(function (x) { return x.key === k; })[0];
+    var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
+    var acrossCols = c >= g.at && c + d.w <= g.at + g.len;
+    if (g.side === 'right' && acrossRows && c + d.w === 8) return 'right';
+    if (g.side === 'left' && acrossRows && c === 0) return 'left';
+    if (g.side === 'bottom' && acrossCols && r + d.h === 8) return 'bottom';
+    if (g.side === 'top' && acrossCols && r === 0) return 'top';
+    return null;
+  }
+  leave(k, side) {
+    var self = this;
+    this.setState({ exiting: { k: k, side: side } });
+    setTimeout(function () {
+      var gone = Object.assign({}, self.state.gone);
+      gone[k] = true;
+      var won = Object.keys(gone).length === 7;
+      self.setState({ gone: gone, exiting: null, won: won });
+    }, 320);
+  }
+  begin(before) {
+    var s = this.state;
+    this.setState({ history: s.history.concat([before]), moves: before.moves + 1, hintKey: null });
+  }
+  step(k, dr, dc) {
+    var s = this.state;
+    var p = s.pos[k];
+    var here = this.exitSide(k, p[0], p[1]);
+    var dirOf = { right: [0, 1], left: [0, -1], bottom: [1, 0], top: [-1, 0] };
+    if (here && dirOf[here][0] === dr && dirOf[here][1] === dc) return 'exit';
+    var nr = p[0] + dr, nc = p[1] + dc;
+    if (!this.fits(k, nr, nc, s.pos, s.gone)) return 'blocked';
+    var pos = Object.assign({}, s.pos);
+    pos[k] = [nr, nc];
+    this.state.pos = pos;
+    this.setState({ pos: pos });
+    return this.exitSide(k, nr, nc) ? 'exit' : 'moved';
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var cell = 38, pad = 22, grid = cell * 8;
+    var defs = this.defs();
+    var limit = this.limit();
+    var mm = Math.floor(Math.max(0, s.tLeft) / 60), ss = Math.max(0, s.tLeft) % 60;
+    var arrows = { right: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', bottom: 'M6 9l6 6 6-6', top: 'M6 15l6-6 6 6' };
+    var p = this.pal();
+    var order = ['B', 'C', 'A', 'E', 'D', 'F', 'G'];
+    var starsWon = s.moves <= 7 ? 3 : s.moves <= 10 ? 2 : 1;
+    var inTime = s.tLeft > 0;
+    var wells = [];
+    for (var r = 0; r < 8; r++) for (var c = 0; c < 8; c++) wells.push({ style: 'left: ' + (c * cell) + 'px; top: ' + (r * cell) + 'px; width: ' + cell + 'px; height: ' + cell + 'px;' });
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      cell: cell, pad: pad, gridPx: grid, boardPx: grid + pad * 2,
+      clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
+      timePct: Math.round((Math.max(0, s.tLeft) / limit) * 100),
+      timerColor: s.tLeft > limit * 0.33 ? '#5fe06e' : s.tLeft > 0 ? '#ffc21a' : '#ff9fd4',
+      moves: s.moves,
+      wells: wells,
+      gates: this.gateList().map(function (g) {
+        var d = defs[g.key];
+        var span = g.len * cell - 8;
+        var st = g.side === 'right'
+          ? 'left: ' + (grid + 2) + 'px; top: ' + (g.at * cell + 4) + 'px; width: ' + (pad - 4) + 'px; height: ' + span + 'px;'
+          : g.side === 'left'
+            ? 'left: ' + (-pad + 2) + 'px; top: ' + (g.at * cell + 4) + 'px; width: ' + (pad - 4) + 'px; height: ' + span + 'px;'
+            : g.side === 'bottom'
+              ? 'left: ' + (g.at * cell + 4) + 'px; top: ' + (grid + 2) + 'px; width: ' + span + 'px; height: ' + (pad - 4) + 'px;'
+              : 'left: ' + (g.at * cell + 4) + 'px; top: ' + (-pad + 2) + 'px; width: ' + span + 'px; height: ' + (pad - 4) + 'px;';
+        return { label: d.color + ' door', arrow: arrows[g.side], style: st + ' ' + self.brick(d.color, 0) };
+      }),
+      bricks: Object.keys(defs).filter(function (k) { return !s.gone[k]; }).map(function (k) {
+        var d = defs[k];
+        var pos = s.pos[k];
+        var x = pos[1] * cell + 2, y = pos[0] * cell + 2;
+        var ex = s.exiting && s.exiting.k === k ? s.exiting.side : null;
+        if (ex === 'right') x += (d.w + 0.6) * cell;
+        if (ex === 'left') x -= (d.w + 0.6) * cell;
+        if (ex === 'bottom') y += (d.h + 0.6) * cell;
+        if (ex === 'top') y -= (d.h + 0.6) * cell;
+        var glow = s.hintKey === k ? ' box-shadow: 0 0 0 4px #ffffff, 0 0 22px #ffffff;' : ' box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22), 0 3px 0 rgba(0,0,0,0.25);';
+        return {
+          label: d.color + ' brick',
+          style: 'width: ' + (d.w * cell - 4) + 'px; height: ' + (d.h * cell - 4) + 'px; transform: translate(' + x + 'px, ' + y + 'px); opacity: ' + (ex ? 0 : 1) + '; ' + self.brick(d.color, cell / 2) + 'background-position: -2px -2px;' + glow,
+          down: function (e) {
+            if (s.won || s.exiting) return;
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+            var rect = e.currentTarget.getBoundingClientRect();
+            self.drag = { k: k, id: e.pointerId, x0: e.clientX, y0: e.clientY, start: self.state.pos[k], before: { pos: self.state.pos, gone: self.state.gone, moves: self.state.moves }, unit: rect.width / (d.w - 4 / cell), moved: false };
+          },
+          move: function (e) {
+            var dg = self.drag;
+            if (!dg || dg.id !== e.pointerId) return;
+            var tr = dg.start[0] + Math.round((e.clientY - dg.y0) / dg.unit);
+            var tc = dg.start[1] + Math.round((e.clientX - dg.x0) / dg.unit);
+            for (var guard = 0; guard < 8; guard++) {
+              var cp = self.state.pos[dg.k];
+              var ry = tr - cp[0], rx = tc - cp[1];
+              if (!ry && !rx) return;
+              var tries = Math.abs(ry) >= Math.abs(rx) ? [[Math.sign(ry), 0], [0, Math.sign(rx)]] : [[0, Math.sign(rx)], [Math.sign(ry), 0]];
+              var progressed = false;
+              for (var i = 0; i < tries.length; i++) {
+                if (!tries[i][0] && !tries[i][1]) continue;
+                var res = self.step(dg.k, tries[i][0], tries[i][1]);
+                if (res === 'blocked') continue;
+                if (!dg.moved) { dg.moved = true; self.begin(dg.before); }
+                if (res === 'exit') {
+                  self.drag = null;
+                  var np = self.state.pos[dg.k];
+                  self.leave(dg.k, self.exitSide(dg.k, np[0], np[1]));
+                  return;
+                }
+                progressed = true;
+                break;
+              }
+              if (!progressed) return;
+            }
+          },
+          up: function () { self.drag = null; }
+        };
+      }),
+      help: s.tLeft <= 0 && !s.won ? "Time's up! Keep going, you can still finish." : s.hintKey ? 'Try the glowing brick first.' : 'Drag each brick to the door of its color.',
+      undo: function () {
+        if (!s.history.length || s.exiting) return;
+        var last = s.history[s.history.length - 1];
+        self.setState({ pos: last.pos, gone: last.gone, moves: last.moves, history: s.history.slice(0, -1), hintKey: null });
+      },
+      hint: function () {
+        var next = order.filter(function (k) { return !s.gone[k]; })[0];
+        self.setState({ hintKey: next || null });
+      },
+      restart: function () { self.drag = null; self.setState(self.fresh()); },
+      won: s.won,
+      winTitle: starsWon === 3 ? 'Brilliant!' : 'Great job!',
+      stars: [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      winText: s.moves + ' moves' + (inTime ? ', with time to spare!' : '. Next time, try to beat the clock!')
+    };
+  }
+}
+</script>
+</body>
+</html>

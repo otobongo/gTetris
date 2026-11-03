@@ -70,9 +70,10 @@ describe('levels', () => {
   }, 120_000);
 
   it('difficulty never drops sharply as levels go on', () => {
-    for (let i = 1; i < LEVELS.length; i++) {
-      // teaching levels for a new mechanic may be easier than the level before them, but not by much
-      expect(LEVELS[i].par, `level ${i + 1}`).toBeGreaterThanOrEqual(LEVELS[i - 1].par - 6);
+    // teaching levels (the ones with a tip) are easy on purpose, so compare the regular levels only
+    const regular = LEVELS.filter((l) => !l.tip);
+    for (let i = 1; i < regular.length; i++) {
+      expect(regular[i].par, `level ${regular[i].id}`).toBeGreaterThanOrEqual(regular[i - 1].par - 3);
     }
   });
 });

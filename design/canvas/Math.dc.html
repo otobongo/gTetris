@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brick Calculator</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Brick Calculator</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Explore · Add and take away</div>
+</div>
+<button onClick="{{speak}}" aria-label="Say it" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</div>
+
+<div style="width: 100%; box-sizing: border-box; padding: 10px 18px; border-radius: 22px; background: #121034; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6), 0 0 0 4px #3a2d8f; display: flex; flex-direction: column; align-items: flex-end;">
+<div style="font-size: 15px; font-weight: 700; color: #8e85d6; min-height: 20px;">{{note}}</div>
+<div style="display: flex; align-items: baseline; gap: 10px; font-size: 46px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;">
+<span style="color: #7cc0ff;">{{aText}}</span>
+<span style="color: #c9c2ff;">{{opText}}</span>
+<span style="color: #ffab5e;">{{bText}}</span>
+<span style="color: #c9c2ff;">{{eqText}}</span>
+<span style="color: #ffe266;">{{rText}}</span>
+</div>
+</div>
+
+<div style="width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border-radius: 22px; background: #30257a;">
+<sc-for list="{{frames}}" as="f" hint-placeholder-count="2">
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 6px; border-radius: 14px; background: #1d1550;">
+<sc-for list="{{f.cells}}" as="c" hint-placeholder-count="10">
+<span style="position: relative; height: 30px; border-radius: 7px; transition: opacity 0.3s, transform 0.3s; {{c.style}}"></span>
+</sc-for>
+</div>
+</sc-for>
+<div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; color: #c9c2ff;">
+<span>Each row holds 5. Two rows make 10.</span>
+<span style="color: #ffe266;">{{countText}}</span>
+</div>
+</div>
+
+<div style="width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: auto;">
+<sc-for list="{{keys}}" as="k" hint-placeholder-count="16">
+<button onClick="{{k.press}}" aria-label="{{k.label}}" style="border: 0; cursor: pointer; font-family: inherit; height: 60px; border-radius: 18px; font-size: 30px; font-weight: 800; transition: transform 0.08s; {{k.style}}">{{k.t}}</button>
+</sc-for>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { a: '3', op: '+', b: '4', done: true, note: '3 plus 4 makes 7' };
+  }
+  stud(c1, c0, c2) {
+    return 'background: radial-gradient(circle at 46% 42%, ' + c1 + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + c0 + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), linear-gradient(160deg, ' + c1 + ' -30%, ' + c0 + ' 45%, ' + c2 + ' 140%); background-size: 50% 100%, 50% 100%, 50% 100%, 100% 100%; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  calc(s) {
+    var a = Number(s.a || 0), b = Number(s.b || 0);
+    return s.op === '-' ? a - b : a + b;
+  }
+  say(text) {
+    try { var u = new SpeechSynthesisUtterance(text); u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+  words(s) {
+    var r = this.calc(s);
+    return s.a + (s.op === '-' ? ' take away ' : ' plus ') + s.b + ' makes ' + r;
+  }
+  press(t) {
+    var s = this.state;
+    if (t === '?') {
+      var x = 1 + Math.floor(Math.random() * 9);
+      var minus = Math.random() < 0.4;
+      var y = minus ? 1 + Math.floor(Math.random() * x) : 1 + Math.floor(Math.random() * (10 - x));
+      this.setState({ a: String(x), op: minus ? '-' : '+', b: String(y), done: false, note: 'Count the bricks, then press =' });
+      return;
+    }
+    if (t === 'C') { this.setState({ a: '', op: null, b: '', done: false, note: 'Pick a number up to 10' }); return; }
+    if (t === '+' || t === '-') {
+      if (s.done) { this.setState({ a: String(this.calc(s)), op: t, b: '', done: false, note: '' }); return; }
+      if (s.a === '') return;
+      this.setState({ op: t, note: '' });
+      return;
+    }
+    if (t === '=') {
+      if (s.a === '' || !s.op || s.b === '') return;
+      if (s.op === '-' && Number(s.b) > Number(s.a)) { this.setState({ note: 'Try taking away a smaller number' }); return; }
+      var w = this.words(s);
+      this.setState({ done: true, note: w });
+      this.say(w);
+      return;
+    }
+    // a digit: keep each number at 10 or less so the bricks fit two frames
+    var field = s.done ? 'a' : s.op ? 'b' : 'a';
+    var cur = s.done ? '' : s[field];
+    var next = cur === '0' ? t : cur + t;
+    if (Number(next) > 10) { this.setState({ note: 'Numbers up to 10 for now' }); return; }
+    var upd = { done: false, note: '' };
+    if (s.done) { upd.op = null; upd.b = ''; }
+    upd[field] = next;
+    this.setState(upd);
+    this.say(t);
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var a = Number(s.a || 0), b = Number(s.b || 0);
+    var minus = s.op === '-';
+    var cells = [];
+    for (var i = 0; i < 20; i++) {
+      var style;
+      if (i < a) {
+        var takenAway = minus && s.b !== '' && i >= a - b;
+        style = this.stud('#7cc0ff', '#2f8cff', '#1557c4') + (takenAway ? ' opacity: 0.25; transform: scale(0.8) rotate(-8deg);' : '');
+      } else if (!minus && i < a + b) {
+        style = this.stud('#ffab5e', '#ff7a1a', '#c4500a');
+      } else {
+        style = 'border: 2px dashed #3a2d8f; box-sizing: border-box;';
+      }
+      cells.push({ style: style });
+    }
+    var r = this.calc(s);
+    var key = function (t, kind, label) {
+      var st = kind === 'op' ? 'background: linear-gradient(180deg, #ffe266, #ffc21a); color: #5a3500; box-shadow: 0 5px 0 #d48a00;'
+        : kind === 'eq' ? 'background: linear-gradient(180deg, #5fe06e, #1fb53c); color: #ffffff; box-shadow: 0 5px 0 #0f7a26;'
+        : kind === 'clr' ? 'background: linear-gradient(180deg, #ff9fd4, #ff5fb4); color: #ffffff; box-shadow: 0 5px 0 #c72f84;'
+        : kind === 'rand' ? 'background: linear-gradient(180deg, #6aeee4, #14c8c0); color: #ffffff; box-shadow: 0 5px 0 #0b8c87;'
+        : 'background: linear-gradient(180deg, #5444b8, #3a2d8f); color: #ffffff; box-shadow: 0 5px 0 #241a63;';
+      return { t: t === '-' ? '−' : t, label: label || t, style: st, press: function () { self.press(t); } };
+    };
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      note: s.note,
+      aText: s.a === '' ? '?' : s.a,
+      opText: s.op ? (s.op === '-' ? '−' : '+') : '',
+      bText: s.op ? (s.b === '' ? '?' : s.b) : '',
+      eqText: s.done ? '=' : '',
+      rText: s.done ? String(r) : '',
+      countText: s.done ? 'Count them: ' + r : '',
+      frames: [{ cells: cells.slice(0, 10) }, { cells: cells.slice(10, 20) }],
+      speak: function () { if (s.done) self.say(self.words(s)); },
+      keys: [
+        key('7'), key('8'), key('9'), key('-', 'op', 'take away'),
+        key('4'), key('5'), key('6'), key('+', 'op', 'plus'),
+        key('1'), key('2'), key('3'), key('=', 'eq', 'equals'),
+        key('C', 'clr', 'clear'), key('0'), key('10', 'num', 'ten'), key('?', 'rand', 'surprise problem')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

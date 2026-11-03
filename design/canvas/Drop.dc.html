@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brick Drop</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Stage 4</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Drop · Squares and sticks</div>
+</div>
+<button onClick="{{togglePause}}" aria-label="{{pauseLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<sc-if value="{{paused}}" hint-placeholder-val="{{ false }}">
+<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
+</sc-if>
+<sc-if value="{{running}}" hint-placeholder-val="{{ true }}">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14M15 5v14"></path></svg>
+</sc-if>
+</button>
+</div>
+
+<div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{timerColor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
+<span style="font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums;">{{clock}}</span>
+<div style="flex-grow: 1; height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
+<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timePct}}%; background: {{timerColor}};"></div>
+</div>
+<span style="font-size: 15px; font-weight: 800; color: #c9c2ff;">age 7 speed</span>
+</div>
+
+<div style="display: flex; gap: 12px; align-items: flex-start; flex-grow: 1;">
+<button onClick="{{turn}}" aria-label="Board, tap to turn the brick" style="border: 0; padding: 8px; cursor: pointer; border-radius: 20px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px #3a2d8f; touch-action: none;">
+<div style="position: relative; width: {{bw}}px; height: {{bh}}px; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: {{cell}}px {{cell}}px;">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="20">
+<span style="position: absolute; border-radius: 5px; transition: opacity 0.2s; {{c.style}}"></span>
+</sc-for>
+</div>
+</button>
+<div style="display: flex; flex-direction: column; gap: 10px; width: 86px;">
+<div style="padding: 8px; border-radius: 16px; background: #30257a; text-align: center;">
+<div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">NEXT</div>
+<div style="position: relative; height: 54px;">
+<sc-for list="{{nextCells}}" as="c" hint-placeholder-count="4">
+<span style="position: absolute; border-radius: 4px; {{c.style}}"></span>
+</sc-for>
+</div>
+</div>
+<div style="padding: 8px; border-radius: 16px; background: #30257a; text-align: center;">
+<div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">ROWS</div>
+<div style="font-size: 30px; font-weight: 800; line-height: 1.1;">{{rows}}<span style="font-size: 16px; color: #c9c2ff;">/6</span></div>
+</div>
+<div style="padding: 8px; border-radius: 16px; background: #30257a; text-align: center;">
+<div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">TIP</div>
+<div style="font-size: 13px; font-weight: 700; line-height: 1.2;">The dotted bricks show where it lands.</div>
+</div>
+</div>
+</div>
+
+<div style="width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+<button onClick="{{left}}" aria-label="Move left" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Left</button>
+<button onClick="{{turn}}" aria-label="Turn" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7"></path><path d="M20 4v5h-5"></path></svg>Turn</button>
+<button onClick="{{right}}" aria-label="Move right" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>Right</button>
+<button onClick="{{down}}" aria-label="Move down" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>Down</button>
+<button onClick="{{drop}}" aria-label="Drop" style="grid-column: span 2; border: 0; cursor: pointer; font-family: inherit; color: #5a3500; height: 62px; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 800; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"></path><path d="M6 12l6 6 6-6"></path></svg>Drop it</button>
+</div>
+
+<sc-if value="{{flash}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 40px; font-weight: 800; color: #ffe266; text-shadow: 0 4px 0 #6624c9, 0 0 30px rgba(255,226,102,0.6); pointer-events: none;">{{flashText}}</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = this.fresh();
+  }
+  fresh() {
+    // rows 9 to 11 are pre-built: a turned T fills the gap and clears two rows
+    var stack = {};
+    var COLS = 8;
+    for (var c = 0; c < COLS; c++) {
+      if (c !== 4) stack['11,' + c] = c % 2 ? 'blue' : 'teal';
+      if (c < 3 || c > 5) stack['10,' + c] = c % 2 ? 'orange' : 'yellow';
+    }
+    stack['9,0'] = 'pink'; stack['9,7'] = 'pink';
+    return { stack: stack, kind: 'T', rot: 0, r: 0, c: 2, queue: ['O', 'I', 'L', 'T', 'S'], rows: 0, tLeft: 120, paused: false, flash: 0 };
+  }
+  shapes() {
+    return {
+      T: { n: 3, color: 'purple', cells: [[0, 1], [1, 0], [1, 1], [1, 2]] },
+      O: { n: 2, color: 'yellow', cells: [[0, 0], [0, 1], [1, 0], [1, 1]] },
+      I: { n: 4, color: 'red', cells: [[1, 0], [1, 1], [1, 2], [1, 3]] },
+      L: { n: 3, color: 'green', cells: [[0, 2], [1, 0], [1, 1], [1, 2]] },
+      S: { n: 3, color: 'orange', cells: [[0, 1], [0, 2], [1, 0], [1, 1]] }
+    };
+  }
+  cellsOf(kind, rot) {
+    var sh = this.shapes()[kind];
+    var cells = sh.cells.map(function (x) { return [x[0], x[1]]; });
+    for (var i = 0; i < rot % 4; i++) cells = cells.map(function (x) { return [x[1], sh.n - 1 - x[0]]; });
+    return cells;
+  }
+  fits(kind, rot, r, c, stack) {
+    var cells = this.cellsOf(kind, rot);
+    for (var i = 0; i < cells.length; i++) {
+      var rr = r + cells[i][0], cc = c + cells[i][1];
+      if (cc < 0 || cc >= 8 || rr >= 12) return false;
+      if (rr >= 0 && stack[rr + ',' + cc]) return false;
+    }
+    return true;
+  }
+  componentDidMount() {
+    var self = this;
+    this.tick = setInterval(function () { if (!self.state.paused) self.fall(); }, 900);
+    this.clockT = setInterval(function () {
+      if (!self.state.paused && self.state.tLeft > 0) self.setState({ tLeft: self.state.tLeft - 1 });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.tick); clearInterval(this.clockT); }
+  tryMove(dr, dc, drot) {
+    var s = this.state;
+    var rot = (s.rot + (drot || 0)) % 4;
+    var kicks = drot ? [0, -1, 1, -2, 2] : [0];
+    for (var i = 0; i < kicks.length; i++) {
+      if (this.fits(s.kind, rot, s.r + dr, s.c + dc + kicks[i], s.stack)) {
+        this.setState({ r: s.r + dr, c: s.c + dc + kicks[i], rot: rot });
+        return true;
+      }
+    }
+    return false;
+  }
+  fall() { if (!this.tryMove(1, 0, 0)) this.lock(this.state.r); }
+  lock(atRow) {
+    var s = this.state;
+    var stack = Object.assign({}, s.stack);
+    var color = this.shapes()[s.kind].color;
+    this.cellsOf(s.kind, s.rot).forEach(function (x) { stack[(atRow + x[0]) + ',' + (s.c + x[1])] = color; });
+    var full = [];
+    for (var r = 0; r < 12; r++) {
+      var n = 0;
+      for (var c = 0; c < 8; c++) if (stack[r + ',' + c]) n++;
+      if (n === 8) full.push(r);
+    }
+    if (full.length) {
+      var next = {};
+      Object.keys(stack).forEach(function (k) {
+        var rc = k.split(',').map(Number);
+        if (full.indexOf(rc[0]) >= 0) return;
+        var shift = full.filter(function (fr) { return fr > rc[0]; }).length;
+        next[(rc[0] + shift) + ',' + rc[1]] = stack[k];
+      });
+      stack = next;
+    }
+    var queue = s.queue.slice();
+    var kind = queue.shift();
+    queue.push(s.kind);
+    var self = this;
+    if (!this.fits(kind, 0, 0, 2, stack)) { this.setState(this.fresh()); return; }
+    this.setState({ stack: stack, kind: kind, rot: 0, r: 0, c: 2, queue: queue, rows: Math.min(6, s.rows + full.length), flash: full.length });
+    if (full.length) setTimeout(function () { self.setState({ flash: 0 }); }, 900);
+  }
+  ghostRow() {
+    var s = this.state;
+    var r = s.r;
+    while (this.fits(s.kind, s.rot, r + 1, s.c, s.stack)) r++;
+    return r;
+  }
+  pal() {
+    return {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
+      purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84'], teal: ['#14c8c0', '#6aeee4', '#0b8c87']
+    };
+  }
+  brick(color, stud) {
+    var p = this.pal()[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    return 'background: ' + studs + base + '; background-size: ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var cell = 30;
+    var box = function (r, c, size, extra) { return 'left: ' + (c * size + 1) + 'px; top: ' + (r * size + 1) + 'px; width: ' + (size - 2) + 'px; height: ' + (size - 2) + 'px; ' + extra; };
+    var cells = [];
+    Object.keys(s.stack).forEach(function (k) {
+      var rc = k.split(',').map(Number);
+      cells.push({ style: box(rc[0], rc[1], cell, self.brick(s.stack[k], cell / 2)) });
+    });
+    var color = this.shapes()[s.kind].color;
+    var gr = this.ghostRow();
+    var p = this.pal()[color];
+    this.cellsOf(s.kind, s.rot).forEach(function (x) {
+      if (gr + x[0] >= 0) cells.push({ style: box(gr + x[0], s.c + x[1], cell, 'border: 3px dashed ' + p[1] + '; box-sizing: border-box; background: rgba(255,255,255,0.06);') });
+    });
+    this.cellsOf(s.kind, s.rot).forEach(function (x) {
+      if (s.r + x[0] >= 0) cells.push({ style: box(s.r + x[0], s.c + x[1], cell, self.brick(color, cell / 2)) });
+    });
+    var nk = s.queue[0];
+    var ns = this.shapes()[nk];
+    var nextCells = this.cellsOf(nk, 0).map(function (x) {
+      return { style: 'left: ' + (8 + x[1] * 18) + 'px; top: ' + (6 + x[0] * 18) + 'px; width: 16px; height: 16px; ' + self.brick(ns.color, 8) };
+    });
+    var mm = Math.floor(s.tLeft / 60), ss = s.tLeft % 60;
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      cell: cell, bw: cell * 8, bh: cell * 12,
+      cells: cells, nextCells: nextCells, rows: s.rows,
+      clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
+      timePct: Math.round((s.tLeft / 120) * 100),
+      timerColor: s.tLeft > 40 ? '#5fe06e' : '#ffc21a',
+      paused: s.paused, running: !s.paused, pauseLabel: s.paused ? 'Resume' : 'Pause',
+      togglePause: function () { self.setState({ paused: !s.paused }); },
+      flash: s.flash > 0, flashText: s.flash > 1 ? 'Double rows!' : 'Nice row!',
+      left: function () { self.tryMove(0, -1, 0); },
+      right: function () { self.tryMove(0, 1, 0); },
+      down: function () { self.tryMove(1, 0, 0); },
+      turn: function () { self.tryMove(0, 0, 1); },
+      drop: function () { self.lock(self.ghostRow()); }
+    };
+  }
+}
+</script>
+</body>
+</html>

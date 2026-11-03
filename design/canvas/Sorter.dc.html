@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shape Sorter</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Shape Sorter</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Explore · Level 2 of 12</div>
+</div>
+<button onClick="{{reset}}" aria-label="Start over" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
+</button>
+</div>
+
+<p style="margin: 0; font-size: 18px; font-weight: 800; text-align: center; transition: color 0.2s; color: {{promptColor}};">{{prompt}}</p>
+
+<div style="width: 100%; box-sizing: border-box; padding: 18px; border-radius: 30px; background: linear-gradient(180deg, #ff9a3d, #ff7a1a); box-shadow: inset 0 3px 0 rgba(255,255,255,0.35), 0 8px 0 #c4500a;">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; justify-items: center;">
+<sc-for list="{{holes}}" as="h" hint-placeholder-count="5">
+<button onClick="{{h.tap}}" data-hole="{{h.key}}" aria-label="{{h.label}}" style="border: 0; padding: 0; cursor: pointer; width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; transition: transform 0.07s, box-shadow 0.2s, background 0.2s; {{h.wrap}}">
+<span style="width: 70px; height: 70px; transition: background 0.25s; {{h.style}}"></span>
+</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 16px; border-radius: 18px; background: #30257a;">
+<span style="width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: #ffc21a; color: #5a3500; font-size: 22px; font-weight: 800;">{{sides}}</span>
+<span style="font-size: 16px; font-weight: 700; line-height: 1.2;">{{fact}}</span>
+</div>
+
+<div style="flex-grow: 1;"></div>
+
+<div style="width: 100%; box-sizing: border-box; padding: 18px 10px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; min-height: 112px;">
+<sc-for list="{{tray}}" as="t" hint-placeholder-count="5">
+<button onClick="{{t.tap}}" onPointerDown="{{t.down}}" onPointerMove="{{t.move}}" onPointerUp="{{t.up}}" onPointerCancel="{{t.cancel}}" aria-label="{{t.label}}" aria-pressed="{{t.on}}" style="position: relative; border: 0; padding: 0; cursor: grab; touch-action: none; width: 64px; height: 76px; display: grid; place-items: center; background: transparent; {{t.wrap}}">
+<span style="width: 58px; height: 58px; {{t.style}}"></span>
+</button>
+</sc-for>
+<sc-if value="{{allDone}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+<span style="font-size: 24px; font-weight: 800;">All sorted!</span>
+<button onClick="{{reset}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 8px 22px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Next: turned shapes</button>
+</div>
+</sc-if>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: null, placed: {}, wrongHole: null, shake: 0, last: null, drag: null, bounce: null, oops: null };
+    this.justDragged = false;
+  }
+  shapes() {
+    return {
+      circle: { name: 'circle', sides: 0, color: '#ff5fb4', clip: 'border-radius: 50%;', fact: 'A circle is round. It has no corners at all!' },
+      square: { name: 'square', sides: 4, color: '#2f8cff', clip: 'border-radius: 6px;', fact: 'A square has 4 sides, all the same length.' },
+      triangle: { name: 'triangle', sides: 3, color: '#ffc21a', clip: 'clip-path: polygon(50% 4%, 98% 94%, 2% 94%);', fact: 'A triangle has 3 sides and 3 corners.' },
+      star: { name: 'star', sides: 10, color: '#1fb53c', clip: 'clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);', fact: 'A star has 5 points. Count them!' },
+      hexagon: { name: 'hexagon', sides: 6, color: '#9b4dff', clip: 'clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);', fact: 'A hexagon has 6 sides, like a honeycomb cell.' }
+    };
+  }
+  say(text) {
+    try { var u = new SpeechSynthesisUtterance(text); u.rate = 0.85; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
+  }
+  /** shape k was dropped on (or tapped into) hole h */
+  tryPlace(k, h) {
+    var self = this;
+    var S = this.shapes();
+    if (k === h) {
+      var placed = Object.assign({}, this.state.placed);
+      placed[h] = true;
+      this.setState({ placed: placed, picked: null, last: h, drag: null, oops: null });
+      this.say(S[h].name);
+      return;
+    }
+    // wrong hole: the hole shakes and flashes red, the shape bounces back to the tray
+    this.setState({ wrongHole: h, drag: null, picked: null, bounce: k, oops: 'Oops! That hole is for a ' + S[h].name + '.' });
+    [-9, 9, -6, 6, -3, 0].forEach(function (x, i) {
+      setTimeout(function () { self.setState({ shake: x }); }, i * 70);
+    });
+    setTimeout(function () { self.setState({ wrongHole: null, bounce: null }); }, 650);
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var Z = tablet ? 1.4 : 1;
+    var S = this.shapes();
+    var holeOrder = ['star', 'circle', 'hexagon', 'square', 'triangle'];
+    var trayOrder = ['triangle', 'hexagon', 'circle', 'star', 'square'];
+    var last = s.last ? S[s.last] : null;
+    var left = trayOrder.filter(function (k) { return !s.placed[k]; });
+    var dragging = s.drag && s.drag.moved ? s.drag.k : null;
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: Z, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      prompt: s.oops ? s.oops : dragging ? 'Drop the ' + S[dragging].name + ' in its hole!' : s.picked ? 'Where does the ' + S[s.picked].name + ' go?' : left.length ? 'Drag each shape into its hole.' : 'You sorted every shape!',
+      promptColor: s.oops ? '#ff9fd4' : '#ffffff',
+      sides: last ? (last.name === 'star' ? 5 : last.sides) : '?',
+      fact: last ? last.fact : 'Every shape has a home. Look at the corners!',
+      allDone: left.length === 0,
+      holes: holeOrder.map(function (k) {
+        var sh = S[k];
+        var filled = !!s.placed[k];
+        var wrong = s.wrongHole === k;
+        return {
+          key: k,
+          label: filled ? sh.name + ' hole, filled' : sh.name + ' hole',
+          wrap: wrong
+            ? 'transform: translateX(' + s.shake + 'px); background: rgba(255,77,94,0.35); box-shadow: 0 0 0 4px #ff4d5e;'
+            : filled ? 'background: rgba(0,0,0,0.12); box-shadow: 0 0 0 3px rgba(255,255,255,0.6);' : 'background: rgba(0,0,0,0.12);',
+          style: sh.clip + (filled ? ' background: ' + sh.color + '; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2);' : ' background: #6e2d07;'),
+          tap: function () {
+            if (!s.picked || filled) return;
+            self.tryPlace(s.picked, k);
+          }
+        };
+      }),
+      tray: left.map(function (k, i) {
+        var sh = S[k];
+        var on = s.picked === k;
+        var isDrag = dragging === k;
+        var wrap;
+        if (isDrag) wrap = 'z-index: 20; transition: none; transform: translate(' + (s.drag.dx / Z) + 'px, ' + (s.drag.dy / Z) + 'px) scale(1.18); cursor: grabbing;';
+        else if (s.bounce === k) wrap = 'z-index: 10; transition: transform 0.45s cubic-bezier(0.3, 1.8, 0.5, 1); transform: scale(1.15) rotate(-10deg);';
+        else wrap = 'transition: transform 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); transform: ' + (on ? 'translateY(-12px) scale(1.12)' : 'rotate(' + (i % 2 ? 8 : -8) + 'deg)') + ';';
+        return {
+          label: sh.name, on: on, wrap: wrap,
+          style: sh.clip + ' background: ' + sh.color + '; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2), inset 0 4px 0 rgba(255,255,255,0.3);' + (on || isDrag ? ' filter: drop-shadow(0 6px 10px rgba(0,0,0,0.45));' : ''),
+          down: function (e) {
+            try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+            self.setState({ drag: { k: k, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false }, oops: null });
+          },
+          move: function (e) {
+            var d = self.state.drag;
+            if (!d || d.id !== e.pointerId) return;
+            var dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+            var moved = d.moved || Math.abs(dx) + Math.abs(dy) > 8;
+            self.setState({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: moved }) });
+          },
+          up: function (e) {
+            var d = self.state.drag;
+            if (!d || d.id !== e.pointerId) return;
+            if (!d.moved) { self.setState({ drag: null }); return; }
+            self.justDragged = true;
+            var el = e.currentTarget;
+            var prev = el.style.visibility;
+            el.style.visibility = 'hidden';
+            var hit = document.elementFromPoint(e.clientX, e.clientY);
+            el.style.visibility = prev;
+            var hole = hit && hit.closest ? hit.closest('[data-hole]') : null;
+            var h = hole ? hole.getAttribute('data-hole') : null;
+            if (h && !s.placed[h]) self.tryPlace(k, h);
+            else self.setState({ drag: null, bounce: k });
+            if (!h || s.placed[h]) setTimeout(function () { self.setState({ bounce: null }); }, 450);
+          },
+          cancel: function () { self.setState({ drag: null }); },
+          tap: function () {
+            if (self.justDragged) { self.justDragged = false; return; }
+            self.setState({ picked: on ? null : k, oops: null });
+          }
+        };
+      }),
+      reset: function () { self.setState({ picked: null, placed: {}, wrongHole: null, last: null, drag: null, bounce: null, oops: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

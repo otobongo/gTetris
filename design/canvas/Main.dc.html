@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Who's playing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 28px 16px 24px; display: flex; flex-direction: column; gap: 18px;">
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+<div style="display: flex; gap: 4px;" aria-hidden="true">
+<sc-for list="{{logo}}" as="b" hint-placeholder-count="4">
+<span style="width: 26px; height: 26px; border-radius: 6px; {{b.style}}"></span>
+</sc-for>
+</div>
+<h1 style="margin: 0; font-size: 40px; line-height: 1; font-weight: 800; text-shadow: 0 4px 0 #241a63;">Brickwise</h1>
+</div>
+
+<sc-if value="{{picking}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; flex-direction: column; gap: 16px; flex-grow: 1;">
+<h2 style="margin: 0; font-size: 28px; font-weight: 800; text-align: center;">Who's playing?</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+<sc-for list="{{players}}" as="p" hint-placeholder-count="2">
+<button onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; padding: 18px 10px 14px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(180deg, #5444b8, #3a2d8f); transition: box-shadow 0.15s, transform 0.15s; {{p.ring}}">
+<span style="width: 76px; height: 76px; border-radius: 22px; display: grid; place-items: center; font-size: 38px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{p.face}}">{{p.initial}}</span>
+<span style="font-size: 22px; font-weight: 800; line-height: 1.1;">{{p.label}}</span>
+<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Age {{p.age}} · {{p.stars}} stars</span>
+</button>
+</sc-for>
+<button onClick="{{startAdd}}" style="border: 3px dashed #6d5fd0; cursor: pointer; font-family: inherit; color: #c9c2ff; padding: 18px 10px 14px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: transparent; min-height: 170px;">
+<span style="width: 60px; height: 60px; border-radius: 20px; display: grid; place-items: center; background: #30257a;">
+<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+</span>
+<span style="font-size: 19px; font-weight: 800;">Add a player</span>
+</button>
+</div>
+<div style="flex-grow: 1;"></div>
+<p style="margin: 0; text-align: center; font-size: 15px; font-weight: 600; color: #c9c2ff;">Each player keeps their own stars, levels and timer.</p>
+<a href="{{hubHref}}" style="display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #ffffff; font-size: 24px; font-weight: 800; padding: 16px; border-radius: 20px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 6px 0 #0f7a26;">
+Play as {{current}}
+<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
+</a>
+</div>
+</sc-if>
+
+<sc-if value="{{adding}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 14px; flex-grow: 1;">
+<h2 style="margin: 0; font-size: 28px; font-weight: 800; text-align: center;">New player</h2>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="pname" style="font-size: 17px; font-weight: 800; color: #c9c2ff;">Your name</label>
+<input id="pname" value="{{newName}}" onChange="{{setName}}" placeholder="Type a name" style="font-family: inherit; font-size: 22px; font-weight: 700; padding: 12px 16px; border-radius: 16px; border: 0; background: #30257a; color: #ffffff; box-shadow: inset 0 3px 6px rgba(0,0,0,0.35); outline: none;">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 17px; font-weight: 800; color: #c9c2ff;">How old are you?</span>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+<sc-for list="{{ages}}" as="a" hint-placeholder-count="8">
+<button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Age {{a.n}}" style="border: 0; cursor: pointer; font-family: inherit; height: 58px; border-radius: 16px; font-size: 28px; font-weight: 800; transition: transform 0.12s; {{a.style}}">{{a.n}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 17px; font-weight: 800; color: #c9c2ff;">Pick your brick color</span>
+<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+<sc-for list="{{swatches}}" as="s" hint-placeholder-count="6">
+<button onClick="{{s.pick}}" aria-pressed="{{s.on}}" aria-label="{{s.color}}" style="border: 0; cursor: pointer; width: 48px; height: 48px; border-radius: 14px; {{s.style}}"></button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: #30257a;">
+<span style="flex-shrink: 0; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: #ffc21a; color: #5a3500;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
+</span>
+<span style="display: flex; flex-direction: column;">
+<span style="font-size: 18px; font-weight: 800;">{{band.title}}</span>
+<span style="font-size: 15px; font-weight: 600; color: #c9c2ff; line-height: 1.3;">{{band.text}}</span>
+</span>
+</div>
+<div style="flex-grow: 1;"></div>
+<div style="display: flex; gap: 12px;">
+<button onClick="{{cancelAdd}}" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">Back</button>
+<button onClick="{{save}}" style="flex: 2; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 20px; font-weight: 800; padding: 14px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Save player</button>
+</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      mode: 'pick',
+      selected: 0,
+      players: [
+        { label: 'Maya', age: 7, color: 'blue', stars: 42 },
+        { label: 'Leo', age: 4, color: 'orange', stars: 18 }
+      ],
+      newName: '',
+      newAge: 6,
+      newColor: 'teal'
+    };
+  }
+  pal() {
+    return {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'],
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], blue: ['#2f8cff', '#7cc0ff', '#1557c4'],
+      purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'],
+      pink: ['#ff5fb4', '#ff9fd4', '#c72f84'], teal: ['#14c8c0', '#6aeee4', '#0b8c87']
+    };
+  }
+  brick(color, stud) {
+    var p = this.pal()[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    var size = stud ? stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%' : '100% 100%';
+    return 'background: ' + (stud ? studs : '') + base + '; background-size: ' + size + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22);';
+  }
+  band(age) {
+    if (age <= 4) return { title: 'Relaxed play', text: 'No countdown. A friendly sand timer just for fun, and it never ends the game.' };
+    if (age <= 6) return { title: 'Gentle timer', text: 'Double time on every level. Run out and you can still finish.' };
+    if (age <= 8) return { title: 'Standard timer', text: 'Time grows with each level. Harder levels give you more.' };
+    return { title: 'Challenge timer', text: 'Tighter times and bonus stars for being quick.' };
+  }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var cur = s.players[s.selected];
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      logo: ['red', 'yellow', 'green', 'blue'].map(function (c) { return { style: self.brick(c, 13) }; }),
+      picking: s.mode === 'pick',
+      adding: s.mode === 'add',
+      current: cur ? cur.label : 'me',
+      players: s.players.map(function (p, i) {
+        return {
+          label: p.label, age: p.age, stars: p.stars, initial: p.label.charAt(0).toUpperCase(),
+          on: i === s.selected,
+          face: self.brick(p.color, 0),
+          ring: i === s.selected ? 'box-shadow: 0 0 0 4px #ffc21a, 0 6px 0 #241a63; transform: translateY(-2px);' : 'box-shadow: 0 6px 0 #241a63;',
+          pick: function () { self.setState({ selected: i }); }
+        };
+      }),
+      startAdd: function () { self.setState({ mode: 'add', newName: '', newAge: 6, newColor: 'teal' }); },
+      cancelAdd: function () { self.setState({ mode: 'pick' }); },
+      newName: s.newName,
+      setName: function (e) { self.setState({ newName: e.target.value }); },
+      ages: [3, 4, 5, 6, 7, 8, 9, 10].map(function (n) {
+        var on = n === s.newAge;
+        return {
+          n: n, on: on,
+          style: on ? self.brick(s.newColor, 0) + ' color: #ffffff; transform: translateY(-2px);' : 'background: #3a2d8f; color: #c9c2ff; box-shadow: 0 4px 0 #241a63;',
+          pick: function () { self.setState({ newAge: n }); }
+        };
+      }),
+      swatches: ['teal', 'pink', 'purple', 'green', 'red', 'yellow'].map(function (c) {
+        var on = c === s.newColor;
+        return {
+          color: c, on: on,
+          style: self.brick(c, 24) + (on ? ' outline: 4px solid #ffffff; outline-offset: 2px;' : ''),
+          pick: function () { self.setState({ newColor: c }); }
+        };
+      }),
+      band: this.band(s.newAge),
+      save: function () {
+        var name = (s.newName || '').trim() || 'Player ' + (s.players.length + 1);
+        var next = s.players.concat([{ label: name, age: s.newAge, color: s.newColor, stars: 0 }]);
+        self.setState({ players: next, selected: next.length - 1, mode: 'pick' });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

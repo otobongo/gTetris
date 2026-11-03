@@ -1,0 +1,252 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-03T11:05:00Z"
+ },
+ "title": "Brickwise Design Direction",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Who's playing (phone)",
+   "is_interactive": true
+  },
+  "Hub.dc.html": {
+   "x": 470,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "title": "Home (phone)",
+   "is_interactive": true
+  },
+  "MainTablet.dc.html": {
+   "x": 940,
+   "y": 0,
+   "w": 834,
+   "h": 1194,
+   "title": "Who's playing (tablet)",
+   "is_interactive": true
+  },
+  "HubTablet.dc.html": {
+   "x": 1854,
+   "y": 0,
+   "w": 834,
+   "h": 1194,
+   "title": "Home (tablet)",
+   "is_interactive": true
+  },
+  "Escape.dc.html": {
+   "x": 0,
+   "y": 1600,
+   "w": 390,
+   "h": 844,
+   "title": "Brick Escape (phone)",
+   "is_interactive": true
+  },
+  "Drop.dc.html": {
+   "x": 470,
+   "y": 1600,
+   "w": 390,
+   "h": 844,
+   "title": "Brick Drop (phone)",
+   "is_interactive": true
+  },
+  "Letters.dc.html": {
+   "x": 940,
+   "y": 1600,
+   "w": 390,
+   "h": 844,
+   "title": "Letter Builder (phone)",
+   "is_interactive": true
+  },
+  "EscapeTablet.dc.html": {
+   "x": 1410,
+   "y": 1600,
+   "w": 834,
+   "h": 1194,
+   "title": "Brick Escape (tablet)",
+   "is_interactive": true
+  },
+  "DropTablet.dc.html": {
+   "x": 2324,
+   "y": 1600,
+   "w": 834,
+   "h": 1194,
+   "title": "Brick Drop (tablet)",
+   "is_interactive": true
+  },
+  "LettersTablet.dc.html": {
+   "x": 3238,
+   "y": 1600,
+   "w": 834,
+   "h": 1194,
+   "title": "Letter Builder (tablet)",
+   "is_interactive": true
+  },
+  "Mixer.dc.html": {
+   "x": 0,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Color Mixer (phone)",
+   "is_interactive": true
+  },
+  "Sorter.dc.html": {
+   "x": 470,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Shape Sorter (phone)",
+   "is_interactive": true
+  },
+  "Pattern.dc.html": {
+   "x": 940,
+   "y": 3200,
+   "w": 390,
+   "h": 844,
+   "title": "Pattern Train (phone)",
+   "is_interactive": true
+  },
+  "MixerTablet.dc.html": {
+   "x": 1410,
+   "y": 3200,
+   "w": 834,
+   "h": 1194,
+   "title": "Color Mixer (tablet)",
+   "is_interactive": true
+  },
+  "SorterTablet.dc.html": {
+   "x": 2324,
+   "y": 3200,
+   "w": 834,
+   "h": 1194,
+   "title": "Shape Sorter (tablet)",
+   "is_interactive": true
+  },
+  "PatternTablet.dc.html": {
+   "x": 3238,
+   "y": 3200,
+   "w": 834,
+   "h": 1194,
+   "title": "Pattern Train (tablet)",
+   "is_interactive": true
+  },
+  "Grownups.dc.html": {
+   "x": 0,
+   "y": 6400,
+   "w": 390,
+   "h": 844,
+   "title": "Grown-ups corner (phone)",
+   "is_interactive": true
+  },
+  "GrownupsTablet.dc.html": {
+   "x": 470,
+   "y": 6400,
+   "w": 834,
+   "h": 1194,
+   "title": "Grown-ups corner (tablet)",
+   "is_interactive": true
+  },
+  "Numbers.dc.html": {
+   "x": 0,
+   "y": 4800,
+   "w": 390,
+   "h": 844,
+   "title": "Number Line-up (phone)",
+   "is_interactive": true
+  },
+  "Math.dc.html": {
+   "x": 470,
+   "y": 4800,
+   "w": 390,
+   "h": 844,
+   "title": "Brick Calculator (phone)",
+   "is_interactive": true
+  },
+  "NumbersTablet.dc.html": {
+   "x": 940,
+   "y": 4800,
+   "w": 834,
+   "h": 1194,
+   "title": "Number Line-up (tablet)",
+   "is_interactive": true
+  },
+  "MathTablet.dc.html": {
+   "x": 1854,
+   "y": 4800,
+   "w": 834,
+   "h": 1194,
+   "title": "Brick Calculator (tablet)",
+   "is_interactive": true
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Hub.dc.html",
+  "MainTablet.dc.html",
+  "HubTablet.dc.html",
+  "Escape.dc.html",
+  "Drop.dc.html",
+  "Letters.dc.html",
+  "EscapeTablet.dc.html",
+  "DropTablet.dc.html",
+  "LettersTablet.dc.html",
+  "Mixer.dc.html",
+  "Sorter.dc.html",
+  "Pattern.dc.html",
+  "MixerTablet.dc.html",
+  "SorterTablet.dc.html",
+  "PatternTablet.dc.html",
+  "Numbers.dc.html",
+  "Math.dc.html",
+  "NumbersTablet.dc.html",
+  "MathTablet.dc.html",
+  "Grownups.dc.html",
+  "GrownupsTablet.dc.html"
+ ],
+ "notes": {
+  "row1": {
+   "x": 0,
+   "y": -300,
+   "text": "1. Start: pick a player, set their age",
+   "kind": "title1",
+   "maxW": 2688
+  },
+  "row2": {
+   "x": 0,
+   "y": 1300,
+   "text": "2. Games with timers tuned to age and level",
+   "kind": "title1",
+   "maxW": 4072
+  },
+  "row3": {
+   "x": 0,
+   "y": 2900,
+   "text": "3. Explore: shapes and colors",
+   "kind": "title1",
+   "maxW": 4072
+  },
+  "row4": {
+   "x": 0,
+   "y": 4500,
+   "text": "4. Explore: numbers and simple math",
+   "kind": "title1",
+   "maxW": 2688
+  },
+  "row5": {
+   "x": 0,
+   "y": 6100,
+   "text": "5. Grown-ups: each child's progress",
+   "kind": "title1",
+   "maxW": 1304
+  }
+ },
+ "designSystems": []
+}

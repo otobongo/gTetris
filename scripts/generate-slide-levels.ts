@@ -6,7 +6,7 @@
  * door widths, ice locks, frozen bricks, and a target range for the optimal move count (par).
  */
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { type Color, type GateDef, type LevelSpec, type Side, exitGate, fromSpec, initialState, occupancy, validate } from '../src/games/slide/engine';
@@ -207,8 +207,10 @@ async function main() {
   }
 
   mkdirSync(cacheDir, { recursive: true });
+  // --combine: skip generation and rebuild levels.data.ts from tiers already cached (missing tiers are skipped)
+  const combineOnly = process.argv.includes('--combine');
   // one child process per tier, a few at a time
-  const queue = TIERS.map((_, i) => i).reverse(); // hardest first, they take longest
+  const queue = combineOnly ? [] : TIERS.map((_, i) => i).reverse(); // hardest first, they take longest
   const parallel = Math.max(1, Math.min(availableParallelism() - 1, TIERS.length));
   await Promise.all(
     Array.from({ length: parallel }, async () => {
@@ -231,7 +233,12 @@ async function main() {
     // teach a mechanic right before the tier that first uses it
     if (ti === 2) out.push({ spec: ICE_DOOR, par: solveSpec(ICE_DOOR, 1e6)!.par });
     if (ti === 3) out.push({ spec: ICE_BRICK, par: solveSpec(ICE_BRICK, 1e6)!.par });
-    const picked = JSON.parse(readFileSync(`${cacheDir}tier-${ti}.json`, 'utf8')) as Picked[];
+    const cached = `${cacheDir}tier-${ti}.json`;
+    if (!existsSync(cached)) {
+      console.error(`tier ${ti + 1}: not generated yet, skipped`);
+      return;
+    }
+    const picked = JSON.parse(readFileSync(cached, 'utf8')) as Picked[];
     picked.forEach((p) => out.push({ spec: p.spec, par: p.par }));
   });
 

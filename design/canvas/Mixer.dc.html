@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Color Mixer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+
+<div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+</a>
+<div style="text-align: center; line-height: 1.1;">
+<div style="font-size: 24px; font-weight: 800;">Color Mixer</div>
+<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Explore · Found {{found}} of 6</div>
+</div>
+<button onClick="{{clear}}" aria-label="Empty the bowl" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
+</button>
+</div>
+
+<div style="display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: #30257a;">
+<button onClick="{{modeFree}}" aria-pressed="{{isFree}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 16px; border-radius: 12px; {{freeStyle}}">Discover</button>
+<button onClick="{{modeGoal}}" aria-pressed="{{isGoal}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 16px; border-radius: 12px; {{goalStyle}}">Challenge</button>
+</div>
+
+<sc-if value="{{isGoal}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 16px; background: #30257a;">
+<span style="font-size: 18px; font-weight: 800;">Can you make</span>
+<span style="width: 30px; height: 30px; border-radius: 50%; background: {{goal.hex}}; box-shadow: 0 0 0 3px #ffffff;"></span>
+<span style="font-size: 18px; font-weight: 800;">{{goal.name}}?</span>
+</div>
+</sc-if>
+
+<div style="display: flex; align-items: center; gap: 12px;">
+<div style="width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; {{slotA}}">{{slotAText}}</div>
+<span style="font-size: 34px; font-weight: 800; color: #c9c2ff;">+</span>
+<div style="width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; {{slotB}}">{{slotBText}}</div>
+</div>
+
+<div style="position: relative; width: 230px; height: 170px;">
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 120px; border-radius: 0 0 115px 115px; background: linear-gradient(180deg, #e9e4ff, #b9b3c9); box-shadow: 0 8px 0 #8e85d6;"></div>
+<div style="position: absolute; left: 14px; right: 14px; top: 40px; height: 40px; border-radius: 50%; transition: background 0.6s; background: {{bowlHex}}; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15);"></div>
+<div style="position: absolute; left: 0; right: 0; top: 30px; height: 20px; border-radius: 50%; border: 6px solid #f1eef7; box-sizing: border-box;"></div>
+</div>
+
+<div style="text-align: center; min-height: 64px;">
+<div style="font-size: 28px; font-weight: 800; line-height: 1.1;">{{resultName}}</div>
+<div style="font-size: 16px; font-weight: 700; color: #c9c2ff;">{{resultText}}</div>
+</div>
+
+<div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+<sc-for list="{{pots}}" as="p" hint-placeholder-count="4">
+<button onClick="{{p.tap}}" aria-label="{{p.name}} paint" style="border: 0; cursor: pointer; font-family: inherit; width: 70px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; color: #ffffff; padding: 0;">
+<span style="width: 64px; height: 64px; border-radius: 18px 18px 22px 22px; background: {{p.hex}}; box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), inset 0 4px 0 rgba(255,255,255,0.35), 0 5px 0 rgba(0,0,0,0.3);"></span>
+<span style="font-size: 15px; font-weight: 800;">{{p.name}}</span>
+</button>
+</sc-for>
+</div>
+
+<div style="flex-grow: 1;"></div>
+
+<div style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 20px; background: #30257a;">
+<div style="font-size: 15px; font-weight: 800; color: #c9c2ff; margin-bottom: 8px;">My color book</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;">
+<sc-for list="{{book}}" as="b" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+<span style="width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; {{b.style}}"></span>
+<span style="font-size: 12px; font-weight: 800; color: #c9c2ff;">{{b.label}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { a: null, b: null, found: { orange: true }, mode: 'free', goalIdx: 0, cheer: false };
+  }
+  paints() {
+    return { red: { name: 'Red', hex: '#f03a3a' }, yellow: { name: 'Yellow', hex: '#ffc21a' }, blue: { name: 'Blue', hex: '#2f8cff' }, white: { name: 'White', hex: '#f6f3ff' } };
+  }
+  mixes() {
+    return {
+      'red+yellow': { id: 'orange', name: 'Orange', hex: '#ff8a1f', text: 'Red and yellow make orange, like a sunset.' },
+      'blue+yellow': { id: 'green', name: 'Green', hex: '#2fb84a', text: 'Blue and yellow make green, like grass and leaves.' },
+      'blue+red': { id: 'purple', name: 'Purple', hex: '#8f4ae0', text: 'Red and blue make purple, like grapes.' },
+      'red+white': { id: 'pink', name: 'Pink', hex: '#ff8fb0', text: 'White makes red lighter. Now it is pink!' },
+      'blue+white': { id: 'sky', name: 'Sky blue', hex: '#8cc8ff', text: 'White makes blue lighter, like the sky.' },
+      'white+yellow': { id: 'cream', name: 'Cream', hex: '#ffe9a6', text: 'White makes yellow soft, like butter.' }
+    };
+  }
+  key(a, b) { return [a, b].sort().join('+'); }
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tablet = this.props.device === 'tablet';
+    var P = this.paints();
+    var M = this.mixes();
+    var goals = ['green', 'purple', 'pink'];
+    var goalId = goals[s.goalIdx % goals.length];
+    var goal = Object.keys(M).map(function (k) { return M[k]; }).filter(function (m) { return m.id === goalId; })[0];
+    var result = s.a && s.b ? (s.a === s.b ? { id: 'same', name: P[s.a].name, hex: P[s.a].hex, text: 'Same and same stays the same. Try two different paints!' } : M[this.key(s.a, s.b)]) : null;
+    var slot = function (c) { return c ? 'background: ' + P[c].hex + '; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.18);' : 'border: 3px dashed #5444b8; color: #8e85d6;'; };
+    var hit = s.mode === 'goal' && result && result.id === goalId;
+    return {
+      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      found: Object.keys(s.found).length,
+      isFree: s.mode === 'free', isGoal: s.mode === 'goal',
+      freeStyle: s.mode === 'free' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
+      goalStyle: s.mode === 'goal' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
+      modeFree: function () { self.setState({ mode: 'free', a: null, b: null }); },
+      modeGoal: function () { self.setState({ mode: 'goal', a: null, b: null }); },
+      goal: goal,
+      slotA: slot(s.a), slotB: slot(s.b),
+      slotAText: s.a ? '' : 'paint 1', slotBText: s.b ? '' : 'paint 2',
+      bowlHex: result ? result.hex : s.a ? P[s.a].hex : '#ffffff',
+      resultName: hit ? 'You made ' + goal.name + '!' : result ? result.name : s.a ? 'Now pick one more' : 'Pick two paints',
+      resultText: result ? result.text : 'What new color will you discover?',
+      pots: Object.keys(P).map(function (k) {
+        return {
+          name: P[k].name, hex: P[k].hex,
+          tap: function () {
+            if (!s.a || (s.a && s.b)) { self.setState({ a: k, b: null }); return; }
+            var r = s.a === k ? null : M[self.key(s.a, k)];
+            var found = Object.assign({}, s.found);
+            if (r) found[r.id] = true;
+            var next = { b: k, found: found };
+            if (s.mode === 'goal' && r && r.id === goalId) {
+              setTimeout(function () { self.setState({ goalIdx: self.state.goalIdx + 1, a: null, b: null }); }, 2200);
+            }
+            self.setState(next);
+          }
+        };
+      }),
+      clear: function () { self.setState({ a: null, b: null }); },
+      book: Object.keys(M).map(function (k) {
+        var m = M[k];
+        var got = !!s.found[m.id];
+        return { label: got ? m.name : '?', style: got ? 'background: ' + m.hex + '; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);' : 'border: 3px dashed #5444b8;' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
