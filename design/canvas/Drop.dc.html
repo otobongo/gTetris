@@ -69,7 +69,7 @@
 </div>
 </div>
 
-<div style="width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;">
+<div style="width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
 <button onClick="{{left}}" aria-label="Move left" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Left</button>
 <button onClick="{{turn}}" aria-label="Turn" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
@@ -77,10 +77,7 @@
 <button onClick="{{right}}" aria-label="Move right" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>Right</button>
 <button onClick="{{down}}" aria-label="Move down" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>Down</button>
-<button onClick="{{drop}}" aria-label="Drop" style="grid-column: span 2; border: 0; cursor: pointer; font-family: inherit; color: #5a3500; height: 62px; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 800; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5l6 6 6-6"></path><path d="M6 12l6 6 6-6"></path></svg>Drop it</button>
-</div>
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>Down</button></div>
 
 <sc-if value="{{flash}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 40px; font-weight: 800; color: #ffe266; text-shadow: 0 4px 0 #6624c9, 0 0 30px rgba(255,226,102,0.6); pointer-events: none;">{{flashText}}</div>
@@ -240,8 +237,7 @@ class Component extends DCLogic {
       left: function () { self.tryMove(0, -1, 0); },
       right: function () { self.tryMove(0, 1, 0); },
       down: function () { self.tryMove(1, 0, 0); },
-      turn: function () { self.tryMove(0, 0, 1); },
-      drop: function () { self.lock(self.ghostRow()); }
+      turn: function () { self.tryMove(0, 0, 1); }
     };
   }
 }
