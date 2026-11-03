@@ -47,7 +47,7 @@
 <ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gameCols}}; grid-auto-rows: 1fr; gap: 10px;">
 <sc-for list="{{games}}" as="g" hint-placeholder-count="9">
 <li style="display: grid; min-width: 0;">
-<a href="{{g.href}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardGrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 20px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{g.href}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardgrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <span style="grid-area: art; position: relative; width: 56px; height: 44px; align-self: center;" aria-hidden="true">
 <sc-for list="{{g.art}}" as="a" hint-placeholder-count="3">
 <span style="position: absolute; display: grid; place-items: center; font-weight: 800; color: #ffffff; {{a.style}}">{{a.t}}</span>
@@ -96,7 +96,7 @@ class Component extends DCLogic {
       // Phone: one row per game, pill beside the title. Tablet: two columns are only 277px wide,
       // so the art and pill sit on top and the title and subtitle get the full card width.
       gameCols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
-      cardGrid: tablet
+      cardgrid: tablet
         ? "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: 44px 6px auto auto; grid-template-areas: 'art . pill' '. . .' 'title title title' 'sub sub sub';"
         : "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: 'art title pill' 'art sub sub';",
       whoHref: tablet ? 'MainTablet.dc.html' : 'Main.dc.html',
