@@ -29,10 +29,7 @@
 
 <div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
 <span style="width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: {{kidColor}}; color: #ffffff; font-size: 18px; font-weight: 800;">{{kidInitial}}</span>
-<span style="display: flex; flex-direction: column; line-height: 1.1; flex-grow: 1;">
-<span style="font-size: 16px; font-weight: 800;">{{kidLine}}</span>
-<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">{{kidNote}}</span>
-</span>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 800; line-height: 1.1;">{{kidLine}}</span>
 <div style="display: flex; gap: 5px;" aria-label="Word {{roundNo}} of 3">
 <sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
 <span style="width: 22px; height: 10px; border-radius: 999px; background: {{d.fill}};"></span>
@@ -184,18 +181,15 @@ class Component extends DCLogic {
   stages() {
     return {
       starter: {
-        level: 'Level 3', kid: 'Leo, age 4 · Relaxed play', initial: 'L', color: '#ffab5e',
-        note: 'No countdown. The sand just shows you are doing great.',
+        level: 'Level 3', kid: 'Leo', initial: 'L', color: '#ffab5e', // age 4: no countdown, the sand only fills
         words: ['SUN', 'BUS', 'BOX']
       },
       growing: {
-        level: 'Level 17', kid: 'Nia, age 6 · Gentle timer', initial: 'N', color: '#14c8c0',
-        note: 'Double time on every word. Run out and you can still finish.',
+        level: 'Level 17', kid: 'Nia', initial: 'N', color: '#14c8c0', // age 6: double time, can still finish after it runs out
         words: ['FISH', 'FROG', 'HOUSE']
       },
       advanced: {
-        level: 'Level 32', kid: 'Maya, age 7 · Standard timer', initial: 'M', color: '#2f8cff',
-        note: 'Time grows with each level. Longer words get more time.',
+        level: 'Level 32', kid: 'Maya', initial: 'M', color: '#2f8cff', // age 7: standard timer, longer words get more time
         words: ['ROCKET', 'RAINBOW', 'UMBRELLA']
       }
     };
@@ -282,7 +276,7 @@ class Component extends DCLogic {
       hubHref: tablet ? 'HubTablet.dc.html' : 'LevelsLetters.dc.html',
       backLabel: tablet ? 'Back to home' : 'Back to levels',
       levelLabel: S.level,
-      kidLine: S.kid, kidNote: S.note, kidInitial: S.initial, kidColor: S.color,
+      kidLine: S.kid, kidInitial: S.initial, kidColor: S.color,
       word: word.toLowerCase(),
       roundNo: round + 1,
       isSun: word === 'SUN', isBus: word === 'BUS', isBox: word === 'BOX',
