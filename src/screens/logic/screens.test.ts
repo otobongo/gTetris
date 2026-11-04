@@ -180,7 +180,7 @@ describe('account messages', () => {
     const reasons = ['not-enabled', 'cancelled', 'offline', 'wrong-credentials', 'too-many-tries', 'provider-failed', 'unknown'] as const;
     for (const r of reasons) {
       const n = authNotice(r, 'google');
-      expect(`${n.title} ${n.body}`).not.toMatch(/[–—]/);
+      expect(`${n.title} ${n.body}`).not.toMatch(/[\u2013\u2014]/);
     }
   });
 });
