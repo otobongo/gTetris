@@ -2,6 +2,7 @@
  * Decision D2: using a hint, or running out of a counted clock, caps a level at 2 stars. It only ever
  * costs the third star, and Brick Escape, Brick Drop and Letter Builder all use the same helper.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { STAGES, stageStars, starRule, starsEarned } from './drop/stages';
 import { ranOut, timerPlan } from './drop/timer';
@@ -111,5 +112,33 @@ describe('Brick Drop: when the clock has run out', () => {
     expect(ranOut(timerPlan(stage, 'relaxed', '9-10'), 10_000)).toBe(false);
     expect(ranOut(timerPlan(stage, 'auto', '3-4'), 10_000)).toBe(false);
     expect(ranOut(timerPlan(stage, 'off', '9-10'), 10_000)).toBe(false);
+  });
+});
+
+describe('every play screen records the capped stars', () => {
+  const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
+
+  it('Brick Escape records the stars from starsFor, with the hint and the run-out clock passed in', () => {
+    const escape = source('./slide/SlideGame.tsx');
+    expect(escape).toMatch(/const stars = starsFor\(movesRef\.current, level\.par, hintRef\.current, !inTime\);\s*recordStars\('slide', index, stars\)/);
+  });
+
+  it('Brick Drop records the stars from stageStars with ranOut, never the brick rule alone', () => {
+    const drop = source('./drop/Play.tsx');
+    expect(drop).toMatch(/stageStars\(stage, s\.placed, ranOut\(plan, /);
+    expect(drop).not.toMatch(/starsEarned\(/);
+  });
+
+  it('Letter Builder records the stars from lettersStars, never the slip rule alone', () => {
+    const letters = source('./letters/LettersApp.tsx');
+    expect(letters).toMatch(/const stars = lettersStars\(slipsRef\.current, usedHintRef\.current\);\s*recordStars\(GAME, level, stars\)/);
+    expect(letters).not.toMatch(/starsForSlips\(/);
+  });
+
+  it('no game file caps stars on its own: only games/stars.ts uses the number 2 as a cap', () => {
+    for (const path of ['./slide/engine.ts', './drop/stages.ts', './letters/logic.ts']) {
+      expect(source(path), path).toContain("from '../stars'");
+      expect(source(path), path).not.toMatch(/Math\.min\(\s*2\b|Math\.min\([^)]*,\s*2\s*\)/);
+    }
   });
 });

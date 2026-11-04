@@ -23,7 +23,7 @@ const BOX_BRICKS: { color: BrickColor; x: number; y: number; w: number; h: numbe
 /**
  * Break time (design/canvas/Break.dc.html, brief 3.4). Shown when today's minutes reach the
  * player's limit. No back button. Nothing is read aloud until the speaker button is tapped.
- * A grown-up can add 10, 20 or 30 minutes for today after typing the number they are asked for.
+ * A grown-up can add 10, 20 or 30 minutes for today after answering the sum they are asked.
  */
 export default function Break() {
   const state = useProgressState();

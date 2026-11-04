@@ -66,7 +66,7 @@ const TOGGLES: { key: SettingKey; label: string; note: string; icon: ReactNode }
 type Confirm = { kind: 'one'; player: Player } | { kind: 'all' } | { kind: 'delete' };
 
 /**
- * Settings for grown-ups (design/canvas/Grownups.dc.html), behind the typed-number check (App puts
+ * Settings for grown-ups (design/canvas/Grownups.dc.html), behind the grown-up sum check (App puts
  * it behind GrownUpOnly, like Sign in and Sign up).
  * Children, timer and daily limit, skills, sound switches, progress resets, the account panel
  * (switched off: every provider answers with the coming-soon note), help links and Delete.
