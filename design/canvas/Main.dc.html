@@ -28,10 +28,10 @@
 <h2 style="margin: 0; font-size: 28px; font-weight: 800; text-align: center;">Who's playing?</h2>
 <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
 <sc-for list="{{players}}" as="p" hint-placeholder-count="2">
-<button onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; padding: 18px 10px 14px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(180deg, #5444b8, #3a2d8f); transition: box-shadow 0.15s, transform 0.15s; {{p.ring}}">
+<button onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; padding: 18px 10px 14px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(180deg, #5444b8, #3a2d8f); transition: box-shadow 0.15s, transform 0.15s; {{p.ring}}">
 <span style="width: 76px; height: 76px; border-radius: 22px; display: grid; place-items: center; font-size: 38px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{p.face}}">{{p.initial}}</span>
 <span style="font-size: 22px; font-weight: 800; line-height: 1.1;">{{p.label}}</span>
-<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Age {{p.age}} · {{p.stars}} stars</span>
+<span style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Ages {{p.band}} · {{p.stars}} stars</span>
 </button>
 </sc-for>
 <a href="{{settingsHref}}" style="border: 3px dashed #6d5fd0; text-decoration: none; color: #c9c2ff; padding: 18px 10px 14px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: transparent; min-height: 170px; box-sizing: border-box; text-align: center;">
@@ -87,6 +87,8 @@ class Component extends DCLogic {
     var size = stud ? stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, ' + stud + 'px ' + stud + 'px, 100% 100%' : '100% 100%';
     return 'background: ' + (stud ? studs : '') + base + '; background-size: ' + size + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22);';
   }
+  // The app keeps an age band, never an exact age.
+  bandLabel(age) { return age <= 4 ? '3 to 4' : age <= 6 ? '5 to 6' : age <= 8 ? '7 to 8' : '9 to 10'; }
   band(age) {
     if (age <= 4) return { title: 'Relaxed play', text: 'No countdown. A friendly sand timer just for fun, and it never ends the game.' };
     if (age <= 6) return { title: 'Gentle timer', text: 'Double time on every level. Run out and you can still finish.' };
@@ -108,7 +110,7 @@ class Component extends DCLogic {
       current: cur ? cur.label : 'me',
       players: s.players.map(function (p, i) {
         return {
-          label: p.label, age: p.age, stars: p.stars, initial: p.label.charAt(0).toUpperCase(),
+          label: p.label, age: p.age, band: self.bandLabel(p.age), stars: p.stars, initial: p.label.charAt(0).toUpperCase(),
           on: i === s.selected,
           face: self.brick(p.color, 0),
           ring: i === s.selected ? 'box-shadow: 0 0 0 4px #ffc21a, 0 6px 0 #241a63; transform: translateY(-2px);' : 'box-shadow: 0 6px 0 #241a63;',
@@ -119,10 +121,10 @@ class Component extends DCLogic {
       cancelAdd: function () { self.setState({ mode: 'pick' }); },
       newName: s.newName,
       setName: function (e) { self.setState({ newName: e.target.value }); },
-      ages: [3, 4, 5, 6, 7, 8, 9, 10].map(function (n) {
+      ages: [4, 6, 8, 10].map(function (n) {
         var on = n === s.newAge;
         return {
-          n: n, on: on,
+          n: n, label: self.bandLabel(n), on: on,
           style: on ? self.brick(s.newColor, 0) + ' color: #ffffff; transform: translateY(-2px);' : 'background: #3a2d8f; color: #c9c2ff; box-shadow: 0 4px 0 #241a63;',
           pick: function () { self.setState({ newAge: n }); }
         };

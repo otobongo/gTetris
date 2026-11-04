@@ -97,7 +97,7 @@ Continue with Facebook
 <span style="width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; font-size: 19px; font-weight: 800; background: {{k.color}};">{{k.initial}}</span>
 <span style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05;">
 <span style="font-size: 16px; font-weight: 800;">{{k.name}}</span>
-<span style="font-size: 12px; font-weight: 700; color: #c9c2ff;">Age {{k.age}}</span>
+<span style="font-size: 12px; font-weight: 700; color: #c9c2ff;">Ages {{k.band}}</span>
 </span>
 </button>
 </sc-for>
@@ -114,9 +114,9 @@ Add a child
 <label for="kidname" style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Child's first name</label>
 <input id="kidname" value="{{newName}}" onChange="{{setName}}" placeholder="First name" style="font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; outline: none;">
 <span style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Age</span>
-<div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px;">
-<sc-for list="{{ages}}" as="a" hint-placeholder-count="8">
-<button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Age {{a.n}}" style="border: 0; cursor: pointer; font-family: inherit; height: 40px; border-radius: 12px; font-size: 18px; font-weight: 800; {{a.style}}">{{a.n}}</button>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;">
+<sc-for list="{{ages}}" as="a" hint-placeholder-count="4">
+<button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Ages {{a.label}}" style="border: 0; cursor: pointer; font-family: inherit; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 800; white-space: nowrap; {{a.style}}">{{a.label}}</button>
 </sc-for>
 </div>
 <span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">The timer, level start and reading help are set from the age. You can change them later.</span>
@@ -253,6 +253,8 @@ class Component extends DCLogic {
     };
   }
   componentWillUnmount() { clearInterval(this.holdT); clearTimeout(this.toastT); clearTimeout(this.syncT); }
+  // The app keeps an age band, never an exact age.
+  bandLabel(age) { return age <= 4 ? '3 to 4' : age <= 6 ? '5 to 6' : age <= 8 ? '7 to 8' : '9 to 10'; }
   factor(age) { return age <= 4 ? 0 : age <= 6 ? 2 : age <= 8 ? 1.5 : 1; }
   fmt(sec) { var m = Math.floor(sec / 60), s = Math.round(sec % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
   updateKid(patch) {
@@ -344,7 +346,7 @@ class Component extends DCLogic {
       devices: [{ name: 'Family iPad (this device)' }, { name: "Sam's phone" }],
       kids: s.kids.map(function (c, i) {
         return {
-          name: c.name, age: c.age, color: c.color, initial: c.name.charAt(0), on: i === s.kid,
+          name: c.name, age: c.age, band: self.bandLabel(c.age), color: c.color, initial: c.name.charAt(0), on: i === s.kid,
           style: i === s.kid ? 'background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 0 0 3px #ffc21a;' : 'background: #30257a;',
           pick: function () { self.setState({ kid: i, adding: false }); }
         };
@@ -354,9 +356,9 @@ class Component extends DCLogic {
       cancelAdd: function () { self.setState({ adding: false }); },
       newName: s.newName,
       setName: function (e) { self.setState({ newName: e.target.value }); },
-      ages: [3, 4, 5, 6, 7, 8, 9, 10].map(function (n) {
+      ages: [4, 6, 8, 10].map(function (n) {
         var on = n === s.newAge;
-        return { n: n, on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: #1d1550; color: #c9c2ff;', pick: function () { self.setState({ newAge: n }); } };
+        return { n: n, label: self.bandLabel(n), on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: #1d1550; color: #c9c2ff;', pick: function () { self.setState({ newAge: n }); } };
       }),
       saveKid: function () {
         var name = (s.newName || '').trim() || 'Child ' + (s.kids.length + 1);
