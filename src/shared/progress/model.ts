@@ -102,12 +102,24 @@ const oneOf = <T extends string>(list: readonly T[], v: unknown, fallback: T): T
   typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : fallback;
 const time = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback);
 
+/** Keys that would reach an object's prototype chain if copied from parsed JSON. Never copied. */
+const UNSAFE_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+/** A key from parsed JSON that is safe to copy into a plain map: not empty and not a prototype key. */
+export const isSafeKey = (k: string): boolean => k !== '' && !UNSAFE_KEYS.has(k);
+
+/** A level key: plain ASCII digits only (no '', spaces, signs, exponents or hex), as a safe integer. */
+export function parseLevelKey(k: string): number | null {
+  if (!/^\d+$/.test(k)) return null;
+  const n = Number(k);
+  return Number.isSafeInteger(n) ? n : null;
+}
+
 function cleanLevelMap(raw: unknown, valid: (n: number) => boolean): Record<number, number> {
   const out: Record<number, number> = {};
   if (!isObj(raw)) return out;
   for (const [k, v] of Object.entries(raw)) {
-    const level = Number(k);
-    if (isInt(level) && level >= 0 && typeof v === 'number' && valid(v)) out[level] = v;
+    const level = parseLevelKey(k);
+    if (level !== null && typeof v === 'number' && valid(v)) out[level] = v;
   }
   return out;
 }
@@ -124,7 +136,7 @@ function cleanStickers(raw: unknown): Record<string, StickerRecord> {
   const out: Record<string, StickerRecord> = {};
   if (!isObj(raw)) return out;
   for (const [id, v] of Object.entries(raw)) {
-    if (!id || !isObj(v)) continue;
+    if (!isSafeKey(id) || !isObj(v)) continue;
     out[id] = { earnedAt: time(v.earnedAt, 0), seen: v.seen === true };
   }
   return out;
@@ -141,7 +153,7 @@ function cleanPlayer(raw: unknown, now: number): Player | null {
   if (!isObj(raw) || typeof raw.id !== 'string' || !raw.id) return null;
   const ageBand = oneOf(AGE_BANDS, raw.ageBand, '5-6');
   const games: Record<string, GameProgress> = {};
-  if (isObj(raw.games)) for (const [g, v] of Object.entries(raw.games)) if (g) games[g] = cleanGame(v);
+  if (isObj(raw.games)) for (const [g, v] of Object.entries(raw.games)) if (isSafeKey(g)) games[g] = cleanGame(v);
   return {
     id: raw.id,
     name: cleanName(raw.name) || DEFAULT_PLAYER_NAME,
@@ -207,8 +219,8 @@ export function migrateV1(raw: unknown, now: number, playerId: string): Progress
     const cut = key.lastIndexOf(':');
     if (cut <= 0) return;
     const game = toGameId(key.slice(0, cut));
-    const level = Number(key.slice(cut + 1));
-    if (!isInt(level) || level < 0 || typeof value !== 'number' || !Number.isFinite(value)) return;
+    const level = parseLevelKey(key.slice(cut + 1));
+    if (!isSafeKey(game) || level === null || typeof value !== 'number' || !Number.isFinite(value)) return;
     if (field === 'stars' && !(isInt(value) && value >= 1 && value <= 3)) return;
     if (field === 'best' && value < 0) return;
     const g = (games[game] ??= emptyGame());
@@ -305,9 +317,10 @@ export function addPlayer(state: ProgressState, input: NewPlayer, id: string, no
   return { ...state, players: [...state.players, player], activePlayerId: state.activePlayerId ?? player.id };
 }
 
+/** Apply a profile edit. An edit that changes nothing (after cleaning and clamping) returns the same state, updatedAt untouched. */
 export function updatePlayer(state: ProgressState, id: string, patch: PlayerPatch, now: number): ProgressState {
   return withPlayer(state, id, (p) => {
-    const next: Player = { ...p, updatedAt: now };
+    const next: Player = { ...p };
     if (patch.name !== undefined) {
       const name = cleanName(patch.name);
       if (name) {
@@ -319,7 +332,14 @@ export function updatePlayer(state: ProgressState, id: string, patch: PlayerPatc
     if (patch.color && (AVATAR_COLORS as readonly string[]).includes(patch.color)) next.color = patch.color;
     if (patch.dailyLimit !== undefined) next.dailyLimit = clampLimit(patch.dailyLimit);
     if (patch.timerMode && (TIMER_MODES as readonly string[]).includes(patch.timerMode)) next.timerMode = patch.timerMode;
-    return next;
+    const changed =
+      next.name !== p.name ||
+      next.unnamed !== p.unnamed ||
+      next.ageBand !== p.ageBand ||
+      next.color !== p.color ||
+      next.dailyLimit !== p.dailyLimit ||
+      next.timerMode !== p.timerMode;
+    return changed ? { ...next, updatedAt: now } : null;
   });
 }
 
