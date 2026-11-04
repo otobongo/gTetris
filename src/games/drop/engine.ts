@@ -150,11 +150,12 @@ function spawnNext(s: GameState, events: GameEvent[]): GameState {
   return spawn({ ...s, queue: r.queue, bagSeed: r.seed }, id, events);
 }
 
-export function newGame(rules: Rules, seed: number): GameState {
+/** A new round. `board` is the starting board (a starter stack); left out, the board starts empty. */
+export function newGame(rules: Rules, seed: number, board?: Board): GameState {
   const r = refill([], seed >>> 0, rules.pieces);
   const base: GameState = {
     rules,
-    board: emptyBoard(rules.cols, rules.rows),
+    board: board ?? emptyBoard(rules.cols, rules.rows),
     active: null,
     queue: r.queue,
     bagSeed: r.seed,
