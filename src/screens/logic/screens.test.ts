@@ -3,7 +3,7 @@ import type { GameMeta } from '../../games/meta';
 import { getGame } from '../../games/registry';
 import { emptyGame, type GameProgress, type Player } from '../../shared/progress';
 import { authNotice, SOON } from './auth';
-import { gateAsk, gateMatches } from './gate';
+import { gateMatches, makeGateSum } from './gate';
 import { homePill, lockMessage, planLevels, tileLabel } from './levels';
 import { backTarget, nextAvatarColor, notePath, shouldBreak } from './session';
 import { earnedCount, STICKERS, stickerCells, stickerSource, stickersDue } from './stickers';
@@ -147,20 +147,16 @@ describe('sticker book', () => {
 });
 
 describe('grown-up check', () => {
-  it('asks for forty-seven first and moves on after each try', () => {
-    expect(gateAsk(0)).toEqual({ value: 47, words: 'forty-seven' });
-    expect(gateAsk(1).value).toBe(62);
-    expect(gateAsk(6).value).toBe(47);
-  });
-
-  it('accepts only the digits of the asked number', () => {
-    expect(gateMatches('47', 0)).toBe(true);
-    expect(gateMatches(' 47 ', 0)).toBe(true);
-    expect(gateMatches('62', 0)).toBe(false);
-    expect(gateMatches('', 0)).toBe(false);
-    expect(gateMatches('forty-seven', 0)).toBe(false);
-    expect(gateMatches('4.7e1', 0)).toBe(false);
-    expect(gateMatches('62', 1)).toBe(true);
+  // Decision D1 replaced the fixed numbers in words with a random sum; gate.test.ts covers it in full.
+  it('asks a sum of two numbers from 11 to 49 and accepts only its answer', () => {
+    const sum = makeGateSum(() => 0.5);
+    expect(sum).toEqual({ a: 30, b: 30 });
+    expect(gateMatches('60', sum)).toBe(true);
+    expect(gateMatches(' 60 ', sum)).toBe(true);
+    expect(gateMatches('59', sum)).toBe(false);
+    expect(gateMatches('', sum)).toBe(false);
+    expect(gateMatches('sixty', sum)).toBe(false);
+    expect(gateMatches('6e1', sum)).toBe(false);
   });
 });
 

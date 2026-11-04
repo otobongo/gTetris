@@ -4,7 +4,7 @@ import { Screen, TopBar } from '../../shared/ui';
 import { grownUpGate } from '../logic/session';
 import { GrownUpCheck } from './Controls';
 
-/** The locked view of a grown-up screen (Grownups board): the typed-number check, Cancel goes home. */
+/** The locked view of a grown-up screen (Grownups board): the addition check, Cancel goes home. */
 export function GrownUpLock({ title, onPass }: { title: string; onPass: () => void }) {
   return (
     <Screen>

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { sfx } from '../../shared/sound';
 import { cx } from '../../shared/ui';
-import { gateAsk, gateMatches } from '../logic/gate';
+import { gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type Random } from '../logic/gate';
 import { Glyph } from './Glyph';
 
 /* ---------- Field: label above, inset input (Signup, Sign in, Settings) ---------- */
@@ -100,29 +100,29 @@ export function SwitchRow({ label, note, icon, checked, onChange }: { label: str
   );
 }
 
-/* ---------- Grown-up check: type the number (Break and Settings, decision 2) ---------- */
+/* ---------- Grown-up check: add two numbers (Break and Settings, decision D1) ---------- */
 
-export function GrownUpCheck({ onPass, onCancel, intro }: { onPass: () => void; onCancel?: () => void; intro?: ReactNode }) {
-  const [attempt, setAttempt] = useState(0);
+export function GrownUpCheck({ onPass, onCancel, intro, random = Math.random }: { onPass: () => void; onCancel?: () => void; intro?: ReactNode; random?: Random }) {
+  // A new sum every time the check opens (each mount), and a new one after each wrong answer.
+  const [sum, setSum] = useState(() => makeGateSum(random));
   const [answer, setAnswer] = useState('');
   const [wrong, setWrong] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
-  const ask = gateAsk(attempt);
 
   useEffect(() => {
     field.current?.focus();
   }, []);
 
   const check = () => {
-    if (gateMatches(answer, attempt)) {
+    if (gateMatches(answer, sum)) {
       sfx.tap();
       onPass();
       return;
     }
     setWrong(true);
     setAnswer('');
-    setAttempt((a) => a + 1);
+    setSum((s) => nextGateSum(s, random));
     field.current?.focus();
   };
 
@@ -135,10 +135,13 @@ export function GrownUpCheck({ onPass, onCancel, intro }: { onPass: () => void; 
       {wrong && (
         <p id={`${id}-err`} role="alert" className="sc-error">
           <Glyph name="alert" size={20} />
-          That number doesn't match. Try this one instead.
+          That answer doesn't match. Try this new sum.
         </p>
       )}
-      <p className="sc-body">Type the number {ask.words}.</p>
+      {/* The answer field carries the sum in words for screen readers, so this line is not read twice. */}
+      <p className="sc-body sc-gate__sum" aria-hidden="true">
+        {gateQuestion(sum)}
+      </p>
       <form
         className="sc-gate__form"
         onSubmit={(e) => {
@@ -148,10 +151,10 @@ export function GrownUpCheck({ onPass, onCancel, intro }: { onPass: () => void; 
       >
         <Field
           inputRef={field}
-          label="Number"
+          label="Answer"
           surface="well"
           narrow
-          name="gate-number"
+          name="gate-answer"
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
@@ -159,6 +162,7 @@ export function GrownUpCheck({ onPass, onCancel, intro }: { onPass: () => void; 
           maxLength={3}
           value={answer}
           invalid={wrong}
+          aria-label={gateSpoken(sum)}
           aria-describedby={wrong ? `${id}-err` : undefined}
           onChange={(e) => setAnswer(e.target.value)}
           id={`${id}-num`}
