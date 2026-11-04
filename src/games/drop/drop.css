@@ -1,80 +1,152 @@
-/* Brick Drop. Everything is scoped under .drop-* so it never leaks into other games. */
+/* Brick Drop. Everything is scoped under .drop-* so it never leaks into other games.
+   Values come from src/styles/tokens.css; the layout follows design/canvas/Drop.dc.html. */
 
-/* ---------- Stage select ---------- */
-.drop-select { gap: 12px; }
-.drop-select__hint { margin: 0; text-align: center; font-size: 16px; line-height: 1.3; max-width: 420px; }
-.drop-select__group { width: 100%; display: flex; flex-direction: column; gap: 12px; }
-.drop-select .level-tile { gap: 2px; }
-.drop-select__goal { font-size: 12px; font-weight: 800; color: rgb(255 255 255 / 0.75); letter-spacing: 0.2px; }
-
-/* ---------- Play screen: fixed to the viewport so nothing scrolls or zooms ---------- */
-.drop-play {
+/* The app shell pads game routes; the board takes the whole screen so nothing scrolls or zooms. */
+.drop-root {
   position: fixed;
   inset: 0;
-  display: flex;
-  justify-content: center;
-  padding: max(12px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom));
   overflow: hidden;
   overscroll-behavior: none;
 }
-.drop-play__inner {
+.drop-frame {
+  position: relative;
+  --drop-flash-size: 40px;
+}
+/* The content sits straight in the screen frame's column; display: contents lets the whole
+   block go inert behind a dialog without adding a layout level. */
+.drop-content { display: contents; }
+
+/* ---------- Timer row ---------- */
+.drop-timer {
+  --timer: var(--brick-green-light);
   width: 100%;
-  max-width: 560px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-4);
+  padding: var(--bw-sp-3) var(--bw-sp-6);
+  border-radius: var(--bw-r-md);
+  background: var(--bw-panel);
+  color: var(--timer);
+}
+.drop-timer[data-state='low'] { --timer: var(--bw-accent); }
+.drop-timer[data-state='out'] { --timer: var(--bw-error-text); }
+.drop-timer svg { flex: none; }
+.drop-timer__clock {
+  color: var(--bw-text);
+  font-size: var(--bw-fs-tile);
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.drop-timer__track {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-ground-bottom);
+  overflow: hidden;
+}
+.drop-timer__track > span {
+  display: block;
   height: 100%;
-  min-height: 0;
+  border-radius: var(--bw-r-pill);
+  background: var(--timer);
+  transition: width 1s linear;
+}
+
+/* ---------- Next and Rows: two half-width tiles ---------- */
+.drop-tiles {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--bw-sp-4);
+  align-items: stretch;
+}
+.drop-tile {
+  min-width: 0;
+  box-sizing: border-box;
+  padding: var(--bw-sp-2) var(--bw-sp-3);
+  border-radius: var(--bw-r-md);
+  background: var(--bw-panel);
+  text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: center;
 }
+.drop-tile__label {
+  font-size: var(--bw-fs-helper);
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--bw-text-2);
+  line-height: 1.2;
+}
+.drop-tile__next {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 40px;
+  margin-top: 2px;
+}
+.drop-tile__value {
+  font-size: var(--bw-fs-display);
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.drop-tile__value small {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--bw-text-2);
+}
+
+/* ---------- Board ---------- */
 .drop-area {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
-.drop-field { display: flex; align-items: stretch; }
-
-/* Recessed purple tray */
 .drop-well {
   position: relative;
   flex: none;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #1c1350, #241a63);
+  box-sizing: border-box;
+  border-radius: var(--bw-r-lg);
+  background: var(--bw-well);
   box-shadow:
-    inset 0 5px 12px rgb(0 0 0 / 0.55),
-    inset 0 -2px 0 rgb(255 255 255 / 0.06),
-    0 2px 0 var(--panel-hi),
-    0 0 0 3px var(--panel-edge);
+    inset 0 4px 10px rgb(0 0 0 / 0.5),
+    0 0 0 4px var(--bw-purple-bottom);
   touch-action: none;
   cursor: pointer;
 }
 .drop-grid {
   position: relative;
   overflow: hidden;
-  border-radius: 10px;
   background-image:
-    linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px);
-  background-position: -0.5px -0.5px;
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+  transition: opacity var(--bw-base) var(--bw-ease);
 }
+.drop-well.is-paused .drop-grid { opacity: 0.45; }
 
-.drop-cell,
-.drop-ghost {
+.drop-grid > .drop-cell,
+.drop-grid > .drop-ghost {
   position: absolute;
   left: 1px;
   top: 1px;
-  width: calc(var(--cell) - 2px);
-  height: calc(var(--cell) - 2px);
-  border-radius: max(4px, calc(var(--cell) * 0.2));
 }
+.drop-grid > .drop-cell.is-active { z-index: 2; }
 .drop-ghost {
-  border: 2px dashed var(--cl);
-  background: color-mix(in srgb, var(--c) 22%, transparent);
-  opacity: 0.85;
+  box-sizing: border-box;
+  border-style: dashed;
+  border-color: var(--cl);
+  background: rgb(255 255 255 / 0.06);
 }
-.drop-cell.is-active { z-index: 2; filter: brightness(1.08); }
 .drop-cell.is-clearing { animation: drop-cell-flash 0.34s ease-out forwards; }
 .drop-flash {
   position: absolute;
@@ -97,142 +169,155 @@
   100% { opacity: 0; transform: scaleY(1.6); }
 }
 
-/* ---------- Side column: hold, next, progress ---------- */
-.drop-side {
+/* A small brick picture (Next tile, first-time card) */
+.drop-mini {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
   flex: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
-.drop-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 4px 8px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--panel-2);
-  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
-  touch-action: none;
-}
-.drop-box--hold { cursor: pointer; min-height: 48px; }
-.drop-box--hold:active { filter: brightness(1.15); }
-.drop-box__label {
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--ink-soft);
-  line-height: 1;
-}
-.drop-box__slot { display: flex; align-items: center; justify-content: center; }
-.drop-box__slot.is-later { opacity: 0.75; }
+.drop-mini__fit { position: relative; display: block; }
+.drop-mini.is-dim { opacity: 0.45; }
 
-.drop-mini { position: relative; display: inline-block; flex: none; }
-.drop-mini.is-dim { opacity: 0.4; }
-.drop-mini__cell { position: absolute; display: block; border-radius: 3px; }
-.drop-mini__cell.brick--studs::after { inset: 10%; }
-
-.drop-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 4px 8px;
-  border-radius: 14px;
-  background: var(--panel-2);
-  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
-}
-.drop-stat__label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); line-height: 1.1; }
-.drop-stat__value { font-size: 24px; font-weight: 800; line-height: 1; }
-.drop-stat__value small { font-size: 15px; color: var(--ink-soft); }
-.drop-meter {
-  width: 80%;
-  height: 8px;
-  margin-top: 4px;
-  border-radius: 99px;
-  background: rgb(0 0 0 / 0.35);
-  overflow: hidden;
-}
-.drop-meter span {
-  display: block;
-  height: 100%;
-  border-radius: 99px;
-  background: linear-gradient(180deg, var(--green-l), var(--green));
-  transition: width 0.3s ease-out;
-}
-
-/* ---------- Touch pad ---------- */
+/* ---------- Controls: one row of four ---------- */
 .drop-pad {
-  flex: none;
+  width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding-bottom: 5px; /* room for the button shadow */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--bw-sp-4);
+  flex-shrink: 0;
 }
-.drop-pad__btn {
-  height: 58px;
-  min-width: 48px;
-  padding: 0;
+.drop-pad .drop-pad__btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  min-width: 0;
+  height: 62px;
+  padding: 0;
+  font-size: var(--bw-fs-label);
+  line-height: 1.1;
+  user-select: none;
+  -webkit-user-select: none;
   touch-action: none;
 }
-.drop-pad__label { font-size: 13px; line-height: 1; font-weight: 800; letter-spacing: 0.3px; }
-.drop-pad__btn.is-down { transform: translateY(4px); box-shadow: 0 1px 0 var(--panel-edge), inset 0 2px 0 rgb(255 255 255 / 0.2); }
-.drop-pad__btn.btn--go.is-down { box-shadow: 0 1px 0 var(--green-d); }
-.drop-pad__btn.btn--warm.is-down { box-shadow: 0 1px 0 var(--yellow-d); }
 
-.drop-keys { display: none; margin: -2px 0 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--ink-dim); }
-.drop-keys kbd {
-  font-family: inherit;
-  font-size: 12px;
-  padding: 0 6px;
-  border-radius: 6px;
-  background: var(--panel-2);
-  color: var(--ink-soft);
+/* ---------- Words that pop up when rows clear ---------- */
+.drop-say {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 46%;
+  margin: 0;
+  text-align: center;
+  font-size: var(--drop-flash-size);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--bw-link);
+  text-shadow: 0 4px 0 var(--brick-purple-dark);
+  pointer-events: none;
+  z-index: var(--bw-z-bar);
+}
+.drop-say:not(:empty) { animation: drop-fade var(--bw-base) var(--bw-ease); }
+@keyframes drop-fade { from { opacity: 0; } }
+
+/* ---------- Overlay card (first-time card, stage clear, try again) ---------- */
+.drop-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--bw-z-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--bw-sp-7);
+  background: var(--bw-scrim);
+  animation: drop-fade var(--bw-base) var(--bw-ease);
+}
+.drop-sheet {
+  width: 100%;
+  max-width: 340px;
+  box-sizing: border-box;
+  padding: 24px 20px 20px;
+  text-align: center;
+  border-radius: var(--bw-r-xl);
+  background: linear-gradient(180deg, var(--bw-purple-top), var(--bw-purple-bottom));
+  box-shadow: var(--bw-card-shadow);
+  max-height: 100%;
+  overflow-y: auto;
+}
+.drop-sheet__title {
+  margin: 0;
+  font-size: var(--bw-fs-display);
+  font-weight: 800;
+  line-height: var(--bw-lh-display);
+}
+.drop-sheet__line {
+  margin: var(--bw-sp-3) 0 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bw-text-2);
+}
+.drop-sheet__line b { color: var(--bw-text); }
+.drop-sheet__note {
+  margin: var(--bw-sp-3) 0 0;
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bw-text-2);
+}
+.drop-sheet__best { color: var(--bw-link); }
+.drop-sheet__keys {
+  margin: var(--bw-sp-5) 0 0;
+  font-size: var(--bw-fs-helper);
+  font-weight: 700;
+  color: var(--bw-text-2);
+}
+.drop-sheet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--bw-sp-4);
+  margin-top: var(--bw-sp-6);
+}
+.drop-starrow {
+  display: flex;
+  justify-content: center;
+  gap: var(--bw-sp-1);
+  margin: var(--bw-sp-4) 0 var(--bw-sp-1);
+}
+.drop-starrow > span { display: grid; color: var(--bw-star-off); }
+.drop-starrow > span.is-on { color: var(--bw-star); }
+
+.drop-intro__pieces {
+  list-style: none;
+  margin: var(--bw-sp-5) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--bw-sp-4) var(--bw-sp-6);
+}
+.drop-intro__piece {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--bw-sp-1);
+}
+.drop-intro__tag {
+  padding: 0 var(--bw-sp-3);
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-accent);
+  color: var(--bw-on-yellow);
+  font-size: var(--bw-fs-helper);
+  font-weight: 800;
+  line-height: 1.5;
 }
 
-/* Wider screens: one row of six, movement on the left, actions on the right. */
-@media (min-width: 520px) {
-  .drop-pad { grid-template-columns: repeat(6, 1fr); }
-  .drop-pad__btn--left { order: 1; }
-  .drop-pad__btn--down { order: 2; }
-  .drop-pad__btn--right { order: 3; }
-  .drop-pad__btn--hold { order: 4; }
-  .drop-pad__btn--rotate { order: 5; }
-  .drop-pad__btn--drop { order: 6; }
+@media (prefers-reduced-motion: reduce) {
+  .drop-timer__track > span { transition: none; }
+  .drop-grid { transition: none; }
+  .drop-cell.is-clearing { animation: none; opacity: 0.3; }
+  .drop-flash { animation: drop-fade 0.15s linear forwards; transform: none; }
+  .drop-say:not(:empty), .drop-scrim { animation: drop-fade 0.15s linear; }
 }
-@media (min-width: 720px) and (min-height: 700px) and (hover: hover) {
-  .drop-keys { display: block; }
-}
-/* Tall phones: spend spare height on bigger thumbs targets. */
-@media (min-height: 800px) and (max-width: 519px) {
-  .drop-pad__btn { height: 64px; }
-}
-/* Very short screens: slimmer buttons so the board stays big. */
-@media (max-height: 640px) {
-  .drop-pad__btn { height: 50px; }
-  .drop-pad__label { display: none; }
-  .drop-play__inner { gap: 8px; }
-}
-
-/* ---------- Cards ---------- */
-.drop-intro,
-.drop-result { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.drop-intro__goal { font-size: 22px; color: var(--ink); }
-.drop-intro__goal b { color: var(--accent); }
-.drop-intro__pieces { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 10px 12px; }
-.drop-intro__piece { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 10px; }
-.drop-intro__piece.is-new { background: rgb(255 255 255 / 0.12); box-shadow: 0 0 0 2px var(--accent); }
-.drop-intro__tag { font-size: 12px; line-height: 1; color: var(--accent); font-weight: 800; white-space: nowrap; }
-.drop-intro__tip { font-size: 16px; line-height: 1.3; }
-.drop-intro__rule,
-.drop-result__rule { font-size: 14px; color: var(--ink-dim); display: inline-flex; align-items: center; gap: 6px; line-height: 1.3; }
-.card .drop-intro .stars { font-size: 16px; margin: 0; }
-.drop-result__score { color: var(--ink); }
-.drop-result__best { color: var(--accent); }
