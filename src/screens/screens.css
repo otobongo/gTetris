@@ -92,6 +92,7 @@
 .sc-stats:focus-visible,
 .sc-avatar-link:focus-visible,
 .sc-legalrow:focus-visible,
+.sc-gamerow:focus-visible,
 .sc-hold:focus-visible,
 .sc-tab:focus-visible,
 .sc-check input:focus-visible {
@@ -474,12 +475,39 @@
 .sc-tile__stars { display: flex; gap: 1px; }
 .sc-tile__star { color: var(--bw-star); }
 .sc-tile__star.is-off { color: var(--bw-star-off); }
-.sc-tile.is-locked { background: var(--bw-well); box-shadow: none; color: var(--bw-text-2); cursor: default; gap: 2px; }
+.sc-tile.is-locked { background: var(--bw-well); box-shadow: none; color: var(--bw-text-2); cursor: pointer; gap: 2px; }
+button.sc-tile { cursor: pointer; }
+.sc-tile__n--row { display: flex; align-items: center; gap: 2px; }
+/* Picked in the grown-up picker: the selection ring, raised 2px, as on Who's playing. */
+.sc-tile[aria-pressed='true'] { box-shadow: var(--bw-ring), 0 4px 0 var(--tone-edge); transform: translateY(-2px); }
+.sc-tile.is-locked[aria-pressed='true'] { box-shadow: var(--bw-ring); }
+.sc-picker__intro { flex-shrink: 0; }
+.sc-picker__reset { flex-shrink: 0; gap: var(--bw-sp-3); }
 .sc-tile.is-locked .sc-tile__lock { color: var(--bw-decor); }
 .sc-tile.is-locked .sc-tile__n { font-size: var(--bw-fs-label); }
 .sc-tile--more { border: 2px dashed var(--bw-dashed); background: none; box-shadow: none; padding: var(--bw-sp-1); color: var(--bw-text-2); font-size: var(--bw-fs-label); font-weight: 800; line-height: 1.1; text-align: center; }
 .sc-levels__foot { flex-shrink: 0; display: flex; flex-direction: column; gap: var(--bw-sp-3); }
 .sc-status { margin: 0; min-height: 20px; text-align: center; font-size: var(--bw-fs-sub); font-weight: 700; line-height: var(--bw-lh-body); color: var(--bw-text-2); }
+.sc-status--strong { color: var(--bw-text); text-wrap: balance; }
+/* The picker's toast sits in the footer in place of the status line, so it never covers the button. */
+.sc-toast--inline { max-width: none; margin: 0; box-shadow: none; text-wrap: balance; }
+
+/* ---------- Settings: one row per game, opening the level picker ---------- */
+.sc-gamerows { display: flex; flex-direction: column; }
+.sc-gamerow {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-5);
+  text-decoration: none;
+  color: var(--bw-text);
+}
+/* Square ends, so the 2px divider runs straight across like Support's legal rows. */
+.sc-gamerow + .sc-gamerow { border-top: 2px solid var(--bw-well); }
+.sc-gamerow__text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+.sc-gamerow__name { font-size: var(--bw-fs-sub); font-weight: 800; }
+.sc-gamerow__sub { font-size: var(--bw-fs-helper); font-weight: 700; color: var(--bw-text-2); }
+.sc-gamerow__chev { flex-shrink: 0; display: grid; color: var(--bw-text-2); }
 
 /* ---------- Sticker book ---------- */
 .sc-tabs { display: flex; gap: var(--bw-sp-2); padding: var(--bw-sp-1); border-radius: 14px; background: var(--bw-well); }

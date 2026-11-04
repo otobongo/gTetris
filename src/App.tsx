@@ -4,7 +4,7 @@ import DropApp from './games/drop/DropApp';
 import LettersApp from './games/letters/LettersApp';
 import SlideApp from './games/slide/SlideApp';
 import { activePlayer, progressStore, useProgressState } from './shared/progress';
-import { legacyRedirect, parseRoute, replace, useRoute, type Route } from './shared/router';
+import { parseRoute, replace, useRoute, type Route } from './shared/router';
 import Break from './screens/Break';
 import ComingSoon from './screens/ComingSoon';
 import Help from './screens/Help';
@@ -16,7 +16,8 @@ import Settings from './screens/Settings';
 import Signin from './screens/Signin';
 import Signup from './screens/Signup';
 import Stickers from './screens/Stickers';
-import { grownUpGate, needsGrownUpCheck, notePath, setResumePath, shouldBreak } from './screens/logic/session';
+import { planRoute } from './screens/logic/routes';
+import { grownUpGate, needsGrownUpCheck, notePath, setResumePath } from './screens/logic/session';
 import { GrownUpOnly } from './screens/parts/GrownUpOnly';
 import { usePlayClock } from './screens/playClock';
 
@@ -32,21 +33,20 @@ export default function App() {
   const state = useProgressState();
   const player = activePlayer(state);
   const path = `/${segments.join('/')}`;
-  const redirect = legacyRedirect(segments);
-  const route = parseRoute(segments);
-  const unknown = route.name === 'notFound' || ((route.name === 'game' || route.name === 'levels') && !getGame(route.id));
 
-  // Break is decided when a screen opens, not while it is open, so a level in progress is not
-  // cut off; the next screen change after the limit is used up shows Break instead.
-  const breakNow = useMemo(() => shouldBreak(route, activePlayer(progressStore.getState()), progressStore.now()), [path]);
+  // Where this path really goes (old paths, the old level grid, the current-level rule, Break),
+  // worked out when a screen opens and not while it is open: a level in progress is not cut off by
+  // the limit, and the fourth solve, which moves the current level on, does not leave the level card.
+  const plan = useMemo(() => planRoute(segments, progressStore.getState(), progressStore.now()), [path]);
+  const route = plan.route;
   // Home and Break need a player: before anyone is set up, or with nobody picked, Who's playing opens.
   const needsPlayer = (route.name === 'home' || route.name === 'break') && !player;
 
-  const target = redirect ?? (unknown ? '/' : breakNow ? '/break' : needsPlayer ? '/players' : null);
+  const target = plan.redirect ?? (needsPlayer ? '/players' : null);
 
   // The grown-up check ends on any screen outside the grown-up pages, even one that only redirects.
   useEffect(() => {
-    grownUpGate.follow(route);
+    grownUpGate.follow(parseRoute(segments));
   }, [path]);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function App() {
 
   useEffect(() => {
     if (!target) return;
-    if (target === '/break') setResumePath(path);
+    if (target === '/break') setResumePath(plan.path);
     replace(target);
   }, [target, path]);
 
@@ -63,7 +63,7 @@ export default function App() {
 
   if (target) return null;
 
-  // Settings, Sign in and Sign up open only after the grown-up check; Support, Terms and Privacy stay open.
+  // Settings, the level picker, Sign in and Sign up open only after the grown-up check; Support, Terms and Privacy stay open.
   if (needsGrownUpCheck(route)) {
     return (
       <GrownUpOnly key={route.name} title={GROWN_UP_TITLES[route.name] ?? 'Grown-ups'}>
@@ -74,7 +74,7 @@ export default function App() {
   return <Screens route={route} />;
 }
 
-const GROWN_UP_TITLES: Partial<Record<Route['name'], string>> = { settings: 'Settings', signin: 'Sign in', signup: 'Sign up' };
+const GROWN_UP_TITLES: Partial<Record<Route['name'], string>> = { settings: 'Settings', levelPicker: 'Settings', signin: 'Sign in', signup: 'Sign up' };
 
 /** The screen for a route that needs no redirect. */
 function Screens({ route }: { route: Route }) {
@@ -87,6 +87,8 @@ function Screens({ route }: { route: Route }) {
       return <Break />;
     case 'settings':
       return <Settings />;
+    case 'levelPicker':
+      return <Levels game={getGame(route.game)!} playerId={route.playerId} />;
     case 'signin':
       return <Signin />;
     case 'signup':
@@ -96,15 +98,12 @@ function Screens({ route }: { route: Route }) {
     case 'terms':
     case 'privacy':
       return <HelpDoc page={route.name} />;
-    case 'levels': {
-      const game = getGame(route.id)!;
-      return game.playable ? <Levels game={game} /> : <ComingSoon game={game} />;
-    }
     case 'game': {
       const game = getGame(route.id)!;
       const Game = GAME_SCREENS[game.id];
       if (!game.playable || !Game) return <ComingSoon game={game} />;
       // Every game draws its own Screen, which pads itself, so no shell wrapper goes around it.
+      // routes.ts lets only the current level through; no level means every level is done (the finished state).
       return <Game params={route.level === null ? [] : [String(route.level)]} />;
     }
     default:

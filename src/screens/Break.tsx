@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { dayKey, playToday, progressStore, useActivePlayer, useProgressState } from '../shared/progress';
-import { go, toHref } from '../shared/router';
+import { getGame } from '../games/registry';
+import { go, parseRoute, splitPath, toHref } from '../shared/router';
 import { say } from '../shared/speech';
 import { Brick, IconButton, Screen, cx, useLayout, type BrickColor } from '../shared/ui';
+import { breakSavedLine } from './logic/levels';
 import { getResumePath } from './logic/session';
 import { Avatar } from './parts/Art';
 import { GrownUpCheck, Segmented } from './parts/Controls';
@@ -19,6 +21,14 @@ const BOX_BRICKS: { color: BrickColor; x: number; y: number; w: number; h: numbe
   { color: 'yellow', x: 48, y: 62, w: 30, h: 22 },
   { color: 'purple', x: 124, y: 62, w: 30, h: 22 },
 ];
+
+/** "Level 9 is saved with 2 of 4 puzzles solved." when the path Break resumes is a game whose current level has a solved puzzle. */
+function midLevelLine(player: Parameters<typeof breakSavedLine>[1]): string | null {
+  const route = parseRoute(splitPath(getResumePath()));
+  if (route.name !== 'game') return null;
+  const game = getGame(route.id);
+  return game ? breakSavedLine(game, player) : null;
+}
 
 /**
  * Break time (design/canvas/Break.dc.html, brief 3.4). Shown when today's minutes reach the
@@ -40,7 +50,8 @@ export default function Break() {
   const heading = `Time for a break, ${player.name}`;
   // When the day starts again is [PLACEHOLDER: daily reset time, e.g. midnight on this device]; the store uses the local calendar day.
   const message = `You played ${played} ${played === 1 ? 'minute' : 'minutes'} today. Your bricks will be here tomorrow.`;
-  const saved = 'Your stars and levels are saved for next time.';
+  // Mid-level (brief 2.4): the level Break stopped names its solved puzzles; otherwise the general line.
+  const saved = midLevelLine(player) ?? 'Your stars and levels are saved for next time.';
   const newToday = Object.values(player.stickers).filter((s) => dayKey(s.earnedAt) === today.day).length;
   const siblings = state.players.length > 1;
   const colClass = cx('sc-break__col', tablet && 'sc-break__col--wide');
