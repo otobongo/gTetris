@@ -4,3 +4,8 @@ dist
 .DS_Store
 coverage
 scripts/.slide-cache
+
+# Local env files hold keys: never commit them. Only the example stays tracked.
+.env
+.env.*
+!.env.example

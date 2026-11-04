@@ -54,6 +54,18 @@ body {
 
 button { font-family: inherit; color: inherit; }
 
+/* Pinch zoom stays on for everyone (no user-scalable=no). Tap targets skip double-tap zoom, so a
+   quick second tap is a tap. Boards and drag areas set touch-action: none on their own classes. */
+button,
+a,
+[role="button"],
+input,
+label,
+select,
+summary {
+  touch-action: manipulation;
+}
+
 .screen {
   width: 100%;
   max-width: 560px;
