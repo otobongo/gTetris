@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { PROVIDERS, disabledAuth, localOnlySync, mergeProgress, mergeSnapshot, parseFlag, toSnapshot, type ProgressSnapshot } from './index';
 import { authNotice } from '../../screens/logic/auth';
-import { emptyState, makePlayer } from '../progress/model';
+import { emptyState, makePlayer, sanitize } from '../progress/model';
+import { createProgressStore } from '../progress/store';
 import { rng } from '../rng';
 import type { GameProgress, Player, ProgressState, StickerRecord } from '../progress';
 
@@ -256,5 +257,44 @@ describe('accounts switched off: edges', () => {
     }
     expect(authNotice('offline', 'google').tone).toBe('info');
     expect(authNotice('too-many-tries', 'email').body).toContain('[PLACEHOLDER:');
+  });
+});
+
+describe('merge rule: review additions', () => {
+  it('gives a state the store keeps exactly as merged, so nothing changes on save (60 random pairs)', () => {
+    for (const seed of SEEDS) {
+      const merged = mergeProgress(randomState(seed), randomState(seed + 1));
+      expect(sanitize(merged, T), `seed ${seed}`).toEqual(merged);
+      const store = createProgressStore({ storage: null, now: () => T, newId: () => 'unused' });
+      store.replace(merged);
+      expect(store.getState(), `seed ${seed}`).toEqual(merged);
+    }
+  });
+
+  it('merges a pulled snapshot of the other device exactly like that device’s own state', () => {
+    for (const seed of SEEDS) {
+      const local = randomState(seed);
+      const remote = randomState(seed + 1);
+      expect(mergeSnapshot(local, toSnapshot(remote, T), T), `seed ${seed}`).toEqual(mergeProgress(local, remote));
+    }
+  });
+
+  it('picks the first player when this device’s active choice points at nobody', () => {
+    const local = state([player('a'), player('b')], { activePlayerId: 'ghost' });
+    expect(mergeProgress(local, state([player('c')])).activePlayerId).toBe('a');
+    expect(mergeProgress(state([], { activePlayerId: 'ghost' }), state([player('c')])).activePlayerId).toBe('c');
+  });
+
+  it('starts today from the later day only, even when the earlier day has more minutes and extra time', () => {
+    const local = state([player('a', { today: { day: '2026-11-03', minutes: 80, extraMinutes: 30 } })]);
+    const remote = state([player('a', { today: { day: '2026-11-04', minutes: 2, extraMinutes: 0 } })]);
+    expect(mergeProgress(local, remote).players[0].today).toEqual({ day: '2026-11-04', minutes: 2, extraMinutes: 0 });
+  });
+
+  it('keeps a sticker seen on either device seen, whichever device earned it first', () => {
+    const local = state([player('a', { stickers: { e1: { earnedAt: 9, seen: true } } })]);
+    const remote = state([player('a', { stickers: { e1: { earnedAt: 3, seen: false } } })]);
+    expect(mergeProgress(local, remote).players[0].stickers.e1).toEqual({ earnedAt: 3, seen: true });
+    expect(mergeProgress(remote, local).players[0].stickers.e1).toEqual({ earnedAt: 3, seen: true });
   });
 });

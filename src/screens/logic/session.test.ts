@@ -108,3 +108,24 @@ describe('a new player’s avatar colour', () => {
     expect(nextAvatarColor([...eight, player({ id: 'x', color: 'red' })])).toBe(AVATAR_COLORS[1]);
   });
 });
+
+describe('review additions: resume path and Back', () => {
+  it('resumes at Home when the stopped path is empty', () => {
+    setResumePath('');
+    expect(getResumePath()).toBe('/');
+  });
+
+  it('sends Back to the path just before, not one further back', () => {
+    notePath('/help');
+    notePath('/settings');
+    notePath('/signin');
+    expect(backTarget(['/help', '/settings'], '/')).toBe('/settings');
+  });
+
+  it('notes a path without a leading slash as the same path, so it does not count as a move', () => {
+    notePath('/players');
+    notePath('/help');
+    notePath('help');
+    expect(backTarget(['/players'], '/')).toBe('/players');
+  });
+});

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { rng } from '../../shared/rng';
 import { createProgressStore } from '../../shared/progress/store';
 import { activePlayer, isBreakTime, minutesLeft, playToday } from '../../shared/progress/model';
 import { MAX_STEP_MS, MINUTE_MS, TICK_MS, countPlayTime } from './minutes';
@@ -139,5 +140,77 @@ describe('daily minutes reach the limit and Break takes over', () => {
     }
     expect(shouldBreak({ name: 'notFound', path: 'x' }, player(), now())).toBe(false);
     expect(shouldBreak({ name: 'game', id: 'escape', level: null }, player(), now())).toBe(true);
+  });
+});
+
+describe('play clock: what any run of ticks can count (review)', () => {
+  /** A tick the way a real device can deliver it: on time, a little late, after a sleep, after the clock moved back, or broken. */
+  function randomTick(r: () => number): { elapsed: number; visible: boolean } {
+    const k = r();
+    const elapsed =
+      k < 0.6
+        ? TICK_MS + Math.floor((r() - 0.5) * 600)
+        : k < 0.7
+          ? Math.floor(r() * MAX_STEP_MS)
+          : k < 0.8
+            ? Math.floor(r() * 3 * 60 * MINUTE_MS)
+            : k < 0.9
+              ? -Math.floor(r() * 60 * MINUTE_MS)
+              : [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY][Math.floor(r() * 3)];
+    return { elapsed, visible: r() < 0.75 };
+  }
+
+  it('keeps part-minutes between 0 and one minute, and never counts more time than really passed (200 seeded runs)', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const r = rng(seed);
+      let carry = 0;
+      for (let i = 0; i < 150; i++) {
+        const { elapsed, visible } = randomTick(r);
+        const c = countPlayTime(carry, elapsed, visible);
+        const where = `seed ${seed} tick ${i} (${elapsed} ms, ${visible ? 'visible' : 'hidden'})`;
+        expect(Number.isInteger(c.minutes) && c.minutes >= 0, where).toBe(true);
+        expect(c.carry, where).toBeGreaterThanOrEqual(0);
+        expect(c.carry, where).toBeLessThan(MINUTE_MS);
+        const added = c.minutes * MINUTE_MS + c.carry - carry;
+        expect(added, where).toBeGreaterThanOrEqual(0);
+        expect(added, where).toBeLessThanOrEqual(visible && Number.isFinite(elapsed) ? Math.min(MAX_STEP_MS, Math.max(0, elapsed)) : 0);
+        carry = c.carry;
+      }
+    }
+  });
+
+  it('counts every millisecond of an ordinary visible tick, so normal play is never short-changed', () => {
+    for (const elapsed of [1, TICK_MS - 1, TICK_MS, TICK_MS + 1, MAX_STEP_MS]) {
+      for (const carry of [0, 30_000, MINUTE_MS - 1]) {
+        const c = countPlayTime(carry, elapsed, true);
+        expect(c.minutes * MINUTE_MS + c.carry - carry, `${carry} + ${elapsed}`).toBe(elapsed);
+      }
+    }
+  });
+
+  it('never hands over a minute from a hidden tick, even one ms short of a minute and after hours asleep', () => {
+    expect(countPlayTime(MINUTE_MS - 1, 3 * 60 * MINUTE_MS, false)).toEqual({ carry: MINUTE_MS - 1, minutes: 0 });
+  });
+});
+
+describe('daily minutes: a tablet that sleeps mid-level (review)', () => {
+  const NOON = new Date(2026, 10, 4, 12, 0).getTime();
+
+  it('counts only the play either side of a two-hour sleep, so the child is not sent to Break on waking', () => {
+    const store = createProgressStore({ storage: null, now: () => NOON, newId: () => 'p1' });
+    store.addPlayer({ name: 'Maya', ageBand: '7-8', color: 'blue', dailyLimit: 20 });
+    let carry = 0;
+    const tick = (elapsed: number, visible = true) => {
+      const c = countPlayTime(carry, elapsed, visible);
+      carry = c.carry;
+      if (c.minutes > 0) store.addMinutesPlayed(c.minutes);
+    };
+    for (let t = 0; t < 15 * MINUTE_MS; t += TICK_MS) tick(TICK_MS); // 15 minutes of play
+    tick(2 * 60 * MINUTE_MS); // the first tick after two hours asleep, page visible again
+    for (let t = 0; t < 4 * MINUTE_MS; t += TICK_MS) tick(TICK_MS); // 4 more minutes
+    const p = activePlayer(store.getState())!;
+    expect(playToday(p, NOON).minutes).toBe(19);
+    expect(minutesLeft(p, NOON)).toBe(1);
+    expect(shouldBreak({ name: 'game', id: 'escape', level: 3 }, p, NOON)).toBe(false);
   });
 });

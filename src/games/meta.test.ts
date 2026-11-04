@@ -39,3 +39,20 @@ describe('isLevelOpen', () => {
     for (const i of [-1, 6, 1.5, Number.NaN]) expect(isLevelOpen(meta, fresh({ unlocked: 99 }), '9-10', i)).toBe(false);
   });
 });
+
+describe('isLevelOpen: review additions', () => {
+  it('treats a game with no active player (no age band) like ages 3 to 8: chapter starts stay locked', () => {
+    expect(isLevelOpen(meta, fresh(), undefined, 0)).toBe(true);
+    expect(isLevelOpen(meta, fresh(), undefined, 3)).toBe(false);
+  });
+
+  it('opens only the level right after a starred one, not the one after that', () => {
+    const g = fresh({ stars: { 2: 1 } });
+    expect([0, 1, 2, 3, 4, 5].map((i) => isLevelOpen(meta, g, '5-6', i))).toEqual([true, false, false, true, false, false]);
+  });
+
+  it('opens nothing for a game that has no levels yet', () => {
+    const none: GameMeta = { levelCount: 0, chapters: [{ title: 'Soon', note: '', start: 0, count: 0, more: true }] };
+    for (const band of ['3-4', '9-10'] as const) expect(isLevelOpen(none, fresh({ unlocked: 5 }), band, 0)).toBe(false);
+  });
+});

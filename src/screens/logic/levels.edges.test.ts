@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { isLevelOpen, type GameMeta } from '../../games/meta';
 import { GAMES, getGame } from '../../games/registry';
 import { parseRoute, splitPath } from '../../shared/router';
-import { AGE_BANDS, emptyGame, type GameProgress } from '../../shared/progress';
+import { AGE_BANDS, activePlayer, emptyGame, emptyState, gameOf, progressStore, type GameProgress } from '../../shared/progress';
+import { currentStage } from '../../games/drop/stages';
 import { unlockedFromStars } from '../../shared/progress/model';
 import { homePill, lockMessage, planLevels, tileLabel, type LevelPlan, type TileState } from './levels';
 
@@ -204,5 +205,43 @@ describe('Home pill', () => {
 
   it('shows Coming soon for every game that is not built yet', () => {
     for (const g of GAMES.filter((x) => !x.playable)) expect(homePill(g.meta, emptyGame(), '7-8', g.noun), g.id).toBe('Coming soon');
+  });
+});
+
+describe('Brick Drop: the Play button opens the stage Home and Levels name (review)', () => {
+  // `#/game/drop` (no stage number) redirects to stages.currentStage(), which reads the app's one store.
+  // Home's pill and the Levels screen use planLevels. They must agree, or Play opens a different stage
+  // from the one the child was told about. In tests the store keeps progress in memory only.
+  const drop = getGame('drop')!;
+  const meta = drop.meta!;
+  const n = meta.levelCount;
+
+  function playAs(band: (typeof AGE_BANDS)[number], stars: Record<number, number>) {
+    progressStore.replace(emptyState());
+    progressStore.addPlayer({ name: 'Maya', ageBand: band, color: 'blue' });
+    for (const [lv, s] of Object.entries(stars)) progressStore.recordStars('drop', Number(lv), s);
+    return gameOf(activePlayer(progressStore.getState()), 'drop');
+  }
+
+  it('agrees for new, linear, out-of-order and nearly finished progress at every age', () => {
+    const samples: Record<number, number>[] = [{}, { 0: 1 }, { 0: 3, 1: 2 }, { 4: 1 }, { 0: 1, 1: 1, 3: 2 }, allStars(n - 1)];
+    for (const band of AGE_BANDS) {
+      for (const stars of samples) {
+        const game = playAs(band, stars);
+        const plan = planLevels(meta, game, band);
+        const where = `${band} ${JSON.stringify(stars)}`;
+        expect(currentStage(), where).toBe(plan.current);
+        expect(homePill(meta, game, band, drop.noun), where).toBe(`Stage ${currentStage() + 1}`);
+        // DropApp plays the stage instead of bouncing back to Levels
+        expect(isLevelOpen(meta, game, band, currentStage()), where).toBe(true);
+      }
+    }
+  });
+
+  it('replays the last stage once every stage has a star, and that stage still opens', () => {
+    const game = playAs('7-8', allStars(n, 2));
+    expect(planLevels(meta, game, '7-8').complete).toBe(true);
+    expect(currentStage()).toBe(n - 1);
+    expect(isLevelOpen(meta, game, '7-8', n - 1)).toBe(true);
   });
 });

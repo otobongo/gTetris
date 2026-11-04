@@ -384,3 +384,54 @@ describe('progress store: the store object', () => {
     expect(store.getState()).toBe(before);
   });
 });
+
+/* ---------- review additions ---------- */
+
+describe('progress store: when loading writes (review)', () => {
+  it('never writes while loading a v2 record, even a broken one, so a bad read is not saved over', () => {
+    for (const v2 of [JSON.stringify({ players: [{ id: 'a', name: 'Nia' }] }), '{broken', 'null']) {
+      const mem = memory({ [STORAGE_KEY]: v2 });
+      createProgressStore({ storage: mem.storage, now: () => NOON, newId: ids() });
+      expect(mem.writes(), v2).toBe(0);
+      expect(mem.data.get(STORAGE_KEY), v2).toBe(v2);
+    }
+  });
+
+  it('writes once when it moves v1 over, and not at all when there is nothing to load', () => {
+    const v1 = memory({ [LEGACY_KEY]: JSON.stringify({ stars: { 'drop:0': 2 } }) });
+    createProgressStore({ storage: v1.storage, now: () => NOON, newId: ids() });
+    expect(v1.writes()).toBe(1);
+    const empty = memory();
+    createProgressStore({ storage: empty.storage, now: () => NOON, newId: ids() });
+    expect(empty.writes()).toBe(0);
+  });
+
+  it('keeps saving when reads are blocked but writes work, and a later healthy load finds the save', () => {
+    const data = new Map<string, string>();
+    const blockedReads: KeyValueStorage = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: (k, v) => void data.set(k, v),
+    };
+    const store = createProgressStore({ storage: blockedReads, now: () => NOON, newId: ids() });
+    expect(store.getState().players).toEqual([]);
+    store.addPlayer(maya);
+    const later = createProgressStore({ storage: memory(Object.fromEntries(data)).storage, now: () => NOON, newId: ids('x') });
+    expect(later.getState().players.map((p) => p.name)).toEqual(['Maya']);
+  });
+});
+
+describe('progress store: a new day with extra time (review)', () => {
+  it('gives extra time to today only, and drops yesterday’s minutes when it does', () => {
+    let t = new Date(2026, 10, 3, 18, 0).getTime();
+    const store = createProgressStore({ storage: null, now: () => t, newId: ids() });
+    store.addPlayer({ ...maya, dailyLimit: 20 });
+    store.addMinutesPlayed(30);
+    t = NOON; // the next day
+    store.addExtraMinutes(10);
+    const p = activePlayer(store.getState())!;
+    expect(p.today).toEqual({ day: '2026-11-04', minutes: 0, extraMinutes: 10 });
+    expect(playToday(p, NOON)).toEqual({ day: '2026-11-04', minutes: 0, extraMinutes: 10 });
+  });
+});
