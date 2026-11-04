@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
 </helmet>
 <div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative;">
@@ -18,10 +18,18 @@
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Stage 4</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Drop · Squares and sticks</div>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
+</sc-for>
 </div>
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPause}}" hint-placeholder-val="{{ true }}">
 <button onClick="{{togglePause}}" aria-label="{{pauseLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <sc-if value="{{paused}}" hint-placeholder-val="{{ false }}">
 <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
@@ -30,15 +38,20 @@
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M9 5v14M15 5v14"></path></svg>
 </sc-if>
 </button>
+</sc-if>
+</div>
 </div>
 
+<sc-if value="{{showInfo}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
-<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{timerColor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{{timercolor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
 <span style="font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums;">{{clock}}</span>
 <div style="flex-grow: 1; height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
-<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timePct}}%; background: {{timerColor}};"></div>
+<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timepct}}%; background: {{timercolor}};"></div>
 </div></div>
+</sc-if>
 
+<sc-if value="{{showInfo}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch;">
 <div style="padding: 6px 8px; border-radius: 16px; background: #30257a; text-align: center;">
 <div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">NEXT</div>
@@ -52,6 +65,7 @@
 <div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">ROWS</div>
 <div style="font-size: 30px; font-weight: 800; line-height: 1.1;">{{rows}}<span style="font-size: 16px; color: #c9c2ff;">/6</span></div>
 </div></div>
+</sc-if>
 
 <button onClick="{{turn}}" aria-label="Board, tap to turn the brick" style="border: 0; padding: 6px; cursor: pointer; border-radius: 20px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px #3a2d8f; touch-action: none;">
 <div style="position: relative; width: {{bw}}px; height: {{bh}}px; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: {{cell}}px {{cell}}px;">
@@ -61,39 +75,165 @@
 </div>
 </button>
 
-<div style="width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
+<div style="width: 100%; min-height: 62px;">
+<sc-if value="{{showPad}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="Controls" style="width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;">
 <button onClick="{{left}}" aria-label="Move left" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Left</button>
 <button onClick="{{turn}}" aria-label="Turn" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7"></path><path d="M20 4v5h-5"></path></svg>Turn</button>
 <button onClick="{{down}}" aria-label="Move down" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>Down</button><button onClick="{{right}}" aria-label="Move right" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 9l7 7 7-7"></path></svg>Down</button>
+<button onClick="{{right}}" aria-label="Move right" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; height: 62px; border-radius: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>Right</button>
 </div>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<div style="width: 100%; display: flex; justify-content: center;">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 62px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</div>
+</sc-if>
+</div>
 
-<sc-if value="{{flash}}" hint-placeholder-val="{{ false }}">
-<div style="position: absolute; left: 0; right: 0; top: 46%; text-align: center; font-size: 40px; font-weight: 800; color: #ffe266; text-shadow: 0 4px 0 #6624c9, 0 0 30px rgba(255,226,102,0.6); pointer-events: none;">{{flashText}}</div>
+<sc-if value="{{showSay}}" hint-placeholder-val="{{ false }}">
+<p role="status" style="position: absolute; left: 0; right: 0; top: 46%; margin: 0; padding: 0 16px; text-align: center; font-size: {{saysize}}px; font-weight: 800; line-height: 1.1; color: #ffe266; text-shadow: 0 4px 0 #6624c9; text-wrap: balance; pointer-events: none;">{{say}}</p>
+</sc-if>
+
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="drop-card-title" aria-describedby="drop-card-line" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="drop-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+
+<sc-if value="{{isIntro}}" hint-placeholder-val="{{ false }}">
+<p id="drop-card-line" style="margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Clear 6 rows in each puzzle. Solve 4 to finish the stage.</p>
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{introRule}}</p>
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Running out of time caps the stage at 2 stars.</p>
+<p style="margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: #ffffff; text-wrap: balance;">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<button onClick="{{start}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Start</button>
+</div>
+</sc-if>
+
+<sc-if value="{{isOver}}" hint-placeholder-val="{{ false }}">
+<p id="drop-card-line" style="margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{overLine}}</p>
+<sc-if value="{{isStuck}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">This one is tricky. You can try a different puzzle.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{isStuck}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{swap}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>New puzzle</button>
+<button onClick="{{tryAgain}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Try again</button>
+<a href="{{hubHref}}" style="align-self: center; min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #ffffff; font-size: 15px; font-weight: 800; text-decoration: underline;">Back to games</a>
+</sc-if>
+<sc-if value="{{isPlainOver}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{tryAgain}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Try again</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{isLevel}}" hint-placeholder-val="{{ false }}">
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; gap: 4px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+</div>
+<p id="drop-card-line" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardRule}}</p>
+</sc-if>
+<sc-if value="{{showCap}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Running out of time caps the stage at 2 stars.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a stage to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
+</sc-if>
+
+</div>
+</div>
 </sc-if>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = this.fresh();
+    this.state = this.fromLever();
   }
-  fresh() {
-    // rows 9 to 11 are pre-built: a turned T fills the gap and clears two rows
+  // Sample: Maya, ages 7 to 8, on Stage 4. Each puzzle clears 6 rows; its clock is 6 rows x 15 s x 1.5 (brief 4.2).
+  limit() { return 135; }
+  // Stuck after 3 failed tries at ages 7 to 8 (brief 3.1).
+  stuckTries() { return 3; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.puzzle, p.moment].join('|');
+  }
+  // The starter stack: pre-built rows with brick-shaped holes. A turned T fills the gap and clears two rows.
+  // A mirrored copy stands in for the stage's other puzzles on the canvas.
+  starter(mirror) {
     var stack = {};
-    var COLS = 8;
-    for (var c = 0; c < COLS; c++) {
-      if (c !== 4) stack['11,' + c] = c % 2 ? 'blue' : 'teal';
-      if (c < 3 || c > 5) stack['10,' + c] = c % 2 ? 'orange' : 'yellow';
+    var put = function (r, c, color) { stack[r + ',' + (mirror ? 7 - c : c)] = color; };
+    for (var c = 0; c < 8; c++) {
+      if (c !== 4) put(11, c, c % 2 ? 'blue' : 'teal');
+      if (c < 3 || c > 5) put(10, c, c % 2 ? 'orange' : 'yellow');
     }
-    stack['9,0'] = 'pink'; stack['9,7'] = 'pink';
-    return { stack: stack, kind: 'T', rot: 0, r: 0, c: 2, queue: ['O', 'I', 'L', 'T', 'S'], rows: 0, tLeft: 120, paused: false, flash: 0 };
+    put(9, 0, 'pink'); put(9, 7, 'pink');
+    return stack;
+  }
+  // Sample stack for "Out of room": it reaches the top in column 3, and no row is complete.
+  overStack() {
+    var stack = {};
+    var tops = [4, 2, 3, 0, 5, 2, 3, 4];
+    var colors = ['teal', 'blue', 'orange', 'yellow', 'pink', 'green', 'purple', 'red'];
+    for (var c = 0; c < 8; c++) for (var r = tops[c]; r < 12; r++) {
+      if ((r * 3 + 1) % 8 === c) continue;
+      stack[r + ',' + c] = colors[c];
+    }
+    return stack;
+  }
+  // What is left after a puzzle is cleared: the starter stack's top row, dropped to the floor.
+  clearedStack() { return { '11,0': 'pink', '11,7': 'pink' }; }
+  fresh(mirror) {
+    return { stack: this.starter(mirror), mirror: !!mirror, kind: 'T', rot: 0, r: 0, c: 2, queue: ['O', 'I', 'L', 'T', 'S'], rows: 0, tLeft: this.limit(), paused: false, flash: 0, placed: 0, swapped: false };
+  }
+  fromLever() {
+    var p = this.props || {};
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['intro', 'ready', 'play', 'solved', 'over', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var s = Object.assign(this.fresh(puzzle % 2 === 0), { lever: this.leverKey(), puzzle: puzzle, moment: moment, stage: 4, tries: 0, ranOut: false });
+    // Sample values for each moment.
+    if (moment === 'play') { s.r = 3; s.tLeft = 98; }
+    if (moment === 'solved' || moment === 'levelDone') { s.stack = this.clearedStack(); s.rows = 6; s.placed = moment === 'solved' ? 14 : 16; s.tLeft = 41; }
+    if (moment === 'over' || moment === 'stuck') { s.stack = this.overStack(); s.rows = 2; s.placed = 21; s.tLeft = 52; s.tries = moment === 'stuck' ? this.stuckTries() : 1; }
+    if (moment === 'gameDone') { s.stack = {}; s.rows = 0; }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
   }
   shapes() {
     return {
@@ -121,27 +261,37 @@ class Component extends DCLogic {
   }
   componentDidMount() {
     var self = this;
-    this.tick = setInterval(function () { if (!self.state.paused) self.fall(); }, 900);
+    // Nothing falls and the clock stands still until the first press (brief 4.2).
+    this.tick = setInterval(function () { var s = self.st(); if (s.moment === 'play' && !s.paused) self.fall(); }, 900);
     this.clockT = setInterval(function () {
-      if (!self.state.paused && self.state.tLeft > 0) self.setState({ tLeft: self.state.tLeft - 1 });
+      var s = self.st();
+      if (s.moment !== 'play' || s.paused || s.tLeft <= 0) return;
+      self.put({ tLeft: s.tLeft - 1, ranOut: s.ranOut || s.tLeft === 1 });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.tick); clearInterval(this.clockT); }
+  componentWillUnmount() { clearInterval(this.tick); clearInterval(this.clockT); clearTimeout(this.cardT); clearTimeout(this.flashT); }
   tryMove(dr, dc, drot) {
-    var s = this.state;
+    var s = this.st();
     var rot = (s.rot + (drot || 0)) % 4;
     var kicks = drot ? [0, -1, 1, -2, 2] : [0];
     for (var i = 0; i < kicks.length; i++) {
       if (this.fits(s.kind, rot, s.r + dr, s.c + dc + kicks[i], s.stack)) {
-        this.setState({ r: s.r + dr, c: s.c + dc + kicks[i], rot: rot });
+        this.put({ r: s.r + dr, c: s.c + dc + kicks[i], rot: rot });
         return true;
       }
     }
     return false;
   }
-  fall() { if (!this.tryMove(1, 0, 0)) this.lock(this.state.r); }
+  // Any of the four controls, or a tap on the board, starts a waiting puzzle and does its own action.
+  press(act) {
+    var s = this.st();
+    if (s.moment === 'ready') { this.put({ moment: 'play', swapped: false }); act(); return; }
+    if (s.moment === 'play' && !s.paused) act();
+  }
+  fall() { if (!this.tryMove(1, 0, 0)) this.lock(this.st().r); }
   lock(atRow) {
-    var s = this.state;
+    var self = this;
+    var s = this.st();
     var stack = Object.assign({}, s.stack);
     var color = this.shapes()[s.kind].color;
     this.cellsOf(s.kind, s.rot).forEach(function (x) { stack[(atRow + x[0]) + ',' + (s.c + x[1])] = color; });
@@ -161,16 +311,26 @@ class Component extends DCLogic {
       });
       stack = next;
     }
+    var placed = s.placed + 1;
+    var rows = Math.min(6, s.rows + full.length);
+    if (rows >= 6) {
+      this.put({ stack: stack, rows: rows, placed: placed, flash: 0, moment: s.puzzle < 4 ? 'solved' : 'lastSolved' });
+      if (s.puzzle === 4) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+      return;
+    }
     var queue = s.queue.slice();
     var kind = queue.shift();
     queue.push(s.kind);
-    var self = this;
-    if (!this.fits(kind, 0, 0, 2, stack)) { this.setState(this.fresh()); return; }
-    this.setState({ stack: stack, kind: kind, rot: 0, r: 0, c: 2, queue: queue, rows: Math.min(6, s.rows + full.length), flash: full.length });
-    if (full.length) setTimeout(function () { self.setState({ flash: 0 }); }, 900);
+    if (!this.fits(kind, 0, 0, 2, stack)) {
+      var tries = s.tries + 1;
+      this.put({ stack: stack, rows: rows, placed: placed, tries: tries, moment: tries >= this.stuckTries() ? 'stuck' : 'over' });
+      return;
+    }
+    this.put({ stack: stack, kind: kind, rot: 0, r: 0, c: 2, queue: queue, rows: rows, placed: placed, flash: full.length });
+    if (full.length) { clearTimeout(this.flashT); this.flashT = setTimeout(function () { self.put({ flash: 0 }); }, 900); }
   }
   ghostRow() {
-    var s = this.state;
+    var s = this.st();
     var r = s.r;
     while (this.fits(s.kind, s.rot, r + 1, s.c, s.stack)) r++;
     return r;
@@ -191,24 +351,30 @@ class Component extends DCLogic {
   }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
     var cell = 42;
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone';
+    var falling = m === 'intro' || m === 'ready' || m === 'play';
     var box = function (r, c, size, extra) { return 'left: ' + (c * size + 1) + 'px; top: ' + (r * size + 1) + 'px; width: ' + (size - 2) + 'px; height: ' + (size - 2) + 'px; ' + extra; };
     var cells = [];
     Object.keys(s.stack).forEach(function (k) {
       var rc = k.split(',').map(Number);
       cells.push({ style: box(rc[0], rc[1], cell, self.brick(s.stack[k], cell - 2)) });
     });
-    var color = this.shapes()[s.kind].color;
-    var gr = this.ghostRow();
-    var p = this.pal()[color];
-    this.cellsOf(s.kind, s.rot).forEach(function (x) {
-      if (gr + x[0] >= 0) cells.push({ style: box(gr + x[0], s.c + x[1], cell, 'border: 3px dashed ' + p[1] + '; box-sizing: border-box; background: rgba(255,255,255,0.06);') });
-    });
-    this.cellsOf(s.kind, s.rot).forEach(function (x) {
-      if (s.r + x[0] >= 0) cells.push({ style: box(s.r + x[0], s.c + x[1], cell, self.brick(color, cell - 2)) });
-    });
+    if (falling) {
+      var color = this.shapes()[s.kind].color;
+      var gr = this.ghostRow();
+      var pc = this.pal()[color];
+      this.cellsOf(s.kind, s.rot).forEach(function (x) {
+        if (gr + x[0] >= 0) cells.push({ style: box(gr + x[0], s.c + x[1], cell, 'border: 3px dashed ' + pc[1] + '; box-sizing: border-box; background: rgba(255,255,255,0.06);') });
+      });
+      this.cellsOf(s.kind, s.rot).forEach(function (x) {
+        if (s.r + x[0] >= 0) cells.push({ style: box(s.r + x[0], s.c + x[1], cell, self.brick(color, cell - 2)) });
+      });
+    }
     var nk = s.queue[0];
     var ns = this.shapes()[nk];
     var nc = this.cellsOf(nk, 0);
@@ -220,21 +386,76 @@ class Component extends DCLogic {
       return { style: 'left: ' + (nx + x[1] * 18) + 'px; top: ' + (ny + (x[0] - nMinR) * 18) + 'px; width: 16px; height: 16px; ' + self.brick(ns.color, 16) };
     });
     var mm = Math.floor(s.tLeft / 60), ss = s.tLeft % 60;
+    var limit = this.limit();
+
+    // Dots (brief 7.1, 8).
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+
+    // Star counts per puzzle for this board: G = 6 rows, C = 8 columns, K = 14 stack cells, A = 4 cells a brick.
+    // ideal = (G x C - K) / A = 8.5; T3 = ceil(ideal + 2.5 x C / A) = 14; T2 = ceil(ideal + 6 x C / A) = 21 (brief 5).
+    var T3 = 14, T2 = 21;
+    // Puzzles 1 to 3 are sample results (14 bricks each); puzzle 4 is this one.
+    var total = 3 * 14 + s.placed;
+    var base = total <= 4 * T3 ? 3 : total <= 4 * T2 ? 2 : 1;
+    var starsWon = finished ? 3 : s.ranOut ? Math.min(2, base) : base;
+
+    var say = m === 'ready' ? (s.swapped ? 'Here is a different puzzle. Press any button to start.' : 'Press any button to start.')
+      : m === 'solved' || m === 'lastSolved' ? 'Cleared with ' + s.placed + ' bricks.'
+      : m === 'play' && s.flash > 0 ? (s.flash > 1 ? 'Double rows!' : 'Nice row!') : '';
+    var cardKind = m === 'intro' ? 'intro' : m === 'over' || m === 'stuck' ? 'over' : m === 'levelDone' || finished ? 'level' : '';
+
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      title: finished ? 'Brick Drop' : 'Stage ' + s.stage,
+      showDots: !finished, dots: dots,
+      dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
+      showPause: m === 'play' || m === 'ready',
+      showInfo: !finished,
       cell: cell, bw: cell * 8, bh: cell * 12,
       cells: cells, nextCells: nextCells, rows: s.rows,
       clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
-      timePct: Math.round((s.tLeft / 120) * 100),
-      timerColor: s.tLeft > 40 ? '#5fe06e' : '#ffc21a',
-      paused: s.paused, running: !s.paused, pauseLabel: s.paused ? 'Resume' : 'Pause',
-      togglePause: function () { self.setState({ paused: !s.paused }); },
-      flash: s.flash > 0, flashText: s.flash > 1 ? 'Double rows!' : 'Nice row!',
-      left: function () { self.tryMove(0, -1, 0); },
-      right: function () { self.tryMove(0, 1, 0); },
-      down: function () { self.tryMove(1, 0, 0); },
-      turn: function () { self.tryMove(0, 0, 1); }
+      timepct: Math.round((s.tLeft / limit) * 100),
+      timercolor: s.tLeft > limit / 3 ? '#5fe06e' : s.tLeft > 0 ? '#ffc21a' : '#ff9fd4',
+      paused: s.paused, running: !s.paused, pauseLabel: s.paused ? 'Keep playing' : 'Pause',
+      togglePause: function () { var cs = self.st(); if (cs.moment === 'play') self.put({ paused: !cs.paused }); },
+      showPad: !finished && !solvedNow,
+      showNext: m === 'solved',
+      next: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { puzzle: cs.puzzle + 1, moment: 'ready', tries: 0 })); },
+      showSay: !!say, say: say, saysize: m === 'play' ? 40 : 24,
+      left: function () { self.press(function () { self.tryMove(0, -1, 0); }); },
+      right: function () { self.press(function () { self.tryMove(0, 1, 0); }); },
+      down: function () { self.press(function () { self.tryMove(1, 0, 0); }); },
+      turn: function () { self.press(function () { self.tryMove(0, 0, 1); }); },
+      cardOpen: !!cardKind,
+      cardTitle: cardKind === 'intro' ? 'Squares and Sticks' : cardKind === 'over' ? 'Out of room' : finished ? 'You finished every stage!' : 'You finished Stage ' + s.stage,
+      isIntro: cardKind === 'intro',
+      introRule: '3 stars: ' + 4 * T3 + ' bricks or fewer over the 4 puzzles.',
+      start: function () { self.put({ moment: 'ready' }); },
+      isOver: cardKind === 'over',
+      isStuck: m === 'stuck',
+      isPlainOver: m === 'over',
+      overLine: 'The bricks reached the top. You cleared ' + s.rows + ' of 6 rows.',
+      tryAgain: function () { var cs = self.st(); self.put(Object.assign(self.fresh(cs.mirror), { moment: 'ready' })); },
+      swap: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { moment: 'ready', tries: 0, swapped: true })); },
+      isLevel: cardKind === 'level',
+      stars: [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: starsWon + ' of 3 stars',
+      // Score and the every-stage totals are sample data.
+      cardFact: finished ? '12 stages, 30 of 36 stars.' : '4 puzzles with ' + total + ' bricks. Score 4820.',
+      showRule: !finished,
+      cardRule: '3 stars: ' + 4 * T3 + ' bricks or fewer. 2 stars: ' + 4 * T2 + ' or fewer.',
+      showCap: !finished && s.ranOut,
+      showNote: finished,
+      showPlayNext: !finished,
+      showFinal: finished,
+      playLabel: 'Play Stage ' + (s.stage + 1),
+      playNext: function () { var cs = self.st(); self.put(Object.assign(self.fresh(false), { stage: cs.stage + 1, puzzle: 1, moment: 'ready', tries: 0, ranOut: false })); }
     };
   }
 }

@@ -154,10 +154,11 @@ class Component extends DCLogic {
     // Sample data. Maya and Leo match Who's playing and Settings (colour, age, daily limit).
     // Nia and Theo, and every "today" count and saved level, are sample data for the levers.
     return {
-      leo4: { name: 'Leo', age: 4, color: 'orange', limit: 20, stars: 4, stickers: 1, game: 'Letters', level: 'Level 5' },
-      nia6: { name: 'Nia', age: 6, color: 'pink', limit: 30, stars: 0, stickers: 0, game: 'Drop', level: 'Stage 2' },
-      maya7: { name: 'Maya', age: 7, color: 'blue', limit: 30, stars: 6, stickers: 1, game: 'Escape', level: 'Level 9' },
-      theo10: { name: 'Theo', age: 10, color: 'teal', limit: 45, stars: 9, stickers: 0, game: 'Escape', level: 'Level 23' }
+      // level: the current level (brief 2.6); solved: puzzles solved in it; spelling: a Letter Builder spelling level, which counts words built.
+      leo4: { name: 'Leo', age: 4, color: 'orange', limit: 20, stars: 4, stickers: 1, game: 'Letters', level: 'Level 16', solved: 1, spelling: true },
+      nia6: { name: 'Nia', age: 6, color: 'pink', limit: 30, stars: 0, stickers: 0, game: 'Drop', level: 'Stage 2', solved: 2, spelling: false },
+      maya7: { name: 'Maya', age: 7, color: 'blue', limit: 30, stars: 6, stickers: 1, game: 'Escape', level: 'Level 9', solved: 2, spelling: false },
+      theo10: { name: 'Theo', age: 10, color: 'teal', limit: 45, stars: 9, stickers: 0, game: 'Escape', level: 'Level 23', solved: 3, spelling: false }
     };
   }
   kid() {
@@ -197,14 +198,16 @@ class Component extends DCLogic {
   played() {
     return this.kid().limit + (this.props.addedToday === 'yes' ? 10 : 0);
   }
+  // Brief 2.4: shown only when the current level has at least one solved puzzle.
   savedLine() {
-    return this.kid().level + ' is saved. Next time you start right where you stopped.';
+    var k = this.kid();
+    return k.level + ' is saved with ' + k.solved + ' of 4 ' + (k.spelling ? 'words built.' : 'puzzles solved.');
   }
   readText() {
     var k = this.kid();
     // When the day resets is [PLACEHOLDER: daily reset time, e.g. midnight on this device].
     var t = 'Time for a break, ' + k.name + '. You played ' + this.played() + ' minutes today. Your bricks will be here tomorrow.';
-    if (this.props.when === 'midLevel') t += ' ' + this.savedLine();
+    if (this.props.when === 'midLevel' && k.solved > 0) t += ' ' + this.savedLine();
     return t;
   }
   renderVals() {
@@ -254,7 +257,7 @@ class Component extends DCLogic {
       logo: [{ c: '#f03a3a' }, { c: '#ffc21a' }, { c: '#1fb53c' }, { c: '#2f8cff' }],
       heading: 'Time for a break, ' + k.name,
       message: 'You played ' + this.played() + ' minutes today. Your bricks will be here tomorrow.',
-      midLevel: this.props.when === 'midLevel',
+      midLevel: this.props.when === 'midLevel' && k.solved > 0,
       savedText: this.savedLine(),
       showChips: view === 'break' && chips.length > 0,
       chips: chips,
