@@ -74,4 +74,13 @@ describe('#/game/drop/<n>', () => {
     expect(render(['13'])).toBe('');
     expect(render(['x'])).toBe('');
   });
+
+  it('draws nothing for an open stage that is not the current one (brief 2.6, 7.4)', () => {
+    progressStore.recordStars('drop', 0, 3);
+    progressStore.recordStars('drop', 1, 2);
+    expect(currentStage()).toBe(2);
+    expect(render(['1'])).toBe('');
+    expect(render(['2'])).toBe('');
+    expect(render(['3'])).toContain('Stage 3');
+  });
 });

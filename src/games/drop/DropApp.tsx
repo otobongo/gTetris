@@ -3,8 +3,6 @@ import { go, replace, toHref } from '../../shared/router';
 import { activePlayer, gameOf, progressStore, totalStars, useActivePlayer } from '../../shared/progress';
 import { LevelCard, Screen } from '../../shared/ui';
 import { useProgress } from '../../shared/storage';
-import { isLevelOpen } from '../meta';
-import { meta } from './meta';
 import Play, { DropBar, Well, useCellSize } from './Play';
 import { GAME_DONE_NOTE, gameDoneCard } from './puzzles';
 import { STAGES, currentStage } from './stages';
@@ -12,9 +10,11 @@ import './drop.css';
 
 /**
  * Brick Drop. `#/game/drop` (Home's card) opens the child's current stage (brief 2.6), or the finished
- * state once every stage has stars (2.5). `#/game/drop/<n>` plays stage n (1-based); a stage that
- * does not exist or is still locked goes back to `#/game/drop`. The choice is made when the route
- * changes, so finishing a stage (which moves the current stage on) never pulls the screen away.
+ * state once every stage has stars (2.5). `#/game/drop/<n>` plays stage n (1-based) only when it is
+ * the child's current stage (2.6, 7.4); any other stage, open or not, goes back to `#/game/drop`. A
+ * grown-up's pick stores the current stage first, so the stage it opens passes this rule. The choice
+ * is made when the route changes, so finishing a stage (which moves the current stage on) never pulls
+ * the screen away.
  */
 export default function DropApp({ params }: { params: string[] }) {
   useProgress(); // unlocks depend on stars
@@ -28,9 +28,7 @@ export default function DropApp({ params }: { params: string[] }) {
     }
     const n = Number(raw);
     const i = Number.isInteger(n) ? n - 1 : -1;
-    // Same rule as the grown-up picker, so every stage it opens also opens here.
-    const p = activePlayer(progressStore.getState());
-    const open = isLevelOpen(meta, gameOf(p, 'drop'), p?.ageBand, i);
+    const open = i >= 0 && i === currentStage();
     return { target: open ? null : '/game/drop', index: i };
     // playerId: a different child gets the choice made again
     // eslint-disable-next-line react-hooks/exhaustive-deps

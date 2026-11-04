@@ -39,9 +39,9 @@ afterAll(() => progressStore.replace(emptyState()));
 
 /**
  * Games on four-puzzle levels play only the child's current level (brief 2.6, 7.4); any other level number
- * redirects. Updated for Brick Escape: it used to open every level isLevelOpen opened.
+ * redirects. Updated for Brick Escape and Brick Drop: they used to open every level isLevelOpen opened.
  */
-const CURRENT_ONLY = new Set<string>(['escape']);
+const CURRENT_ONLY = new Set<string>(['escape', 'drop']);
 
 describe('every game opens exactly the levels the shared rule opens', () => {
   for (const { id, App } of GAMES) {

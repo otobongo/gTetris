@@ -17,6 +17,7 @@ export {
   minutesLeft,
   nextCurrentLevel,
   playToday,
+  resolveRun,
   runOf,
   sanitize,
   solvedCount,

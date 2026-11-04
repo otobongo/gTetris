@@ -5,6 +5,7 @@ import {
   findPlayer,
   gameOf,
   progressStore,
+  resolveRun,
   runOf,
   starsFor,
   totalStars,
@@ -16,7 +17,6 @@ import {
   type PuzzleResult,
   type PuzzleRules,
 } from '../../shared/progress';
-import { resolveRun } from '../../shared/progress/model';
 import { go, replace, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { letterName, say } from '../../shared/speech';
