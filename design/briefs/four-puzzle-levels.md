@@ -407,9 +407,25 @@ Child-facing lines are short, calm and literal. The one exclamation is "You fini
 11. **Letter Builder Level 1 (A to E).** A to E holds only one run of 5, so six puzzles would differ only in tray order, and a swap would not be a different puzzle. *Recommended:* runs of 4 on Level 1, alternating A to D and B to E (4.3). *Alternative:* keep A to E six times and accept that a swap only reshuffles the tray.
 12. **Doors away from corners.** The standing rule says doors sit at corners, but today's engine lets advanced levels (9 and 26 to 31) put a door mid-edge, and their anchor boards already do. *Recommended:* keep the exception for those levels, so their new boards match their anchors. *Alternative:* corners only, which means redrawing seven anchors, including the Level 9 and 31 canvas boards.
 
+### 11.1 Decisions (user, 2026-11-04)
+The brief is approved. Answers to the open questions above:
+1. Brick Drop puzzle: starter stack with brick-shaped holes.
+2. Daily limit mid-puzzle: the child finishes the puzzle; Break opens on the next tap.
+3. After the last level: the finished card with "Back to games" and the grown-up replay note.
+4. Grown-up picker: any level, locked ones too. Signup's ages 9 to 10 line drops "harder levels unlocked sooner".
+5. Per-game reset keeps that game's stickers.
+6. Taking a different puzzle is free.
+7. Small spelling pools: ship with repeats across levels (never inside one).
+8. Journey tests: **add Playwright** for real-browser journeys (the alternative, not the recommendation). It is a dev dependency only; journeys run locally and in CI only on pull requests into `claude/kids-brick-games` and on `workflow_dispatch`, never on every push. Vitest integration tests for run logic stay as listed.
+9. Brick Drop length: half the goal rows, rounded up, from Stage 6 on.
+10. Level card: keep the one-tap card.
+11. Letter Builder Level 1: runs of 4, alternating A to D and B to E.
+12. Doors away from corners: keep the exception for Levels 9 and 26 to 31.
+13. Brick Escape help line becomes "Drag each brick out through the door of its color." (bricks now leave only when dragged out through the door, commit `8be12ac`).
+
 ## 12. Work plan
 
-Branch `feat/four-puzzle-levels`, cut from `feat/app-from-canvas` at `8be12ac` or later. The Brick Escape drag work (`SlideGame.tsx`, `engine.ts`, `slide.css`, `drag.ts`, `drag.test.ts`) is already committed in `8be12ac` and pushed, so agent C starts from it. Agents commit and push after every item or two; one draft PR, marked ready when everything below passes; nothing merges to `main`.
+Work continues on `feat/app-from-canvas` (draft PR otobongo/gTetris#2) at `8be12ac` or later, instead of a separate `feat/four-puzzle-levels` branch, so everything lands in the one draft PR. The Brick Escape drag work (`SlideGame.tsx`, `engine.ts`, `slide.css`, `drag.ts`, `drag.test.ts`) is already committed in `8be12ac` and pushed, so agent C starts from it. Agents commit and push after every item or two; one draft PR, marked ready when everything below passes; nothing merges to `main`.
 
 **Stage A: canvas first.** One design agent (Large: design, Opus at high). Files: `design/canvas/*.dc.html` and `canvas.json` only. Guide pack as in the header. Done when every board and lever in 7.5 renders at 390x844 and 834x1194 with no clipped text and the values match section 8. The main session then shows the boards as built and asks whether you want a check.
 
