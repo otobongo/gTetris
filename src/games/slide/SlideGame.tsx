@@ -1,10 +1,22 @@
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { toHref } from '../../shared/router';
+import { type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
-import { recordStars } from '../../shared/storage';
-import { useActivePlayer } from '../../shared/progress';
-import type { AgeBand, TimerMode } from '../../shared/progress';
-import { Brick, IconButton, PressButton, SandTimer, Screen, TopBar } from '../../shared/ui';
+import { activePlayer, freshRun, progressStore, runOf, starsFor, totalStars, useActivePlayer } from '../../shared/progress';
+import type { AgeBand, LevelRun, PuzzleResult, TimerMode } from '../../shared/progress';
+import { IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, Brick } from '../../shared/ui';
+import { breakBefore } from '../../screens/logic/session';
+import {
+  SOLVES_PER_LEVEL,
+  STUCK,
+  STUCK_START,
+  type StuckEvent,
+  type StuckState,
+  dotPosition,
+  escapeLevelStars,
+  puzzleOnScreen,
+  rotateQueue,
+  stuckStep,
+} from '../run';
 import {
   type BlockDef,
   type Cell,
@@ -19,11 +31,24 @@ import {
   isLocked,
   isSolved,
   locksLeft,
-  starsFor,
   withMove,
 } from './engine';
 import { EXIT_PAST, dragStep, keyStep } from './drag';
-import { LEVELS } from './levels';
+import {
+  FINISHED_NOTE,
+  GAME,
+  HELP_LINE,
+  HINT_LINE,
+  OFFER_LINE,
+  PUZZLE_LEVELS,
+  SWAPPED_LINE,
+  TIME_UP_LINE,
+  clockCaption,
+  escapeRules,
+  finishedCard,
+  levelCard,
+  solvedLine,
+} from './puzzles';
 import { solve } from './solver';
 
 /* ---------- clock (Grownups board: base seconds x the age factor) ---------- */
@@ -127,13 +152,45 @@ interface Snapshot {
   moves: number;
 }
 
-const LEVELS_ROUTE = '/game/escape/levels';
+/** play: a puzzle is on the board. solved: Next puzzle waits. done: the fourth solve, the level card. */
+type Phase = 'play' | 'solved' | 'done';
+
+interface Finish {
+  stars: number;
+  results: PuzzleResult[];
+  next: number | null;
+  total: number;
+}
+
+const HOME = '/';
+
+/** The run to continue from, read from the store without writing (the mount effect saves it). */
+function runToStart(index: number): LevelRun {
+  const player = activePlayer(progressStore.getState());
+  const rules = escapeRules(index);
+  const stored = runOf(player, GAME, index);
+  return stored && stored.set === rules.set ? stored : freshRun(rules, progressStore.now());
+}
+
+const focusLater = (selector: string) =>
+  window.setTimeout(() => document.querySelector<HTMLElement>(selector)?.focus(), 0);
 
 export default function SlideGame({ index }: { index: number }) {
-  const level = LEVELS[index];
-  const { stage, cell } = useCell(level);
+  const boards = PUZZLE_LEVELS[index].puzzles;
   const player = useActivePlayer();
   const band: AgeBand = player?.ageBand ?? '5-6';
+  const limit = STUCK.escape[band];
+
+  const [run, setRun] = useState<LevelRun>(() => runToStart(index));
+  const [puzzle, setPuzzle] = useState(() => puzzleOnScreen(run));
+  const [phase, setPhase] = useState<Phase>('play');
+  const [finish, setFinish] = useState<Finish | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [stuck, setStuck] = useState<StuckState>(STUCK_START);
+  const [note, setNote] = useState('');
+
+  const level = boards[puzzle] ?? boards[0];
+  const { stage, cell } = useCell(level);
   const clock = clockFor(level.base ?? 45, band, player?.timerMode ?? 'auto');
 
   const [state, setState] = useState<State>(() => initialState(level));
@@ -145,8 +202,6 @@ export default function SlideGame({ index }: { index: number }) {
   const [bumped, setBumped] = useState<number | null>(null);
   const [pull, setPull] = useState<Pull | null>(null);
   const [tLeft, setTLeft] = useState(clock.seconds);
-  const [won, setWon] = useState<{ stars: number; inTime: boolean } | null>(null);
-  const [cardOpen, setCardOpen] = useState(false);
 
   const drag = useRef<Drag | null>(null);
   const stateRef = useRef(state);
@@ -157,6 +212,14 @@ export default function SlideGame({ index }: { index: number }) {
   tLeftRef.current = tLeft;
   const hintRef = useRef(usedHint);
   hintRef.current = usedHint;
+  const runRef = useRef(run);
+  runRef.current = run;
+  const puzzleRef = useRef(puzzle);
+  puzzleRef.current = puzzle;
+  const levelRef = useRef(level);
+  levelRef.current = level;
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   /** keyboard: consecutive arrow presses on the same brick count as one move */
   const keySession = useRef<number | null>(null);
   const timers = useRef<number[]>([]);
@@ -166,57 +229,127 @@ export default function SlideGame({ index }: { index: number }) {
   };
   useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
 
-  const reset = useCallback(() => {
-    drag.current = null;
-    keySession.current = null;
-    stateRef.current = initialState(level);
-    movesRef.current = 0;
-    setState(stateRef.current);
-    setHistory([]);
-    setMoves(0);
-    setUsedHint(false);
-    setHintBlock(null);
-    setExiting(null);
-    setBumped(null);
-    setPull(null);
-    setTLeft(clock.seconds);
-    setWon(null);
-    setCardOpen(false);
-  }, [level, clock.seconds]);
-
-  // the clock ticks while the level is open, visible and not won
-  const ticking = clock.kind !== 'off' && won === null;
+  // Save the run this level continues from (a new run, or one on a new set of boards), for the active player.
   useEffect(() => {
-    if (!ticking) return;
+    const id = progressStore.ensureActivePlayer();
+    const saved = progressStore.startRun(GAME, index, escapeRules(index), id);
+    const shown = runRef.current;
+    if (saved.set !== shown.set || saved.queue.join() !== shown.queue.join() || saved.solved.length !== shown.solved.length) {
+      runRef.current = saved;
+      setRun(saved);
+      if (puzzleOnScreen(saved) !== puzzleRef.current) showPuzzle(puzzleOnScreen(saved), 'start');
+    }
+    // once per level: SlideApp mounts a new SlideGame for every level
+  }, [index]);
+
+  const stuckEvent = (e: StuckEvent) => setStuck((s) => stuckStep(s, e, limit));
+
+  /** A fresh try at one board: the board, moves, hint and clock start again. */
+  const freshBoard = useCallback(
+    (lvl: Level) => {
+      drag.current = null;
+      keySession.current = null;
+      stateRef.current = initialState(lvl);
+      movesRef.current = 0;
+      setState(stateRef.current);
+      setHistory([]);
+      setMoves(0);
+      setUsedHint(false);
+      setHintBlock(null);
+      setExiting(null);
+      setBumped(null);
+      setPull(null);
+      setTLeft(clockFor(lvl.base ?? 45, band, player?.timerMode ?? 'auto').seconds);
+    },
+    [band, player?.timerMode],
+  );
+
+  /** Put puzzle `p` of this level on the board (after Next or a swap). */
+  const showPuzzle = (p: number, why: 'start' | 'swap') => {
+    const lvl = boards[p] ?? boards[0];
+    levelRef.current = lvl;
+    puzzleRef.current = p;
+    setPuzzle(p);
+    freshBoard(lvl);
+    stuckEvent({ type: why });
+    setNote(why === 'swap' ? SWAPPED_LINE : '');
+    setPhase('play');
+  };
+
+  const restart = () => {
+    if (phaseRef.current !== 'play') return;
+    freshBoard(levelRef.current);
+    stuckEvent({ type: 'restart' });
+    setNote('');
+  };
+
+  // Time counts while the puzzle is on screen, the page is visible and no card is open (brief 3.1).
+  const playing = phase === 'play';
+  useEffect(() => {
+    if (!playing) return;
     const id = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       setTLeft((t) => (t > 0 ? t - 1 : 0));
+      setStuck((s) => stuckStep(s, { type: 'tick', seconds: 1 }, limit));
     }, 1000);
     return () => window.clearInterval(id);
-  }, [ticking]);
+  }, [playing, limit]);
 
+  /** The puzzle is solved: save it, then show Next puzzle, or after the fourth the level card. */
   const finishIfSolved = useCallback(
     (s: State) => {
-      if (!isSolved(s)) return;
-      const inTime = clock.kind !== 'counted' || tLeftRef.current > 0;
-      const stars = starsFor(movesRef.current, level.par, hintRef.current, !inTime);
-      recordStars('slide', index, stars);
-      later(() => {
-        sfx.win();
-        setWon({ stars, inTime });
-        setCardOpen(true);
-      }, 350);
+      if (!isSolved(s) || phaseRef.current !== 'play') return;
+      const lvl = levelRef.current;
+      const counted = clockFor(lvl.base ?? 45, band, player?.timerMode ?? 'auto').kind === 'counted';
+      const result: PuzzleResult = {
+        puzzle: puzzleRef.current,
+        count: movesRef.current,
+        par: lvl.par,
+        usedHint: hintRef.current,
+        outOfTime: counted && tLeftRef.current <= 0,
+      };
+      const outcome = progressStore.recordPuzzle(GAME, index, result, escapeRules(index));
+      phaseRef.current = 'solved';
+      sfx.win();
+      if (outcome.kind === 'finished') {
+        const total = totalStars(activePlayer(progressStore.getState()), GAME);
+        setFinish({ stars: outcome.stars, results: outcome.results, next: outcome.next, total });
+        setPhase('done');
+        later(() => setCardOpen(true), LEVEL_CARD_DELAY_MS);
+        return;
+      }
+      // 'ignored' only happens with no player to save to: carry on in memory so the child is never stuck.
+      const next: LevelRun =
+        outcome.kind === 'saved'
+          ? outcome.run
+          : { ...runRef.current, solved: [...runRef.current.solved, result], queue: runRef.current.queue.filter((n) => n !== result.puzzle) };
+      if (next.solved.length >= SOLVES_PER_LEVEL) {
+        setFinish({ stars: escapeLevelStars(next.solved), results: next.solved, next: index + 1 < PUZZLE_LEVELS.length ? index + 1 : null, total: 0 });
+        setPhase('done');
+        later(() => setCardOpen(true), LEVEL_CARD_DELAY_MS);
+        return;
+      }
+      runRef.current = next;
+      setRun(next);
+      setPhase('solved');
+      // the controls it replaces are gone, so focus moves to Next puzzle (brief 10)
+      focusLater('.esc-next');
     },
-    [index, level.par, clock.kind],
+    [index, band, player?.timerMode],
   );
 
   /** A new move starts: keep the state before it for undo, and count it. */
-  const beginMove = useCallback((before: Snapshot) => {
-    setHistory((h) => [...h, before]);
-    movesRef.current = before.moves + 1;
-    setMoves(movesRef.current);
-    setHintBlock(null);
-  }, []);
+  const beginMove = useCallback(
+    (before: Snapshot) => {
+      setHistory((h) => [...h, before]);
+      movesRef.current = before.moves + 1;
+      setMoves(movesRef.current);
+      setHintBlock(null);
+      setNote('');
+      setStuck((s) => stuckStep(s, { type: 'moves', moves: movesRef.current, best: levelRef.current.par }, limit));
+    },
+    [limit],
+  );
 
   const leave = useCallback(
     (block: number, gate: GateDef) => {
@@ -229,11 +362,12 @@ export default function SlideGame({ index }: { index: number }) {
         stateRef.current = ns;
         setExiting(null);
         setState(ns);
+        setStuck((s) => stuckStep(s, { type: 'progress' }, limit));
         finishIfSolved(ns);
-        if (hadFocus) later(() => document.querySelector<HTMLElement>('.esc-brick:not(.is-exiting)')?.focus(), 0);
+        if (hadFocus && !isSolved(ns)) later(() => document.querySelector<HTMLElement>('.esc-brick:not(.is-exiting)')?.focus(), 0);
       }, 320);
     },
-    [finishIfSolved],
+    [finishIfSolved, limit],
   );
 
   /** Slide `block` to a legal spot on the board (never off it: leaving is `leave`). */
@@ -250,7 +384,7 @@ export default function SlideGame({ index }: { index: number }) {
     later(() => setBumped(null), 350);
   };
 
-  const busy = exiting !== null || won !== null;
+  const busy = exiting !== null || phase !== 'play';
 
   /* ---------- dragging ---------- */
   const onPointerDown = (e: PointerEvent<HTMLButtonElement>, block: number) => {
@@ -345,7 +479,7 @@ export default function SlideGame({ index }: { index: number }) {
 
   /* ---------- tools ---------- */
   const undo = () => {
-    if (!history.length || exiting) return;
+    if (!history.length || busy) return;
     const last = history[history.length - 1];
     stateRef.current = last.state;
     movesRef.current = last.moves;
@@ -353,6 +487,7 @@ export default function SlideGame({ index }: { index: number }) {
     setMoves(last.moves);
     setHistory((h) => h.slice(0, -1));
     setHintBlock(null);
+    setNote('');
     keySession.current = null;
   };
 
@@ -367,29 +502,228 @@ export default function SlideGame({ index }: { index: number }) {
     setHintBlock(next);
   };
 
-  /* ---------- what the screen shows ---------- */
-  const limit = clock.seconds;
-  const timerColor = tLeft > limit * 0.33 ? 'ok' : tLeft > 0 ? 'low' : 'out';
-  const timeUp = clock.kind === 'counted' && tLeft <= 0 && won === null;
-  const lockMsg = lockLine(level, state);
-  const help = timeUp
-    ? "Time's up! Keep going, you can still finish."
-    : hintBlock !== null
-      ? 'Try the glowing brick first.'
-      : lockMsg || level.tip || 'Drag each brick to the door of its color.';
-  const who = player && !player.unnamed ? `${player.name}: ` : '';
-  // the relaxed sand timer (SandTimer) carries its own caption
-  const caption = clock.kind === 'counted' ? `${who}level ${index + 1} gets ${level.base ?? 45}s x ${clock.factor} = ${fmtClock(limit)}` : '';
-  const hasNext = index + 1 < LEVELS.length;
-  const stars = won?.stars ?? 0;
-  const winText = won
-    ? `${moves} ${moves === 1 ? 'move' : 'moves'}` +
-      (clock.kind !== 'counted' ? '.' : won.inTime ? ', with time to spare!' : '. Next time, try to beat the clock!')
-    : '';
+  /** Next puzzle: Break first when the daily limit is used up (2.4), else the next unsolved puzzle. */
+  const nextPuzzle = () => {
+    if (phaseRef.current !== 'solved') return;
+    if (breakBefore(`/game/escape/${index + 1}`)) return;
+    showPuzzle(puzzleOnScreen(runRef.current), 'start');
+    focusLater('.esc-brick');
+  };
 
+  /** The stuck offer: a different board of the same level, free (3.3). The dots stay where they are. */
+  const swap = () => {
+    if (phaseRef.current !== 'play' || exiting) return;
+    const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-offer');
+    const saved = progressStore.swapPuzzle(GAME, index);
+    const next = saved ?? { ...runRef.current, queue: rotateQueue(runRef.current.queue) };
+    runRef.current = next;
+    setRun(next);
+    showPuzzle(puzzleOnScreen(next), 'swap');
+    if (hadFocus) focusLater('.esc-brick');
+  };
+
+  /** Play Level 10 on the level card (or in the controls slot once the card is closed). */
+  const playNextLevel = () => {
+    if (!finish || finish.next === null) return;
+    const to = `/game/escape/${finish.next + 1}`;
+    if (breakBefore(to)) return;
+    go(to);
+  };
+
+  const closeCard = () => {
+    if (!finish || finish.next === null) return go(HOME);
+    setCardOpen(false);
+    // the controls slot shows the same Play button; focus goes there (brief 10)
+    focusLater('.esc-next');
+  };
+
+  /* ---------- what the screen shows ---------- */
+  const seconds = clock.seconds;
+  const timerColor = tLeft > seconds * 0.33 ? 'ok' : tLeft > 0 ? 'low' : 'out';
+  const timeUp = clock.kind === 'counted' && tLeft <= 0 && playing;
+  const lockMsg = lockLine(level, state);
+  const offer = playing && stuck.offer;
+  const help = !playing
+    ? solvedLine(moves)
+    : offer
+      ? OFFER_LINE
+      : note
+        ? note
+        : timeUp
+          ? TIME_UP_LINE
+          : hintBlock !== null
+            ? HINT_LINE
+            : lockMsg || level.tip || HELP_LINE;
+  // the relaxed sand timer (SandTimer) carries its own caption
+  const caption = clock.kind === 'counted' ? clockCaption(player && !player.unnamed ? player.name : null, level.base ?? 45, clock.factor, fmtClock(seconds)) : '';
+
+  const solvedDots = phase === 'done' ? SOLVES_PER_LEVEL : run.solved.length;
+  const dotOnScreen = phase === 'play' ? dotPosition(run) : solvedDots;
+  const card = finish ? levelCard(index + 1, finish.results, finish.next, finish.total) : null;
+
+  return (
+    <Screen className="esc">
+      <EscapeBar
+        title={`Level ${index + 1}`}
+        dots={<PuzzleDots solved={solvedDots} puzzle={dotOnScreen} />}
+        action={playing ? <IconButton icon="restart" label="Restart puzzle" onClick={restart} /> : null}
+      />
+
+      <section className="esc-status" aria-label="Puzzle status">
+        <div className="esc-status__row">
+          {clock.kind === 'counted' && (
+            <>
+              <svg className="esc-status__glass" data-state={timerColor} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
+              </svg>
+              <span className="esc-status__clock">
+                <span className="esc-sr">Time left </span>
+                {fmtClock(tLeft)}
+              </span>
+            </>
+          )}
+          <span className="esc-status__spacer" />
+          <span className="esc-status__moves">Moves {moves}</span>
+          <span className="esc-status__best">Best {level.par}</span>
+        </div>
+        {clock.kind === 'counted' && (
+          <div className="esc-status__track" aria-hidden="true">
+            <div className="esc-status__fill" data-state={timerColor} style={{ width: `${seconds ? Math.round((Math.max(0, tLeft) / seconds) * 100) : 0}%` }} />
+          </div>
+        )}
+        {clock.kind === 'relaxed' && <SandTimer elapsed={seconds - tLeft} total={seconds} />}
+        {caption && <p className="esc-status__caption">{caption}</p>}
+      </section>
+
+      <div className="esc-stage" ref={stage}>
+        <Tray level={level} cell={cell}>
+          {level.stone?.flatMap((row, r) =>
+            row.map((s, c) =>
+              s ? (
+                <div key={`s${r}-${c}`} className="esc-stone" role="img" aria-label="Stone block, it never moves" style={{ left: c * cell + 2, top: r * cell + 2, width: cell - 4, height: cell - 4 }} />
+              ) : null,
+            ),
+          )}
+          {level.gates.map((g, gi) => (
+            <Door key={gi} level={level} gate={g} cell={cell} state={state} />
+          ))}
+          {level.blocks.map((b, i) => {
+            const p = state.pos[i];
+            if (!p) return null;
+            return (
+              <BrickPiece
+                key={`${puzzle}-${b.id}`}
+                block={b}
+                at={p}
+                cell={cell}
+                exiting={exiting?.block === i ? exiting.side : null}
+                pull={pull?.block === i ? pull : null}
+                hinted={hintBlock === i}
+                bumped={bumped === i}
+                onPointerDown={(e) => onPointerDown(e, i)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerCancel}
+                onKeyDown={(e) => onKeyDown(e, i)}
+              />
+            );
+          })}
+        </Tray>
+      </div>
+
+      <p className="esc-help" aria-live="polite">
+        {help}
+      </p>
+
+      <div className="esc-tools">
+        <span aria-hidden="true" />
+        <div className="esc-tools__centre">
+          {playing && (
+            <>
+              <IconButton icon="undo" label="Undo" onClick={undo} disabled={!history.length || busy} className="esc-tool" />
+              <IconButton icon="hint" label="Hint" onClick={hint} variant="yellow" disabled={busy} className="esc-tool" />
+            </>
+          )}
+          {phase === 'solved' && (
+            <PressButton variant="green" icon="play" iconEnd onClick={nextPuzzle} className="esc-next bw-appear">
+              Next puzzle
+            </PressButton>
+          )}
+          {phase === 'done' && card && !cardOpen && !card.home && (
+            <PressButton variant="green" icon="play" iconEnd onClick={playNextLevel} className="esc-next bw-appear">
+              {card.primary}
+            </PressButton>
+          )}
+        </div>
+        <div className="esc-tools__end">{offer && <IconButton icon="swap" label="New puzzle" onClick={swap} variant="green" className="esc-tool esc-offer bw-appear" />}</div>
+      </div>
+
+      {phase === 'done' && finish && card && cardOpen && (
+        <LevelCard
+          title={card.title}
+          stars={finish.stars}
+          fact={card.fact}
+          rule={card.rule}
+          cap={card.cap}
+          primary={card.home ? { label: card.primary, href: toHref(HOME) } : { label: card.primary, onClick: playNextLevel }}
+          secondary={card.home ? undefined : { label: 'Back to games', href: toHref(HOME) }}
+          onClose={closeCard}
+        />
+      )}
+    </Screen>
+  );
+}
+
+/**
+ * The finished state (brief 2.5): every level has stars, so `#/game/escape` shows the game's top bar, the empty
+ * tray well and the finished card. Its one button, the Escape key and a tap on the scrim all go Home.
+ */
+export function EscapeFinished() {
+  const player = useActivePlayer();
+  const last = PUZZLE_LEVELS.length - 1;
+  const level = PUZZLE_LEVELS[last].puzzles[0];
+  const { stage, cell } = useCell(level);
+  const card = finishedCard(totalStars(player, GAME));
+  return (
+    <Screen className="esc">
+      <EscapeBar title="Brick Escape" />
+      <div className="esc-stage" ref={stage}>
+        <Tray level={level} cell={cell} />
+      </div>
+      <LevelCard
+        title={card.title}
+        stars={starsFor(player, GAME, last)}
+        fact={card.fact}
+        note={FINISHED_NOTE}
+        primary={{ label: card.primary, href: toHref(HOME) }}
+        onClose={() => go(HOME)}
+      />
+    </Screen>
+  );
+}
+
+/**
+ * The game's top bar: Back to home, the title with the four dots under it, and Restart while a puzzle is on.
+ * The shared TopBar puts its subtitle in a <p>, which cannot hold the dots' block, so the bar is drawn here
+ * with the same classes.
+ */
+function EscapeBar({ title, dots, action }: { title: string; dots?: ReactNode; action?: ReactNode }) {
+  return (
+    <header className="bw-topbar">
+      <IconButton icon="back" label="Back to home" href={toHref(HOME)} />
+      <div className="bw-topbar__title">
+        <h1>{title}</h1>
+        {dots}
+      </div>
+      {action ?? <span aria-hidden="true" />}
+    </header>
+  );
+}
+
+/** The tray: its frame and wells, with the doors, stones and bricks drawn inside. */
+function Tray({ level, cell, children }: { level: Level; cell: number; children?: ReactNode }) {
   const gridPx = cell * level.cols;
   const gridPy = cell * level.rows;
-
   const frames = useMemo(() => {
     const out: { key: string; style: CSSProperties; bottom: boolean }[] = [];
     const open = (r: number, c: number) => r < 0 || c < 0 || r >= level.rows || c >= level.cols || level.void[r][c];
@@ -411,108 +745,18 @@ export default function SlideGame({ index }: { index: number }) {
       }
     return out;
   }, [level, cell]);
-
   return (
-    <Screen className="esc">
-      <TopBar
-        title={`Level ${index + 1}`}
-        subtitle={`Brick Escape · ${level.name ?? ''}`}
-        back={LEVELS_ROUTE}
-        backLabel="Back to levels"
-        action={<IconButton icon="restart" label="Restart level" onClick={reset} />}
-      />
-
-      <section className="esc-status" aria-label="Level status">
-        <div className="esc-status__row">
-          {clock.kind === 'counted' && (
-            <>
-              <svg className="esc-status__glass" data-state={timerColor} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
-              </svg>
-              <span className="esc-status__clock">
-                <span className="esc-sr">Time left </span>
-                {fmtClock(tLeft)}
-              </span>
-            </>
-          )}
-          <span className="esc-status__spacer" />
-          <span className="esc-status__moves">Moves {moves}</span>
-          <span className="esc-status__best">Best {level.par}</span>
-        </div>
-        {clock.kind === 'counted' && (
-          <div className="esc-status__track" aria-hidden="true">
-            <div className="esc-status__fill" data-state={timerColor} style={{ width: `${limit ? Math.round((Math.max(0, tLeft) / limit) * 100) : 0}%` }} />
-          </div>
+    <div className="esc-board" style={{ width: gridPx + PAD * 2, height: gridPy + PAD * 2 }}>
+      <div className="esc-board__grid" style={{ left: PAD, top: PAD, width: gridPx, height: gridPy }}>
+        {frames.map((f) => (
+          <div key={`f${f.key}`} className={`esc-frame${f.bottom ? ' is-bottom' : ''}`} style={f.style} />
+        ))}
+        {level.void.flatMap((row, r) =>
+          row.map((v, c) => (v ? null : <div key={`w${r}-${c}`} className="esc-well" style={{ left: c * cell, top: r * cell, width: cell, height: cell }} />)),
         )}
-        {clock.kind === 'relaxed' && <SandTimer elapsed={limit - tLeft} total={limit} />}
-        {caption && <p className="esc-status__caption">{caption}</p>}
-      </section>
-
-      <div className="esc-stage" ref={stage}>
-        <div className="esc-board" style={{ width: gridPx + PAD * 2, height: gridPy + PAD * 2 }}>
-          <div className="esc-board__grid" style={{ left: PAD, top: PAD, width: gridPx, height: gridPy }}>
-            {frames.map((f) => (
-              <div key={`f${f.key}`} className={`esc-frame${f.bottom ? ' is-bottom' : ''}`} style={f.style} />
-            ))}
-            {level.void.flatMap((row, r) =>
-              row.map((v, c) => (v ? null : <div key={`w${r}-${c}`} className="esc-well" style={{ left: c * cell, top: r * cell, width: cell, height: cell }} />)),
-            )}
-            {level.stone?.flatMap((row, r) =>
-              row.map((s, c) =>
-                s ? (
-                  <div key={`s${r}-${c}`} className="esc-stone" role="img" aria-label="Stone block, it never moves" style={{ left: c * cell + 2, top: r * cell + 2, width: cell - 4, height: cell - 4 }} />
-                ) : null,
-              ),
-            )}
-            {level.gates.map((g, gi) => (
-              <Door key={gi} level={level} gate={g} cell={cell} state={state} />
-            ))}
-            {level.blocks.map((b, i) => {
-              const p = state.pos[i];
-              if (!p) return null;
-              return (
-                <BrickPiece
-                  key={b.id}
-                  block={b}
-                  at={p}
-                  cell={cell}
-                  exiting={exiting?.block === i ? exiting.side : null}
-                  pull={pull?.block === i ? pull : null}
-                  hinted={hintBlock === i}
-                  bumped={bumped === i}
-                  onPointerDown={(e) => onPointerDown(e, i)}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerCancel}
-                  onKeyDown={(e) => onKeyDown(e, i)}
-                />
-              );
-            })}
-          </div>
-        </div>
+        {children}
       </div>
-
-      <p className="esc-help" aria-live="polite">
-        {won && !cardOpen ? `${won.stars === 3 ? 'Brilliant!' : 'Great job!'} ${winText}` : help}
-      </p>
-
-      <div className="esc-tools">
-        <IconButton icon="undo" label="Undo" onClick={undo} disabled={!history.length || busy} className="esc-tool" />
-        <IconButton icon="hint" label="Hint" onClick={hint} variant="yellow" disabled={busy} className="esc-tool" />
-      </div>
-
-      {won && cardOpen && (
-        <WinCard
-          title={stars === 3 ? 'Brilliant!' : 'Great job!'}
-          stars={stars}
-          text={winText}
-          onReplay={reset}
-          nextLabel={hasNext ? `Next: Level ${index + 2}` : 'All levels'}
-          nextHref={toHref(hasNext ? `/game/escape/${index + 2}` : LEVELS_ROUTE)}
-          onClose={() => setCardOpen(false)}
-        />
-      )}
-    </Screen>
+    </div>
   );
 }
 
@@ -599,81 +843,6 @@ function Door({ level, gate, cell, state }: { level: Level; gate: GateDef; cell:
           <path d={ARROW[gate.side]} />
         </svg>
       )}
-    </div>
-  );
-}
-
-function WinCard({
-  title,
-  stars,
-  text,
-  onReplay,
-  nextLabel,
-  nextHref,
-  onClose,
-}: {
-  title: string;
-  stars: number;
-  text: string;
-  onReplay: () => void;
-  nextLabel: string;
-  nextHref: string;
-  onClose: () => void;
-}) {
-  const card = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    // the main action (Next) takes focus when the card opens; focus goes back when it closes
-    card.current?.querySelector<HTMLElement>('.esc-win__next')?.focus();
-    return () => {
-      if (opener?.isConnected) opener.focus();
-    };
-  }, []);
-  // keep focus inside the card; Escape closes it and the board stays as it is
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-      return;
-    }
-    if (e.key !== 'Tab' || !card.current) return;
-    const items = [...card.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
-  };
-  return (
-    <div className="esc-scrim" onKeyDown={onKeyDown}>
-      <div ref={card} className="esc-win" role="dialog" aria-modal="true" aria-labelledby="esc-win-title" aria-describedby="esc-win-text">
-        <h2 id="esc-win-title" className="esc-win__title">
-          {title}
-        </h2>
-        <div className="esc-win__stars" role="img" aria-label={`${stars} of 3 stars`}>
-          {[0, 1, 2].map((i) => (
-            <svg key={i} width="48" height="48" viewBox="0 0 24 24" aria-hidden="true" className={i < stars ? 'is-on' : undefined}>
-              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" />
-            </svg>
-          ))}
-        </div>
-        <p id="esc-win-text" className="esc-win__text">
-          {text}
-        </p>
-        <div className="esc-win__actions">
-          <PressButton size="md" onClick={onReplay} className="esc-win__replay">
-            Replay
-          </PressButton>
-          <PressButton size="md" variant="green" href={nextHref} className="esc-win__next">
-            {nextLabel}
-          </PressButton>
-        </div>
-      </div>
     </div>
   );
 }

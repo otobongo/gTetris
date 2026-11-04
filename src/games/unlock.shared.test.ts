@@ -38,16 +38,24 @@ const opens = (App: ComponentType<{ params: string[] }>, n: number) => renderToS
 
 afterAll(() => progressStore.replace(emptyState()));
 
+/**
+ * Games on four-puzzle levels play only the child's current level (brief 2.6, 7.4); any other level number
+ * redirects. Updated for Brick Escape: it used to open every level isLevelOpen opened.
+ */
+const CURRENT_ONLY = new Set<string>(['escape']);
+
 describe('every game opens exactly the levels the shared rule opens', () => {
   for (const { id, App } of GAMES) {
-    it(`${id}: a level opens if and only if isLevelOpen says so, at every age`, () => {
+    const rule = CURRENT_ONLY.has(id) ? 'it is the current level' : 'isLevelOpen says so';
+    it(`${id}: a level opens if and only if ${rule}, at every age`, () => {
       const meta = getGame(id)!.meta!;
       for (const band of AGE_BANDS) {
         for (const setup of SETUPS) {
           const game = playAs(id, band, setup);
           for (let i = -1; i <= meta.levelCount; i++) {
             const where = `${id} ${band} ${JSON.stringify(setup)} level ${i + 1}`;
-            expect(opens(App, i + 1), where).toBe(isLevelOpen(meta, game, band, i));
+            const want = CURRENT_ONLY.has(id) ? i === currentLevel(meta, game) : isLevelOpen(meta, game, band, i);
+            expect(opens(App, i + 1), where).toBe(want);
           }
         }
       }
