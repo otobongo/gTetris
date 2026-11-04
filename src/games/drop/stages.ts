@@ -1,5 +1,6 @@
 import { activePlayer, gameOf, progressStore } from '../../shared/progress';
 import { firstOpenLevel, type GameMeta } from '../meta';
+import { capStars } from '../stars';
 import { PIECES, type PieceId } from './pieces';
 
 export interface Stage {
@@ -101,6 +102,14 @@ export function starRule(stage: Stage): { three: number; two: number } {
 export function starsEarned(stage: Stage, bricksUsed: number): number {
   const { three, two } = starRule(stage);
   return bricksUsed <= three ? 3 : bricksUsed <= two ? 2 : 1;
+}
+
+/**
+ * Stars for a cleared stage: the brick rule, then the shared cap (games/stars.ts). Running out of a
+ * counted clock caps the stage at 2 stars; it never costs more than that one star.
+ */
+export function stageStars(stage: Stage, bricksUsed: number, outOfTime: boolean): number {
+  return capStars(starsEarned(stage, bricksUsed), { outOfTime });
 }
 
 /** Bricks that appear for the first time in this stage (shown with a "New" tag). */

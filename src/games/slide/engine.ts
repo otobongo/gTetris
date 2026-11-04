@@ -11,6 +11,8 @@
  * Frozen bricks are still supported here, but no shipped level uses them (too hard for young children).
  */
 
+import { capStars } from '../stars';
+
 export type Color = 'red' | 'yellow' | 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal' | 'white' | 'black';
 export type Side = 'top' | 'bottom' | 'left' | 'right';
 export type Cell = readonly [number, number]; // [row, col]
@@ -264,11 +266,10 @@ export function blockSize(b: BlockDef): { h: number; w: number } {
 
 /**
  * Star rating from the Escape board: 3 at par, 2 within 3 moves of it, else 1.
- * Using a hint caps at 2, and so does running out of time on a counted clock (the speed star).
+ * Using a hint caps at 2, and so does running out of time on a counted clock: the shared rule in games/stars.ts.
  */
 export function starsFor(moves: number, par: number, usedHint: boolean, outOfTime = false): number {
-  const s = moves <= par ? 3 : moves <= par + 3 ? 2 : 1;
-  return usedHint || outOfTime ? Math.min(2, s) : s;
+  return capStars(moves <= par ? 3 : moves <= par + 3 ? 2 : 1, { usedHint, outOfTime });
 }
 
 /* ---------- Authoring helpers ---------- */

@@ -6,7 +6,7 @@ import { letterName, say } from '../../shared/speech';
 import { recordStars } from '../../shared/storage';
 import { Brick, IconButton, LevelGrid, PressButton, Screen, Stars, TopBar, useLayout } from '../../shared/ui';
 import { CHAPTERS, LEVELS, chapterOf, makeRound, type Prompt } from './levels';
-import { HINTS_PER_LEVEL, STAR_RULE, starsForSlips } from './logic';
+import { HINTS_PER_LEVEL, STAR_RULE, lettersStars } from './logic';
 import { isLevelOpen } from '../meta';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
@@ -134,6 +134,7 @@ function Play({ level, player, onRestart }: { level: number; player: Player | nu
   /** True while the card between two spelled words is up. */
   const [between, setBetween] = useState(false);
   const slipsRef = useRef(0);
+  const usedHintRef = useRef(false);
   const hintRef = useRef<(() => boolean) | null>(null);
   const prompt = round.prompts[idx];
   const chapter = chapterOf(level);
@@ -153,7 +154,7 @@ function Play({ level, player, onRestart }: { level: number; player: Player | nu
       else setIdx(idx + 1);
       return;
     }
-    const stars = starsForSlips(slipsRef.current);
+    const stars = lettersStars(slipsRef.current, usedHintRef.current);
     recordStars(GAME, level, stars);
     sfx.win();
     say(stars === 3 ? 'Super builder!' : 'You did it!');
@@ -164,7 +165,7 @@ function Play({ level, player, onRestart }: { level: number; player: Player | nu
     if (hints <= 0 || locked) return;
     if (hintRef.current?.()) {
       setHints(hints - 1);
-      slip();
+      usedHintRef.current = true;
     }
   };
 
@@ -226,7 +227,7 @@ function Play({ level, player, onRestart }: { level: number; player: Player | nu
         <WinCard
           title={spelling ? `You built ${total} words!` : result === 3 ? 'Super builder!' : result === 2 ? 'Great building!' : 'You did it!'}
           stars={result}
-          text={slips === 0 ? 'No slips at all!' : `${slips} slip${slips === 1 ? '' : 's'}`}
+          text={(slips === 0 ? 'No slips at all!' : `${slips} slip${slips === 1 ? '' : 's'}.`) + (hints < HINTS_PER_LEVEL ? ' You used a hint.' : '')}
           note={STAR_RULE}
         >
           {hasNext ? (

@@ -6,7 +6,7 @@ import type { Stage } from './stages';
  * - off: no timer row at all.
  * - relaxed, or ages 3 to 4 (age factor 0): a gentle clock that counts up. It never ends a game.
  * - auto: a countdown. Time is the stage's base time times the age factor. Running out never ends
- *   the game and never costs a star (Brick Drop's stars come from bricks used, not from time).
+ *   the game; it caps the stage at 2 stars, the shared rule every game uses (games/stars.ts).
  */
 export type TimerPlan = { kind: 'off' } | { kind: 'relaxed' } | { kind: 'countdown'; seconds: number };
 
@@ -21,6 +21,11 @@ export function timerPlan(stage: Stage, mode: TimerMode, band: AgeBand): TimerPl
   const factor = AGE_FACTOR[band];
   if (mode === 'relaxed' || factor === 0) return { kind: 'relaxed' };
   return { kind: 'countdown', seconds: Math.round(stage.goalRows * SECONDS_PER_ROW * factor) };
+}
+
+/** True once a counted clock has run out. A relaxed timer or no timer never runs out. */
+export function ranOut(plan: TimerPlan, elapsedSeconds: number): boolean {
+  return plan.kind === 'countdown' && elapsedSeconds >= plan.seconds;
 }
 
 /** 125 -> "2:05". Negative numbers count as 0. */

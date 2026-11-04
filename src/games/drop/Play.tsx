@@ -9,8 +9,9 @@ import { activeCells, ghostY, newGame, step, type GameEvent, type GameState } fr
 import { MiniPiece } from './MiniPiece';
 import { PIECES } from './pieces';
 import { Sheet, StarRow } from './Sheet';
-import { STAGES, newPieces, starRule, starsEarned } from './stages';
-import { clearMessage, formatClock, timerPlan, timerState } from './timer';
+import { capRule } from '../stars';
+import { STAGES, newPieces, stageStars, starRule } from './stages';
+import { clearMessage, formatClock, ranOut, timerPlan, timerState } from './timer';
 
 type Phase = 'intro' | 'playing' | 'paused' | 'won' | 'over';
 
@@ -83,7 +84,7 @@ export default function Play({ index }: { index: number }) {
     const key = `drop:${index}`;
     const before = getProgress().best[key] ?? 0;
     recordBest(key, s.score);
-    const stars = won ? starsEarned(stage, s.placed) : 0;
+    const stars = won ? stageStars(stage, s.placed, ranOut(plan, elapsedMs.current / 1000)) : 0;
     if (won) recordStars('drop', index, stars);
     setResult({ stars, newBest: before > 0 && s.score > before });
     phaseRef.current = won ? 'won' : 'over';
@@ -413,7 +414,9 @@ export default function Play({ index }: { index: number }) {
               ))}
             </ul>
             <p className="drop-sheet__note">{stage.tip}</p>
-            <p className="drop-sheet__note">Use {rule.three} bricks or fewer for 3 stars.</p>
+            <p className="drop-sheet__note">
+              Use {rule.three} bricks or fewer for 3 stars.{plan.kind === 'countdown' && ` ${capRule({ clock: true }, 'stage')}`}
+            </p>
             <p className="drop-sheet__keys">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
           </Sheet>
         )}
@@ -439,7 +442,7 @@ export default function Play({ index }: { index: number }) {
               You cleared {stage.goalRows} rows with <b>{g.placed}</b> bricks.
             </p>
             <p className="drop-sheet__note">
-              3 stars: {rule.three} bricks or fewer. 2 stars: {rule.two} or fewer.
+              3 stars: {rule.three} bricks or fewer. 2 stars: {rule.two} or fewer.{plan.kind === 'countdown' && ` ${capRule({ clock: true }, 'stage')}`}
             </p>
             <p className="drop-sheet__note">
               Score {g.score}

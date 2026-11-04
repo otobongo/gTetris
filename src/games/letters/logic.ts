@@ -1,15 +1,21 @@
 /* Pure answer checking for Letter Builder. The UI keeps these states in React and only renders them. */
+import { capRule, capStars } from '../stars';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 
 /* ---------- Stars ---------- */
 
-/** Slips = wrong taps + hints used. */
-export const STAR_RULE = '3 stars: 0 to 1 slips · 2 stars: 2 to 4 · 1 star: 5 or more. A hint counts as a slip.';
+/** Slips are wrong taps. A hint is not a slip: it caps the level at 2 stars (the shared rule, games/stars.ts). */
+export const STAR_RULE = `3 stars: 0 to 1 slips · 2 stars: 2 to 4 · 1 star: 5 or more. ${capRule({ hint: true })}`;
 
 export function starsForSlips(slips: number): number {
   if (slips <= 1) return 3;
   if (slips <= 4) return 2;
   return 1;
+}
+
+/** Stars for a finished level: the slip rule, then the shared hint cap, so a hint costs only the third star. */
+export function lettersStars(slips: number, usedHint: boolean): number {
+  return capStars(starsForSlips(slips), { usedHint });
 }
 
 export const HINTS_PER_LEVEL = 3;
