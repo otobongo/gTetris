@@ -16,7 +16,7 @@ import Settings from './screens/Settings';
 import Signin from './screens/Signin';
 import Signup from './screens/Signup';
 import Stickers from './screens/Stickers';
-import { notePath, setResumePath, shouldBreak } from './screens/logic/session';
+import { grownUpGate, notePath, setResumePath, shouldBreak } from './screens/logic/session';
 import { usePlayClock } from './screens/playClock';
 
 /** The playable games. Each takes the path segments after its id: [] for its start screen, ['3'] for level 3. */
@@ -42,6 +42,11 @@ export default function App() {
   const needsPlayer = (route.name === 'home' || route.name === 'break') && !player;
 
   const target = redirect ?? (unknown ? '/' : breakNow ? '/break' : needsPlayer ? '/players' : null);
+
+  // The grown-up check ends on any screen outside the grown-up pages, even one that only redirects.
+  useEffect(() => {
+    grownUpGate.follow(route);
+  }, [path]);
 
   useEffect(() => {
     if (!target) notePath(path);

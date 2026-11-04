@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AVATAR_COLORS, type Player } from '../../shared/progress';
-import { backTarget, getResumePath, grownUpGate, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
+import type { Route } from '../../shared/router';
+import { backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
 
 const NOON = new Date(2026, 10, 4, 12, 0).getTime();
 
@@ -106,6 +107,60 @@ describe('a new player’s avatar colour', () => {
     const eight = withColors(AVATAR_COLORS);
     expect(nextAvatarColor(eight)).toBe(AVATAR_COLORS[0]);
     expect(nextAvatarColor([...eight, player({ id: 'x', color: 'red' })])).toBe(AVATAR_COLORS[1]);
+  });
+});
+
+describe('grown-up check: it ends when the grown-up pages are left', () => {
+  const grownUpPages: Route[] = [{ name: 'settings' }, { name: 'signin' }, { name: 'signup' }, { name: 'help' }, { name: 'terms' }, { name: 'privacy' }];
+  const kidPages: Route[] = [
+    { name: 'home' },
+    { name: 'players' },
+    { name: 'break' },
+    { name: 'stickers' },
+    { name: 'levels', id: 'escape' },
+    { name: 'game', id: 'escape', level: null },
+    { name: 'game', id: 'drop', level: 3 },
+    { name: 'notFound', path: 'nowhere' },
+  ];
+
+  it('counts Settings, the account screens, Support and the legal pages as grown-up pages, and nothing else', () => {
+    for (const r of grownUpPages) expect(isGrownUpRoute(r), r.name).toBe(true);
+    for (const r of kidPages) expect(isGrownUpRoute(r), r.name).toBe(false);
+  });
+
+  it('stays passed while a grown-up moves between grown-up pages', () => {
+    grownUpGate.pass();
+    for (const r of grownUpPages) {
+      grownUpGate.follow(r);
+      expect(grownUpGate.passed(), r.name).toBe(true);
+    }
+    grownUpGate.reset();
+  });
+
+  it('ends on every screen a child can reach, so Settings asks again', () => {
+    for (const r of kidPages) {
+      grownUpGate.pass();
+      grownUpGate.follow(r);
+      expect(grownUpGate.passed(), r.name).toBe(false);
+    }
+  });
+
+  it('ends when Back from Settings lands on Home but Home turns straight into Break', () => {
+    // Home never draws in this case (App redirects to Break first), so Home's own reset never runs.
+    grownUpGate.pass();
+    grownUpGate.follow({ name: 'home' });
+    expect(grownUpGate.passed()).toBe(false);
+    grownUpGate.follow({ name: 'break' });
+    grownUpGate.follow({ name: 'players' });
+    grownUpGate.follow({ name: 'settings' });
+    expect(grownUpGate.passed()).toBe(false);
+  });
+
+  it('ends when the device Back button goes from Settings to Who’s playing', () => {
+    grownUpGate.pass();
+    grownUpGate.follow({ name: 'settings' });
+    grownUpGate.follow({ name: 'players' });
+    expect(grownUpGate.passed()).toBe(false);
   });
 });
 

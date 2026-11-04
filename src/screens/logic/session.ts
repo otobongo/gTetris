@@ -29,9 +29,18 @@ export function getResumePath(): string {
   return resumePath;
 }
 
+/** Screens a passed grown-up check covers: Settings, the account screens, Support and the legal pages. */
+const GROWN_UP_ROUTES: readonly Route['name'][] = ['settings', 'signin', 'signup', 'help', 'terms', 'privacy'];
+
+export function isGrownUpRoute(route: Route): boolean {
+  return GROWN_UP_ROUTES.includes(route.name);
+}
+
 /**
  * The grown-up check on Settings stays passed while a grown-up moves between Settings,
- * Support and the account screens, and resets when Home opens again.
+ * Support and the account screens, and ends on the first screen outside them. App calls
+ * `follow` on every route, including one it redirects (Home that turns into Break), so the
+ * pass never outlives the grown-up pages, whichever way they were left (Back, device Back, a link).
  */
 let grownUp = false;
 export const grownUpGate = {
@@ -41,6 +50,9 @@ export const grownUpGate = {
   },
   reset: () => {
     grownUp = false;
+  },
+  follow: (route: Route) => {
+    if (!isGrownUpRoute(route)) grownUp = false;
   },
 };
 
