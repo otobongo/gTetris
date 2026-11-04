@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { AGE_BANDS } from '../../shared/progress';
 import { rng } from '../../shared/rng';
 import { CVC, EIGHT, FIVE, FOUR, SEVEN, SIX, THREE } from './data';
-import { LEVELS, makeRound, type FillPrompt } from './levels';
+import { LEVELS, makeRound, type FillPrompt, type MatchPrompt } from './levels';
+import { fillDone, hintFill, hintMatch, matchDone, newFill, newMatch, tapFill, tapMatch, tileForKey } from './logic';
 import { innerWidth, slotSize, traySize, FRAME_PAD } from './sizing';
 import { WORD_LENGTHS, scramble, spellWords, type SpellTier } from './spelling';
 
@@ -121,5 +122,84 @@ describe('Letter Builder tray: every age’s words fit every screen', () => {
         }
       }
     }
+  });
+});
+
+describe('Letter Builder tray: taps, keys and hints (review)', () => {
+  const spell: FillPrompt = {
+    kind: 'spell',
+    cells: ['B', 'U', 'G'],
+    given: [false, false, false],
+    tray: [
+      { id: 't1', ch: 'G' },
+      { id: 't2', ch: 'B' },
+      { id: 't3', ch: 'U' },
+    ],
+    word: { word: 'bug', emoji: '🐛' },
+  };
+
+  it('ignores a tap on a brick that is not in the tray', () => {
+    const s = newFill(spell);
+    expect(tapFill(spell, s, 'nope')).toEqual({ state: s, result: 'ignored' });
+  });
+
+  it('ignores every tap once the word is built, and the hint has nothing left to show', () => {
+    let s = newFill(spell);
+    for (const id of ['t2', 't3', 't1']) s = tapFill(spell, s, id).state;
+    expect(fillDone(spell, s)).toBe(true);
+    for (const id of ['t1', 't2', 't3']) expect(tapFill(spell, s, id).result).toBe('ignored');
+    expect(hintFill(spell, s)).toBeNull();
+  });
+
+  it('finds a brick for a typed letter in either case, and none once that brick is used', () => {
+    let s = newFill(spell);
+    expect(tileForKey(spell, s, 'B')).toBe('t2');
+    expect(tileForKey(spell, s, 'b')).toBe('t2');
+    s = tapFill(spell, s, 't2').state;
+    expect(tileForKey(spell, s, 'B')).toBeNull();
+  });
+
+  it('hints the brick for the next empty cell, never one already placed', () => {
+    let s = newFill(spell);
+    expect(hintFill(spell, s)).toBe('t2');
+    s = tapFill(spell, s, 't2').state;
+    expect(hintFill(spell, s)).toBe('t3');
+  });
+
+  const match: MatchPrompt = {
+    kind: 'match',
+    letters: ['A', 'M'],
+    upper: [
+      { id: 'u1', ch: 'A' },
+      { id: 'u2', ch: 'M' },
+    ],
+    lower: [
+      { id: 'l1', ch: 'm' },
+      { id: 'l2', ch: 'a' },
+    ],
+  };
+
+  it('moves the choice when a second brick on the same side is tapped, and ignores unknown bricks', () => {
+    let s = newMatch();
+    s = tapMatch(match, s, 'upper', 'u1').state;
+    const again = tapMatch(match, s, 'upper', 'u2');
+    expect(again.result).toBe('select');
+    expect(again.state.selected).toEqual({ side: 'upper', id: 'u2' });
+    expect(tapMatch(match, s, 'lower', 'nope')).toEqual({ state: s, result: 'ignored' });
+  });
+
+  it('hints the partner of the chosen brick, from either side', () => {
+    const upperChosen = tapMatch(match, newMatch(), 'upper', 'u2').state;
+    expect(hintMatch(match, upperChosen)).toEqual(['l1']);
+    const lowerChosen = tapMatch(match, newMatch(), 'lower', 'l2').state;
+    expect(hintMatch(match, lowerChosen)).toEqual(['u1']);
+  });
+
+  it('hints the next unpaired letter once one pair is made, and nothing when all are paired', () => {
+    let s = tapMatch(match, tapMatch(match, newMatch(), 'upper', 'u1').state, 'lower', 'l2').state;
+    expect(hintMatch(match, s)).toEqual(['u2', 'l1']);
+    s = tapMatch(match, tapMatch(match, s, 'lower', 'l1').state, 'upper', 'u2').state;
+    expect(matchDone(match, s)).toBe(true);
+    expect(hintMatch(match, s)).toEqual([]);
   });
 });

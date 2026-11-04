@@ -207,3 +207,49 @@ describe('Brick Escape solver and stars', () => {
     expect(starsFor(14, 10, true, true)).toBe(1);
   });
 });
+
+describe('Brick Escape: review additions', () => {
+  it('points the fallback hint at a brick that can move, on the opening board of every level', () => {
+    // The hint first runs a short live search; on the Big bricks levels that search gives up on the
+    // opening board, so the first brick of the stored order (still on the board) is what lights up.
+    for (const l of LEVELS) {
+      const s = initialState(l);
+      const hinted = (l.order ?? l.blocks.map((_, i) => i)).find((i) => s.pos[i] !== null)!;
+      const reach = reachable(l, s, hinted);
+      expect(reach.exit !== null || reach.spots.size > 0, `level ${l.id}: brick ${hinted}`).toBe(true);
+    }
+  });
+
+  it('keeps a brick in when part of it is shadowed by another brick on the way to its door', () => {
+    // A is an L: its top row touches the right-hand door, but the cell below is behind B.
+    const lvl = fromSpec(
+      {
+        map: ['AA', 'AB'],
+        colors: { A: 'red', B: 'blue' },
+        gates: [
+          { side: 'right', at: 0, len: 2, color: 'red' },
+          { side: 'bottom', at: 1, len: 1, color: 'blue' },
+        ],
+      },
+      1,
+    );
+    const s = initialState(lvl);
+    expect(exitGate(lvl, occupancy(lvl, s), s, 0, 0, 0)).toBe(-1);
+    expect(reachable(lvl, s, 0).exit).toBeNull();
+    const bOut = withMove(s, 1, null);
+    expect(exitGate(lvl, occupancy(lvl, bOut), bOut, 0, 0, 0)).toBe(0);
+    expect(solve(lvl, s)!.moves).toEqual([
+      { block: 1, to: null },
+      { block: 0, to: null },
+    ]);
+  });
+
+  it('keeps a brick in that sits half across its door, and lets it out once it lines up', () => {
+    const lvl = fromSpec({ map: ['A.', 'A.', '..'], colors: { A: 'red' }, gates: [{ side: 'right', at: 1, len: 2, color: 'red' }], advanced: true }, 1);
+    const s = initialState(lvl);
+    const occ = occupancy(lvl, s);
+    expect(exitGate(lvl, occ, s, 0, 0, 1)).toBe(-1); // rows 0 and 1: only row 1 is inside the door
+    expect(exitGate(lvl, occ, s, 0, 1, 1)).toBe(0); // rows 1 and 2
+    expect(solve(lvl, s)!.moves).toHaveLength(1);
+  });
+});

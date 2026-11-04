@@ -15,6 +15,8 @@ import {
   keyCommand,
   releaseAction,
   type Action,
+  type Axis,
+  type KeyLike,
 } from './controls';
 import { emptyBoard, newGame, withBoard, type GameState, type Rules } from './engine';
 
@@ -198,5 +200,32 @@ describe('Brick Drop board gestures', () => {
     expect(releaseAction('v', -40, 60, 200, 20)).toBeNull();
     expect(releaseAction('v', 39, 60, 200, 20)).toBe('drop');
     expect(releaseAction('h', 200, 5, 100, 20)).toBeNull();
+  });
+});
+
+describe('Brick Drop keys and gestures: review additions', () => {
+  it('still holds with Shift and turns with Shift+X, since Shift is not a browser shortcut key', () => {
+    // A real Shift press arrives with shiftKey set; it must not be treated like Ctrl, Cmd or Alt.
+    expect(keyCommand({ key: 'Shift', shiftKey: true } as KeyLike)).toBe('hold');
+    expect(keyCommand({ key: 'X', shiftKey: true } as KeyLike)).toBe('rotate');
+    expect(keyCommand({ key: 'P', shiftKey: true } as KeyLike)).toBe('pause');
+  });
+
+  it('plays a whole sideways drag as moves, then does nothing on release', () => {
+    // finger down at x 100, cells 30 px wide; the path wobbles a little up and down
+    const path: [number, number][] = [[104, 2], [110, -1], [118, 3], [131, 2], [162, 4], [189, 1], [171, 0]];
+    let axis: Axis = '';
+    let sx = 100;
+    const moves: number[] = [];
+    for (const [x, y] of path) {
+      if (!axis) axis = gestureAxis(x - 100, y);
+      if (axis !== 'h') continue;
+      const d = dragMoves(x, sx, dragStep(30));
+      sx = d.sx;
+      moves.push(d.moves);
+    }
+    expect(axis).toBe('h');
+    expect(moves.reduce((a, b) => a + b, 0)).toBe(2); // 89 px right is two full cells; drifting back 18 px is not a full step left
+    expect(releaseAction(axis, 71, 0, 400, 30)).toBeNull();
   });
 });
