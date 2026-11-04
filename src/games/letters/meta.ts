@@ -1,11 +1,9 @@
 import type { GameMeta } from '../meta';
 import { CHAPTERS, LEVELS } from './levels';
 
-/** Letter Builder chapters for the Levels screen, without the emoji levels.ts carries. Owned by the Letter Builder game. */
-const notes = ['tap the letters in order', 'match A with a', 'what does it start with?', 'build the word'];
-const titles = ['Alphabet Train', 'Big and small', 'First sounds', 'Spell it'];
-
+/** Letter Builder level count and chapters, for Home and the Levels screen. Owned by the Letter Builder game.
+    Chapter names and notes are the ones in levels.ts, so the Levels screen and the game always agree. */
 export const meta: GameMeta = {
   levelCount: LEVELS.length,
-  chapters: CHAPTERS.map((c, i) => ({ title: titles[i] ?? c.title, note: notes[i] ?? '', start: c.start, count: c.count })),
+  chapters: CHAPTERS.map((c) => ({ title: c.title, note: c.note, start: c.start, count: c.count })),
 };

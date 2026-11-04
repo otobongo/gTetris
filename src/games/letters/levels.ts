@@ -1,5 +1,6 @@
 /* Letter Builder progression: 24 levels in 4 chapters, from simple (tap A to E) to hard
    (spell six-letter words with decoy bricks). Round generation is pure and seeded. */
+import type { AgeBand } from '../../shared/progress';
 import { rng, shuffle } from '../../shared/rng';
 import {
   ALPHABET,
@@ -15,18 +16,20 @@ import {
   soundsAlike,
   type Word,
 } from './data';
+import { scramble, spellWords, type SpellTier } from './spelling';
 
 export type LevelDef =
   | { kind: 'train'; name: string; from: string; to: string; lower?: boolean; guide?: boolean }
   | { kind: 'missing'; name: string; prompts: number; window: number; gaps: number; decoys: number }
   | { kind: 'match'; name: string; prompts: number; pairs: number; pool: 'lookalike' | 'all' | 'tricky' }
   | { kind: 'sound'; name: string; prompts: number; choices: number; words: Word[]; lower?: boolean }
-  | { kind: 'spell'; name: string; prompts: number; words: Word[]; guide: boolean; decoys: number };
+  /** Words come from the player's age band (see spelling.ts). The tray never holds an extra letter, so decoys is always 0. */
+  | { kind: 'spell'; name: string; prompts: number; tier: SpellTier; guide: boolean; decoys: 0 };
 
 export interface Chapter {
   title: string;
-  emoji: string;
-  blurb: string;
+  /** Short note after the heading on the Levels screen. */
+  note: string;
   start: number;
   count: number;
 }
@@ -52,23 +55,23 @@ export const LEVELS: LevelDef[] = [
   { kind: 'sound', name: 'More words', prompts: 5, choices: 3, words: FOUR },
   { kind: 'sound', name: 'Pick of 4', prompts: 5, choices: 4, words: [...ANY_THREE, ...FOUR, ...FIVE] },
   { kind: 'sound', name: 'Small letters', prompts: 6, choices: 4, words: [...FOUR, ...FIVE, ...SIX], lower: true },
-  // Chapter 4: Spell it
-  { kind: 'spell', name: '3 letters, with help', prompts: 5, words: CVC, guide: true, decoys: 0 },
-  { kind: 'spell', name: '3 letters', prompts: 5, words: CVC, guide: false, decoys: 0 },
-  { kind: 'spell', name: '3 letters + 1 extra', prompts: 5, words: ANY_THREE, guide: false, decoys: 1 },
-  { kind: 'spell', name: '4 letters, with help', prompts: 5, words: FOUR, guide: true, decoys: 0 },
-  { kind: 'spell', name: '4 letters', prompts: 5, words: FOUR, guide: false, decoys: 0 },
-  { kind: 'spell', name: '4 letters + 2 extra', prompts: 5, words: FOUR, guide: false, decoys: 2 },
-  { kind: 'spell', name: '5 letters, with help', prompts: 4, words: FIVE, guide: true, decoys: 1 },
-  { kind: 'spell', name: '5 letters + 2 extra', prompts: 4, words: FIVE, guide: false, decoys: 2 },
-  { kind: 'spell', name: 'Master builder', prompts: 4, words: [...FIVE, ...SIX], guide: false, decoys: 3 },
+  // Chapter 4: Spell it. Word length comes from the player's age; the levels step up through easier and harder words.
+  { kind: 'spell', name: 'Easy words, with help', prompts: 3, tier: 0, guide: true, decoys: 0 },
+  { kind: 'spell', name: 'Easy words', prompts: 3, tier: 0, guide: false, decoys: 0 },
+  { kind: 'spell', name: 'More easy words', prompts: 4, tier: 0, guide: false, decoys: 0 },
+  { kind: 'spell', name: 'Next words, with help', prompts: 3, tier: 1, guide: true, decoys: 0 },
+  { kind: 'spell', name: 'Next words', prompts: 3, tier: 1, guide: false, decoys: 0 },
+  { kind: 'spell', name: 'More next words', prompts: 4, tier: 1, guide: false, decoys: 0 },
+  { kind: 'spell', name: 'Longer words, with help', prompts: 3, tier: 2, guide: true, decoys: 0 },
+  { kind: 'spell', name: 'Longer words', prompts: 4, tier: 2, guide: false, decoys: 0 },
+  { kind: 'spell', name: 'Master builder', prompts: 4, tier: 3, guide: false, decoys: 0 },
 ];
 
 export const CHAPTERS: Chapter[] = [
-  { title: 'Alphabet Train', emoji: '🚂', blurb: 'Tap the letters in order', start: 0, count: 7 },
-  { title: 'Big & small', emoji: '🧩', blurb: 'Match A with a', start: 7, count: 4 },
-  { title: 'First sounds', emoji: '👂', blurb: 'What does it start with?', start: 11, count: 4 },
-  { title: 'Spell it', emoji: '🔤', blurb: 'Build the word', start: 15, count: 9 },
+  { title: 'Alphabet Train', note: 'tap the letters in order', start: 0, count: 7 },
+  { title: 'Big and small', note: 'match A with a', start: 7, count: 4 },
+  { title: 'First sounds', note: 'what does it start with?', start: 11, count: 4 },
+  { title: 'Spell it', note: 'build the word', start: 15, count: 9 },
 ];
 
 /* ---------- Rounds ---------- */
@@ -132,14 +135,6 @@ function pick<T>(pool: T[], count: number, rand: () => number): T[] {
   const out: T[] = [];
   while (out.length < count) out.push(...shuffle(pool, rand));
   return out.slice(0, count);
-}
-
-/** Decoy letters for a spelling tray: not in the word and not a sound-alike of any letter in it,
-    so the word can only be built one way and phonetic spellers are never trapped. */
-export function decoysFor(word: string, count: number, rand: () => number): string[] {
-  const letters = word.toUpperCase().split('');
-  const pool = ALPHABET.filter((c) => !letters.some((l) => soundsAlike(c, l)));
-  return shuffle(pool, rand).slice(0, count);
 }
 
 const MAX_TRAIN = 7;
@@ -239,21 +234,26 @@ function soundPrompts(def: Extract<LevelDef, { kind: 'sound' }>, rand: () => num
   });
 }
 
-function spellPrompts(def: Extract<LevelDef, { kind: 'spell' }>, rand: () => number): FillPrompt[] {
-  return pick(def.words, def.prompts, rand).map((word, k) => {
-    const cells = word.word.toUpperCase().split('');
-    return {
-      kind: 'spell',
-      cells,
-      given: cells.map(() => false),
-      tray: shuffle(tiles([...cells, ...decoysFor(word.word, def.decoys, rand)], `w${k}-`), rand),
-      word,
-      guide: def.guide,
-    };
-  });
+function spellPrompts(def: Extract<LevelDef, { kind: 'spell' }>, band: AgeBand, rand: () => number): FillPrompt[] {
+  const words = spellWords(band, def.tier);
+  return shuffle(words, rand)
+    .slice(0, def.prompts)
+    .map((word, k) => {
+      const cells = word.word.toUpperCase().split('');
+      return {
+        kind: 'spell',
+        cells,
+        given: cells.map(() => false),
+        // One tile per letter of the word, shuffled, never in spelling order. No extra letters.
+        tray: tiles(scramble(cells, rand), `w${k}-`),
+        word,
+        guide: def.guide,
+      };
+    });
 }
 
-export function makeRound(level: number, seed: number): Round {
+/** `band` is the player's age band; it sets how long the spelling words are. */
+export function makeRound(level: number, seed: number, band: AgeBand = '5-6'): Round {
   const def = LEVELS[level];
   const rand = rng(seed);
   let prompts: Prompt[];
@@ -271,7 +271,7 @@ export function makeRound(level: number, seed: number): Round {
       prompts = soundPrompts(def, rand);
       break;
     case 'spell':
-      prompts = spellPrompts(def, rand);
+      prompts = spellPrompts(def, band, rand);
       break;
   }
   return { level, def, prompts };
