@@ -118,9 +118,15 @@ describe('Brick Drop: when the clock has run out', () => {
 describe('every play screen records the capped stars', () => {
   const source = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
-  it('Brick Escape records the stars from starsFor, with the hint and the run-out clock passed in', () => {
+  // Updated for brief section 5: Brick Escape records stars once per level, over its 4 solved puzzles, through
+  // the store's recordPuzzle with escapeLevelStars; each puzzle result carries its hint and run-out clock.
+  it('Brick Escape records the level stars from escapeLevelStars, with each puzzle’s hint and run-out clock passed in', () => {
     const escape = source('./slide/SlideGame.tsx');
-    expect(escape).toMatch(/const stars = starsFor\(movesRef\.current, level\.par, hintRef\.current, !inTime\);\s*recordStars\('slide', index, stars\)/);
+    const rules = source('./slide/puzzles.ts');
+    expect(rules).toMatch(/stars: escapeLevelStars/);
+    expect(escape).toMatch(/usedHint: hintRef\.current,\s*outOfTime: counted && tLeftRef\.current <= 0,/);
+    expect(escape).toMatch(/progressStore\.recordPuzzle\(GAME, index, result, escapeRules\(index\)\)/);
+    expect(escape).not.toMatch(/recordStars\(/);
   });
 
   it('Brick Drop records the stars from stageStars with ranOut, never the brick rule alone', () => {
