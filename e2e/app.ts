@@ -1,0 +1,307 @@
+/**
+ * Helpers the journeys share: a known starting state on this device, the grown-up check, reading what
+ * the app saved, and solving a puzzle the way a child would (arrow keys on a Brick Escape brick, letter
+ * keys in Letter Builder). Nothing here reaches into the app's code at run time: the page is driven
+ * through its buttons, links and keys, and storage is only written before the app loads.
+ */
+import { expect, type Locator, type Page } from '@playwright/test';
+import { type Cell, type Level, type State, DIRS, canPlace, fromSpec, initialState, isSolved, occupancy, reachable, withMove } from '../src/games/slide/engine';
+import { keyStep } from '../src/games/slide/drag';
+import { PUZZLE_DATA } from '../src/games/slide/puzzles.data';
+import { solve } from '../src/games/slide/solver';
+
+export const STORAGE_KEY = 'brickwise:v2';
+
+/* ---------- Seeding a known state ---------- */
+
+export type Band = '3-4' | '5-6' | '7-8' | '9-10';
+
+export interface GameSeed {
+  /** Stars per finished level (0-based level index). */
+  stars?: Record<number, number>;
+  /** A grown-up's pick (0-based). */
+  current?: number;
+}
+
+export interface PlayerSeed {
+  id: string;
+  name: string;
+  ageBand: Band;
+  color?: string;
+  dailyLimit?: number;
+  /** Minutes already played today. */
+  minutesToday?: number;
+  games?: Record<string, GameSeed>;
+}
+
+/** Stars on levels 0 to count-1, three each: a child whose frontier is level `count` (0-based). */
+export function starsUpTo(count: number, stars = 3): Record<number, number> {
+  return Object.fromEntries(Array.from({ length: count }, (_, i) => [i, stars]));
+}
+
+function gameRecord(seed: GameSeed) {
+  const stars = seed.stars ?? {};
+  const levels = Object.keys(stars).map(Number);
+  const record: Record<string, unknown> = { unlocked: levels.length ? Math.max(...levels) + 1 : 0, stars, best: {} };
+  if (seed.current !== undefined) record.current = seed.current;
+  return record;
+}
+
+/**
+ * Write a progress record before the app's first load in this tab, as a v3 record of `players`
+ * (the first one active). Later reloads keep whatever the app saved since: the seed is written once per tab.
+ */
+export async function seed(page: Page, players: PlayerSeed[], active = players[0]?.id ?? null) {
+  const now = Date.now();
+  const state = {
+    version: 3,
+    players: players.map((p) => ({
+      id: p.id,
+      name: p.name,
+      ageBand: p.ageBand,
+      color: p.color ?? 'blue',
+      dailyLimit: p.dailyLimit ?? 20,
+      timerMode: p.ageBand === '3-4' ? 'relaxed' : 'auto',
+      unnamed: false,
+      createdAt: now,
+      updatedAt: now,
+      games: Object.fromEntries(Object.entries(p.games ?? {}).map(([id, g]) => [id, gameRecord(g)])),
+      stickers: {},
+      today: { day: '', minutes: p.minutesToday ?? 0, extraMinutes: 0 },
+    })),
+    activePlayerId: active,
+    settings: { sound: false, music: false, voice: true, alerts: false },
+    settingsUpdatedAt: now,
+  };
+  await page.addInitScript(
+    ({ key, state }) => {
+      if (sessionStorage.getItem('e2e-seeded')) return;
+      sessionStorage.setItem('e2e-seeded', '1');
+      // Today's local day, from the page's own clock (a test may have installed a fake one).
+      const d = new Date();
+      const p = (n: number) => String(n).padStart(2, '0');
+      const day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+      for (const player of state.players) player.today.day = day;
+      localStorage.setItem(key, JSON.stringify(state));
+    },
+    { key: STORAGE_KEY, state },
+  );
+}
+
+/** The whole saved record, as the app wrote it. */
+export async function savedState(page: Page): Promise<SavedState> {
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), STORAGE_KEY);
+}
+
+/**
+ * Change the saved record from another tab, as a grown-up's second tab would. The other tab opens a plain
+ * file on the same origin, so no copy of the app runs there; the browser's storage event then makes this
+ * tab's store read the record again.
+ */
+export async function editSavedInAnotherTab(page: Page, edit: (state: SavedState) => void) {
+  const other = await page.context().newPage();
+  await other.goto('/icon.svg');
+  const state: SavedState = await other.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), STORAGE_KEY);
+  edit(state);
+  await other.evaluate(({ key, json }) => localStorage.setItem(key, json), { key: STORAGE_KEY, json: JSON.stringify(state) });
+  await other.close();
+}
+
+/* ---------- Reading what the app saved ---------- */
+
+export interface SavedRun {
+  set: string;
+  seed: number;
+  queue: number[];
+  solved: { puzzle: number; count: number; word?: string; usedHint: boolean }[];
+  hintsLeft?: number;
+}
+
+export interface SavedGame {
+  unlocked: number;
+  stars: Record<string, number>;
+  best: Record<string, number>;
+  current?: number;
+  runs?: Record<string, SavedRun>;
+}
+
+export interface SavedState {
+  activePlayerId: string | null;
+  players: { id: string; name: string; ageBand: Band; dailyLimit: number; games: Record<string, SavedGame>; stickers: Record<string, unknown> }[];
+}
+
+export async function savedGame(page: Page, game: string, playerId?: string): Promise<SavedGame | null> {
+  const state = await savedState(page);
+  if (!state) return null;
+  const id = playerId ?? state.activePlayerId;
+  return state.players.find((p) => p.id === id)?.games?.[game] ?? null;
+}
+
+/** The run of a 0-based level, once the game has saved it (it does when the level opens). */
+export async function savedRun(page: Page, game: string, level: number): Promise<SavedRun> {
+  let run: SavedRun | undefined;
+  await expect
+    .poll(async () => {
+      run = (await savedGame(page, game))?.runs?.[level];
+      return !!run;
+    })
+    .toBe(true);
+  return run!;
+}
+
+/* ---------- Screens ---------- */
+
+/** The four progress dots under a game's title, by their text equivalent. */
+export const dots = (page: Page): Locator => page.locator('.bw-dots[role="img"]');
+
+export const levelCard = (page: Page): Locator => page.getByRole('dialog');
+
+/** A Home game card, by the start of its accessible name ("Brick Escape. ..."). */
+export const homeCard = (page: Page, title: string): Locator => page.getByRole('link', { name: new RegExp(`^${title}\\.`) });
+
+/** Answer the grown-up check's random two-digit sum. */
+export async function passGrownUpCheck(page: Page) {
+  const sum = (await page.locator('.sc-gate__sum').textContent()) ?? '';
+  const m = /What is (\d+) \+ (\d+)\?/.exec(sum);
+  if (!m) throw new Error(`No sum on the grown-up check: "${sum}"`);
+  await page.getByLabel(/^Answer for \d+ plus \d+$/).fill(String(Number(m[1]) + Number(m[2])));
+  await page.getByRole('button', { name: 'Check', exact: true }).click();
+}
+
+/** Home, then the gear, then the grown-up check: Settings for grown-ups. */
+export async function openSettings(page: Page) {
+  await page.goto('/#/');
+  await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+  await passGrownUpCheck(page);
+  await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
+}
+
+export const hashOf = (page: Page) => new URL(page.url()).hash;
+
+/* ---------- Brick Escape: solving a board with the arrow keys ---------- */
+
+/** Board `puzzle` (0 to 5) of Brick Escape level `level` (0-based), as the game builds it. */
+export function escapeBoard(level: number, puzzle: number): Level {
+  const p = PUZZLE_DATA[level].puzzles[puzzle];
+  return { ...fromSpec(p.spec, level + 1, p.par), order: p.order };
+}
+
+const ARROW: Record<string, string> = { '-1,0': 'ArrowUp', '1,0': 'ArrowDown', '0,-1': 'ArrowLeft', '0,1': 'ArrowRight' };
+const STEPS: Cell[] = [DIRS.top, DIRS.bottom, DIRS.left, DIRS.right];
+
+/** One-square steps that slide `block` from where it is to `to`, through legal spots only. */
+function stepsTo(level: Level, state: State, block: number, to: Cell): Cell[] {
+  const from = state.pos[block]!;
+  const occ = occupancy(level, state);
+  const key = (c: Cell) => `${c[0]},${c[1]}`;
+  const back = new Map<string, { prev: Cell; dir: Cell } | null>([[key(from), null]]);
+  const queue: Cell[] = [from];
+  while (queue.length) {
+    const at = queue.shift()!;
+    if (at[0] === to[0] && at[1] === to[1]) break;
+    for (const dir of STEPS) {
+      const next: Cell = [at[0] + dir[0], at[1] + dir[1]];
+      if (back.has(key(next)) || !canPlace(level, occ, block, next[0], next[1])) continue;
+      back.set(key(next), { prev: at, dir });
+      queue.push(next);
+    }
+  }
+  if (!back.has(key(to))) throw new Error(`No path for brick ${block} to ${key(to)}`);
+  const steps: Cell[] = [];
+  for (let c: Cell = to, b = back.get(key(c)); b; c = b.prev, b = back.get(key(c))) steps.unshift(b.dir);
+  return steps;
+}
+
+/**
+ * Solve the board on screen: the solver picks each drag, and the arrow keys carry it out (a run of presses
+ * on one brick is one move, as one drag is). Returns the moves the game counted. With `stopAfter`, it
+ * plays only that many of the solver's drags and leaves the board unsolved.
+ */
+export async function solveEscapeBoard(page: Page, level: number, puzzle: number, stopAfter = Infinity): Promise<number> {
+  const board = escapeBoard(level, puzzle);
+  let state = initialState(board);
+  const bricks = page.locator('.esc-brick');
+  await expect(bricks).toHaveCount(board.blocks.length);
+  let moves = 0;
+  let last = -1;
+  for (let drags = 0; !isSolved(state) && drags < stopAfter; drags++) {
+    const move = solve(board, state, 2_000_000)?.moves[0];
+    if (!move) throw new Error(`No solution from here: level ${level + 1}, puzzle ${puzzle}`);
+    const block = move.block;
+    const target = move.to ?? reachable(board, state, block).exit!.at;
+    // The bricks still on the board are drawn in block order, so this brick is the k-th button.
+    const k = state.pos.slice(0, block).filter(Boolean).length;
+    await bricks.nth(k).focus();
+    if (block !== last) moves++;
+    last = block;
+    for (const dir of stepsTo(board, state, block, target)) {
+      const step = keyStep(board, state, block, dir);
+      await page.keyboard.press(ARROW[`${dir[0]},${dir[1]}`]);
+      if (step.kind === 'exit') {
+        state = withMove(state, block, null);
+        break;
+      }
+      if (step.kind !== 'moved') throw new Error('A planned step was blocked');
+      state = withMove(state, block, step.at);
+    }
+    if (move.to === null && state.pos[block]) {
+      const out = STEPS.find((dir) => keyStep(board, state, block, dir).kind === 'exit');
+      if (!out) throw new Error('The brick is not beside an open door it fits');
+      await page.keyboard.press(ARROW[`${out[0]},${out[1]}`]);
+      state = withMove(state, block, null);
+    }
+    if (!state.pos[block]) {
+      // It slides out (about 320 ms), then the next brick can move.
+      last = -1;
+      await expect(bricks).toHaveCount(state.pos.filter(Boolean).length);
+    }
+  }
+  return moves;
+}
+
+/** The Brick Escape puzzle on screen for a 0-based level: the saved run's queue[0]. */
+export async function escapePuzzleOnScreen(page: Page, level: number): Promise<number> {
+  return (await savedRun(page, 'escape', level)).queue[0];
+}
+
+/* ---------- Letter Builder: building a puzzle with the letter keys ---------- */
+
+/** "A to D" -> ['A', 'B', 'C', 'D'] (also lower case). */
+function letterRange(label: string): string[] {
+  const m = /^(\w) to (\w)$/.exec(label.trim());
+  if (!m) throw new Error(`Not a letter run: "${label}"`);
+  const out: string[] = [];
+  for (let c = m[1].charCodeAt(0); c <= m[2].charCodeAt(0); c++) out.push(String.fromCharCode(c));
+  return out;
+}
+
+/** The letters the puzzle on screen asks for, in order: a spelling word (from its picture) or a train run. */
+export async function lettersAnswer(page: Page): Promise<string[]> {
+  const picture = page.locator('button.lb-picture');
+  if (await picture.count()) {
+    const name = (await picture.getAttribute('aria-label')) ?? '';
+    const m = /^Picture of an? (.+), tap to hear it$/.exec(name);
+    if (!m) throw new Error(`No word on the picture: "${name}"`);
+    return m[1].toUpperCase().split('');
+  }
+  return letterRange((await page.locator('.lb-picture--label').textContent()) ?? '');
+}
+
+/** The spelling word on screen, upper case. */
+export async function lettersWord(page: Page): Promise<string> {
+  return (await lettersAnswer(page)).join('');
+}
+
+/** Build the puzzle on screen with the physical letter keys, one press per letter, as the tray allows. */
+export async function solveLettersPuzzle(page: Page) {
+  await expect(page.locator('.lb-tray button').first()).toBeVisible();
+  for (const ch of await lettersAnswer(page)) await page.keyboard.press(ch);
+}
+
+/** A wrong tap: a tray letter that is not the next one (for a run or a word, its last letter). */
+export async function lettersWrongTap(page: Page) {
+  const answer = await lettersAnswer(page);
+  const wrong = [...answer].reverse().find((ch) => ch !== answer[0]);
+  if (!wrong) throw new Error('No wrong letter to tap');
+  await page.locator('.lb-tray').getByRole('button', { name: wrong, exact: true }).first().click();
+}

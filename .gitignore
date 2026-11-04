@@ -3,6 +3,10 @@ dist
 *.log
 .DS_Store
 coverage
+# Playwright run output
+test-results
+playwright-report
+blob-report
 scripts/.slide-cache
 
 # Local env files hold keys: never commit them. Only the example stays tracked.
