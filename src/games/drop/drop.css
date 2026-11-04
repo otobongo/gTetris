@@ -178,7 +178,7 @@
   100% { opacity: 0; transform: scaleY(1.6); }
 }
 
-/* A small brick picture (Next tile, first-time card) */
+/* A small brick picture (the Next tile) */
 .drop-mini {
   position: relative;
   display: inline-grid;
@@ -211,26 +211,47 @@
   touch-action: none;
 }
 
-/* ---------- Words that pop up when rows clear ---------- */
+/* ---------- The controls slot: the pad, or one Next or Play button in its place (62px, brief 8) ---------- */
+.drop-slot {
+  width: 100%;
+  min-height: 62px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+.drop-slot > .drop-pad { flex: 1; }
+.drop-slot .drop-next {
+  min-width: 220px;
+  height: 62px;
+  min-height: 62px;
+  padding: 0 var(--bw-sp-9);
+  font-weight: 800;
+}
+
+/* ---------- The help line over the board: row-clear words, or a short message ---------- */
 .drop-say {
   position: absolute;
   left: 0;
   right: 0;
   top: 46%;
   margin: 0;
+  padding: 0 var(--bw-gutter);
   text-align: center;
   font-size: var(--drop-flash-size);
   font-weight: 800;
   line-height: 1.1;
   color: var(--bw-link);
   text-shadow: 0 4px 0 var(--brick-purple-dark);
+  text-wrap: balance;
   pointer-events: none;
   z-index: var(--bw-z-bar);
 }
+.drop-say.is-message { font-size: var(--bw-fs-title); }
+.drop-say__line { display: block; }
 .drop-say:not(:empty) { animation: drop-fade var(--bw-base) var(--bw-ease); }
 @keyframes drop-fade { from { opacity: 0; } }
 
-/* ---------- Overlay card (first-time card, stage clear, try again) ---------- */
+/* ---------- Overlay card: the intro and Out of room (the level card is the shared LevelCard) ---------- */
 .drop-scrim {
   position: absolute;
   inset: 0;
@@ -243,85 +264,71 @@
 }
 .drop-sheet {
   width: 100%;
-  max-width: 340px;
+  max-width: 330px;
   box-sizing: border-box;
-  padding: 24px 20px 20px;
+  padding: var(--bw-sp-10) var(--bw-sp-9) var(--bw-sp-9);
   text-align: center;
   border-radius: var(--bw-r-xl);
   background: linear-gradient(180deg, var(--bw-purple-top), var(--bw-purple-bottom));
   box-shadow: var(--bw-card-shadow);
+  color: var(--bw-text);
   max-height: 100%;
   overflow-y: auto;
 }
 .drop-sheet__title {
   margin: 0;
   font-size: var(--bw-fs-display);
-  font-weight: 800;
+  font-weight: var(--bw-fw-display);
   line-height: var(--bw-lh-display);
+  text-wrap: balance;
 }
 .drop-sheet__line {
-  margin: var(--bw-sp-3) 0 0;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.3;
-  color: var(--bw-text-2);
-}
-.drop-sheet__line b { color: var(--bw-text); }
-.drop-sheet__note {
-  margin: var(--bw-sp-3) 0 0;
+  margin: var(--bw-sp-4) 0 0;
   font-size: var(--bw-fs-body);
   font-weight: 700;
-  line-height: 1.3;
-  color: var(--bw-text-2);
+  line-height: var(--bw-lh-body);
+  text-wrap: balance;
 }
-.drop-sheet__best { color: var(--bw-link); }
+.drop-sheet__line + .drop-sheet__line { margin-top: var(--bw-sp-2); }
+.drop-sheet__note {
+  margin: var(--bw-sp-2) 0 0;
+  font-size: var(--bw-fs-label);
+  font-weight: 700;
+  line-height: var(--bw-lh-body);
+  text-wrap: balance;
+}
 .drop-sheet__keys {
-  margin: var(--bw-sp-5) 0 0;
+  margin: var(--bw-sp-4) 0 0;
   font-size: var(--bw-fs-helper);
   font-weight: 700;
-  color: var(--bw-text-2);
+  line-height: var(--bw-lh-body);
 }
 .drop-sheet__actions {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: column;
   gap: var(--bw-sp-4);
   margin-top: var(--bw-sp-6);
 }
-.drop-starrow {
-  display: flex;
-  justify-content: center;
-  gap: var(--bw-sp-1);
-  margin: var(--bw-sp-4) 0 var(--bw-sp-1);
-}
-.drop-starrow > span { display: grid; color: var(--bw-star-off); }
-.drop-starrow > span.is-on { color: var(--bw-star); }
-
-.drop-intro__pieces {
-  list-style: none;
-  margin: var(--bw-sp-5) 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-end;
-  gap: var(--bw-sp-4) var(--bw-sp-6);
-}
-.drop-intro__piece {
-  display: flex;
-  flex-direction: column;
+.drop-sheet .drop-secondary { --tone-top: var(--bw-secondary-top); --tone-bottom: var(--bw-secondary); }
+/* "Back to games" under New puzzle and Try again: a text link, 44px tall */
+.drop-sheet__link {
+  align-self: center;
+  min-height: var(--bw-target);
+  display: inline-flex;
   align-items: center;
-  gap: var(--bw-sp-1);
-}
-.drop-intro__tag {
-  padding: 0 var(--bw-sp-3);
-  border-radius: var(--bw-r-pill);
-  background: var(--bw-accent);
-  color: var(--bw-on-yellow);
-  font-size: var(--bw-fs-helper);
+  padding: 0 var(--bw-sp-5);
+  border-radius: var(--bw-r-sm);
+  color: var(--bw-text);
+  font-size: var(--bw-fs-btn-sm);
   font-weight: 800;
-  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
+.drop-sheet__link:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* The board takes focus after Next, Try again and New puzzle, so keys work at once. */
+.drop-well:focus { outline: none; }
+.drop-well:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
 
 @media (prefers-reduced-motion: reduce) {
   .drop-timer__track > span { transition: none; }

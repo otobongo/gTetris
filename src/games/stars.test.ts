@@ -123,9 +123,14 @@ describe('every play screen records the capped stars', () => {
     expect(escape).toMatch(/const stars = starsFor\(movesRef\.current, level\.par, hintRef\.current, !inTime\);\s*recordStars\('slide', index, stars\)/);
   });
 
-  it('Brick Drop records the stars from stageStars with ranOut, never the brick rule alone', () => {
+  // Updated for brief section 5: Brick Drop now records its stars once per stage, over the 4 solved
+  // puzzles, through the store's recordPuzzle with dropLevelStars (which applies the shared cap). Each
+  // puzzle passes ranOut into its result, so a run-out clock still caps the stage.
+  it('Brick Drop records the stage stars over 4 puzzles from dropLevelStars, with ranOut in each result', () => {
     const drop = source('./drop/Play.tsx');
-    expect(drop).toMatch(/stageStars\(stage, s\.placed, ranOut\(plan, /);
+    expect(drop).toMatch(/const outOfTime = ranOut\(planRef\.current, /);
+    expect(drop).toMatch(/progressStore\.recordPuzzle\(GAME, index, result, runRules\(\)/);
+    expect(source('./drop/puzzles.ts')).toMatch(/stars: dropLevelStars/);
     expect(drop).not.toMatch(/starsEarned\(/);
   });
 
