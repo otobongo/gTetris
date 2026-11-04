@@ -241,13 +241,13 @@ test('an age band change mid-level keeps the built words and gives the rest the 
 });
 
 test('finishing the last level shows the finished card, then the finished state on later visits', async ({ page }) => {
-  // Every Letter Builder level but the last has stars; Brick Escape is already finished.
+  // Every Letter Builder level but the last has stars; Brick Escape and Brick Drop are already finished.
   await seed(page, [
     {
       id: 'maya',
       name: 'Maya',
       ageBand: '5-6',
-      games: { letters: { stars: starsUpTo(23) }, escape: { stars: starsUpTo(31, 2) } },
+      games: { letters: { stars: starsUpTo(23) }, escape: { stars: starsUpTo(31, 2) }, drop: { stars: starsUpTo(12, 2) } },
     },
   ]);
   await page.goto('/');
@@ -296,5 +296,16 @@ test('finishing the last level shows the finished card, then the finished state 
   await expect(title(page)).toHaveText('Brick Escape');
   await expect(levelCard(page)).toContainText('31 levels, 62 of 93 stars.');
   await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/#\/$/);
+
+  // And Brick Drop's, which says "stage".
+  await expect(homeCard(page, 'Brick Drop')).toContainText('All done');
+  await homeCard(page, 'Brick Drop').click();
+  await expect(page).toHaveURL(/#\/game\/drop$/);
+  await expect(title(page)).toHaveText('Brick Drop');
+  await expect(levelCard(page).getByRole('heading')).toHaveText('You finished every stage!');
+  await expect(levelCard(page)).toContainText('12 stages, 24 of 36 stars.');
+  await expect(levelCard(page)).toContainText('A grown-up can pick a stage to play again.');
+  await page.locator('.bw-levelcard-scrim').click({ position: { x: 8, y: 8 } });
   await expect(page).toHaveURL(/#\/$/);
 });
