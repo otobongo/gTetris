@@ -1,103 +1,48 @@
 /**
- * Brick Escape level generator. Writes src/games/slide/levels.data.ts. Run: npm run levels:generate
+ * Brick Escape puzzle generator. Writes src/games/slide/puzzles.data.ts: 31 levels, 6 puzzles each.
+ * Plan: design/briefs/four-puzzle-levels.md, section 4.1.
  *
- * Follows the rules the user set on the design canvas (design/escape-levels/README.md, gen.cjs):
- * - every open square of the tray is packed with bricks (2x2, 2x3, 2x4, 4x4), so the first move frees space;
- * - one door per color, exactly as long as the bricks that use it, starting at a corner of the board
- *   (doors in the middle of an edge only on advanced levels), never next to another door;
- * - obstacles: icy doors that melt after N bricks leave, color locks that open one at a time,
- *   grey stones that never move, and shaped trays. No frozen and no one-way bricks.
- * - the six canvas levels (design/escape-levels/out-*.json) ship as they are, at their places in the list.
- * Every level is checked by the game's own solver, and its par is the solver's best move count.
+ * Puzzle 1 of every level is today's board (the anchor), read from puzzles.data.ts once it exists and from
+ * levels.data.ts before that; anchors are never regenerated. Puzzles 2 to 6 copy the anchor's difficulty:
+ * - same board size, tray shape (rotated or mirrored), number of colors, icy doors, color locks, stones,
+ *   brick sizes, advanced-door flag, clock base, name and tip; brick count within 1; Best within 1 of the anchor's;
+ * - variety: no two boards of a level equal under the 8 rotations and mirrors with colors renamed, no two with the
+ *   same door layout (sides and positions), each with its own color set;
+ * - the canvas rules (design/escape-levels/README.md): every open square packed, one door per color exactly as
+ *   long as its bricks, at a corner unless the level is advanced (Levels 9 and 26 to 31), never next to another
+ *   door; icy doors, color locks, stones and shaped trays only, no frozen or one-way bricks.
+ * Every board passes validate, designProblems and the solver, and its par is the solver's best.
  *
- * Generation is slow, so each tier runs in its own child process and saves its candidates to
- * scripts/.slide-cache/tier-<n>.json after every find. Runs resume from that cache.
- *   npm run levels:generate                   generate every tier (default budget 40 minutes), then write the file
- *   npm run levels:generate -- --minutes 10   smaller time budget per tier
- *   npm run levels:generate -- --combine      write the file from the cache only
+ * Each level runs in its own child process, collects a pool of up to 12 candidates and saves it to
+ * scripts/.slide-cache/level-<n>.json after every accepted board, so runs resume. Boards from the old tier caches
+ * (scripts/.slide-cache/tier-*.json) that match a level are imported into its pool first.
+ *   npm run levels:generate                        fill every level whose pool is short of 12, then combine
+ *   npm run levels:generate -- --level 27          one level only
+ *   npm run levels:generate -- --minutes 10        budget per level (default 30; Levels 9 and 31 get twice that)
+ *   npm run levels:generate -- --level 27 --fallback 1   rerun with the par window widened to Best plus or minus 2
+ *   npm run levels:generate -- --level 27 --fallback 2   also relax variety (color sets may repeat; a door layout
+ *                                                        may repeat when the brick layouts differ)
+ *   npm run levels:generate -- --combine           write puzzles.data.ts from the cache only
+ *   npm run levels:generate -- --combine --allow-short   write it even when some levels have fewer than 6 boards
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { type Color, type GateDef, type LevelSpec, type Side, designProblems, fromSpec, initialState, validate } from '../src/games/slide/engine';
+import { type Color, type GateDef, type LevelSpec, type Side, blockSize, designProblems, fromSpec, initialState, validate } from '../src/games/slide/engine';
 import { solve } from '../src/games/slide/solver';
 import { rng } from '../src/shared/rng';
 
-/* ---------- shapes and tiers ---------- */
-
-/** Brick sizes as [w, h], named like the canvas generator. */
-const SIZES = { s22: [2, 2], s23: [3, 2], s32: [2, 3], s24: [4, 2], s42: [2, 4], s44: [4, 4] } as const;
-type SizeKey = keyof typeof SIZES;
-
 const PALETTE: Color[] = ['red', 'yellow', 'green', 'blue', 'purple', 'orange', 'pink', 'teal', 'white', 'black'];
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const PUZZLES = 6;
+const POOL = 12;
+const LEVEL_COUNT = 31;
+/** Levels with the longest searches get twice the budget (brief 4.1). */
+const LONG = new Set([9, 31]);
 
-export interface Tier {
-  key: string;
-  count: number;
-  /** board size (square) */
-  N: number;
-  /** tray shapes: '.' open, '#' outside the tray, '*' stone. One is picked per level. */
-  maps?: string[][];
-  colors: [number, number];
-  sizes: SizeKey[];
-  /** count locks: icy doors that melt after 1..maxCount bricks are out */
-  countLocks: [number, number];
-  maxCount: number;
-  /** color locks: door X waits for color Y, then door Z waits for color X (one at a time) */
-  colorChain: [number, number];
-  /** advanced levels may put a door in the middle of an edge */
-  advanced: boolean;
-  /** put doors next to an edge brick of their color first (helps packed 8x8 boards) */
-  seedDoors: boolean;
-  par: [number, number];
-  /** seconds on the level clock before the age factor */
-  base: number;
-  /** solver budget per candidate (explored states) */
-  limit: number;
-}
-
-const OPEN6 = ['......', '......', '..**..', '..**..', '......', '......'];
-const NOTCH6 = ['##....', '##....', '......', '......', '....##', '....##'];
-const STONE6 = ['......', '......', '**....', '**....', '......', '......'];
-const WALLS8 = ['...##...', '...##...', '...**...', '...**...', '........', '........', '...##...', '...##...'];
-const RING8 = ['........', '........', '........', '...**...', '...**...', '........', '........', '........'];
-
-export const TIERS: Tier[] = [
-  // Getting started (levels 2 to 4): small packed boards, two or three colors
-  { key: 'start', count: 3, N: 4, colors: [2, 3], sizes: ['s22', 's24', 's42'], countLocks: [0, 0], maxCount: 0, colorChain: [0, 0], advanced: false, seedDoors: false, par: [4, 7], base: 30, limit: 50_000 },
-  // Getting started (levels 6 to 8): 6x6, three colors, sometimes one icy door like Level 5
-  { key: 'six', count: 3, N: 6, colors: [3, 3], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: [0, 1], maxCount: 2, colorChain: [0, 0], advanced: false, seedDoors: false, par: [7, 11], base: 45, limit: 150_000 },
-  // Think first (levels 10 to 13): more planning, some bricks block others
-  { key: 'think', count: 4, N: 6, colors: [3, 4], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: [0, 0], maxCount: 0, colorChain: [0, 0], advanced: false, seedDoors: false, par: [10, 14], base: 45, limit: 200_000 },
-  // Icy doors (levels 15 to 19): count locks, later one color lock
-  { key: 'ice', count: 5, N: 6, colors: [3, 4], sizes: ['s22', 's23', 's32', 's24', 's42'], countLocks: [1, 2], maxCount: 3, colorChain: [0, 1], advanced: false, seedDoors: false, par: [11, 16], base: 45, limit: 200_000 },
-  // Stones and shaped trays (levels 21 to 25)
-  { key: 'stones', count: 5, N: 6, maps: [OPEN6, NOTCH6, STONE6], colors: [3, 4], sizes: ['s22', 's23', 's32'], countLocks: [0, 1], maxCount: 3, colorChain: [0, 0], advanced: false, seedDoors: false, par: [13, 18], base: 45, limit: 250_000 },
-  // Big bricks (levels 26 to 30): 8x8 with 2x4 and 4x4 bricks, advanced doors allowed
-  { key: 'big', count: 5, N: 8, maps: [Array(8).fill('........'), RING8, WALLS8], colors: [4, 5], sizes: ['s44', 's24', 's42', 's22', 's23', 's32'], countLocks: [0, 1], maxCount: 3, colorChain: [0, 1], advanced: true, seedDoors: true, par: [15, 22], base: 60, limit: 300_000 },
-];
-
-/**
- * The shipped order. Canvas levels sit at their numbers (1, 5, 9); the three teaching boards from the canvas
- * open the chapter that uses their idea (Icy doors, stones, Master).
- */
-const PLAN: ({ canvas: string } | { tier: string })[] = [
-  // Getting started 1 to 8
-  { canvas: '1' }, { tier: 'start' }, { tier: 'start' }, { tier: 'start' }, { canvas: '5' }, { tier: 'six' }, { tier: 'six' }, { tier: 'six' },
-  // Think first 9 to 13
-  { canvas: '9' }, { tier: 'think' }, { tier: 'think' }, { tier: 'think' }, { tier: 'think' },
-  // Icy doors 14 to 19
-  { canvas: 'ice' }, { tier: 'ice' }, { tier: 'ice' }, { tier: 'ice' }, { tier: 'ice' }, { tier: 'ice' },
-  // Stones (chapter name still a placeholder on the Levels board) 20 to 25
-  { canvas: 'walls' }, { tier: 'stones' }, { tier: 'stones' }, { tier: 'stones' }, { tier: 'stones' }, { tier: 'stones' },
-  // Big bricks 26 to 30
-  { tier: 'big' }, { tier: 'big' }, { tier: 'big' }, { tier: 'big' }, { tier: 'big' },
-  // Master 31
-  { canvas: 'master' },
-];
-
-/* ---------- canvas levels ---------- */
+/* ---------- canvas levels (the six teaching boards are anchors of Levels 1, 5, 9, 14, 20 and 31) ---------- */
 
 interface CanvasBrick {
   color: Color;
@@ -127,6 +72,8 @@ interface CanvasLevel {
 
 const CANVAS_DIR = fileURLToPath(new URL('../design/escape-levels/', import.meta.url));
 const CANVAS_FILES: Record<string, string> = { '1': 'out-1.json', '5': 'out-5.json', '9': 'out-9.json', ice: 'out-ice.json', walls: 'out-walls.json', master: 'out-master.json' };
+/** Level number of each canvas board. */
+export const CANVAS_LEVELS: Record<number, string> = { 1: '1', 5: '5', 9: '9', 14: 'ice', 20: 'walls', 31: 'master' };
 /** Canvas levels without `corners: true` in run.cjs (Level 9 and the master mix) may use mid-edge doors. */
 const CANVAS_ADVANCED = new Set(['9', 'master']);
 
@@ -168,10 +115,9 @@ export function loadCanvas(key: string): { spec: LevelSpec; best: number } {
   return { spec: fromCanvas(key, lv), best: lv.best };
 }
 
-/* ---------- building one level (port of design/escape-levels/gen.cjs) ---------- */
+/* ---------- small helpers ---------- */
 
 type Rand = () => number;
-const between = (rand: Rand, [a, b]: [number, number]) => a + Math.floor(rand() * (b - a + 1));
 const shuffled = <T>(rand: Rand, a: T[]) => {
   const x = a.slice();
   for (let i = x.length - 1; i > 0; i--) {
@@ -180,154 +126,254 @@ const shuffled = <T>(rand: Rand, a: T[]) => {
   }
   return x;
 };
+const isBrick = (ch: string) => /[A-Za-z]/.test(ch);
 
-interface Placed {
-  r: number;
-  c: number;
-  w: number;
-  h: number;
+/* ---------- the 8 rotations and mirrors ---------- */
+
+/** Symmetry s (0..7) of point (r, c) on an M x M grid: transpose when s & 4, then s & 3 quarter turns clockwise. */
+function symPoint(s: number, M: number, r: number, c: number): [number, number] {
+  let a = r;
+  let b = c;
+  if (s & 4) [a, b] = [b, a];
+  for (let k = 0; k < (s & 3); k++) [a, b] = [b, M - 1 - a];
+  return [a, b];
 }
 
-/** Fill every open square with bricks of the given sizes (backtracking, first empty square first). */
-function pack(N: number, map: string[] | undefined, sizes: SizeKey[], rand: Rand): Placed[] | null {
-  const grid: number[][] = Array.from({ length: N }, (_, r) => Array.from({ length: N }, (_, c) => ((map ? map[r][c] : '.') === '.' ? 0 : -1)));
-  const bricks: Placed[] = [];
-  const first = (): [number, number] | null => {
-    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] === 0) return [r, c];
-    return null;
-  };
-  const fits = (r: number, c: number, w: number, h: number) => {
-    if (r + h > N || c + w > N) return false;
-    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) if (grid[r + i][c + j] !== 0) return false;
-    return true;
-  };
-  const set = (r: number, c: number, w: number, h: number, v: number) => {
-    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) grid[r + i][c + j] = v;
-  };
-  let budget = 20_000;
-  const go = (): boolean => {
-    if (--budget < 0) return false;
-    const f = first();
-    if (!f) return true;
-    for (const key of shuffled(rand, sizes)) {
-      const [w, h] = SIZES[key];
-      if (!fits(f[0], f[1], w, h)) continue;
-      set(f[0], f[1], w, h, bricks.length + 1);
-      bricks.push({ r: f[0], c: f[1], w, h });
-      if (go()) return true;
-      bricks.pop();
-      set(f[0], f[1], w, h, 0);
+export function transformMap(map: string[], s: number): string[] {
+  const N = map.length;
+  const out = Array.from({ length: N }, () => Array<string>(N).fill('#'));
+  for (let r = 0; r < N; r++)
+    for (let c = 0; c < N; c++) {
+      const [a, b] = symPoint(s, N, r, c);
+      out[a][b] = map[r][c];
     }
-    return false;
-  };
-  return go() ? bricks : null;
+  return out.map((l) => l.join(''));
 }
 
-/** A door may only open onto plain tray squares on the board's outer edge (no void, no stone). */
-function edgeOk(N: number, map: string[] | undefined, side: Side, at: number, len: number) {
-  for (let i = 0; i < len; i++) {
-    const [r, c] = side === 'top' ? [0, at + i] : side === 'bottom' ? [N - 1, at + i] : side === 'left' ? [at + i, 0] : [at + i, N - 1];
-    if (map && map[r][c] !== '.') return false;
-  }
-  return true;
-}
-
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-export function build(t: Tier, rand: Rand): LevelSpec | null {
-  const N = t.N;
-  const map = t.maps ? t.maps[Math.floor(rand() * t.maps.length)] : undefined;
-  const nColors = between(rand, t.colors);
-  const colors = shuffled(rand, PALETTE).slice(0, nColors);
-  const raw = pack(N, map, t.sizes, rand);
-  if (!raw || raw.length > LETTERS.length) return null;
-  // every color used at least once
-  const assign = shuffled(
-    rand,
-    raw.map((_, i) => colors[i % colors.length]),
+/** The squares just outside the board that a door covers, as [row, col] (row -1 is above the board). */
+function doorOutside(g: GateDef, N: number): [number, number][] {
+  return Array.from({ length: g.len }, (_, i) =>
+    g.side === 'top' ? [-1, g.at + i] : g.side === 'bottom' ? [N, g.at + i] : g.side === 'left' ? [g.at + i, -1] : [g.at + i, N],
   );
-  const bricks = raw.map((b, i) => ({ ...b, color: assign[i], key: LETTERS[i] }));
-
-  const gates: GateDef[] = [];
-  const used = new Set<string>();
-  for (const color of colors) {
-    const mine = bricks.filter((b) => b.color === color);
-    const seeds: [Side, number][] = [];
-    for (const m of mine) {
-      if (m.r === 0) seeds.push(['top', m.c]);
-      if (m.r + m.h === N) seeds.push(['bottom', m.c]);
-      if (m.c === 0) seeds.push(['left', m.r]);
-      if (m.c + m.w === N) seeds.push(['right', m.r]);
-    }
-    let placed = false;
-    for (let tries = 0; tries < 60 && !placed; tries++) {
-      const seed = t.seedDoors && seeds.length && tries < 40 ? seeds[Math.floor(rand() * seeds.length)] : null;
-      const side: Side = seed ? seed[0] : (['top', 'bottom', 'left', 'right'] as Side[])[Math.floor(rand() * 4)];
-      const horiz = side === 'left' || side === 'right';
-      // a door is exactly as long as the bricks that use it
-      const len = Math.max(...mine.map((b) => (horiz ? b.h : b.w)));
-      if (len > N) continue;
-      const at = !t.advanced ? (rand() < 0.5 ? 0 : N - len) : seed ? Math.max(0, Math.min(N - len, seed[1])) : Math.floor(rand() * (N - len + 1));
-      if (!edgeOk(N, map, side, at, len)) continue;
-      // doors keep at least one free square between them, and never meet at a corner
-      let clash = false;
-      for (let i = -1; i <= len; i++) if (used.has(side + (at + i))) clash = true;
-      const end = at + len - 1;
-      const corner = (s2: Side, pos: number) => used.has(s2 + pos) || used.has(s2 + (pos === 0 ? 1 : pos - 1));
-      if (horiz) {
-        if ((at <= 1 && corner('top', side === 'left' ? 0 : N - 1)) || (end >= N - 2 && corner('bottom', side === 'left' ? 0 : N - 1))) clash = true;
-      } else if ((at <= 1 && corner('left', side === 'top' ? 0 : N - 1)) || (end >= N - 2 && corner('right', side === 'top' ? 0 : N - 1))) clash = true;
-      if (clash) continue;
-      for (let i = 0; i < len; i++) used.add(side + (at + i));
-      gates.push({ side, at, len, color });
-      placed = true;
-    }
-    if (!placed) return null;
-  }
-
-  // locks
-  const order = shuffled(rand, gates);
-  let gi = 0;
-  const nCount = between(rand, t.countLocks);
-  for (let i = 0; i < nCount && gi < order.length - 1; i++) order[gi++].lock = 1 + Math.floor(rand() * t.maxCount);
-  const nChain = between(rand, t.colorChain);
-  if (nChain > 0 && gi < order.length - 1) {
-    let prev = order[gi++].color;
-    for (let i = 0; i < nChain && gi < order.length; i++) {
-      const g = order[gi++];
-      g.lockColor = prev;
-      prev = g.color;
-    }
-  }
-
-  const grid = Array.from({ length: N }, (_, r) => Array.from({ length: N }, (_, c) => (map ? map[r][c] : '.')));
-  const colorOf: Record<string, Color> = {};
-  for (const b of bricks) {
-    colorOf[b.key] = b.color;
-    for (let i = 0; i < b.h; i++) for (let j = 0; j < b.w; j++) grid[b.r + i][b.c + j] = b.key;
-  }
-  return {
-    name: describe(colors.length, gates, Boolean(map?.some((l) => l.includes('*')))),
-    map: grid.map((r) => r.join('')),
-    colors: colorOf,
-    gates,
-    base: t.base,
-    ...(t.advanced ? { advanced: true } : {}),
-  };
 }
 
-const WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+function transformGate(g: GateDef, s: number, N: number): GateDef {
+  const cells = doorOutside(g, N).map(([r, c]) => {
+    const [a, b] = symPoint(s, N + 2, r + 1, c + 1);
+    return [a - 1, b - 1] as [number, number];
+  });
+  const [r0, c0] = cells[0];
+  const side: Side = r0 === -1 ? 'top' : r0 === N ? 'bottom' : c0 === -1 ? 'left' : 'right';
+  const at = side === 'top' || side === 'bottom' ? Math.min(...cells.map((x) => x[1])) : Math.min(...cells.map((x) => x[0]));
+  return { ...g, side, at };
+}
+
+export function transformSpec(spec: LevelSpec, s: number): LevelSpec {
+  return { ...spec, map: transformMap(spec.map, s), gates: spec.gates.map((g) => transformGate(g, s, spec.map.length)) };
+}
+
+/** Bricks renamed A, B, C in reading order; colors renamed 0, 1, 2 in the order their bricks first appear. */
+function relabel(spec: LevelSpec): { map: string; gates: string; brickMap: string } {
+  const letter = new Map<string, string>();
+  const color = new Map<Color, number>();
+  const map = spec.map
+    .map((l) =>
+      [...l]
+        .map((ch) => {
+          if (!isBrick(ch)) return ch;
+          if (!letter.has(ch)) letter.set(ch, LETTERS[letter.size]);
+          const col = spec.colors[ch];
+          if (!color.has(col)) color.set(col, color.size);
+          return letter.get(ch)!;
+        })
+        .join(''),
+    )
+    .join('/');
+  const withColors = spec.map
+    .map((l) => [...l].map((ch) => (isBrick(ch) ? String(color.get(spec.colors[ch])) : ch)).join(''))
+    .join('/');
+  const ci = (c: Color | undefined) => (c === undefined ? '' : String(color.get(c) ?? `?${c}`));
+  const gates = spec.gates
+    .map((g) => `${g.side}${g.at}x${g.len}:${ci(g.color)}:${g.lock ?? ''}:${ci(g.lockColor)}`)
+    .sort()
+    .join(' ');
+  return { map: `${map}=${withColors}`, gates, brickMap: map };
+}
+
+/** Same key for two boards that are equal under a rotation or mirror with colors renamed. */
+export function canonical(spec: LevelSpec): string {
+  let best = '';
+  for (let s = 0; s < 8; s++) {
+    const r = relabel(transformSpec(spec, s));
+    const k = `${r.map}|${r.gates}`;
+    if (!best || k < best) best = k;
+  }
+  return best;
+}
+
+const trayOf = (map: string[]) => map.map((l) => [...l].map((ch) => (isBrick(ch) ? '.' : ch)).join(''));
+function canonicalTray(map: string[]): string {
+  let best = '';
+  for (let s = 0; s < 8; s++) {
+    const k = transformMap(trayOf(map), s).join('/');
+    if (!best || k < best) best = k;
+  }
+  return best;
+}
+
+/* ---------- what a board looks like, for the signature and the variety rules ---------- */
+
+interface Board {
+  spec: LevelSpec;
+  canon: string;
+  /** door sides and positions as drawn */
+  doorKey: string;
+  colorKey: string;
+  /** which squares belong to which brick, as drawn, without colors */
+  brickKey: string;
+  /** the 8 symmetric versions: door squares and brick grid, for the distance */
+  versions: { doors: Set<string>; grid: string[] }[];
+}
+
+function board(spec: LevelSpec): Board {
+  const N = spec.map.length;
+  return {
+    spec,
+    canon: canonical(spec),
+    doorKey: spec.gates
+      .map((g) => `${g.side}${g.at}x${g.len}`)
+      .sort()
+      .join(' '),
+    colorKey: [...new Set(Object.values(spec.colors))].sort().join(','),
+    brickKey: relabel(spec).brickMap,
+    versions: Array.from({ length: 8 }, (_, s) => {
+      const t = transformSpec(spec, s);
+      return { doors: new Set(t.gates.flatMap((g) => doorOutside(g, N).map(([r, c]) => `${r},${c}`))), grid: t.map };
+    }),
+  };
+}
 
 /**
- * A short factual subtitle from what the level contains, in the canvas style ("Three colors, one icy door").
- * Colors plus the one obstacle that matters most, so it fits the top bar on a small phone.
+ * How different two boards look: first how many door squares differ, then how many neighbouring squares differ
+ * in whether they belong to one brick. The smallest over the 8 rotations and mirrors of b.
  */
-export function describe(colors: number, gates: GateDef[], stones: boolean): string {
-  const count = (n: number, one: string) => `${WORDS[n].toLowerCase()} ${one}${n === 1 ? '' : 's'}`;
-  const ice = gates.filter((g) => g.lock).length;
-  const locks = gates.filter((g) => g.lockColor).length;
-  const extra = locks ? count(locks, 'color lock') : ice ? count(ice, 'icy door') : stones ? 'stones' : '';
-  return [`${WORDS[colors] ?? colors} colors`, extra].filter(Boolean).join(', ');
+export function distance(a: Board, b: Board): number {
+  const A = a.versions[0];
+  const N = A.grid.length;
+  let best = Infinity;
+  for (const B of b.versions) {
+    let doors = 0;
+    for (const d of A.doors) if (!B.doors.has(d)) doors++;
+    for (const d of B.doors) if (!A.doors.has(d)) doors++;
+    let bricks = 0;
+    for (let r = 0; r < N; r++)
+      for (let c = 0; c < N; c++)
+        for (const [r2, c2] of [
+          [r, c + 1],
+          [r + 1, c],
+        ]) {
+          if (r2 >= N || c2 >= N) continue;
+          const same = (g: string[]) => isBrick(g[r][c]) && g[r][c] === g[r2][c2];
+          if (same(A.grid) !== same(B.grid)) bricks++;
+        }
+    best = Math.min(best, doors * 1000 + bricks);
+  }
+  return best;
+}
+
+/** Variety rules between two boards of one level. Relaxed is fallback 2. */
+export function compatible(a: Board, b: Board, relaxed: boolean): boolean {
+  if (a.canon === b.canon) return false;
+  if (relaxed) return a.doorKey !== b.doorKey || a.brickKey !== b.brickKey;
+  return a.doorKey !== b.doorKey && a.colorKey !== b.colorKey;
+}
+
+interface Signature {
+  N: number;
+  tray: string;
+  colors: number;
+  ice: number;
+  chain: number;
+  /** brick sizes as unordered w x h, sorted */
+  sizes: string;
+  bricks: number;
+}
+
+function signature(spec: LevelSpec): Signature {
+  const lvl = fromSpec(spec, 0);
+  const sizes = new Set(
+    lvl.blocks.map((b) => {
+      const { w, h } = blockSize(b);
+      return `${Math.min(w, h)}x${Math.max(w, h)}`;
+    }),
+  );
+  return {
+    N: spec.map.length,
+    tray: canonicalTray(spec.map),
+    colors: new Set(Object.values(spec.colors)).size,
+    ice: spec.gates.filter((g) => g.lock).length,
+    chain: spec.gates.filter((g) => g.lockColor).length,
+    sizes: [...sizes].sort().join(','),
+    bricks: lvl.blocks.length,
+  };
+}
+
+/** Problems that keep a board out of its level's difficulty (empty = it matches the anchor). */
+export function signatureProblems(anchor: LevelSpec, spec: LevelSpec): string[] {
+  const a = signature(anchor);
+  const b = signature(spec);
+  const errs: string[] = [];
+  for (const k of ['N', 'tray', 'colors', 'ice', 'chain', 'sizes'] as const) if (a[k] !== b[k]) errs.push(`${k} ${b[k]} instead of ${a[k]}`);
+  if (Math.abs(a.bricks - b.bricks) > 1) errs.push(`${b.bricks} bricks, anchor has ${a.bricks}`);
+  for (const k of ['name', 'tip', 'base', 'advanced'] as const) if (anchor[k] !== spec[k]) errs.push(`${k} differs from the anchor`);
+  return errs;
+}
+
+/* ---------- design rules checked on every board ---------- */
+
+/** Doors keep a free square between them on one side and never meet at a corner (the canvas rule). */
+export function doorsTouch(spec: LevelSpec): string[] {
+  const N = spec.map.length;
+  const errs: string[] = [];
+  const cover = (side: Side) => {
+    const s = new Set<number>();
+    for (const g of spec.gates) if (g.side === side) for (let i = 0; i < g.len; i++) s.add(g.at + i);
+    return s;
+  };
+  for (const side of ['top', 'bottom', 'left', 'right'] as Side[]) {
+    const mine = spec.gates.filter((g) => g.side === side).sort((x, y) => x.at - y.at);
+    for (let i = 1; i < mine.length; i++) if (mine[i].at <= mine[i - 1].at + mine[i - 1].len) errs.push(`doors on the ${side} side touch`);
+  }
+  // corners: [side A, end of A near the corner, side B, end of B near the corner]
+  const corners: [Side, number, Side, number][] = [
+    ['top', 0, 'left', 0],
+    ['top', N - 1, 'right', 0],
+    ['bottom', 0, 'left', N - 1],
+    ['bottom', N - 1, 'right', N - 1],
+  ];
+  for (const [sa, ea, sb, eb] of corners) {
+    const near = (side: Side, end: number) => {
+      const s = cover(side);
+      return s.has(end) || s.has(end === 0 ? 1 : end - 1);
+    };
+    if (near(sa, ea) && near(sb, eb)) errs.push(`doors meet at the ${sa} ${sb} corner`);
+  }
+  return errs;
+}
+
+/**
+ * Everything a shipped board must pass, apart from par (empty = fine). The Level 1 canvas board puts its two
+ * doors side by side on purpose, so anchors skip the door spacing check.
+ */
+export function boardProblems(spec: LevelSpec, spacing = true): string[] {
+  const lvl = fromSpec(spec, 0);
+  const errs = [...validate(lvl), ...designProblems(lvl), ...(spacing ? doorsTouch(spec) : [])];
+  if (spec.map.some((l) => l.includes('.'))) errs.push('an open square is not packed');
+  if (spec.frozen && Object.keys(spec.frozen).length) errs.push('frozen bricks');
+  const known = new Set(['name', 'tip', 'map', 'colors', 'gates', 'base', 'advanced']);
+  for (const k of Object.keys(spec)) if (!known.has(k)) errs.push(`unknown field ${k} (one-way or other mechanics are not allowed)`);
+  for (const g of spec.gates) for (const k of Object.keys(g)) if (!['side', 'at', 'len', 'color', 'lock', 'lockColor'].includes(k)) errs.push(`door field ${k}`);
+  return errs;
 }
 
 /* ---------- solving ---------- */
@@ -350,73 +396,462 @@ export function solveSpec(spec: LevelSpec, limit: number): Solved | null {
   return { par: sol.moves.length, order, explored: sol.explored, bricks: lvl.blocks.length };
 }
 
-/* ---------- one tier, resumable ---------- */
+const solveLimit = (N: number) => (N <= 4 ? 50_000 : N <= 6 ? 250_000 : 300_000);
 
-interface Candidate {
+/* ---------- anchors ---------- */
+
+export interface Puzzle {
   spec: LevelSpec;
   par: number;
   order: number[];
-  score: number;
 }
-interface TierCache {
+export interface PuzzleLevel {
+  id: string;
+  puzzles: Puzzle[];
+}
+
+const SLIDE_DIR = fileURLToPath(new URL('../src/games/slide/', import.meta.url));
+const PUZZLES_FILE = SLIDE_DIR + 'puzzles.data.ts';
+const LEVELS_FILE = SLIDE_DIR + 'levels.data.ts';
+
+/** The JSON literal of a generated data file (`export const X: T[] = [...];`). */
+function dataLiteral<T>(file: string): T[] {
+  const text = readFileSync(file, 'utf8');
+  const m = /\]\s*=\s*/.exec(text);
+  if (!m) throw new Error(`no data in ${file}`);
+  return JSON.parse(text.slice(m.index + m[0].length, text.lastIndexOf(';'))) as T[];
+}
+
+/** Puzzle 1 of each level: puzzles.data.ts once it exists, today's levels.data.ts before that. */
+export function loadAnchors(): Puzzle[] {
+  if (existsSync(PUZZLES_FILE)) return dataLiteral<PuzzleLevel>(PUZZLES_FILE).map((l) => l.puzzles[0]);
+  return dataLiteral<Puzzle | PuzzleLevel>(LEVELS_FILE).map((l) => ('puzzles' in l ? l.puzzles[0] : l));
+}
+
+/* ---------- building one candidate (port of design/escape-levels/gen.cjs, fixed to the anchor) ---------- */
+
+interface Placed {
+  r: number;
+  c: number;
+  w: number;
+  h: number;
+}
+
+/** Fill every open square of the tray with bricks of the given sizes (backtracking, first empty square first). */
+function pack(N: number, tray: string[], dims: [number, number][], rand: Rand): Placed[] | null {
+  const grid: number[][] = Array.from({ length: N }, (_, r) => Array.from({ length: N }, (_, c) => (tray[r][c] === '.' ? 0 : -1)));
+  const bricks: Placed[] = [];
+  const first = (): [number, number] | null => {
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] === 0) return [r, c];
+    return null;
+  };
+  const fits = (r: number, c: number, w: number, h: number) => {
+    if (r + h > N || c + w > N) return false;
+    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) if (grid[r + i][c + j] !== 0) return false;
+    return true;
+  };
+  const set = (r: number, c: number, w: number, h: number, v: number) => {
+    for (let i = 0; i < h; i++) for (let j = 0; j < w; j++) grid[r + i][c + j] = v;
+  };
+  let budget = 20_000;
+  const go = (): boolean => {
+    if (--budget < 0) return false;
+    const f = first();
+    if (!f) return true;
+    for (const [w, h] of shuffled(rand, dims)) {
+      if (!fits(f[0], f[1], w, h)) continue;
+      set(f[0], f[1], w, h, bricks.length + 1);
+      bricks.push({ r: f[0], c: f[1], w, h });
+      if (go()) return true;
+      bricks.pop();
+      set(f[0], f[1], w, h, 0);
+    }
+    return false;
+  };
+  return go() ? bricks : null;
+}
+
+/** A door may only open onto plain tray squares on the board's outer edge (no void, no stone). */
+function edgeOk(N: number, tray: string[], side: Side, at: number, len: number) {
+  for (let i = 0; i < len; i++) {
+    const [r, c] = side === 'top' ? [0, at + i] : side === 'bottom' ? [N - 1, at + i] : side === 'left' ? [at + i, 0] : [at + i, N - 1];
+    if (tray[r][c] !== '.') return false;
+  }
+  return true;
+}
+
+export interface Target {
+  level: number;
+  anchor: Puzzle;
+  sig: Signature;
+  tray: string[];
+  dims: [number, number][];
+  lockValues: number[];
+}
+
+export function target(level: number, anchor: Puzzle): Target {
+  const sig = signature(anchor.spec);
+  const dims = new Map<string, [number, number]>();
+  for (const s of sig.sizes.split(',')) {
+    const [a, b] = s.split('x').map(Number);
+    dims.set(`${a}x${b}`, [a, b]);
+    dims.set(`${b}x${a}`, [b, a]);
+  }
+  return {
+    level,
+    anchor,
+    sig,
+    tray: trayOf(anchor.spec.map),
+    dims: [...dims.values()],
+    lockValues: anchor.spec.gates.filter((g) => g.lock).map((g) => g.lock!),
+  };
+}
+
+/** One candidate with exactly the anchor's signature, or null when this random try does not work out. */
+export function build(t: Target, rand: Rand, avoidColorSets: Set<string>): LevelSpec | null {
+  const { N } = t.sig;
+  const a = t.anchor.spec;
+  const tray = transformMap(t.tray, Math.floor(rand() * 8));
+  const raw = pack(N, tray, t.dims, rand);
+  if (!raw || raw.length > LETTERS.length || Math.abs(raw.length - t.sig.bricks) > 1 || raw.length < t.sig.colors) return null;
+  const sizes = new Set(raw.map((b) => `${Math.min(b.w, b.h)}x${Math.max(b.w, b.h)}`));
+  if ([...sizes].sort().join(',') !== t.sig.sizes) return null;
+
+  let colors: Color[] = [];
+  for (let k = 0; k < 30; k++) {
+    colors = shuffled(rand, PALETTE).slice(0, t.sig.colors);
+    if (!avoidColorSets.has(colors.slice().sort().join(','))) break;
+  }
+  // every color used at least once
+  const assign = shuffled(
+    rand,
+    raw.map((_, i) => colors[i % colors.length]),
+  );
+  const bricks = raw.map((b, i) => ({ ...b, color: assign[i], key: LETTERS[i] }));
+
+  const advanced = Boolean(a.advanced);
+  const seedDoors = N >= 8;
+  const gates: GateDef[] = [];
+  const used = new Set<string>();
+  for (const color of colors) {
+    const mine = bricks.filter((b) => b.color === color);
+    const seeds: [Side, number][] = [];
+    for (const m of mine) {
+      if (m.r === 0) seeds.push(['top', m.c]);
+      if (m.r + m.h === N) seeds.push(['bottom', m.c]);
+      if (m.c === 0) seeds.push(['left', m.r]);
+      if (m.c + m.w === N) seeds.push(['right', m.r]);
+    }
+    let placed = false;
+    for (let tries = 0; tries < 60 && !placed; tries++) {
+      const seed = seedDoors && seeds.length && tries < 40 ? seeds[Math.floor(rand() * seeds.length)] : null;
+      const side: Side = seed ? seed[0] : (['top', 'bottom', 'left', 'right'] as Side[])[Math.floor(rand() * 4)];
+      const horiz = side === 'left' || side === 'right';
+      // a door is exactly as long as the bricks that use it
+      const len = Math.max(...mine.map((b) => (horiz ? b.h : b.w)));
+      if (len > N) continue;
+      const at = !advanced ? (rand() < 0.5 ? 0 : N - len) : seed ? Math.max(0, Math.min(N - len, seed[1])) : Math.floor(rand() * (N - len + 1));
+      if (!edgeOk(N, tray, side, at, len)) continue;
+      // doors keep at least one free square between them, and never meet at a corner
+      let clash = false;
+      for (let i = -1; i <= len; i++) if (used.has(side + (at + i))) clash = true;
+      const end = at + len - 1;
+      const corner = (s2: Side, pos: number) => used.has(s2 + pos) || used.has(s2 + (pos === 0 ? 1 : pos - 1));
+      if (horiz) {
+        if ((at <= 1 && corner('top', side === 'left' ? 0 : N - 1)) || (end >= N - 2 && corner('bottom', side === 'left' ? 0 : N - 1))) clash = true;
+      } else if ((at <= 1 && corner('left', side === 'top' ? 0 : N - 1)) || (end >= N - 2 && corner('right', side === 'top' ? 0 : N - 1))) clash = true;
+      if (clash) continue;
+      for (let i = 0; i < len; i++) used.add(side + (at + i));
+      gates.push({ side, at, len, color });
+      placed = true;
+    }
+    if (!placed) return null;
+  }
+
+  // locks: the anchor's icy doors (same melt counts) and color-lock chain length; one door always stays open
+  const order = shuffled(rand, gates);
+  if (t.lockValues.length + t.sig.chain + (t.sig.chain ? 1 : 0) > order.length - (t.sig.chain ? 0 : 1)) return null;
+  let gi = 0;
+  for (const v of shuffled(rand, t.lockValues)) order[gi++].lock = v;
+  if (t.sig.chain > 0) {
+    let prev = order[gi++].color;
+    for (let i = 0; i < t.sig.chain; i++) {
+      const g = order[gi++];
+      g.lockColor = prev;
+      prev = g.color;
+    }
+  }
+
+  const grid = tray.map((l) => [...l]);
+  const colorOf: Record<string, Color> = {};
+  for (const b of bricks) {
+    colorOf[b.key] = b.color;
+    for (let i = 0; i < b.h; i++) for (let j = 0; j < b.w; j++) grid[b.r + i][b.c + j] = b.key;
+  }
+  return withAnchorFields(a, { map: grid.map((r) => r.join('')), colors: colorOf, gates });
+}
+
+/** Name, tip, clock base and advanced flag come from the anchor, so all six share its subtitle and tip. */
+function withAnchorFields(a: LevelSpec, s: Pick<LevelSpec, 'map' | 'colors' | 'gates'>): LevelSpec {
+  return {
+    ...(a.name !== undefined ? { name: a.name } : {}),
+    ...(a.tip !== undefined ? { tip: a.tip } : {}),
+    map: s.map,
+    colors: s.colors,
+    gates: s.gates.map((g) => ({ side: g.side, at: g.at, len: g.len, color: g.color, ...(g.lock ? { lock: g.lock } : {}), ...(g.lockColor ? { lockColor: g.lockColor } : {}) })),
+    ...(a.base !== undefined ? { base: a.base } : {}),
+    ...(a.advanced ? { advanced: true } : {}),
+  };
+}
+
+/* ---------- one level, resumable ---------- */
+
+interface Candidate extends Puzzle {
+  score: number;
+  /** 0 found under the strict rules, 1 with the wider par window, 2 with relaxed variety */
+  fallback: number;
+}
+interface LevelCache {
+  /** canonical key of the anchor the pool was built for; a changed anchor starts a fresh pool */
+  anchor: string;
   runs: number;
   tries: number;
+  /** highest fallback this level has been run with */
+  fallback: number;
   pool: Candidate[];
 }
 
 const CACHE_DIR = fileURLToPath(new URL('./.slide-cache/', import.meta.url));
-const cachePath = (key: string) => `${CACHE_DIR}tier-${key}.json`;
+const cachePath = (n: number) => `${CACHE_DIR}level-${n}.json`;
+const PROGRESS = `${CACHE_DIR}progress.log`;
 
-function readCache(key: string): TierCache {
+function readCache(n: number, anchorKey: string): LevelCache {
   try {
-    return JSON.parse(readFileSync(cachePath(key), 'utf8')) as TierCache;
+    const c = JSON.parse(readFileSync(cachePath(n), 'utf8')) as LevelCache;
+    if (c.anchor === anchorKey) return c;
   } catch {
-    return { runs: 0, tries: 0, pool: [] };
+    /* no cache yet */
+  }
+  return { anchor: anchorKey, runs: 0, tries: 0, fallback: 0, pool: [] };
+}
+
+const hhmm = () => new Date().toTimeString().slice(0, 5);
+function progress(line: string) {
+  const text = `${hhmm()} ${line}`;
+  console.error(text);
+  try {
+    appendFileSync(PROGRESS, text + '\n');
+  } catch {
+    /* the log is a convenience */
   }
 }
 
-const canonical = (s: LevelSpec) => JSON.stringify([s.map, s.gates]);
+const parWindow = (fallback: number) => (fallback >= 1 ? 2 : 1);
 
-function runTier(key: string, minutes: number) {
-  const t = TIERS.find((x) => x.key === key)!;
-  const cache = readCache(key);
-  const want = t.count * 10;
-  const seen = new Set(cache.pool.map((c) => canonical(c.spec)));
-  // a new seed per run, so a resumed run keeps finding new boards
-  const rand = rng(20261104 + TIERS.indexOf(t) * 7919 + cache.runs * 104_729);
-  cache.runs++;
-  const deadline = Date.now() + minutes * 60_000;
-  const save = () => writeFileSync(cachePath(key), JSON.stringify(cache));
-  save();
-  let lastLog = Date.now();
-  while (cache.pool.length < want && Date.now() < deadline) {
-    cache.tries++;
-    if (Date.now() - lastLog > 60_000) {
-      console.error(`tier ${key}: still searching, ${cache.pool.length}/${want} after ${cache.tries} tries`);
-      lastLog = Date.now();
-    }
-    const spec = build(t, rand);
-    if (!spec || seen.has(canonical(spec))) continue;
-    const s = solveSpec(spec, t.limit);
-    if (!s || s.par < t.par[0] || s.par > t.par[1]) continue;
-    seen.add(canonical(spec));
+/** Boards from the old tier caches that match this level. */
+function oldTierBoards(): LevelSpec[] {
+  if (!existsSync(CACHE_DIR)) return [];
+  return readdirSync(CACHE_DIR)
+    .filter((f) => /^tier-.*\.json$/.test(f))
+    .flatMap((f) => {
+      try {
+        return (JSON.parse(readFileSync(CACHE_DIR + f, 'utf8')) as { pool: { spec: LevelSpec }[] }).pool.map((c) => c.spec);
+      } catch {
+        return [];
+      }
+    });
+}
+
+function runLevel(n: number, minutes: number, fallback: number) {
+  const anchors = loadAnchors();
+  const anchor = anchors[n - 1];
+  const t = target(n, anchor);
+  const anchorBoard = board(anchor.spec);
+  const cache = readCache(n, anchorBoard.canon);
+  cache.fallback = Math.max(cache.fallback, fallback);
+  const relaxed = fallback >= 2;
+  const win = parWindow(fallback);
+  const best = anchor.par;
+  const limit = solveLimit(t.sig.N);
+  // never repeat another level's anchor either
+  const taken = new Set(anchors.map((x) => canonical(x.spec)));
+  const pool = cache.pool.map((c) => board(c.spec));
+  for (const b of pool) taken.add(b.canon);
+  const tried = new Set<string>(taken);
+  const colorSets = new Set([anchorBoard.colorKey, ...pool.map((b) => b.colorKey)]);
+  const fitsPool = (b: Board) => [anchorBoard, ...pool].every((x) => compatible(b, x, relaxed));
+
+  const save = () => writeFileSync(cachePath(n), JSON.stringify(cache));
+  const accept = (spec: LevelSpec): boolean => {
+    const b = board(spec);
+    if (tried.has(b.canon)) return false;
+    tried.add(b.canon);
+    if (signatureProblems(anchor.spec, spec).length || boardProblems(spec).length || !fitsPool(b)) return false;
+    const s = solveSpec(spec, limit);
+    if (!s || Math.abs(s.par - best) > win) return false;
+    const fb = Math.abs(s.par - best) > 1 ? 1 : 0;
     // reward planning (moves beyond one per brick) and a bigger search space, as the canvas generator does
-    cache.pool.push({ spec, par: s.par, order: s.order, score: (s.par - s.bricks) * 3 + Math.log2(s.explored + 1) });
+    cache.pool.push({ spec, par: s.par, order: s.order, score: (s.par - s.bricks) * 3 + Math.log2(s.explored + 1), fallback: Math.max(fb, relaxed ? 2 : 0) });
+    pool.push(b);
+    colorSets.add(b.colorKey);
     save();
-    console.error(`tier ${key}: ${cache.pool.length}/${want} (par ${s.par}, ${cache.tries} tries)`);
-    lastLog = Date.now();
+    return true;
+  };
+
+  // a new seed per run, so a resumed run keeps finding new boards
+  const rand = rng(20261104 + n * 7919 + cache.runs * 104_729 + fallback * 15_485_863);
+  cache.runs++;
+  save();
+
+  let imported = 0;
+  for (const spec of oldTierBoards()) {
+    if (cache.pool.length >= POOL) break;
+    const s = withAnchorFields(anchor.spec, spec);
+    if (accept(s)) imported++;
+  }
+  if (imported) progress(`level ${n}: imported ${imported} boards from the old tier caches`);
+
+  const start = Date.now();
+  const deadline = start + minutes * 60_000;
+  let lastLog = Date.now();
+  let lastFind = Date.now();
+  const gaps: number[] = [];
+  let stop = '';
+  while (cache.pool.length < POOL && Date.now() < deadline) {
+    cache.tries++;
+    const now = Date.now();
+    if (now - lastLog >= 60_000) {
+      progress(`level ${n}: pool ${cache.pool.length} of ${POOL}, ${cache.tries} tries`);
+      lastLog = now;
+      save();
+    }
+    // stop early once a level has enough boards and has stopped finding new ones
+    const mean = gaps.length ? gaps.reduce((x, y) => x + y, 0) / gaps.length : 0;
+    if (cache.pool.length >= PUZZLES - 1 && now - lastFind > Math.max(3 * 60_000, 4 * mean)) {
+      stop = 'no new boards for a while';
+      break;
+    }
+    // small boards run out of different layouts; stop instead of spinning for the whole budget
+    if (t.sig.N < 8 && now - lastFind > 10 * 60_000) {
+      stop = 'no new boards in 10 minutes';
+      break;
+    }
+    const spec = build(t, rand, relaxed ? new Set() : colorSets);
+    if (!spec || !accept(spec)) continue;
+    gaps.push(Date.now() - lastFind);
+    lastFind = Date.now();
   }
   save();
+  const mins = ((Date.now() - start) / 60_000).toFixed(1);
+  progress(`level ${n}: done, pool ${cache.pool.length} of ${POOL}, ${cache.tries} tries, ${mins} min${stop ? ` (${stop})` : ''}`);
 }
 
-/** Pick `count` levels spread over the par range, the most interesting of each bucket, easiest first. */
-export function choose(pool: Candidate[], count: number): Candidate[] {
-  if (pool.length <= count) return pool.slice().sort((a, b) => a.par - b.par);
-  const sorted = pool.slice().sort((a, b) => a.par - b.par || a.score - b.score);
-  return Array.from({ length: count }, (_, k) => {
-    const bucket = sorted.slice(Math.floor((k * sorted.length) / count), Math.floor(((k + 1) * sorted.length) / count));
-    return bucket.reduce((best, c) => (c.score > best.score ? c : best));
+/* ---------- choosing the 5 boards and writing the file ---------- */
+
+export interface Choice {
+  boards: Candidate[];
+  /** fallbacks the chosen boards needed: 1 wider par window, 2 relaxed variety */
+  fallbacks: number[];
+}
+
+/**
+ * Keep the boards that differ most from the anchor and from each other (door layout first, then bricks),
+ * preferring the strict rules: par within 1 and strict variety, then par within 2, then relaxed variety.
+ */
+export function choose(anchor: Puzzle, pool: Candidate[], taken: Set<string>, count = PUZZLES - 1): Choice {
+  const chosen: Board[] = [board(anchor.spec)];
+  const out: Candidate[] = [];
+  const fallbacks = new Set<number>();
+  const boards = pool.map((c) => ({ c, b: board(c.spec) })).filter(({ b }) => !taken.has(b.canon));
+  while (out.length < count) {
+    let pickedOne = false;
+    for (const tier of [0, 1, 2]) {
+      const relaxed = tier >= 2;
+      const ok = boards.filter(
+        ({ c, b }) => !out.includes(c) && Math.abs(c.par - anchor.par) <= parWindow(tier) && chosen.every((x) => compatible(b, x, relaxed)),
+      );
+      if (!ok.length) continue;
+      const score = ({ c, b }: { c: Candidate; b: Board }) => [Math.min(...chosen.map((x) => distance(b, x))), c.score] as const;
+      const best = ok.reduce((p, q) => {
+        const [d1, s1] = score(p);
+        const [d2, s2] = score(q);
+        return d2 > d1 || (d2 === d1 && s2 > s1) ? q : p;
+      });
+      out.push(best.c);
+      chosen.push(best.b);
+      if (tier) fallbacks.add(tier);
+      if (Math.abs(best.c.par - anchor.par) > 1) fallbacks.add(1);
+      pickedOne = true;
+      break;
+    }
+    if (!pickedOne) break;
+  }
+  return { boards: out, fallbacks: [...fallbacks].sort() };
+}
+
+/** Every check a shipped puzzle must pass against its anchor. Empty = fine. */
+export function puzzleProblems(anchor: Puzzle, p: Puzzle, isAnchor: boolean): string[] {
+  const errs = boardProblems(p.spec, !isAnchor);
+  if (!isAnchor) errs.push(...signatureProblems(anchor.spec, p.spec));
+  const s = solveSpec(p.spec, 2_000_000);
+  if (!s) errs.push('the solver finds no solution');
+  else {
+    if (s.par !== p.par) errs.push(`par ${p.par} but the solver's best is ${s.par}`);
+    if (!isAnchor && Math.abs(s.par - anchor.par) > 2) errs.push(`best ${s.par} is outside the par window around ${anchor.par}`);
+  }
+  return errs;
+}
+
+export function levelId(puzzles: Puzzle[]): string {
+  return createHash('sha256').update(JSON.stringify(puzzles)).digest('hex').slice(0, 12);
+}
+
+function combine(allowShort: boolean) {
+  const anchors = loadAnchors();
+  if (anchors.length !== LEVEL_COUNT) throw new Error(`expected ${LEVEL_COUNT} anchors, found ${anchors.length}`);
+  for (const [n, key] of Object.entries(CANVAS_LEVELS)) {
+    const { spec, best } = loadCanvas(key);
+    const a = anchors[Number(n) - 1];
+    if (JSON.stringify(spec) !== JSON.stringify(a.spec) || best !== a.par) throw new Error(`Level ${n} no longer matches its canvas board`);
+  }
+  const taken = new Set(anchors.map((a) => canonical(a.spec)));
+  const levels: PuzzleLevel[] = [];
+  const short: string[] = [];
+  const used: string[] = [];
+  anchors.forEach((anchor, i) => {
+    const n = i + 1;
+    const cache = existsSync(cachePath(n)) ? readCache(n, canonical(anchor.spec)) : { pool: [] as Candidate[] };
+    const pick = choose(anchor, cache.pool, taken);
+    const puzzles: Puzzle[] = [anchor, ...pick.boards.map((c) => ({ spec: c.spec, par: c.par, order: c.order }))];
+    puzzles.forEach((p, k) => {
+      const errs = puzzleProblems(anchor, p, k === 0);
+      if (errs.length) throw new Error(`Level ${n} puzzle ${k + 1}: ${errs.join('; ')}`);
+      taken.add(canonical(p.spec));
+    });
+    if (puzzles.length < PUZZLES) short.push(`Level ${n}: ${puzzles.length} of ${PUZZLES} boards (pool ${cache.pool.length})`);
+    if (pick.fallbacks.length) used.push(`Level ${n}: fallback ${pick.fallbacks.join(' and ')}`);
+    levels.push({ id: levelId(puzzles), puzzles });
   });
+  for (const line of used) console.error(line);
+  if (short.length) {
+    for (const line of short) console.error(line);
+    if (!allowShort) {
+      console.error('Not written: some levels are short. Rerun them with --fallback, or pass --allow-short.');
+      process.exitCode = 1;
+      return;
+    }
+  }
+  writeFileSync(
+    PUZZLES_FILE,
+    `// Generated by scripts/generate-slide-levels.ts. Do not edit by hand; run \`npm run levels:generate\`.\n` +
+      `// 31 Brick Escape levels, 6 puzzles each. Puzzle 1 is the level's original board. \`id\` changes when a level's puzzles do.\n` +
+      `import type { LevelSpec } from './engine';\n\n` +
+      `export interface PuzzleData {\n  spec: LevelSpec;\n  par: number;\n  order: number[];\n}\n\n` +
+      `export const PUZZLE_DATA: { id: string; puzzles: PuzzleData[] }[] = [\n` +
+      levels.map((l) => `  ${JSON.stringify(l)}`).join(',\n') +
+      `\n];\n`,
+  );
+  console.error(`wrote ${levels.length} levels, ${levels.reduce((s, l) => s + l.puzzles.length, 0)} puzzles to ${PUZZLES_FILE}`);
 }
 
 /* ---------- main ---------- */
@@ -428,62 +863,37 @@ async function main() {
     const i = process.argv.indexOf(name);
     return i > 0 ? process.argv[i + 1] : undefined;
   };
-  const minutes = Number(arg('--minutes') ?? 40);
-  const tierArg = arg('--tier');
+  const minutes = Number(arg('--minutes') ?? 30);
+  const fallback = Number(arg('--fallback') ?? 0);
+  const levelArg = arg('--level');
   mkdirSync(CACHE_DIR, { recursive: true });
-  if (tierArg) {
-    runTier(tierArg, minutes);
+  const budget = (n: number) => (LONG.has(n) ? minutes * 2 : minutes);
+  if (levelArg) {
+    const n = Number(levelArg);
+    if (!Number.isInteger(n) || n < 1 || n > LEVEL_COUNT) throw new Error(`--level takes 1 to ${LEVEL_COUNT}`);
+    runLevel(n, budget(n), fallback);
     return;
   }
 
   if (!process.argv.includes('--combine')) {
-    // hardest first, they take longest
-    const queue = TIERS.map((t) => t.key).reverse();
-    const parallel = Math.max(1, Math.min(availableParallelism() - 1, TIERS.length));
+    const anchors = loadAnchors();
+    const size = (n: number) => anchors[n - 1].spec.map.length;
+    const want = Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1).filter((n) => readCache(n, canonical(anchors[n - 1].spec)).pool.length < POOL);
+    // 8x8 levels first, the longest budgets first among them
+    const queue = want.sort((a, b) => size(b) - size(a) || budget(b) - budget(a) || a - b);
+    const parallel = Math.max(1, Math.min(availableParallelism() - 1, queue.length));
+    progress(`run: ${queue.length} levels on ${parallel} workers, ${minutes} min each (twice that for Levels 9 and 31)`);
     await Promise.all(
       Array.from({ length: parallel }, async () => {
-        for (let key = queue.shift(); key !== undefined; key = queue.shift()) {
-          const code = await new Promise<number>((res) =>
-            spawn(process.execPath, [...process.execArgv, self, '--tier', key, '--minutes', String(minutes)], { stdio: 'inherit' }).on('exit', (c) => res(c ?? 1)),
-          );
-          if (code !== 0) console.error(`tier ${key} exited with ${code}`);
+        for (let n = queue.shift(); n !== undefined; n = queue.shift()) {
+          const args = [...process.execArgv, self, '--level', String(n), '--minutes', String(minutes), ...(fallback ? ['--fallback', String(fallback)] : [])];
+          const code = await new Promise<number>((res) => spawn(process.execPath, args, { stdio: 'inherit' }).on('exit', (c) => res(c ?? 1)));
+          if (code !== 0) progress(`level ${n}: exited with ${code}`);
         }
       }),
     );
   }
-
-  const picked = new Map<string, Candidate[]>();
-  for (const t of TIERS) {
-    const pool = existsSync(cachePath(t.key)) ? readCache(t.key).pool : [];
-    picked.set(t.key, choose(pool, t.count));
-    if (pool.length < t.count) console.error(`tier ${t.key}: only ${pool.length} of ${t.count} levels so far; those slots are left out`);
-  }
-
-  const out: { spec: LevelSpec; par: number; order: number[] }[] = [];
-  for (const slot of PLAN) {
-    if ('canvas' in slot) {
-      const { spec, best } = loadCanvas(slot.canvas);
-      const s = solveSpec(spec, 2_000_000);
-      if (!s) throw new Error(`canvas level ${slot.canvas} breaks a rule or is not solvable`);
-      if (s.par !== best) throw new Error(`canvas level ${slot.canvas}: solver says ${s.par}, canvas says ${best}`);
-      out.push({ spec, par: s.par, order: s.order });
-    } else {
-      const next = picked.get(slot.tier)!.shift();
-      if (!next) continue;
-      // name from the current describe(), so cached boards pick up wording changes
-      const spec = { ...next.spec, name: describe(new Set(Object.values(next.spec.colors)).size, next.spec.gates, next.spec.map.some((l) => l.includes('*'))) };
-      out.push({ spec, par: next.par, order: next.order });
-    }
-  }
-
-  const file = fileURLToPath(new URL('../src/games/slide/levels.data.ts', import.meta.url));
-  writeFileSync(
-    file,
-    `// Generated by scripts/generate-slide-levels.ts. Do not edit by hand; run \`npm run levels:generate\`.\n` +
-      `import type { LevelSpec } from './engine';\n\n` +
-      `export const LEVEL_DATA: { spec: LevelSpec; par: number; order: number[] }[] = ${JSON.stringify(out)};\n`,
-  );
-  console.error(`wrote ${out.length} of ${PLAN.length} levels to ${file}`);
+  combine(process.argv.includes('--allow-short'));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) void main();
