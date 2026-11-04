@@ -1,35 +1,37 @@
 import { useRef, type CSSProperties, type PointerEvent } from 'react';
 import { letterColor, type BrickColor } from './data';
 
-/** Small stable tilt per brick so the tray looks scattered, not like a keyboard. */
-function tilt(id: string): number {
-  let h = 0;
-  for (const c of id) h = (h * 31 + c.charCodeAt(0)) | 0;
-  return (Math.abs(h) % 9) - 4;
-}
+/** A letter brick has the colour of its letter, or white for the small letters in Big and small. */
+export type LetterColor = BrickColor | 'white';
 
-/** A toy-brick letter tile: plain brick face, two studs on top, one big letter.
-    Tap works everywhere; when `onDrop` is given the brick can also be dragged onto any `[data-drop]` zone. */
+const faceColor = (ch: string, color?: LetterColor) => color ?? letterColor(ch);
+
+/** Tile: a toy-brick letter with two studs on top, sized by the tray's --tw / --th variables (see sizing.ts).
+    Slot: the same face without studs, sitting in the answer row, sized by --sw / --sh.
+    Tap works everywhere; when `onDrop` is given the tile can also be dragged onto any `[data-drop]` zone. */
 export function LetterBrick({
   ch,
   id,
   className = '',
   color,
+  shape = 'tile',
   onTap,
   onDrop,
   label,
-  scatter = false,
+  rot = 0,
   style,
   disabled,
 }: {
   ch: string;
   id?: string;
   className?: string;
-  color?: BrickColor | 'white';
+  color?: LetterColor;
+  shape?: 'tile' | 'slot';
   onTap?: () => void;
   onDrop?: () => void;
   label?: string;
-  scatter?: boolean;
+  /** Tilt in degrees, so a tray looks tossed, not like a keyboard. */
+  rot?: number;
   style?: CSSProperties;
   disabled?: boolean;
 }) {
@@ -83,19 +85,30 @@ export function LetterBrick({
   return (
     <button
       type="button"
-      className={`lb-brick brick ${draggable ? 'is-draggable ' : ''}${className}`}
-      data-color={color ?? letterColor(ch)}
+      className={`lb-brick lb-brick--${shape} ${draggable ? 'is-draggable ' : ''}${className}`}
+      data-brick={faceColor(ch, color)}
       data-id={id}
       aria-label={label ?? ch}
       disabled={disabled}
-      style={{ ...(scatter && id ? ({ '--rot': `${tilt(id)}deg` } as CSSProperties) : {}), ...style }}
+      style={{ '--rot': `${rot}deg`, ...style } as CSSProperties}
       // Pointer taps on draggable bricks are handled in pointerup; click stays for keyboard (detail 0).
       onClick={(e) => {
         if (!draggable || e.detail === 0) onTap?.();
       }}
       {...handlers}
     >
-      <span className="lb-brick__ch">{ch}</span>
+      <span className="lb-brick__ch" aria-hidden="true">
+        {ch}
+      </span>
     </button>
+  );
+}
+
+/** A filled answer-row brick that cannot be pressed (used when slots are too small to be a 44px target). */
+export function StaticBrick({ ch, className = '', style }: { ch: string; className?: string; style?: CSSProperties }) {
+  return (
+    <span className={`lb-brick lb-brick--slot ${className}`} data-brick={letterColor(ch)} style={style}>
+      <span className="lb-brick__ch">{ch}</span>
+    </span>
   );
 }

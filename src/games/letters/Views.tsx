@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import { letterName, say } from '../../shared/speech';
 import { sfx } from '../../shared/sound';
-import { LetterBrick } from './Brick';
+import { LetterBrick, StaticBrick } from './Brick';
+import { WordPicture } from './Pictures';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 import {
   checkSound,
@@ -18,15 +19,26 @@ import {
   tileForKey,
   usedIds,
 } from './logic';
+import { minViewHeight, slotSize, traySize, type SlotSize, type TraySize } from './sizing';
 
 export interface ViewProps<P> {
   prompt: P;
   active: boolean;
   onSlip: () => void;
+  /** The prompt is finished. Spelling calls this when the word is built; the other kinds call it after their short celebration. */
   onDone: () => void;
   /** the parent's hint button calls this; it returns false when there is nothing to point at */
   hintRef: MutableRefObject<(() => boolean) | null>;
+  /** The hint button, placed beside the help line. */
+  hint: ReactNode;
+  /** Width of the inner frame in px (the sizes of slots and tiles come from it). */
+  innerW: number;
+  /** What to tell the child before the first tap. */
+  instruction: string;
 }
+
+/** Smallest slot that can be a real button. Below it the answer row is a plain list. */
+const MIN_BUTTON = 44;
 
 /** Re-triggerable wiggle: the nonce goes into the React key so the animation restarts every time. */
 function useWiggle() {
@@ -51,6 +63,19 @@ function useHint() {
   };
   useEffect(() => () => window.clearTimeout(timer.current), []);
   return { hinted: (id: string) => ids.includes(id), show, clear: () => setIds([]) };
+}
+
+/** A short message that clears itself, for "Not that one" after a wrong tap. */
+function useNote() {
+  const [note, setNote] = useState<string | null>(null);
+  const timer = useRef<number>(0);
+  const show = (text: string, ms = 1600) => {
+    setNote(text);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setNote(null), ms);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { note, show, clear: () => setNote(null) };
 }
 
 /** Physical keyboard letters, for spelling, trains and first sounds. */
@@ -80,22 +105,80 @@ function useLater() {
   };
 }
 
-/** Tray of bricks; used bricks leave an invisible gap so nothing jumps under a child's finger. */
-function trayCols(n: number) {
-  return n <= 5 ? n : Math.min(5, Math.ceil(n / 2));
+/* ---------- Pieces ---------- */
+
+const px = (n: number) => `${n}px`;
+
+function slotVars(s: SlotSize): CSSProperties {
+  return {
+    '--sw': px(s.w),
+    '--sh': px(s.h),
+    '--sgap': px(s.gap),
+    '--sfs': px(s.font),
+    '--srad': px(s.radius),
+    '--sbd': px(s.border),
+  } as CSSProperties;
 }
+
+function trayVars(t: TraySize): CSSProperties {
+  return {
+    '--tw': px(t.w),
+    '--th': px(t.h),
+    '--tfs': px(t.font),
+    '--trad': px(t.radius),
+    '--stw': px(t.studW),
+    '--sth': px(t.studH),
+    '--stin': px(t.studIn),
+    '--per-row': t.perRow,
+    '--tgap': px(t.gap),
+    '--trgap': px(t.rowGap),
+  } as CSSProperties;
+}
+
+/** The help line, with the hint button at its right edge. The line says what to do, then how it is going. */
+function HelpRow({ text, hint }: { text: string; hint: ReactNode }) {
+  return (
+    <div className="lb-helprow">
+      <span aria-hidden="true" />
+      <p className="lb-help" role="status">
+        {text}
+      </p>
+      {hint}
+    </div>
+  );
+}
+
+/** The inset well the tray sits in. */
+function Well({ label, children }: { label?: string; children: ReactNode }) {
+  return (
+    <div className="lb-well">
+      {label && <p className="lb-well__label">{label}</p>}
+      <div className="lb-tray">{children}</div>
+    </div>
+  );
+}
+
+/** A tray tile that has been placed: it stays as a faint ghost so the others never move under a finger. */
+function Ghost({ ch }: { ch: string }) {
+  return <span className="lb-brick lb-brick--tile lb-ghost" data-brick="white" aria-hidden="true">{ch}</span>;
+}
+
+const rotFor = (i: number) => (i % 2 ? 3 : -3);
 
 /* ---------- Train, missing letters, spelling ---------- */
 
-export function FillView({ prompt: p, active, onSlip, onDone, hintRef }: ViewProps<FillPrompt>) {
+export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<FillPrompt>) {
   const later = useLater();
   const [fill, setFill] = useState(() => newFill(p));
   const [done, setDone] = useState(false);
   const [lastPlaced, setLastPlaced] = useState(-1);
   const { wiggling, nonce, wiggle } = useWiggle();
-  const hint = useHint();
+  const hinting = useHint();
+  const note = useNote();
   const used = usedIds(fill);
   const next = nextCell(p, fill);
+  const spelling = p.kind === 'spell' && !!p.word;
+  const word = p.word?.word ?? '';
 
   const tap = (id: string) => {
     if (done || !active) return;
@@ -105,12 +188,17 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPro
       sfx.wrong();
       wiggle([id]);
       onSlip();
+      if (spelling) {
+        note.show(`Not that one. Listen again: ${word}!`);
+        say(word);
+      } else note.show('Not that one. Try again.');
       return;
     }
     const at = next;
     setFill(r.state);
     setLastPlaced(at);
-    hint.clear();
+    hinting.clear();
+    note.clear();
     sfx.tap();
     say(letterName(p.cells[at]));
     if (fillDone(p, r.state)) {
@@ -120,14 +208,15 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPro
         if (p.word) say(p.word.word);
         else say(p.kind === 'train' ? 'Choo choo!' : 'You found them!');
       }, 650);
-      later(onDone, 2000);
+      // A spelled word waits for the child on a card; the other kinds move on by themselves.
+      later(onDone, spelling ? 1100 : 2000);
     }
   };
 
   hintRef.current = () => {
     const id = hintFill(p, fill);
     if (!id || done) return false;
-    hint.show([id]);
+    hinting.show([id]);
     return true;
   };
 
@@ -136,74 +225,90 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPro
     if (id) tap(id);
   });
 
-  const n = p.cells.length;
-  const cols = trayCols(p.tray.length);
+  const slots = slotSize(p.cells.length, innerW);
+  const tray = traySize(p.tray.length, innerW);
+  const placedCount = fill.placed.filter(Boolean).length;
+  const help = done ? 'Well done!' : (note.note ?? (placedCount === 0 ? instruction : 'Great! What comes next?'));
+  const canPress = slots.w >= MIN_BUTTON;
 
   return (
-    <div className={`lb-fill lb-fill--${p.kind}${done ? ' is-done' : ''}`}>
-      <div className="lb-stage">
-        {p.kind === 'spell' && p.word ? (
-          <button type="button" className="lb-picture" aria-label={`Say ${p.word.word}`} onClick={() => say(p.word!.word)}>
-            {p.word.emoji}
+    <div className={`lb-view lb-fill lb-fill--${p.kind}${done ? ' is-done' : ''}`} style={{ ...slotVars(slots), ...trayVars(tray), '--lb-min': px(minViewHeight(slots.h, tray)) } as CSSProperties}>
+      <div className="lb-top">
+        {spelling ? (
+          <button type="button" className="lb-picture" aria-label={`Picture of a ${word}, tap to hear it`} onClick={() => say(word)}>
+            <WordPicture word={word} emoji={p.word!.emoji} />
           </button>
         ) : (
-          <div className="lb-engine" aria-hidden="true">
-            <span className="lb-engine__icon">{p.kind === 'train' ? '🚂' : '🔍'}</span>
-            <span className="lb-engine__label">{p.label}</span>
+          <div className="lb-picture lb-picture--label">
+            <span>{p.label}</span>
           </div>
         )}
-        <div className="lb-slots" data-drop="slots" style={{ '--n': n } as CSSProperties} aria-label="Answer row">
+        <ol className="lb-slots" data-drop="slots" aria-label="Your answer">
           {p.cells.map((ch, i) => {
             const id = fill.placed[i];
+            const cls = `lb-cell${id ? ' is-placed' : ' is-given'}${i === lastPlaced ? ' is-fresh' : ''}`;
+            const style = { '--i': i } as CSSProperties;
             if (p.given[i] || id) {
               return (
-                <LetterBrick
-                  key={i}
-                  ch={ch}
-                  className={`lb-cell${id ? ' is-placed' : ' is-given'}${i === lastPlaced ? ' is-fresh' : ''}`}
-                  style={{ '--i': i } as CSSProperties}
-                  label={`${ch}, say it`}
-                  onTap={() => say(letterName(ch))}
-                />
+                <li key={i}>
+                  {canPress ? (
+                    <LetterBrick shape="slot" ch={ch} className={cls} style={style} label={`${ch}, say it`} onTap={() => say(letterName(ch))} />
+                  ) : (
+                    <StaticBrick ch={ch} className={cls} style={style} />
+                  )}
+                </li>
               );
             }
             return (
-              <div key={i} className={`lb-slot lb-cell${i === next ? ' is-next' : ''}`} aria-label="empty">
-                {p.guide && <span className="lb-slot__ghost">{ch}</span>}
-                {!p.guide && p.kind === 'missing' && <span className="lb-slot__ghost">?</span>}
-              </div>
+              <li key={i}>
+                <span className={`lb-slot${i === next ? ' is-next' : ''}`}>
+                  <span className="lb-sr">empty</span>
+                  {p.guide && (
+                    <span className="lb-slot__ghost" aria-hidden="true">
+                      {ch}
+                    </span>
+                  )}
+                  {!p.guide && p.kind === 'missing' && (
+                    <span className="lb-slot__ghost" aria-hidden="true">
+                      ?
+                    </span>
+                  )}
+                </span>
+              </li>
             );
           })}
-        </div>
+        </ol>
+        <HelpRow text={help} hint={hint} />
       </div>
-      <div className="lb-tray" style={{ '--cols': cols } as CSSProperties}>
-        {p.tray.map((t: Tile) =>
+      <Well>
+        {p.tray.map((t: Tile, i) =>
           used.has(t.id) ? (
-            <span key={t.id} className="lb-brick lb-gap" aria-hidden="true" />
+            <Ghost key={t.id} ch={t.ch} />
           ) : (
             <LetterBrick
               key={`${t.id}:${wiggling(t.id) ? nonce : 0}`}
               id={t.id}
               ch={t.ch}
-              scatter
-              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${hint.hinted(t.id) ? 'is-hint' : ''}`}
+              rot={rotFor(i)}
+              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
               onTap={() => tap(t.id)}
               onDrop={() => tap(t.id)}
             />
           ),
         )}
-      </div>
+      </Well>
     </div>
   );
 }
 
-/* ---------- Big & small ---------- */
+/* ---------- Big and small ---------- */
 
-export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewProps<MatchPrompt>) {
+export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<MatchPrompt>) {
   const later = useLater();
   const [s, setS] = useState(newMatch);
   const { wiggling, nonce, wiggle } = useWiggle();
-  const hint = useHint();
+  const hinting = useHint();
+  const note = useNote();
   const done = matchDone(p, s);
 
   const tap = (side: 'upper' | 'lower', t: Tile) => {
@@ -215,7 +320,8 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
       sfx.tap();
       say(letterName(t.ch));
     } else if (r.result === 'pair') {
-      hint.clear();
+      hinting.clear();
+      note.clear();
       sfx.good();
       say(`${letterName(t.ch)}`);
       if (matchDone(p, r.state)) later(onDone, 1200);
@@ -223,19 +329,21 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
       sfx.wrong();
       wiggle([t.id, r.other!]);
       onSlip();
+      note.show('Not a pair. Try again.');
     }
   };
 
   hintRef.current = () => {
     const ids = hintMatch(p, s);
     if (!ids.length || done) return false;
-    hint.show(ids);
+    hinting.show(ids);
     return true;
   };
 
+  const size = traySize(p.upper.length, innerW, 64);
   const row = (side: 'upper' | 'lower', list: Tile[]) => (
-    <div className={`lb-tray lb-tray--${side}`} style={{ '--cols': trayCols(list.length) } as CSSProperties}>
-      {list.map((t) => {
+    <Well label={side === 'upper' ? 'Big letters' : 'Small letters'}>
+      {list.map((t, i) => {
         const matched = s.matched.includes(t.ch.toUpperCase());
         const selected = s.selected?.id === t.id;
         return (
@@ -243,13 +351,14 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
             key={`${t.id}:${wiggling(t.id) ? nonce : 0}`}
             id={t.id}
             ch={t.ch}
-            // Lowercase bricks are neutral white so the color never gives the answer away.
+            rot={rotFor(i)}
+            // Small letters are neutral white so the color never gives the answer away.
             color={side === 'lower' ? 'white' : undefined}
             className={[
               matched && 'is-matched',
               selected && 'is-selected',
               wiggling(t.id) && 'is-wiggle',
-              hint.hinted(t.id) && 'is-hint',
+              hinting.hinted(t.id) && 'is-hint',
             ]
               .filter(Boolean)
               .join(' ')}
@@ -258,14 +367,16 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
           />
         );
       })}
-    </div>
+    </Well>
   );
 
+  const pairs = s.matched.length;
+  const help = done ? 'Well done!' : (note.note ?? (pairs === 0 ? instruction : `${pairs} of ${p.letters.length} pairs found.`));
+
   return (
-    <div className={`lb-match${done ? ' is-done' : ''}`}>
-      <div className="lb-match__label">BIG</div>
+    <div className={`lb-view lb-match${done ? ' is-done' : ''}`} style={trayVars(size)}>
+      <HelpRow text={help} hint={hint} />
       {row('upper', p.upper)}
-      <div className="lb-match__label">small</div>
       {row('lower', p.lower)}
     </div>
   );
@@ -273,18 +384,20 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
 
 /* ---------- First sounds ---------- */
 
-export function SoundView({ prompt: p, active, onSlip, onDone, hintRef }: ViewProps<SoundPrompt>) {
+export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<SoundPrompt>) {
   const later = useLater();
   const [done, setDone] = useState(false);
   const [tried, setTried] = useState<string[]>([]);
   const { wiggling, nonce, wiggle } = useWiggle();
-  const hint = useHint();
+  const hinting = useHint();
+  const note = useNote();
 
   const choose = (t: Tile) => {
     if (done || !active || tried.includes(t.id)) return;
     if (checkSound(p, t.ch)) {
       setDone(true);
-      hint.clear();
+      hinting.clear();
+      note.clear();
       sfx.good();
       say(`${letterName(t.ch)} is for ${p.word.word}`);
       later(onDone, 2200);
@@ -293,13 +406,14 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
       wiggle([t.id]);
       setTried((x) => [...x, t.id]);
       onSlip();
+      note.show('Not that one. Try again.');
     }
   };
 
   hintRef.current = () => {
     const id = hintSound(p);
     if (!id || done) return false;
-    hint.show([id]);
+    hinting.show([id]);
     return true;
   };
 
@@ -310,14 +424,16 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
 
   const w = p.word.word;
   const display = p.answer === p.answer.toLowerCase() ? w : w.toUpperCase();
+  const tray = traySize(p.options.length, innerW, 90);
+  const help = done ? 'Well done!' : (note.note ?? instruction);
 
   return (
-    <div className={`lb-sound${done ? ' is-done' : ''}`}>
-      <div className="lb-stage">
-        <button type="button" className="lb-picture" aria-label={`Say ${w}`} onClick={() => say(w)}>
-          {p.word.emoji}
+    <div className={`lb-view lb-sound${done ? ' is-done' : ''}`} style={{ ...trayVars(tray), '--lb-min': px(minViewHeight(40, tray)) } as CSSProperties}>
+      <div className="lb-top">
+        <button type="button" className="lb-picture" aria-label={`Picture of a ${w}, tap to hear it`} onClick={() => say(w)}>
+          <WordPicture word={w} emoji={p.word.emoji} />
         </button>
-        <div className="lb-word" aria-live="polite">
+        <p className="lb-word" aria-live="polite">
           {done ? (
             <>
               <span className="lb-word__first">{display[0]}</span>
@@ -329,18 +445,20 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
               {display.slice(1)}
             </>
           )}
-        </div>
+        </p>
+        <HelpRow text={help} hint={hint} />
       </div>
-      <div className="lb-tray lb-tray--big" style={{ '--cols': p.options.length } as CSSProperties}>
-        {p.options.map((t) => (
+      <Well>
+        {p.options.map((t, i) => (
           <LetterBrick
             key={`${t.id}:${wiggling(t.id) ? nonce : 0}`}
             id={t.id}
             ch={t.ch}
+            rot={rotFor(i)}
             className={[
               tried.includes(t.id) && 'is-tried',
               wiggling(t.id) && 'is-wiggle',
-              hint.hinted(t.id) && 'is-hint',
+              hinting.hinted(t.id) && 'is-hint',
               done && t.ch === p.answer && 'is-right',
             ]
               .filter(Boolean)
@@ -348,7 +466,7 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef }: ViewPr
             onTap={() => choose(t)}
           />
         ))}
-      </div>
+      </Well>
     </div>
   );
 }

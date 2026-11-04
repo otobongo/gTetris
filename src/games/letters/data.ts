@@ -142,6 +142,44 @@ export const SIX: Word[] = [
   { word: 'parrot', emoji: '🦜' },
   { word: 'guitar', emoji: '🎸' },
   { word: 'cheese', emoji: '🧀' },
+  { word: 'spider', emoji: '🕷️' },
+  { word: 'hammer', emoji: '🔨' },
+  { word: 'magnet', emoji: '🧲' },
+  { word: 'tomato', emoji: '🍅' },
+  { word: 'dragon', emoji: '🐉' },
+  { word: 'candle', emoji: '🕯️' },
+  { word: 'violin', emoji: '🎻' },
+  { word: 'basket', emoji: '🧺' },
+];
+
+/** Seven and eight letter words, for ages 7 and up. Kept out of ALL_WORDS, which is the three to six letter pool
+    the first-sound levels draw from. Each one has its own picture. */
+export const SEVEN: Word[] = [
+  { word: 'rainbow', emoji: '🌈' },
+  { word: 'penguin', emoji: '🐧' },
+  { word: 'giraffe', emoji: '🦒' },
+  { word: 'dolphin', emoji: '🐬' },
+  { word: 'octopus', emoji: '🐙' },
+  { word: 'balloon', emoji: '🎈' },
+  { word: 'pumpkin', emoji: '🎃' },
+  { word: 'popcorn', emoji: '🍿' },
+  { word: 'scooter', emoji: '🛴' },
+  { word: 'volcano', emoji: '🌋' },
+  { word: 'ladybug', emoji: '🐞' },
+  { word: 'tractor', emoji: '🚜' },
+  { word: 'pretzel', emoji: '🥨' },
+  { word: 'snowman', emoji: '⛄' },
+];
+
+export const EIGHT: Word[] = [
+  { word: 'umbrella', emoji: '☂️' },
+  { word: 'elephant', emoji: '🐘' },
+  { word: 'dinosaur', emoji: '🦕' },
+  { word: 'mushroom', emoji: '🍄' },
+  { word: 'sandwich', emoji: '🥪' },
+  { word: 'backpack', emoji: '🎒' },
+  { word: 'football', emoji: '🏈' },
+  { word: 'squirrel', emoji: '🐿️' },
 ];
 
 export const ALL_WORDS: Word[] = [...CVC, ...THREE, ...FOUR, ...FIVE, ...SIX];
