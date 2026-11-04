@@ -14,17 +14,15 @@ import {
   type Side,
   type State,
   blockSize,
-  canPlace,
-  exitGate,
   gateDepth,
   initialState,
   isLocked,
   isSolved,
   locksLeft,
-  occupancy,
   starsFor,
   withMove,
 } from './engine';
+import { EXIT_PAST, dragStep, keyStep } from './drag';
 import { LEVELS } from './levels';
 import { solve } from './solver';
 
@@ -113,6 +111,15 @@ interface Drag {
   start: Cell;
   before: Snapshot;
   moved: boolean;
+  /** the brick was pulled into its door at some point in this drag */
+  pulled: boolean;
+}
+
+/** A brick being dragged out through its door: how far it shows past the edge, in squares. */
+interface Pull {
+  block: number;
+  side: Side;
+  depth: number;
 }
 
 interface Snapshot {
@@ -136,6 +143,7 @@ export default function SlideGame({ index }: { index: number }) {
   const [hintBlock, setHintBlock] = useState<number | null>(null);
   const [exiting, setExiting] = useState<{ block: number; side: Side } | null>(null);
   const [bumped, setBumped] = useState<number | null>(null);
+  const [pull, setPull] = useState<Pull | null>(null);
   const [tLeft, setTLeft] = useState(clock.seconds);
   const [won, setWon] = useState<{ stars: number; inTime: boolean } | null>(null);
   const [cardOpen, setCardOpen] = useState(false);
@@ -170,6 +178,7 @@ export default function SlideGame({ index }: { index: number }) {
     setHintBlock(null);
     setExiting(null);
     setBumped(null);
+    setPull(null);
     setTLeft(clock.seconds);
     setWon(null);
     setCardOpen(false);
@@ -227,36 +236,12 @@ export default function SlideGame({ index }: { index: number }) {
     [finishIfSolved],
   );
 
-  /** Slide `block` one square. A brick at its open door that is pushed toward it leaves. */
-  const step = useCallback(
-    (block: number, dr: number, dc: number): 'moved' | 'exit' | 'blocked' => {
-      const s = stateRef.current;
-      const p = s.pos[block];
-      if (!p) return 'blocked';
-      const occ = occupancy(level, s);
-      const here = exitGate(level, occ, s, block, p[0], p[1]);
-      if (here >= 0) {
-        const [gr, gc] = DIRS[level.gates[here].side];
-        if (gr === dr && gc === dc) return 'exit';
-      }
-      const nr = p[0] + dr;
-      const nc = p[1] + dc;
-      if (!canPlace(level, occ, block, nr, nc)) return 'blocked';
-      const ns = withMove(s, block, [nr, nc]);
-      stateRef.current = ns;
-      setState(ns);
-      sfx.move();
-      return exitGate(level, occ, ns, block, nr, nc) >= 0 ? 'exit' : 'moved';
-    },
-    [level],
-  );
-
-  const exitNow = (block: number) => {
-    const s = stateRef.current;
-    const p = s.pos[block];
-    if (!p) return;
-    const gi = exitGate(level, occupancy(level, s), s, block, p[0], p[1]);
-    if (gi >= 0) leave(block, level.gates[gi]);
+  /** Slide `block` to a legal spot on the board (never off it: leaving is `leave`). */
+  const slideTo = (block: number, at: Cell) => {
+    const ns = withMove(stateRef.current, block, at);
+    stateRef.current = ns;
+    setState(ns);
+    sfx.move();
   };
 
   const bump = (block: number) => {
@@ -277,67 +262,85 @@ export default function SlideGame({ index }: { index: number }) {
     }
     const start = stateRef.current.pos[block];
     if (!start) return;
-    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start, before: { state: stateRef.current, moves: movesRef.current }, moved: false };
+    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start, before: { state: stateRef.current, moves: movesRef.current }, moved: false, pulled: false };
     keySession.current = null;
+  };
+
+  /**
+   * Follow the pointer: the brick slides to the nearest legal spot and leaves only once the drag has carried
+   * it EXIT_PAST squares out through its own open door (drag.ts). Touching the door is not enough.
+   * Returns true when the brick left.
+   */
+  const follow = (e: PointerEvent<HTMLButtonElement>, d: Drag): boolean => {
+    // pointer distance is in screen px; the tablet frame is zoomed, so measure one square on screen
+    const unit = e.currentTarget.getBoundingClientRect().width / ((blockSize(level.blocks[d.block]).w * cell - 4) / cell);
+    const s = stateRef.current;
+    const p = s.pos[d.block];
+    if (!p) return false;
+    const res = dragStep(level, s, d.block, d.start, [(e.clientY - d.y0) / unit, (e.clientX - d.x0) / unit]);
+    const slid = res.at[0] !== p[0] || res.at[1] !== p[1];
+    if ((slid || res.exit >= 0) && !d.moved) {
+      d.moved = true;
+      beginMove(d.before);
+    }
+    if (slid) slideTo(d.block, res.at);
+    if (res.exit >= 0) {
+      drag.current = null;
+      setPull(null);
+      leave(d.block, level.gates[res.exit]);
+      return true;
+    }
+    if (res.pull) d.pulled = true;
+    // the brick slides into the door opening while it is pulled, up to the point where it leaves
+    setPull(res.pull ? { block: d.block, side: res.pull.side, depth: Math.min(res.pull.depth, EXIT_PAST) } : null);
+    return false;
   };
 
   const onPointerMove = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
-    // pointer distance is in screen px; the tablet frame is zoomed, so measure one square on screen
-    const unit = e.currentTarget.getBoundingClientRect().width / ((blockSize(level.blocks[d.block]).w * cell - 4) / cell);
-    const target: Cell = [d.start[0] + Math.round((e.clientY - d.y0) / unit), d.start[1] + Math.round((e.clientX - d.x0) / unit)];
-    // walk toward the target one square at a time, trying the longer way first
-    for (let guard = 0; guard < 24; guard++) {
-      const p = stateRef.current.pos[d.block];
-      if (!p) return;
-      const ry = target[0] - p[0];
-      const rx = target[1] - p[1];
-      if (!ry && !rx) return;
-      const tries: Cell[] = Math.abs(ry) >= Math.abs(rx) ? [[Math.sign(ry), 0], [0, Math.sign(rx)]] : [[0, Math.sign(rx)], [Math.sign(ry), 0]];
-      let progressed = false;
-      for (const [dr, dc] of tries) {
-        if (!dr && !dc) continue;
-        const res = step(d.block, dr, dc);
-        if (res === 'blocked') continue;
-        if (!d.moved) {
-          d.moved = true;
-          beginMove(d.before);
-        }
-        if (res === 'exit') {
-          drag.current = null;
-          exitNow(d.block);
-          return;
-        }
-        progressed = true;
-        break;
-      }
-      if (!progressed) return;
-    }
+    follow(e, d);
   };
 
   const onPointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
+    // a release past the door's threshold still takes the brick out; before it, the brick stays on the board
+    // at its last legal spot and the pull springs back
+    const left = follow(e, d);
     drag.current = null;
+    setPull(null);
     // pushed into a wall or another brick: a small nudge says it can not go there
-    if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
+    if (!left && !d.moved && !d.pulled && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
   };
 
-  /* ---------- keyboard: focus a brick, slide it with the arrow keys ---------- */
+  /** A lost pointer (a system gesture, say) never takes a brick out: it just drops the drag. */
+  const onPointerCancel = (e: PointerEvent<HTMLButtonElement>) => {
+    if (drag.current?.pointerId !== e.pointerId) return;
+    drag.current = null;
+    setPull(null);
+  };
+
+  /*
+   * ---------- keyboard: focus a brick, slide it with the arrow keys ----------
+   * A press that brings the brick next to its door only slides it there; one more press toward the door takes
+   * it out (drag.ts keyStep). Consecutive presses on the same brick count as one move, like one drag.
+   */
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, block: number) => {
     const dir = ({ ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as Record<string, Cell>)[e.key];
     if (!dir || busy) return;
     e.preventDefault();
     const before = { state: stateRef.current, moves: movesRef.current };
-    const res = step(block, dir[0], dir[1]);
-    if (res === 'blocked') return bump(block);
+    const res = keyStep(level, stateRef.current, block, dir);
+    if (res.kind === 'blocked') return bump(block);
     if (keySession.current !== block) beginMove(before);
     keySession.current = block;
-    if (res === 'exit') {
+    if (res.kind === 'exit') {
       keySession.current = null;
-      exitNow(block);
+      leave(block, level.gates[res.gate]);
+      return;
     }
+    slideTo(block, res.at);
   };
 
   /* ---------- tools ---------- */
@@ -474,11 +477,13 @@ export default function SlideGame({ index }: { index: number }) {
                   at={p}
                   cell={cell}
                   exiting={exiting?.block === i ? exiting.side : null}
+                  pull={pull?.block === i ? pull : null}
                   hinted={hintBlock === i}
                   bumped={bumped === i}
                   onPointerDown={(e) => onPointerDown(e, i)}
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerCancel}
                   onKeyDown={(e) => onKeyDown(e, i)}
                 />
               );
@@ -518,6 +523,7 @@ function BrickPiece({
   at,
   cell,
   exiting,
+  pull,
   hinted,
   bumped,
   ...handlers
@@ -526,11 +532,13 @@ function BrickPiece({
   at: Cell;
   cell: number;
   exiting: Side | null;
+  pull: { side: Side; depth: number } | null;
   hinted: boolean;
   bumped: boolean;
   onPointerDown: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (e: PointerEvent<HTMLButtonElement>) => void;
+  onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => void;
   onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const { h, w } = blockSize(block);
@@ -540,9 +548,14 @@ function BrickPiece({
     const [dr, dc] = DIRS[exiting];
     x += dc * (w + 0.6) * cell;
     y += dr * (h + 0.6) * cell;
+  } else if (pull) {
+    // being dragged out: the brick follows the finger into the door opening
+    const [dr, dc] = DIRS[pull.side];
+    x += dc * pull.depth * cell;
+    y += dr * pull.depth * cell;
   }
   if (bumped) x += 5;
-  const cls = ['esc-brick', exiting && 'is-exiting', hinted && 'is-hinted'].filter(Boolean).join(' ');
+  const cls = ['esc-brick', exiting && 'is-exiting', !exiting && pull && 'is-pulled', hinted && 'is-hinted'].filter(Boolean).join(' ');
   return (
     <button
       type="button"
@@ -551,7 +564,6 @@ function BrickPiece({
       aria-label={`${cap(block.color)} brick`}
       aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
       {...handlers}
-      onPointerCancel={handlers.onPointerUp}
     >
       <Brick color={block.color} stud={cell} width={w * cell - 4} height={h * cell - 4} radius={9} className="esc-brick__face" />
     </button>

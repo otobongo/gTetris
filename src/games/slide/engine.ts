@@ -3,8 +3,9 @@
  *
  * Board: rows x cols grid. Some cells may be void (not part of the tray), which lets levels have L shapes etc.
  * Blocks: polyomino bricks with a color and a top-left anchor (r, c). They slide one cell at a time and never overlap.
- * Gates: colored doors on the outer edge of the tray. A brick leaves through a gate of its own color when it
- *   touches the gate, its whole width fits inside the door, and nothing is in the way of sliding out.
+ * Gates: colored doors on the outer edge of the tray. A brick can leave through a gate of its own color when it
+ *   touches the gate, its whole width fits inside the door, and nothing is in the way of sliding out. In play it
+ *   leaves only when the child drags it on out through the door (drag.ts); touching the door is not enough.
  * Locks: an icy door hides its color until it melts. It melts after N bricks have left the board (`lock`), or
  *   once every brick of one color is out (`lockColor`, the color locks that open one at a time).
  * Stones: grey tray squares that never move. Bricks can not slide over them.
@@ -160,50 +161,44 @@ export function gateCells(level: Level, g: GateDef): Cell[] {
 }
 
 /**
- * Which gate (index) the block can leave through from anchor (r, c), or -1.
+ * Can the block leave through gate `gi` from anchor (r, c)?
  * Rules: same color, gate not iced, every block cell lies within the door span, at least one cell touches the
  * door, and each cell has a clear straight path to the door line (only empty cells or its own cells).
+ * This says the door is open to the brick from here; on the play screen the brick only leaves when the child
+ * drags it on out through the door (see drag.ts). Touching the door alone never takes it off the board.
  */
-export function exitGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number): number {
+export function fitsGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number, gi: number): boolean {
   const b = level.blocks[blockIdx];
-  for (let gi = 0; gi < level.gates.length; gi++) {
-    const g = level.gates[gi];
-    if (g.color !== b.color || isLocked(g, state, level)) continue;
-    const horizontal = g.side === 'left' || g.side === 'right';
-    const depth = gateDepth(level, g);
-    const [dr, dc] = DIRS[g.side];
-    let touches = false;
-    let ok = true;
-    for (const [cr, cc] of b.cells) {
-      const rr = r + cr;
-      const col = c + cc;
-      const across = horizontal ? rr : col;
-      if (across < g.at || across >= g.at + g.len) {
-        ok = false;
-        break;
-      }
-      const along = horizontal ? col : rr;
-      if (along === depth) touches = true;
-      // walk toward the door line
-      let wr = rr;
-      let wc = col;
-      while ((horizontal ? wc : wr) !== depth) {
-        wr += dr;
-        wc += dc;
-        if (!isPlayable(level, wr, wc)) {
-          ok = false;
-          break;
-        }
-        const v = occ[wr * level.cols + wc];
-        if (v !== 0 && v !== blockIdx + 1) {
-          ok = false;
-          break;
-        }
-      }
-      if (!ok) break;
+  const g = level.gates[gi];
+  if (g.color !== b.color || isLocked(g, state, level)) return false;
+  const horizontal = g.side === 'left' || g.side === 'right';
+  const depth = gateDepth(level, g);
+  const [dr, dc] = DIRS[g.side];
+  let touches = false;
+  for (const [cr, cc] of b.cells) {
+    const rr = r + cr;
+    const col = c + cc;
+    const across = horizontal ? rr : col;
+    if (across < g.at || across >= g.at + g.len) return false;
+    const along = horizontal ? col : rr;
+    if (along === depth) touches = true;
+    // walk toward the door line
+    let wr = rr;
+    let wc = col;
+    while ((horizontal ? wc : wr) !== depth) {
+      wr += dr;
+      wc += dc;
+      if (!isPlayable(level, wr, wc)) return false;
+      const v = occ[wr * level.cols + wc];
+      if (v !== 0 && v !== blockIdx + 1) return false;
     }
-    if (ok && touches) return gi;
   }
+  return touches;
+}
+
+/** Which gate (index) the block can leave through from anchor (r, c), or -1. The rules are in fitsGate. */
+export function exitGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number): number {
+  for (let gi = 0; gi < level.gates.length; gi++) if (fitsGate(level, occ, state, blockIdx, r, c, gi)) return gi;
   return -1;
 }
 
@@ -216,7 +211,9 @@ export interface Reach {
 
 /**
  * Every anchor the block can slide to in one drag, holding other bricks still.
- * Positions where it could exit are terminal (in play it would leave the board there).
+ * Positions where it could exit are terminal: for the solver, a drag that reaches its open door carries on out
+ * through it, and that whole drag is one move. In play the child may also let go there (drag.ts); the brick
+ * then waits beside the door and taking it out later is one more drag.
  */
 export function reachable(level: Level, state: State, blockIdx: number, occ = occupancy(level, state)): Reach {
   const start = state.pos[blockIdx];
