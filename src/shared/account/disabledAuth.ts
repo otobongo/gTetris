@@ -4,6 +4,7 @@ const off = <T>(): Promise<Result<T>> => Promise.resolve({ ok: false, reason: 'n
 
 /** The AuthService used while accounts are switched off: every call resolves to { ok: false, reason: 'not-enabled' }. */
 export const disabledAuth: AuthService = {
+  createAccount: () => off(),
   signInWithEmail: () => off(),
   sendEmailLink: () => off(),
   signInWithGoogle: () => off(),

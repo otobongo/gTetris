@@ -8,18 +8,26 @@ is already in place and the rules a real provider has to meet before the flag is
 
 | Piece | File | What it does now |
 |---|---|---|
-| `AuthService` interface | `src/shared/account/types.ts` | `signInWithEmail`, `sendEmailLink`, `signInWithGoogle`, `signInWithApple`, `signInWithFacebook`, `signOut`, `currentUser`, `onChange` |
+| `AuthService` interface | `src/shared/account/types.ts` | `createAccount`, `signInWithEmail`, `sendEmailLink`, `signInWithGoogle`, `signInWithApple`, `signInWithFacebook`, `signOut`, `currentUser`, `onChange` |
 | `SyncAdapter` interface | `src/shared/account/types.ts` | `pull()` and `push(snapshot)` of a versioned `ProgressSnapshot` |
 | `disabledAuth` | `src/shared/account/disabledAuth.ts` | Every call resolves to `{ ok: false, reason: 'not-enabled' }`; `onChange` never fires |
 | `localOnlySync` | `src/shared/account/localOnlySync.ts` | `pull` resolves to `{ ok: true, value: null }`, `push` does nothing |
 | Merge rule | `src/shared/account/merge.ts` | `mergeProgress(local, remote)` and `mergeSnapshot(local, pulled, now)` |
 | Flag | `src/shared/account/config.ts` | `ACCOUNTS_ENABLED` reads `VITE_ACCOUNTS_ENABLED`; only `true` or `1` turns it on. Default off |
 | Provider list | `src/shared/account/config.ts` | `email` and `google` are `planned-first`; `apple` and `facebook` are `planned-later` |
-| Active services | `src/shared/account/index.ts` | `auth = disabledAuth`, `sync = localOnlySync` |
+| Registered provider | `src/shared/account/config.ts` | `REGISTERED_PROVIDER` holds a real provider's `{ auth, sync }`. It is `null` today |
+| Service choice | `src/shared/account/config.ts` | `pickServices(flag, provider)`: flag off gives the disabled services; flag on with a provider gives that provider; flag on with no provider fails closed (disabled services and one `console.error`, never a throw at app start) |
+| Active services | `src/shared/account/index.ts` | `auth` and `sync` from `pickServices(ACCOUNTS_ENABLED, REGISTERED_PROVIDER)`, so `disabledAuth` and `localOnlySync` today. `ACCOUNTS_ACTIVE` is true only when a real provider is in use |
 
 Screens call `auth` and `sync` from `src/shared/account`, never a provider SDK directly. While the
 flag is off, the Sign in and Sign up screens show their designed states, and every action ends in
 the `not-enabled` result, which the screen turns into a calm message.
+
+Sign up calls `createAccount(email, password)` for the email path. The email, Apple, Google and
+Facebook paths all require the "parent or guardian, 18 or older" box first
+(`src/screens/logic/signup.ts`); unticked, no AuthService call is made. Support (`src/screens/logic/help.ts`) promises sync
+across devices and deletion on every device only when `ACCOUNTS_ACTIVE` is true, not just when
+the flag is on.
 
 ## Plugging in a provider
 
@@ -30,13 +38,16 @@ an official JS client). Any provider works if it meets the rules below.
    lockfile, run `npm audit`).
 2. Write `src/shared/account/supabaseAuth.ts` implementing `AuthService`, mapping provider errors
    to `FailReason` (`wrong-credentials`, `too-many-tries`, `offline`, `provider-failed`,
-   `cancelled`). `sendEmailLink` always resolves `ok`, so the screen never reveals which emails
-   have accounts.
+   `cancelled`). `createAccount` creates the family account (the server checks consent was
+   given). `sendEmailLink` always resolves `ok`, so the screen never reveals which emails have
+   accounts.
 3. Write `src/shared/account/supabaseSync.ts` implementing `SyncAdapter`. `pull` returns the
    family's latest `ProgressSnapshot` or `null`; `push` stores one. The client never trusts what
    it pulls: `mergeSnapshot` runs the remote progress through the same `sanitize` as local storage.
-4. In `src/shared/account/index.ts`, choose the services by the flag:
-   `export const auth = ACCOUNTS_ENABLED ? supabaseAuth : disabledAuth;` and the same for `sync`.
+4. In `src/shared/account/config.ts`, register the provider:
+   `export const REGISTERED_PROVIDER = { auth: supabaseAuth, sync: supabaseSync };`.
+   `index.ts` already picks the services with `pickServices(ACCOUNTS_ENABLED, REGISTERED_PROVIDER)`,
+   so the provider is used only when the flag is also on.
 5. Sync loop (to be written with the provider): on sign-in and on app start, `pull`, then
    `progressStore.replace(mergeSnapshot(progressStore.getState(), pulled, now))`, then `push`
    the merged state with `toSnapshot`. Push again after progress changes, debounced.

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { ACCOUNTS_ENABLED } from '../shared/account';
+import { ACCOUNTS_ACTIVE } from '../shared/account';
 import { toHref } from '../shared/router';
 import { Icon, Screen, TopBar, cx, useLayout } from '../shared/ui';
+import { helpFaqs } from './logic/help';
 import { backTarget } from './logic/session';
 import './screens.css';
 
@@ -9,23 +10,6 @@ import './screens.css';
 const SUPPORT_EMAIL = '';
 const HOLD_MS = 2000;
 const STEP_MS = 100;
-
-/** Answers state only what the screens already do; the account answers follow whether accounts are on. */
-function faqs() {
-  return [
-    { q: 'How do I add a child?', a: 'Open Settings, tap Add a child, then enter a first name and age.' },
-    { q: 'Why doesn’t my child need a password?', a: 'Children tap their brick on Who’s playing. Only grown-ups sign in.' },
-    ACCOUNTS_ENABLED
-      ? { q: 'How do I use Brickwise on another device?', a: 'Sign in with the same family account on each device. Stars, levels and stickers stay in sync.' }
-      : { q: 'How do I use Brickwise on another device?', a: 'Not yet. Family accounts are coming soon; until then, progress stays on the device it was made on.' },
-    { q: 'What happens when the game timer runs out?', a: 'The game keeps going; your child only misses the speed star. Ages 3 to 4 play with no countdown.' },
-    { q: 'How do I change the daily play limit?', a: 'In Settings, under your child’s game timer. When time is up, your child sees a break screen, where you can add time for today.' },
-    { q: 'How do I reset progress?', a: 'In Settings, under Progress. A reset can’t be undone.' },
-    ACCOUNTS_ENABLED
-      ? { q: 'How do I delete my account?', a: 'In Settings, tap Delete my account. This removes every child’s stars, levels and stickers on every device.' }
-      : { q: 'How do I delete my account?', a: 'In Settings, tap Delete my account. This removes every child’s stars, levels and stickers from this device.' },
-  ];
-}
 
 /** Support (design/canvas/Help.dc.html, page=help): contact behind a 2-second hold, questions, legal links. */
 export default function Help() {
@@ -126,7 +110,7 @@ export default function Help() {
             Common questions
           </h2>
           <ul className={cx('sc-faq', tablet && 'sc-faq--tablet')}>
-            {faqs().map((f) => (
+            {helpFaqs(ACCOUNTS_ACTIVE).map((f) => (
               <li key={f.q}>
                 <h3>{f.q}</h3>
                 <p>{f.a}</p>

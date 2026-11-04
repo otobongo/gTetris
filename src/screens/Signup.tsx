@@ -4,6 +4,7 @@ import { progressStore, useProgressState } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { PressButton, Screen } from '../shared/ui';
 import { backTarget } from './logic/session';
+import { startSignup } from './logic/signup';
 import { Notice, OrDivider, ProviderButtons, useAuthNotice } from './parts/Account';
 import { AddChild } from './parts/AddChild';
 import { Avatar } from './parts/Art';
@@ -16,8 +17,9 @@ type Step = 0 | 1 | 2;
 
 /**
  * Sign up (design/canvas/Signup.dc.html): family account, then children, then done. Wired to the
- * AuthService; while accounts are switched off every button shows the coming-soon note and the
- * steps after the first are not reached.
+ * AuthService (createAccount for email); the email, Apple, Google and Facebook paths all need the
+ * parent or guardian box ticked first. While accounts are switched off every button shows the
+ * coming-soon note and the steps after the first are not reached.
  */
 export default function Signup() {
   const { players } = useProgressState();
@@ -32,14 +34,13 @@ export default function Signup() {
   const back = backTarget(['/settings', '/signin', '/help'], '/settings');
   const backLabel = back === '/signin' ? 'Back to sign in' : back === '/help' ? 'Back to support' : 'Back to settings';
 
+  // Every path (email, Apple, Google, Facebook) needs the parent or guardian box first.
+  const needAdultBox = () => setNeedAdult(true);
   const create = async () => {
-    if (!adult) {
-      setNeedAdult(true);
-      return;
-    }
+    const r = await startSignup(adult, () => auth.createAccount(email.trim(), pw), needAdultBox);
+    if (!r) return;
     setWhere('email');
-    // AuthService has no separate sign-up call yet: an email link creates the account (see open issues).
-    if (report('email', await auth.sendEmailLink(email.trim()))) setStep(1);
+    if (report('email', r)) setStep(1);
   };
 
   return (
@@ -66,6 +67,7 @@ export default function Signup() {
           </div>
           {notice && where === 'provider' && <Notice notice={notice} />}
           <ProviderButtons
+            start={(_, run) => startSignup(adult, run, needAdultBox)}
             onResult={(provider, r) => {
               setWhere('provider');
               if (report(provider, r)) setStep(1);

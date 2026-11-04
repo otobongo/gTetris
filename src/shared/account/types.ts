@@ -26,6 +26,8 @@ export interface AuthUser {
 }
 
 export interface AuthService {
+  /** Creates a family account with email and password. Sign up calls it only after the parent or guardian box is ticked. */
+  createAccount(email: string, password: string): Promise<Result<AuthUser>>;
   signInWithEmail(email: string, password: string): Promise<Result<AuthUser>>;
   /** Sends a sign-in or password reset link. Resolves ok whether or not the email has an account. */
   sendEmailLink(email: string): Promise<Result<void>>;
@@ -56,6 +58,12 @@ export interface SyncAdapter {
   pull(): Promise<Result<ProgressSnapshot | null>>;
   /** Store a merged snapshot on the server. */
   push(snapshot: ProgressSnapshot): Promise<Result<void>>;
+}
+
+/** The pair of services a real provider registers (see config.ts REGISTERED_PROVIDER). */
+export interface AccountProvider {
+  auth: AuthService;
+  sync: SyncAdapter;
 }
 
 export type ProviderStage = 'planned-first' | 'planned-later';

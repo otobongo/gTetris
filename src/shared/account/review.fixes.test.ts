@@ -60,3 +60,67 @@ describe('merge rule: a pulled snapshot from the future', () => {
     expect(merged.settingsUpdatedAt).toBe(NOW - 1);
   });
 });
+
+/* ---------- services picked by the flag, failing closed (review) ---------- */
+
+import { vi } from 'vitest';
+import { ACCOUNTS_ACTIVE, auth, disabledAuth, localOnlySync, pickServices, sync, type AuthService, type SyncAdapter } from './index';
+
+describe('account services: picked by ACCOUNTS_ENABLED, failing closed', () => {
+  // stand-ins for a real provider: different objects with their own functions
+  const realAuth: AuthService = { ...disabledAuth, signOut: () => Promise.resolve({ ok: true, value: undefined }) };
+  const realSync: SyncAdapter = { ...localOnlySync, pull: () => Promise.resolve({ ok: false, reason: 'offline' }) };
+  const provider = { auth: realAuth, sync: realSync };
+
+  it('keeps the disabled services while the flag is off, even with a provider registered', () => {
+    const log = vi.fn();
+    for (const registered of [provider, null]) {
+      const picked = pickServices(false, registered, log);
+      expect(picked.auth).toBe(disabledAuth);
+      expect(picked.sync).toBe(localOnlySync);
+      expect(picked.active).toBe(false);
+    }
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('uses the registered provider when the flag is on', () => {
+    const picked = pickServices(true, provider, vi.fn());
+    expect(picked.auth).toBe(realAuth);
+    expect(picked.sync).toBe(realSync);
+    expect(picked.active).toBe(true);
+  });
+
+  it('fails closed with a console error, never a throw, when the flag is on but no provider is registered', () => {
+    const log = vi.fn();
+    let picked: ReturnType<typeof pickServices> | undefined;
+    expect(() => {
+      picked = pickServices(true, null, log);
+    }).not.toThrow();
+    expect(picked!.auth).toBe(disabledAuth);
+    expect(picked!.sync).toBe(localOnlySync);
+    expect(picked!.active).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(String(log.mock.calls[0][0])).toMatch(/no provider/i);
+  });
+
+  it('logs to console.error by default', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    pickServices(true, null);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('this build has no provider: accounts are not active and the disabled services are in use', () => {
+    expect(ACCOUNTS_ACTIVE).toBe(false);
+    expect(auth).toBe(disabledAuth);
+    expect(sync).toBe(localOnlySync);
+  });
+});
+
+describe('AuthService.createAccount', () => {
+  it('answers not-enabled while accounts are off, for any input', async () => {
+    const off = { ok: false, reason: 'not-enabled' };
+    await expect(disabledAuth.createAccount('grown-up@example.com', 'a long password')).resolves.toEqual(off);
+    await expect(disabledAuth.createAccount('', '')).resolves.toEqual(off);
+  });
+});

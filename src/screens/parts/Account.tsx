@@ -40,8 +40,21 @@ const PROVIDERS = [
   { id: 'facebook', label: 'Continue with Facebook', call: () => auth.signInWithFacebook() },
 ] as const;
 
-/** Apple, Google and Facebook buttons. Each calls the AuthService and reports the result. */
-export function ProviderButtons({ onResult, busy, radius = 'md' }: { onResult: (provider: ProviderId, r: Result<AuthUser>) => void; busy?: ProviderId | null; radius?: 'md' | 'sm' }) {
+/**
+ * Apple, Google and Facebook buttons. Each calls the AuthService and reports the result. `start`
+ * wraps the call (Sign up runs it only once the grown-up box is ticked); a null result reports nothing.
+ */
+export function ProviderButtons({
+  onResult,
+  start,
+  busy,
+  radius = 'md',
+}: {
+  onResult: (provider: ProviderId, r: Result<AuthUser>) => void;
+  start?: (provider: ProviderId, run: () => Promise<Result<AuthUser>>) => Promise<Result<AuthUser> | null>;
+  busy?: ProviderId | null;
+  radius?: 'md' | 'sm';
+}) {
   return (
     <>
       {PROVIDERS.map((p) => (
@@ -52,7 +65,8 @@ export function ProviderButtons({ onResult, busy, radius = 'md' }: { onResult: (
           aria-busy={busy === p.id || undefined}
           onClick={async () => {
             sfx.tap();
-            onResult(p.id, await p.call());
+            const r = start ? await start(p.id, p.call) : await p.call();
+            if (r) onResult(p.id, r);
           }}
         >
           <Mark provider={p.id} />
