@@ -6,10 +6,10 @@
  * - today's play time: the later day wins; on the same day the larger counts win
  * - settings: the newer change (settingsUpdatedAt) wins
  * - the active player stays this device's choice
- * Ties keep the local value. Removing a child on one device does not yet remove them on the
+ * Ties keep the local value. Times in a pulled snapshot are capped at this device's now. Removing a child on one device does not yet remove them on the
  * others; that needs deletion markers once a provider exists (docs/accounts.md).
  */
-import { sanitize, type GameProgress, type Player, type PlayToday, type ProgressState, type StickerRecord } from '../progress';
+import { dayKey, sanitize, type GameProgress, type Player, type PlayToday, type ProgressState, type StickerRecord } from '../progress';
 import { SNAPSHOT_VERSION, type ProgressSnapshot } from './types';
 
 function maxMap(a: Record<number, number>, b: Record<number, number>): Record<number, number> {
@@ -72,8 +72,30 @@ export function toSnapshot(progress: ProgressState, now: number): ProgressSnapsh
   return { snapshotVersion: SNAPSHOT_VERSION, takenAt: now, progress };
 }
 
-/** Merge a pulled snapshot into local progress. Remote data is validated first, like anything read from storage. */
+/**
+ * A device with its clock ahead (or a tampered snapshot) could date its data in the future and win
+ * every merge until that date. Pulled times are capped at this device's now, and a play day after
+ * today counts as today.
+ */
+function capAtNow(remote: ProgressState, now: number): ProgressState {
+  const cap = (t: number) => Math.min(t, now);
+  const today = dayKey(now);
+  const players = remote.players.map((p) => {
+    const stickers: Record<string, StickerRecord> = {};
+    for (const [id, s] of Object.entries(p.stickers)) stickers[id] = { ...s, earnedAt: cap(s.earnedAt) };
+    return {
+      ...p,
+      createdAt: cap(p.createdAt),
+      updatedAt: cap(p.updatedAt),
+      stickers,
+      today: p.today.day > today ? { ...p.today, day: today } : p.today,
+    };
+  });
+  return { ...remote, players, settingsUpdatedAt: cap(remote.settingsUpdatedAt) };
+}
+
+/** Merge a pulled snapshot into local progress. Remote data is validated first, like anything read from storage, and its times capped at now. */
 export function mergeSnapshot(local: ProgressState, remote: ProgressSnapshot | null, now: number): ProgressState {
   if (!remote || remote.snapshotVersion !== SNAPSHOT_VERSION) return local;
-  return mergeProgress(local, sanitize(remote.progress, now));
+  return mergeProgress(local, capAtNow(sanitize(remote.progress, now), now));
 }

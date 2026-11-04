@@ -3,6 +3,8 @@
  * Every storage access is wrapped, so private mode, a full disk or blocked storage never
  * breaks a game: progress then lives in memory for this session only.
  * On first load, data under the old key 'brickwise:v1' moves into a first player (v1 is left in place).
+ * When another tab writes the same key, the browser's 'storage' event makes this store reload, so
+ * this tab's next write never brings back a child another tab removed.
  */
 import * as m from './model';
 import { LEGACY_KEY, STORAGE_KEY, type NewPlayer, type Player, type PlayerPatch, type ProgressState, type SettingKey } from './types';
@@ -20,6 +22,11 @@ export interface ProgressStoreOptions {
   now?: () => number;
   /** Id maker for new players. */
   newId?: () => string;
+  /**
+   * Where 'storage' events from other tabs arrive. Defaults to window when there is one;
+   * null does not listen. A store without storage never listens.
+   */
+  events?: Pick<EventTarget, 'addEventListener'> | null;
 }
 
 export interface ProgressStore {
@@ -53,6 +60,14 @@ export interface ProgressStore {
 function browserStorage(): KeyValueStorage | null {
   try {
     return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+function browserEvents(): Pick<EventTarget, 'addEventListener'> | null {
+  try {
+    return typeof window !== 'undefined' && window && typeof window.addEventListener === 'function' ? window : null;
   } catch {
     return null;
   }
@@ -115,6 +130,17 @@ export function createProgressStore(options: ProgressStoreOptions = {}): Progres
   }
 
   const target = (playerId?: string) => playerId ?? state.activePlayerId ?? '';
+
+  // Another tab wrote this store's key (or cleared all storage, key null): read it again.
+  const events = options.events === undefined ? browserEvents() : options.events;
+  if (storage && events) {
+    events.addEventListener('storage', (e) => {
+      const { key, storageArea } = e as StorageEvent;
+      if (key !== null && key !== STORAGE_KEY) return;
+      if (storageArea && storageArea !== storage) return;
+      store.reload();
+    });
+  }
 
   const store: ProgressStore = {
     getState: () => state,
