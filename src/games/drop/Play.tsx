@@ -163,6 +163,8 @@ export default function Play({ index }: { index: number }) {
     const id = progressStore.ensureActivePlayer();
     const saved = progressStore.startRun(GAME, index, RUN_INIT, id);
     if (startedFromCard === index) startedFromCard = null;
+    // from the level card the first brick is already waiting: the board takes focus, as after Next
+    if (roundRef.current!.phase === 'ready') setFocusTo('board');
     setRun(saved);
     const r = roundRef.current!;
     if (r.puzzle !== puzzleOnScreen(saved) && (r.phase === 'intro' || r.phase === 'ready')) {
