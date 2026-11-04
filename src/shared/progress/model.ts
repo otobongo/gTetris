@@ -32,7 +32,8 @@ export const LEGACY_GAME_IDS: Record<string, string> = { slide: 'escape' };
 
 /** Registry id for a game key the games' code uses ('slide' becomes 'escape'). */
 export function toGameId(game: string): string {
-  return LEGACY_GAME_IDS[game] ?? game;
+  // Own keys only: 'constructor' or '__proto__' must not resolve to something Object inherits.
+  return Object.hasOwn(LEGACY_GAME_IDS, game) ? LEGACY_GAME_IDS[game] : game;
 }
 
 /** Local calendar day for a timestamp, 'YYYY-MM-DD'. The daily play count resets when this changes. */
@@ -223,7 +224,8 @@ export function migrateV1(raw: unknown, now: number, playerId: string): Progress
     if (!isSafeKey(game) || level === null || typeof value !== 'number' || !Number.isFinite(value)) return;
     if (field === 'stars' && !(isInt(value) && value >= 1 && value <= 3)) return;
     if (field === 'best' && value < 0) return;
-    const g = (games[game] ??= emptyGame());
+    // own entries only: a game named 'toString' must not pick up what Object inherits
+    const g = Object.hasOwn(games, game) ? games[game] : (games[game] = emptyGame());
     g[field][level] = Math.max(g[field][level] ?? 0, value);
   };
   if (isObj(raw.stars)) for (const [k, v] of Object.entries(raw.stars)) put(k, v, 'stars');

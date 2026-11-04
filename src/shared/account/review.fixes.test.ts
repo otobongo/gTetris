@@ -124,3 +124,23 @@ describe('AuthService.createAccount', () => {
     await expect(disabledAuth.createAccount('', '')).resolves.toEqual(off);
   });
 });
+
+describe('merge rule: names an object inherits are plain map keys', () => {
+  it('a pulled game or sticker named like an Object method merges as new data, never as NaN', () => {
+    const local = state([player('a')]);
+    const remote = JSON.parse(
+      JSON.stringify(
+        state([
+          player('a', {
+            games: { toString: { unlocked: 2, stars: { 0: 1 }, best: {} } },
+            stickers: { valueOf: { earnedAt: NOW - 5, seen: true }, hasOwnProperty: { earnedAt: NOW - 6, seen: false } },
+          }),
+        ]),
+      ),
+    );
+    const merged = mergeSnapshot(local, toSnapshot(remote, NOW), NOW).players[0];
+    expect(merged.games.toString).toEqual({ unlocked: 2, stars: { 0: 1 }, best: {} });
+    expect(merged.stickers.valueOf).toEqual({ earnedAt: NOW - 5, seen: true });
+    expect(merged.stickers.hasOwnProperty).toEqual({ earnedAt: NOW - 6, seen: false });
+  });
+});

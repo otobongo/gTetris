@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { LIMIT_MAX } from './types';
-import { addPlayer, emptyState, migrateV1, sanitize, updatePlayer } from './model';
+import { addPlayer, emptyState, migrateV1, sanitize, toGameId, updatePlayer } from './model';
 
 const NOW = new Date(2026, 10, 4, 12, 0).getTime();
 const LATER = NOW + 60_000;
@@ -110,5 +110,20 @@ describe('sanitize: keys from parsed JSON never touch a prototype', () => {
     // a read of a game nobody played does not find inherited data
     expect((p.games as Record<string, unknown>).unlocked).toBeUndefined();
     expect(({} as Record<string, unknown>).unlocked).toBeUndefined();
+  });
+});
+
+describe('game ids: names an object inherits are plain names', () => {
+  it('toGameId maps only its own legacy ids', () => {
+    expect(toGameId('slide')).toBe('escape');
+    for (const k of ['__proto__', 'constructor', 'toString', 'hasOwnProperty', 'valueOf']) expect(toGameId(k), k).toBe(k);
+  });
+
+  it('migrateV1 drops prototype keys and keeps inherited names as their own game, never "[object Object]"', () => {
+    const s = migrateV1({ stars: { '__proto__:3': 2, 'constructor:1': 1, 'prototype:0': 1, 'toString:2': 1, 'slide:0': 1 } }, NOW, 'p1');
+    const games = s.players[0].games;
+    expect(Object.keys(games).sort()).toEqual(['escape', 'toString']);
+    expect(Object.getOwnPropertyDescriptor(games, 'toString')?.value.stars).toEqual({ 2: 1 });
+    expect(Object.getPrototypeOf(games)).toBe(Object.prototype);
   });
 });

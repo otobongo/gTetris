@@ -24,10 +24,13 @@ function mergeGame(a: GameProgress | undefined, b: GameProgress | undefined): Ga
   return { unlocked: Math.max(a.unlocked, b.unlocked), stars: maxMap(a.stars, b.stars), best: maxMap(a.best, b.best) };
 }
 
+/** A map entry only when the map holds it itself, so a key like 'toString' never finds what Object inherits. */
+const own = <T>(map: Record<string, T>, key: string): T | undefined => (Object.hasOwn(map, key) ? map[key] : undefined);
+
 function mergeStickers(a: Record<string, StickerRecord>, b: Record<string, StickerRecord>): Record<string, StickerRecord> {
   const out: Record<string, StickerRecord> = { ...a };
   for (const [id, s] of Object.entries(b)) {
-    const mine = out[id];
+    const mine = own(out, id);
     out[id] = mine ? { earnedAt: Math.min(mine.earnedAt, s.earnedAt), seen: mine.seen || s.seen } : s;
   }
   return out;
@@ -41,7 +44,7 @@ function mergeToday(a: PlayToday, b: PlayToday): PlayToday {
 function mergePlayer(local: Player, remote: Player): Player {
   const profile = remote.updatedAt > local.updatedAt ? remote : local;
   const games: Record<string, GameProgress> = {};
-  for (const id of new Set([...Object.keys(local.games), ...Object.keys(remote.games)])) games[id] = mergeGame(local.games[id], remote.games[id]);
+  for (const id of new Set([...Object.keys(local.games), ...Object.keys(remote.games)])) games[id] = mergeGame(own(local.games, id), own(remote.games, id));
   return {
     ...profile,
     id: local.id,
