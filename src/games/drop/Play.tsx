@@ -4,58 +4,15 @@ import { toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { getProgress, recordBest, recordStars } from '../../shared/storage';
 import { Brick, Icon, IconButton, PressButton, Screen, TopBar, type IconName } from '../../shared/ui';
-import {
-  activeCells,
-  ghostY,
-  hardDrop,
-  move,
-  newGame,
-  rotate,
-  softDrop,
-  step,
-  hold,
-  type GameEvent,
-  type GameState,
-} from './engine';
+import { PAD, REPEAT, applyAction, dragMoves, dragStep, gestureAxis, keyAction, keyCommand, releaseAction, type Action } from './controls';
+import { activeCells, ghostY, newGame, step, type GameEvent, type GameState } from './engine';
 import { MiniPiece } from './MiniPiece';
 import { PIECES } from './pieces';
 import { Sheet, StarRow } from './Sheet';
 import { STAGES, newPieces, starRule, starsEarned } from './stages';
 import { clearMessage, formatClock, timerPlan, timerState } from './timer';
 
-type Action = 'left' | 'right' | 'down' | 'rotate' | 'rotateBack' | 'drop' | 'hold';
 type Phase = 'intro' | 'playing' | 'paused' | 'won' | 'over';
-
-/** Hold-to-repeat timings (ms). Gentle on purpose so small fingers don't overshoot. */
-const REPEAT: Partial<Record<Action, { delay: number; every: number }>> = {
-  left: { delay: 200, every: 75 },
-  right: { delay: 200, every: 75 },
-  down: { delay: 120, every: 45 },
-};
-
-/** Keyboard controls. The on-screen row has Left, Turn, Down and Right; Space and C are keyboard only. */
-const KEYS: Record<string, Action> = {
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  ArrowDown: 'down',
-  ArrowUp: 'rotate',
-  x: 'rotate',
-  X: 'rotate',
-  z: 'rotateBack',
-  Z: 'rotateBack',
-  ' ': 'drop',
-  c: 'hold',
-  C: 'hold',
-  Shift: 'hold',
-};
-
-/** The control row, in this order: Left, Turn, Down, Right. */
-const PAD: { act: Action; icon: IconName; label: string; tone: 'purple' | 'green' }[] = [
-  { act: 'left', icon: 'left', label: 'Left', tone: 'purple' },
-  { act: 'rotate', icon: 'rotate', label: 'Turn', tone: 'green' },
-  { act: 'down', icon: 'down', label: 'Down', tone: 'purple' },
-  { act: 'right', icon: 'right', label: 'Right', tone: 'purple' },
-];
 
 const WELL_PAD = 6;
 /** Room around the board for its 4px ring, plus the area's own 1px. */
@@ -155,15 +112,7 @@ export default function Play({ index }: { index: number }) {
   }
 
   function act(a: Action) {
-    switch (a) {
-      case 'left': return apply((s) => move(s, -1));
-      case 'right': return apply((s) => move(s, 1));
-      case 'down': return apply(softDrop);
-      case 'rotate': return apply((s) => rotate(s, 1));
-      case 'rotateBack': return apply((s) => rotate(s, -1));
-      case 'drop': return apply(hardDrop);
-      case 'hold': return apply(hold);
-    }
+    apply((s) => applyAction(s, a));
   }
 
   function press(a: Action) {
@@ -228,19 +177,18 @@ export default function Play({ index }: { index: number }) {
   // Keyboard
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+      const cmd = keyCommand(e);
+      if (cmd === 'pause') {
         e.preventDefault();
         if (!e.repeat) togglePause();
         return;
       }
-      const a = KEYS[e.key];
-      if (!a || phaseRef.current !== 'playing') return;
+      if (!cmd || phaseRef.current !== 'playing') return;
       e.preventDefault();
-      if (!e.repeat) press(a);
+      if (!e.repeat) press(cmd);
     };
     const up = (e: KeyboardEvent) => {
-      const a = KEYS[e.key];
+      const a = keyAction(e.key);
       if (a) release(a);
     };
     const away = () => {
@@ -290,17 +238,11 @@ export default function Play({ index }: { index: number }) {
     if (!t || t.id !== e.pointerId) return;
     const dx = e.clientX - t.x0;
     const dy = e.clientY - t.y0;
-    if (!t.axis && Math.hypot(dx, dy) > 12) t.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    if (!t.axis) t.axis = gestureAxis(dx, dy);
     if (t.axis !== 'h') return;
-    const stepPx = Math.max(cell, 18);
-    while (e.clientX - t.sx >= stepPx) {
-      act('right');
-      t.sx += stepPx;
-    }
-    while (e.clientX - t.sx <= -stepPx) {
-      act('left');
-      t.sx -= stepPx;
-    }
+    const drag = dragMoves(e.clientX, t.sx, dragStep(cell));
+    t.sx = drag.sx;
+    for (let i = 0; i < Math.abs(drag.moves); i++) act(drag.moves > 0 ? 'right' : 'left');
   };
   const onBoardUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     const t = touch.current;
@@ -310,8 +252,8 @@ export default function Play({ index }: { index: number }) {
     const dx = e.clientX - t.x0;
     const dy = e.clientY - t.y0;
     const ms = performance.now() - t.t0;
-    if (t.axis === 'v' && dy > Math.max(40, cell * 2) && dy > Math.abs(dx) * 1.5) act('drop');
-    else if (!t.axis && ms < 350) act('rotate');
+    const a = releaseAction(t.axis, dx, dy, ms, cell);
+    if (a) act(a);
   };
 
   const g = gameRef.current;
