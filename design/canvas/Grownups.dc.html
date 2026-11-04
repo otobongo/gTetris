@@ -193,6 +193,20 @@ Add a child
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">Progress</div>
+<div style="display: flex; flex-direction: column;">
+<sc-for list="{{gameRows}}" as="r" hint-placeholder-count="3">
+<sc-if value="{{r.divider}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="height: 2px; background: #1d1550;"></div>
+</sc-if>
+<a href="{{r.href}}" aria-label="{{r.name}}" style="min-height: 52px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: #ffffff; border-radius: 12px;">
+<span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1; min-width: 0;">
+<span style="font-size: 15px; font-weight: 800;">{{r.title}}</span>
+<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">{{r.sub}}</span>
+</span>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
+</sc-for>
+</div>
 <button onClick="{{askReset}}" style="border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">Reset {{kidName}}'s progress</button>
 <button onClick="{{askResetAll}}" style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 14px; font-weight: 800; padding: 6px; border-radius: 12px; background: transparent; text-decoration: underline;">Reset every child's progress</button>
 </div>
@@ -247,8 +261,9 @@ class Component extends DCLogic {
       acct: null, acctProp: null,
       sound: { sounds: true, music: true, voice: true, alerts: false },
       kids: [
-        { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35] },
-        { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30] }
+        // games: sample current level per game and puzzles solved in it (brief 2.6), matching Home, Break and the level picker.
+        { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35], games: { escape: [9, 2], drop: [4, 1], letters: [17, 2] } },
+        { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30], games: { escape: [2, 0], drop: [1, 0], letters: [16, 1] } }
       ]
     };
   }
@@ -257,6 +272,25 @@ class Component extends DCLogic {
   bandLabel(age) { return age <= 4 ? '3 to 4' : age <= 6 ? '5 to 6' : age <= 8 ? '7 to 8' : '9 to 10'; }
   factor(age) { return age <= 4 ? 0 : age <= 6 ? 2 : age <= 8 ? 1.5 : 1; }
   fmt(sec) { var m = Math.floor(sec / 60), s = Math.round(sec % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
+  freshGames() { return { escape: [1, 0], drop: [1, 0], letters: [1, 0] }; }
+  // One row per playable game (brief 7.3 and section 9). Letter Builder levels 16 to 24 are spelling levels, which count words.
+  gameRows(k, tablet) {
+    var g = k.games || this.freshGames();
+    var rows = [
+      { key: 'escape', title: 'Brick Escape', noun: 'Level', href: tablet ? 'LevelsTablet.dc.html' : 'Levels.dc.html' },
+      { key: 'drop', title: 'Brick Drop', noun: 'Stage', href: 'LevelsDrop.dc.html' },
+      { key: 'letters', title: 'Letter Builder', noun: 'Level', href: 'LevelsLetters.dc.html' }
+    ];
+    return rows.map(function (r, i) {
+      var cur = g[r.key][0], solved = g[r.key][1];
+      var unit = r.key === 'letters' && cur >= 16 ? 'words' : 'puzzles';
+      var sub = r.noun + ' ' + cur + (solved > 0 ? ', ' + solved + ' of 4 ' + unit : '');
+      return {
+        title: r.title, sub: sub, href: r.href, divider: i > 0,
+        name: r.title + ' for ' + k.name + ': ' + sub + '. Pick a ' + r.noun.toLowerCase()
+      };
+    });
+  }
   updateKid(patch) {
     var kids = this.state.kids.slice();
     kids[this.state.kid] = Object.assign({}, kids[this.state.kid], patch);
@@ -362,12 +396,13 @@ class Component extends DCLogic {
       }),
       saveKid: function () {
         var name = (s.newName || '').trim() || 'Child ' + (s.kids.length + 1);
-        var kid = { name: name, age: s.newAge, color: swatch[s.kids.length % swatch.length], mode: s.newAge <= 4 ? 'relaxed' : 'auto', limit: 20, stars: 0, skills: [0, 0, 0, 0, 0] };
+        var kid = { name: name, age: s.newAge, color: swatch[s.kids.length % swatch.length], mode: s.newAge <= 4 ? 'relaxed' : 'auto', limit: 20, stars: 0, skills: [0, 0, 0, 0, 0], games: self.freshGames() };
         var kids = s.kids.concat([kid]);
         self.setState({ kids: kids, kid: kids.length - 1, adding: false });
         self.showToast(name + ' was added. They can now pick their brick on any of your devices.');
       },
       kidName: k.name,
+      gameRows: this.gameRows(k, tablet),
       modes: [['auto', 'Auto by age'], ['relaxed', 'Relaxed'], ['off', 'Off']].map(function (m) {
         var on = k.mode === m[0];
         return { label: m[1], on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;', pick: function () { self.updateKid({ mode: m[0] }); } };
@@ -400,13 +435,13 @@ class Component extends DCLogic {
       cancelReset: function () { self.setState({ confirm: null }); },
       doConfirm: function () {
         if (s.confirm === 'delete') {
-          var cleared = s.kids.map(function (c) { return Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0] }); });
+          var cleared = s.kids.map(function (c) { return Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0], games: self.freshGames() }); });
           self.setState({ kids: cleared, confirm: null, acct: 'guest', acctProp: propAcct });
           self.showToast('Family account deleted.');
           return;
         }
         var all = s.confirm === 'all';
-        var kids = s.kids.map(function (c, i) { return all || i === s.kid ? Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0] }) : c; });
+        var kids = s.kids.map(function (c, i) { return all || i === s.kid ? Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0], games: self.freshGames() }) : c; });
         self.setState({ kids: kids, confirm: null });
         if (guest) self.showToast(all ? 'Everyone starts fresh on this device.' : k.name + "'s progress was reset on this device.");
         else self.showToast(all ? 'Everyone starts fresh. Synced to all devices.' : k.name + "'s progress was reset on all devices.");

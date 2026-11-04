@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Level select</title>
+<title>Level picker</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -15,38 +15,34 @@
 <div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; gap: 12px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px; flex-shrink: 0;">
-<a href="{{homeHref}}" aria-label="Back to home" class="bw-press" style="--sh: #241a63; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{backHref}}" aria-label="Back to settings" class="bw-press" style="--sh: #241a63; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
 <div style="text-align: center; line-height: 1.1; min-width: 0;">
 <h1 style="margin: 0; font-size: 24px; font-weight: 800; line-height: 1.1;">{{title}}</h1>
 <div style="font-size: 15px; font-weight: 700; color: #c9c2ff; font-variant-numeric: tabular-nums;">{{sub}}</div>
 </div>
-<sc-if value="{{speakOn}}" hint-placeholder-val="{{ true }}">
-<button onClick="{{speak}}" aria-label="Read this page aloud" class="bw-press" style="--sh: #241a63; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
-</button>
-</sc-if>
-<sc-if value="{{speakOff}}" hint-placeholder-val="{{ false }}">
 <span></span>
-</sc-if>
 </div>
 
-<div data-levels-scroll="true" style="flex: 1 1 0; min-height: 0; overflow-y: auto; margin: 0 -16px; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 24px; position: relative;">
+<p style="margin: 0; flex-shrink: 0; font-size: 15px; font-weight: 700; line-height: 1.35; color: #c9c2ff;">{{intro}}</p>
+
+<div data-levels-scroll="true" style="flex: 1 1 0; min-height: 0; overflow-y: auto; margin: 0 -16px; padding: 6px 16px 16px; display: flex; flex-direction: column; gap: 24px; position: relative;">
 <sc-for list="{{chapters}}" as="c" hint-placeholder-count="3">
 <section style="flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;">
 <div style="display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; row-gap: 0;">
 <h2 style="margin: 0; font-size: 20px; font-weight: 800; line-height: 1.15;">{{c.title}}</h2>
 <span style="font-size: 14px; font-weight: 700; color: #c9c2ff;">{{c.note}}</span>
 </div>
-<div style="display: grid; grid-template-columns: {{gridCols}}; gap: 8px;">
+<div style="display: grid; grid-template-columns: {{gridcols}}; gap: 8px;">
 <sc-for list="{{c.tiles}}" as="t" hint-placeholder-count="5">
-<sc-if value="{{t.play}}" hint-placeholder-val="{{ true }}">
-<a href="{{t.href}}" aria-label="{{t.label}}" aria-current="{{t.ariaCur}}" class="bw-press" style="aspect-ratio: 1 / 1; box-sizing: border-box; border-radius: 16px; text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; {{t.style}}">
-<span aria-hidden="true" style="font-size: 22px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{t.n}}</span>
-<sc-if value="{{t.cur}}" hint-placeholder-val="{{ false }}">
-<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="margin-left: 2px;"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
+<button onClick="{{t.pick}}" aria-label="{{t.label}}" aria-pressed="{{t.pressed}}" aria-current="{{t.ariaCur}}" class="bw-press" style="aspect-ratio: 1 / 1; box-sizing: border-box; border: 0; padding: 0; cursor: pointer; font-family: inherit; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; {{t.style}}">
+<sc-if value="{{t.locked}}" hint-placeholder-val="{{ false }}">
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e85d6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+<span aria-hidden="true" style="font-size: 14px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{t.n}}</span>
 </sc-if>
+<sc-if value="{{t.unlocked}}" hint-placeholder-val="{{ true }}">
+<span aria-hidden="true" style="display: flex; align-items: center; font-size: 22px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{t.n}}<sc-if value="{{t.cur}}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" style="margin-left: 2px;"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></sc-if></span>
 <sc-if value="{{t.showStars}}" hint-placeholder-val="{{ true }}">
 <span aria-hidden="true" style="display: flex; gap: 1px;">
 <sc-for list="{{t.stars}}" as="s" hint-placeholder-count="3">
@@ -54,14 +50,8 @@
 </sc-for>
 </span>
 </sc-if>
-</a>
 </sc-if>
-<sc-if value="{{t.locked}}" hint-placeholder-val="{{ false }}">
-<button onClick="{{t.tap}}" aria-disabled="true" aria-label="{{t.label}}" style="aspect-ratio: 1 / 1; box-sizing: border-box; border: 0; padding: 0; cursor: default; font-family: inherit; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #1d1550; color: #c9c2ff;">
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e85d6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
-<span aria-hidden="true" style="font-size: 14px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{t.n}}</span>
 </button>
-</sc-if>
 </sc-for>
 <sc-if value="{{c.more}}" hint-placeholder-val="{{ false }}">
 <div style="aspect-ratio: 1 / 1; box-sizing: border-box; border-radius: 16px; border: 2px dashed #6d5fd0; display: grid; place-items: center; padding: 4px; text-align: center; font-size: 14px; font-weight: 800; line-height: 1.1; color: #c9c2ff;">More soon</div>
@@ -69,26 +59,53 @@
 </div>
 </section>
 </sc-for>
+
+<section aria-labelledby="reset-game-h" style="flex-shrink: 0; padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
+<h2 id="reset-game-h" style="margin: 0; font-size: 16px; font-weight: 800; line-height: 1.15;">{{resetHeading}}</h2>
+<p style="margin: 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: #c9c2ff;">{{resetHelper}}</p>
+<button onClick="{{askReset}}" style="border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">{{resetLabel}}</button>
+</section>
 </div>
 
 <div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
-<p role="status" style="margin: 0; min-height: 20px; text-align: center; font-size: 15px; font-weight: 700; line-height: 1.35; color: #c9c2ff;">{{status}}</p>
+<sc-if value="{{showStatus}}" hint-placeholder-val="{{ true }}">
+<p role="status" style="margin: 0; min-height: 20px; text-align: center; font-size: 15px; font-weight: 700; line-height: 1.35; color: #ffffff; text-wrap: balance;">{{status}}</p>
+</sc-if>
+<sc-if value="{{showToast}}" hint-placeholder-val="{{ false }}">
+<p role="status" style="margin: 0; padding: 12px 16px; border-radius: 16px; background: #1f9a44; font-size: 16px; font-weight: 800; line-height: 1.3; text-align: center; text-wrap: balance;">{{toast}}</p>
+</sc-if>
 <sc-if value="{{showPlay}}" hint-placeholder-val="{{ true }}">
-<a href="{{playHref}}" class="bw-press" style="--sh: #0f7a26; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #063510; font-size: 24px; font-weight: 800; padding: 16px; border-radius: 20px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 6px 0 #0f7a26;">
-{{playLabel}}
+<a href="{{playHref}}" class="bw-press" style="--sh: #0f7a26; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #063510; font-size: 24px; font-weight: 800; line-height: 1.15; padding: 16px; border-radius: 20px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 6px 0 #0f7a26;">
+{{buttonLabel}}
 <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
 </a>
 </sc-if>
+<sc-if value="{{showSet}}" hint-placeholder-val="{{ false }}">
+<button onClick="{{setLevel}}" class="bw-press" style="--sh: #0f7a26; border: 0; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 24px; font-weight: 800; line-height: 1.15; padding: 16px; border-radius: 20px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 6px 0 #0f7a26;">{{buttonLabel}}</button>
+</sc-if>
 </div>
+
+<sc-if value="{{confirming}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.7); display: grid; place-items: center; padding: 16px;">
+<div role="alertdialog" aria-modal="true" aria-labelledby="reset-game-title" aria-describedby="reset-game-body" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 22px 18px 18px; border-radius: 24px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
+<div id="reset-game-title" style="font-size: 24px; font-weight: 800; line-height: 1.15; text-wrap: balance;">{{confirmTitle}}</div>
+<div id="reset-game-body" style="font-size: 15px; font-weight: 700; color: #c9c2ff; margin: 8px 0 16px; line-height: 1.35;">{{confirmBody}}</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+<button onClick="{{keep}}" style="flex: 1 1 0; min-width: max-content; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #4b3eaa;">Keep it</button>
+<button onClick="{{doReset}}" style="flex: 1 1 0; min-width: max-content; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 17px; font-weight: 800; padding: 12px; border-radius: 14px; background: #d92f45; box-shadow: 0 4px 0 #8f1f2e;">{{goLabel}}</button>
+</div>
+</div>
+</div>
+</sc-if>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters","mixer","sorter","pattern","numbers","builder","math"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"state":{"editor":"enum","options":["default","picked","confirmReset","resetDone"],"default":"default"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { status: '' };
+    this.state = this.fromLever();
   }
   componentDidMount() {
     // On load, scroll each level list so the chapter holding the current level is in view.
@@ -106,33 +123,31 @@ class Component extends DCLogic {
       } catch (e) {}
     }, 0);
   }
-  // Sample children (name, age, colour), matching Who's playing and Letter Builder.
+  // Sample children (name, age), matching Who's playing, Settings and Letter Builder. Maya is the active player.
   kids() {
     return {
-      leo4: { name: 'Leo', age: 4, color: 'orange' },
-      nia6: { name: 'Nia', age: 6, color: 'teal' },
-      maya7: { name: 'Maya', age: 7, color: 'blue' },
-      theo10: { name: 'Theo', age: 10, color: 'purple' }
+      leo4: { name: 'Leo', age: 4 },
+      nia6: { name: 'Nia', age: 6 },
+      maya7: { name: 'Maya', age: 7 },
+      theo10: { name: 'Theo', age: 10 }
     };
   }
-  // Chapters per game. Escape, Drop and Letters come from src (slide/levels.ts, drop/StageSelect.tsx,
-  // letters/levels.ts). The other six come from what each canvas board already shows; their level
-  // counts and chapter splits are sample data until the games are built.
+  activeKid() { return 'maya7'; }
+  // Chapters per game, from src (slide/meta.ts, drop/stages.ts, letters/levels.ts).
   games() {
     return {
       escape: { title: 'Brick Escape', board: 'Escape', noun: 'Level', chapters: [
         { title: 'Getting started', note: 'one idea at a time', count: 8 },
         { title: 'Think first', note: 'some bricks block others', count: 5 },
         { title: 'Icy doors', note: 'wait for the ice to melt', count: 6 },
-        // Formerly "Frozen bricks", a mechanic removed in commit 4177268.
         { title: 'Stone blocks', note: '', count: 6 },
         { title: 'Big bricks', note: 'tight squeeze', count: 5 },
-        // Open-ended in src: no master levels exist yet, so the chapter shows only the "More soon" tile.
-        { title: 'Master', note: 'for real brick experts', count: 0, more: true }
+        // Open-ended: Level 31 now, more levels later.
+        { title: 'Master', note: 'for real brick experts', count: 1, more: true }
       ] },
       drop: { title: 'Brick Drop', board: 'Drop', noun: 'Stage', chapters: [
-        { title: 'Small bricks', note: '1 to 3 squares', count: 4 },
-        { title: 'Four-square bricks', note: 'bigger board', count: 5 },
+        { title: 'Small bricks', note: '1 to 3 squares', count: 3 },
+        { title: 'Four-square bricks', note: 'up to 4 squares', count: 6 },
         { title: 'Big bricks', note: 'up to 5 squares', count: 3 }
       ] },
       letters: { title: 'Letter Builder', board: 'Letters', noun: 'Level', chapters: [
@@ -140,46 +155,20 @@ class Component extends DCLogic {
         { title: 'Big and small', note: 'match A with a', count: 4 },
         { title: 'First sounds', note: 'what does it start with?', count: 4 },
         { title: 'Spell it', note: 'build the word', count: 9 }
-      ] },
-      mixer: { title: 'Color Mixer', board: 'Mixer', noun: 'Level', chapters: [
-        { title: 'Mix two colors', note: 'red, yellow and blue', count: 3 },
-        { title: 'Add white', note: 'make a color lighter', count: 3 }
-      ] },
-      sorter: { title: 'Shape Sorter', board: 'Sorter', noun: 'Level', chapters: [
-        { title: 'Shapes', note: 'match each shape to its hole', count: 3 },
-        { title: 'Shape and color', note: 'the color matters too', count: 2 }
-      ] },
-      pattern: { title: 'Pattern Train', board: 'Pattern', noun: 'Level', chapters: [
-        { title: 'AB patterns', note: 'two things take turns', count: 2 },
-        { title: 'ABC patterns', note: 'three things take turns', count: 1 },
-        { title: 'Same shape, new color', note: 'watch the colors', count: 1 }
-      ] },
-      numbers: { title: 'Number Line-up', board: 'Numbers', noun: 'Level', chapters: [
-        { title: 'In order', note: 'small to big', count: 5 },
-        { title: 'Missing numbers', note: 'fill the gap', count: 5 },
-        { title: 'Count by 5s and 10s', note: 'bigger jumps', count: 5 }
-      ] },
-      builder: { title: 'Picture Builder', board: 'Builder', noun: 'Level', chapters: [
-        { title: 'Look and build', note: 'copy the picture', count: 3 },
-        { title: 'From memory', note: 'look, then build', count: 3 }
-      ] },
-      math: { title: 'Brick Calculator', board: 'Math', noun: 'Level', chapters: [
-        { title: 'Add', note: 'put bricks together', count: 5 },
-        { title: 'Take away', note: 'take bricks off', count: 5 }
       ] }
     };
   }
-  // Sample data. "midway" matches Home for Maya: Escape Level 9 (8 done, 17 stars), Drop Stage 4
-  // (3 done, 6 stars), Letters Level 17 (16 done, 19 stars); 17 + 6 + 19 = Home's 42.
-  // The other six follow Home's pills. Leo's Letter Builder follows the Letters board (Level 3).
+  // Sample data. "midway" matches Home, Settings and Break for Maya: Escape Level 9 (8 done, 17 stars, 2 of 4
+  // puzzles solved), Drop Stage 4 (3 done, 6 stars, 1 solved), Letters Level 17 (16 done, 19 stars, 2 words built).
+  // Leo matches the Letters board (Level 16) and Settings; Nia and Theo match Break.
   midway(game, kid) {
-    var byKid = { leo4: { letters: { cur: 3, stars: 5 } } };
+    var byKid = {
+      leo4: { escape: { cur: 2, stars: 2, solved: 0 }, drop: { cur: 1, stars: 0, solved: 0 }, letters: { cur: 16, stars: 30, solved: 1 } },
+      nia6: { drop: { cur: 2, stars: 2, solved: 2 } },
+      theo10: { escape: { cur: 23, stars: 50, solved: 3 } }
+    };
     if (byKid[kid] && byKid[kid][game]) return byKid[kid][game];
-    return {
-      escape: { cur: 9, stars: 17 }, drop: { cur: 4, stars: 6 }, letters: { cur: 17, stars: 19 },
-      mixer: { cur: 4, stars: 7 }, sorter: { cur: 2, stars: 3 }, pattern: { cur: 1, stars: 0 },
-      numbers: { cur: 3, stars: 5 }, builder: { cur: 1, stars: 0 }, math: { cur: 1, stars: 0 }
-    }[game];
+    return { escape: { cur: 9, stars: 17, solved: 2 }, drop: { cur: 4, stars: 6, solved: 1 }, letters: { cur: 17, stars: 19, solved: 2 } }[game];
   }
   // Spread a star total over the finished levels: at least 1 each (that is what opens the next), at most 3.
   spread(done, total) {
@@ -195,65 +184,111 @@ class Component extends DCLogic {
     }
     return a;
   }
-  say(text) {
-    try {
-      var u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.85;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
-  }
-  renderVals() {
-    var self = this;
+  leverKey() {
     var p = this.props || {};
-    var tablet = p.device === 'tablet';
-    var t = tablet ? 'Tablet' : '';
+    return [p.game, p.kid, p.progress, p.state].join('|');
+  }
+  // Progress for the lever combination, before any interaction.
+  model(reset) {
+    var p = this.props || {};
     var all = this.games();
     var gameKey = all[p.game] ? p.game : 'escape';
-    var G = all[gameKey];
     var kids = this.kids();
     var kidKey = kids[p.kid] ? p.kid : 'maya7';
-    var kid = kids[kidKey];
-    var progress = p.progress === 'new' || p.progress === 'complete' ? p.progress : 'midway';
-    var small = kid.age <= 4;
-    var reads = kid.age <= 6;
-    var early = kid.age >= 9;
-    var noun = G.noun;
-    var href = G.board + t + '.dc.html';
-
+    var progress = reset ? 'new' : p.progress === 'new' || p.progress === 'complete' ? p.progress : 'midway';
+    var G = all[gameKey];
     var total = 0;
     G.chapters.forEach(function (c) { total += c.count; });
-    var cur = 1, starsByLevel = {};
+    var cur = 1, solved = 0, starsByLevel = {}, runs = {};
     if (progress === 'complete') {
       cur = 0;
       for (var n = 1; n <= total; n++) starsByLevel[n] = n % 5 === 0 ? 2 : 3;
     } else if (progress === 'midway') {
       var m = this.midway(gameKey, kidKey);
       cur = m.cur;
+      solved = m.solved;
       var sp = this.spread(cur - 1, m.stars);
       for (var d = 0; d < sp.length; d++) starsByLevel[d + 1] = sp[d];
+      if (solved) runs[cur] = solved;
+      // A replay a grown-up started earlier, with 1 puzzle solved.
+      if (cur - 2 >= 1) runs[cur - 2] = 1;
     }
+    return { gameKey: gameKey, kidKey: kidKey, G: G, total: total, cur: cur, solved: solved, starsByLevel: starsByLevel, runs: runs, progress: progress };
+  }
+  // The level the "picked" lever shows: a finished level with no run, else a locked one.
+  pickDefault(md) {
+    var cands = [md.cur - 4, md.cur - 1, 5];
+    for (var i = 0; i < cands.length; i++) {
+      var n = cands[i];
+      if (n >= 1 && n <= md.total && md.starsByLevel[n] && !md.runs[n] && n !== md.cur) return n;
+    }
+    return Math.min(md.total, md.cur + 2);
+  }
+  fromLever() {
+    var p = this.props || {};
+    var st = ['default', 'picked', 'confirmReset', 'resetDone'].indexOf(p.state) >= 0 ? p.state : 'default';
+    var md = this.model(st === 'resetDone');
+    var s = { lever: this.leverKey(), sel: null, confirm: st === 'confirmReset', reset: st === 'resetDone', toast: '' };
+    if (st === 'picked') s.sel = this.pickDefault(md);
+    if (st === 'resetDone') s.toast = md.G.title + ' starts again at ' + md.G.noun + ' 1 for ' + this.kids()[md.kidKey].name + '.';
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  renderVals() {
+    var self = this;
+    var p = this.props || {};
+    var s = this.st();
+    var tablet = p.device === 'tablet';
+    var t = tablet ? 'Tablet' : '';
+    var md = this.model(s.reset);
+    var G = md.G;
+    var kid = this.kids()[md.kidKey];
+    var early = kid.age >= 9;
+    var noun = G.noun;
+    var active = md.kidKey === this.activeKid();
     var starSum = 0;
-    Object.keys(starsByLevel).forEach(function (k) { starSum += starsByLevel[k]; });
+    Object.keys(md.starsByLevel).forEach(function (k) { starSum += md.starsByLevel[k]; });
 
     // Unlock rule: linear. Ages 9 to 10 also get the first level of every chapter open.
     var firsts = {}, at = 1;
     G.chapters.forEach(function (c) { if (c.count) firsts[at] = true; at += c.count; });
     var stateOf = function (n) {
-      if (starsByLevel[n]) return 'done';
-      if (n === cur) return 'current';
+      if (n === md.cur) return 'current';
+      if (md.starsByLevel[n]) return 'done';
       if (early && firsts[n]) return 'open';
       return 'locked';
     };
-    var lockMsg = function (n) {
-      var q = n - 1;
-      while (q > 1 && stateOf(q) === 'locked') q--;
-      if (q === n - 1) return 'Finish ' + noun + ' ' + q + ' to open ' + noun + ' ' + n + '.';
-      return 'Finish ' + noun + ' ' + q + ' first. ' + noun + 's open one at a time.';
+    // Letter Builder's Spell it levels (16 to 24) count words built.
+    var spelling = function (n) { return md.gameKey === 'letters' && n >= 16; };
+    var one = function (n) { return spelling(n) ? 'word' : 'puzzle'; };
+    var many = function (n) { return spelling(n) ? 'words built' : 'puzzles solved'; };
+    var arrival = md.cur === 0
+      ? kid.name + ' has finished every ' + noun.toLowerCase() + '.'
+      : kid.name + ' is on ' + noun + ' ' + md.cur + (md.solved > 0 ? ', ' + md.solved + ' of 4 ' + many(md.cur) : '') + '.';
+    var statusFor = function (n) {
+      if (n === md.cur) return arrival;
+      if (md.runs[n]) return noun + ' ' + n + ' picked. ' + kid.name + ' goes on from ' + one(n) + ' ' + (md.runs[n] + 1) + '.';
+      var stt = stateOf(n);
+      if (stt === 'done') return noun + ' ' + n + ' picked. ' + kid.name + ' plays it again from ' + one(n) + ' 1.';
+      if (stt === 'open') return noun + ' ' + n + ' picked. ' + kid.name + ' hasn’t played it yet.';
+      return noun + ' ' + n + ' picked. ' + kid.name + ' hasn’t reached it yet.';
     };
 
-    var raised = 'background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 4px 0 #241a63; --sh: #241a63; color: #ffffff;';
-    var yellow = 'background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 4px 0 #d48a00; --sh: #d48a00; color: #5a3500;';
+    var raised = 'background: linear-gradient(180deg, #5444b8, #3a2d8f); --sh: #241a63; color: #ffffff;';
+    var yellow = 'background: linear-gradient(180deg, #ffe266, #ffc21a); --sh: #d48a00; color: #5a3500;';
+    var well = 'background: #1d1550; --sh: transparent; color: #c9c2ff;';
     var starRow = function (k) {
       return [1, 2, 3].map(function (i) { return { fill: i <= k ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; });
     };
@@ -262,47 +297,58 @@ class Component extends DCLogic {
     var chapters = G.chapters.map(function (c) {
       var tiles = [];
       for (var n = first; n < first + c.count; n++) {
-        var st = stateOf(n);
-        var k = starsByLevel[n] || 0;
-        var label = st === 'done' ? noun + ' ' + n + ', ' + k + ' star' + (k === 1 ? '' : 's')
-          : st === 'current' ? noun + ' ' + n + ', play next'
-          : st === 'open' ? noun + ' ' + n + ', not played'
-          : noun + ' ' + n + ', locked';
+        var stt = stateOf(n);
+        var k = md.starsByLevel[n] || 0;
+        var picked = s.sel === n;
+        var edge = stt === 'current' ? '0 4px 0 #d48a00' : stt === 'locked' ? '' : '0 4px 0 #241a63';
+        // Picked: the selection ring, raised 2px, as on Who's playing.
+        var shadow = picked ? '0 0 0 4px #ffc21a' + (edge ? ', ' + edge : '') : edge || 'none';
+        var label = noun + ' ' + n + (stt === 'current' ? ', ' + kid.name + '’s current ' + noun.toLowerCase()
+          : stt === 'done' ? ', ' + k + ' star' + (k === 1 ? '' : 's')
+          : stt === 'open' ? ', not played' : ', locked');
         tiles.push({
-          n: n, label: label, href: href,
-          play: st !== 'locked', locked: st === 'locked', cur: st === 'current',
-          showStars: st === 'done' || st === 'open',
-          ariaCur: st === 'current' ? 'step' : 'false',
-          style: st === 'current' ? yellow : raised,
+          n: n, label: label,
+          locked: stt === 'locked', unlocked: stt !== 'locked', cur: stt === 'current',
+          showStars: stt === 'done' || stt === 'open' || (stt === 'current' && k > 0),
+          ariaCur: stt === 'current' ? 'step' : 'false',
+          pressed: picked ? 'true' : 'false',
+          style: (stt === 'current' ? yellow : stt === 'locked' ? well : raised) + ' box-shadow: ' + shadow + ';' + (picked ? ' transform: translateY(-2px);' : ''),
           stars: starRow(k),
-          tap: (function (msg) {
-            return function () { self.setState({ status: msg }); if (reads) self.say(msg); };
-          })(st === 'locked' ? lockMsg(n) : '')
+          pick: (function (num) { return function () { self.put({ sel: num, toast: '' }); }; })(n)
         });
       }
       first += c.count;
       return { title: c.title, note: c.note, tiles: tiles, more: !!c.more };
     });
 
-    var showPlay = progress !== 'complete';
-    var playLabel = 'Play ' + noun + ' ' + cur;
-    var doneMsg = 'You finished every ' + noun.toLowerCase() + '! Pick one to play again.';
-    var status = this.state.status || (progress === 'complete' ? doneMsg : '');
-    var cols = tablet ? (small ? 6 : 8) : (small ? 4 : 5);
-
+    var target = s.sel || md.cur;
+    var status = s.sel ? statusFor(s.sel) : arrival;
+    var levelWord = noun.toLowerCase() + 's';
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
-      homeHref: 'Hub' + t + '.dc.html',
+      backHref: 'Grownups' + t + '.dc.html',
       title: G.title,
-      sub: starSum > 0 ? starSum + ' of ' + total * 3 + ' stars' : 'No stars yet',
-      speakOn: reads, speakOff: !reads,
-      speak: function () { self.say(G.title + '. ' + (showPlay ? playLabel : doneMsg)); },
-      gridCols: 'repeat(' + cols + ', minmax(0, 1fr))',
+      sub: kid.name + ' · ' + starSum + ' of ' + md.total * 3 + ' stars',
+      intro: 'Pick the ' + noun.toLowerCase() + ' ' + kid.name + ' plays next. Earned stars stay.',
+      gridcols: 'repeat(' + (tablet ? 8 : 5) + ', minmax(0, 1fr))',
       chapters: chapters,
-      status: status,
-      showPlay: showPlay,
-      playHref: href,
-      playLabel: playLabel
+      resetHeading: 'Start ' + G.title + ' over',
+      resetHelper: kid.name + '’s ' + levelWord + ' and stars in ' + G.title + ' go back to ' + noun + ' 1 on this device. Stickers stay in the sticker book.',
+      resetLabel: 'Reset ' + G.title + ' for ' + kid.name,
+      askReset: function () { self.put({ confirm: true, toast: '' }); },
+      confirming: s.confirm,
+      confirmTitle: 'Reset ' + G.title + ' for ' + kid.name + '?',
+      confirmBody: noun + 's and stars in ' + G.title + ' go back to ' + noun + ' 1 on this device. Stickers stay. This can’t be undone.',
+      goLabel: 'Reset ' + G.title,
+      keep: function () { self.put({ confirm: false }); },
+      doReset: function () { self.put({ confirm: false, reset: true, sel: null, toast: G.title + ' starts again at ' + noun + ' 1 for ' + kid.name + '.' }); },
+      showStatus: !s.toast, status: status,
+      showToast: !!s.toast, toast: s.toast,
+      buttonLabel: active ? 'Play ' + noun + ' ' + target : 'Set ' + noun + ' ' + target + ' for ' + kid.name,
+      showPlay: !!target && active,
+      playHref: G.board + t + '.dc.html',
+      showSet: !!target && !active,
+      setLevel: function () { self.put({ toast: kid.name + ' plays ' + noun + ' ' + target + ' next in ' + G.title + '.' }); }
     };
   }
 }
