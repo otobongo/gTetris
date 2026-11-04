@@ -221,9 +221,45 @@
 .bw-pill--yellow { background: var(--bw-accent); color: var(--bw-on-yellow); }
 .bw-pill--well { background: var(--bw-well); color: var(--bw-text-2); }
 
+/* ---------- Sand timer (relaxed timer in Brick Escape and Brick Drop) ---------- */
+.bw-sand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-sp-2);
+  min-width: 0;
+}
+.bw-sand__row {
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-4);
+}
+.bw-sand__glass { flex: none; color: var(--bw-yellow-top); }
+.bw-sand__track {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-ground-bottom);
+  overflow: hidden;
+}
+.bw-sand__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-yellow-top);
+  transition: width 1s linear;
+}
+.bw-sand__caption {
+  margin: 0;
+  font-size: var(--bw-fs-helper);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bw-text-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bw-press,
-  .bw-iconbtn {
+  .bw-iconbtn,
+  .bw-sand__fill {
     transition: none;
   }
 }

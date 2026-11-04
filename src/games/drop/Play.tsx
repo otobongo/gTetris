@@ -3,7 +3,7 @@ import { useActivePlayer } from '../../shared/progress';
 import { toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { getProgress, recordBest, recordStars } from '../../shared/storage';
-import { Brick, Icon, IconButton, PressButton, Screen, TopBar, type IconName } from '../../shared/ui';
+import { Brick, Icon, IconButton, PressButton, SandTimer, Screen, TopBar, type IconName } from '../../shared/ui';
 import { PAD, REPEAT, applyAction, dragMoves, dragStep, gestureAxis, keyAction, keyCommand, releaseAction, type Action } from './controls';
 import { activeCells, ghostY, newGame, step, type GameEvent, type GameState } from './engine';
 import { MiniPiece } from './MiniPiece';
@@ -302,7 +302,7 @@ export default function Play({ index }: { index: number }) {
   // Timer row
   const left = plan.kind === 'countdown' ? plan.seconds - secs : 0;
   const tState = plan.kind === 'countdown' ? timerState(left, plan.seconds) : 'ok';
-  const clock = plan.kind === 'countdown' ? formatClock(left) : formatClock(secs);
+  const clock = formatClock(left);
 
   return (
     <div className="drop-root">
@@ -323,19 +323,18 @@ export default function Play({ index }: { index: number }) {
             }
           />
 
-          {plan.kind !== 'off' && (
+          {plan.kind === 'countdown' && (
             <div className="drop-timer" data-state={tState}>
               <Hourglass />
-              <span className="drop-timer__clock" role="timer" aria-label={plan.kind === 'countdown' ? `Time left ${clock}` : `Time played ${clock}`}>
+              <span className="drop-timer__clock" role="timer" aria-label={`Time left ${clock}`}>
                 {clock}
               </span>
-              {plan.kind === 'countdown' && (
-                <span className="drop-timer__track" aria-hidden="true">
-                  <span style={{ width: `${Math.max(0, Math.min(100, (left / plan.seconds) * 100))}%` }} />
-                </span>
-              )}
+              <span className="drop-timer__track" aria-hidden="true">
+                <span style={{ width: `${Math.max(0, Math.min(100, (left / plan.seconds) * 100))}%` }} />
+              </span>
             </div>
           )}
+          {plan.kind === 'relaxed' && <SandTimer className="drop-sand" elapsed={secs} total={plan.seconds} />}
 
           <div className="drop-tiles">
             <div className="drop-tile">

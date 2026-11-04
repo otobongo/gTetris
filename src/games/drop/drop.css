@@ -54,6 +54,15 @@
   transition: width 1s linear;
 }
 
+/* The relaxed sand timer (shared SandTimer) sits on the same panel as the countdown row. */
+.drop-sand {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--bw-sp-3) var(--bw-sp-6);
+  border-radius: var(--bw-r-md);
+  background: var(--bw-panel);
+}
+
 /* ---------- Next and Rows: two half-width tiles ---------- */
 .drop-tiles {
   width: 100%;

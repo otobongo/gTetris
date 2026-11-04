@@ -13,6 +13,7 @@ export { Panel, type PanelProps } from './Panel';
 export { Pill, type PillProps } from './Pill';
 export { Screen, type ScreenProps } from './Screen';
 export { Icon, type IconName, type IconProps } from './Icon';
+export { SandTimer, SAND_CAPTION, sandFill, type SandTimerProps } from './SandTimer';
 export { useLayout, computeLayout, TABLET_INNER, TABLET_MIN_WIDTH, type Layout } from './layout';
 export { BRICK_COLORS, PALETTE, type BrickColor } from './palette';
 export { cx } from './cx';

@@ -12,9 +12,11 @@ describe('game timer plan', () => {
     expect(timerPlan(stage, 'off', '3-4')).toEqual({ kind: 'off' });
   });
 
-  it('counts up gently in relaxed mode and for ages 3 to 4', () => {
-    expect(timerPlan(stage, 'relaxed', '9-10')).toEqual({ kind: 'relaxed' });
-    expect(timerPlan(stage, 'auto', '3-4')).toEqual({ kind: 'relaxed' });
+  // Decision D3 replaced the count-up clock here with the sand timer, which fills over the base time.
+  it('uses the gentle sand timer in relaxed mode and for ages 3 to 4', () => {
+    const base = stage.goalRows * SECONDS_PER_ROW;
+    expect(timerPlan(stage, 'relaxed', '9-10')).toEqual({ kind: 'relaxed', seconds: base });
+    expect(timerPlan(stage, 'auto', '3-4')).toEqual({ kind: 'relaxed', seconds: base * 2 });
   });
 
   it('counts down in auto mode: base time times the age factor', () => {

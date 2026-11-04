@@ -4,7 +4,7 @@ import { sfx } from '../../shared/sound';
 import { recordStars } from '../../shared/storage';
 import { useActivePlayer } from '../../shared/progress';
 import type { AgeBand, TimerMode } from '../../shared/progress';
-import { Brick, IconButton, PressButton, Screen, TopBar } from '../../shared/ui';
+import { Brick, IconButton, PressButton, SandTimer, Screen, TopBar } from '../../shared/ui';
 import {
   type BlockDef,
   type Cell,
@@ -375,12 +375,8 @@ export default function SlideGame({ index }: { index: number }) {
       ? 'Try the glowing brick first.'
       : lockMsg || level.tip || 'Drag each brick to the door of its color.';
   const who = player && !player.unnamed ? `${player.name}: ` : '';
-  const caption =
-    clock.kind === 'counted'
-      ? `${who}level ${index + 1} gets ${level.base ?? 45}s x ${clock.factor} = ${fmtClock(limit)}`
-      : clock.kind === 'relaxed'
-        ? 'A gentle sand timer for fun. It never costs a star.'
-        : '';
+  // the relaxed sand timer (SandTimer) carries its own caption
+  const caption = clock.kind === 'counted' ? `${who}level ${index + 1} gets ${level.base ?? 45}s x ${clock.factor} = ${fmtClock(limit)}` : '';
   const hasNext = index + 1 < LEVELS.length;
   const stars = won?.stars ?? 0;
   const winText = won
@@ -425,28 +421,27 @@ export default function SlideGame({ index }: { index: number }) {
 
       <section className="esc-status" aria-label="Level status">
         <div className="esc-status__row">
-          {clock.kind !== 'off' && (
+          {clock.kind === 'counted' && (
             <>
               <svg className="esc-status__glass" data-state={timerColor} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
               </svg>
-              {clock.kind === 'counted' && (
-                <span className="esc-status__clock">
-                  <span className="esc-sr">Time left </span>
-                  {fmtClock(tLeft)}
-                </span>
-              )}
+              <span className="esc-status__clock">
+                <span className="esc-sr">Time left </span>
+                {fmtClock(tLeft)}
+              </span>
             </>
           )}
           <span className="esc-status__spacer" />
           <span className="esc-status__moves">Moves {moves}</span>
           <span className="esc-status__best">Best {level.par}</span>
         </div>
-        {clock.kind !== 'off' && (
+        {clock.kind === 'counted' && (
           <div className="esc-status__track" aria-hidden="true">
             <div className="esc-status__fill" data-state={timerColor} style={{ width: `${limit ? Math.round((Math.max(0, tLeft) / limit) * 100) : 0}%` }} />
           </div>
         )}
+        {clock.kind === 'relaxed' && <SandTimer elapsed={limit - tLeft} total={limit} />}
         {caption && <p className="esc-status__caption">{caption}</p>}
       </section>
 
