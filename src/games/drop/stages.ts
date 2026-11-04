@@ -42,7 +42,7 @@ export const STAGES: Stage[] = [
   {
     name: 'Tee Time',
     cols: 10, rows: 18, pieces: ['square', 'long', 'tee', 'stick3', 'corner'], goalRows: 6, gravityMs: 800, lockDelayMs: 900,
-    tip: 'Not a good fit? Tap Hold to save a brick for later.',
+    tip: 'Not a good fit? Turn the brick or slide it to another spot.',
   },
   {
     name: 'Hooks and Boots',
@@ -110,4 +110,10 @@ export function newPieces(index: number): PieceId[] {
 
 export function isUnlocked(index: number): boolean {
   return index === 0 || starsFor('drop', index - 1) >= 1;
+}
+
+/** The stage to open when the player taps Play: the first open stage with no stars yet, else the last one. */
+export function currentStage(): number {
+  for (let i = 0; i < STAGES.length; i++) if (isUnlocked(i) && starsFor('drop', i) === 0) return i;
+  return STAGES.length - 1;
 }

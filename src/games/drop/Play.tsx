@@ -1,25 +1,27 @@
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { go } from '../../shared/router';
+import { useActivePlayer } from '../../shared/progress';
+import { toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { getProgress, recordBest, recordStars } from '../../shared/storage';
-import { Icon, IconButton, ResultCard, Stars, TopBar } from '../../shared/ui';
+import { Brick, Icon, IconButton, PressButton, Screen, TopBar, type IconName } from '../../shared/ui';
 import {
-  PREVIEW,
   activeCells,
   ghostY,
   hardDrop,
-  hold,
   move,
   newGame,
   rotate,
   softDrop,
   step,
+  hold,
   type GameEvent,
   type GameState,
 } from './engine';
 import { MiniPiece } from './MiniPiece';
 import { PIECES } from './pieces';
+import { Sheet, StarRow } from './Sheet';
 import { STAGES, newPieces, starRule, starsEarned } from './stages';
+import { clearMessage, formatClock, timerPlan, timerState } from './timer';
 
 type Action = 'left' | 'right' | 'down' | 'rotate' | 'rotateBack' | 'drop' | 'hold';
 type Phase = 'intro' | 'playing' | 'paused' | 'won' | 'over';
@@ -31,6 +33,7 @@ const REPEAT: Partial<Record<Action, { delay: number; every: number }>> = {
   down: { delay: 120, every: 45 },
 };
 
+/** Keyboard controls. The on-screen row has Left, Turn, Down and Right; Space and C are keyboard only. */
 const KEYS: Record<string, Action> = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
@@ -46,12 +49,33 @@ const KEYS: Record<string, Action> = {
   Shift: 'hold',
 };
 
+/** The control row, in this order: Left, Turn, Down, Right. */
+const PAD: { act: Action; icon: IconName; label: string; tone: 'purple' | 'green' }[] = [
+  { act: 'left', icon: 'left', label: 'Left', tone: 'purple' },
+  { act: 'rotate', icon: 'rotate', label: 'Turn', tone: 'green' },
+  { act: 'down', icon: 'down', label: 'Down', tone: 'purple' },
+  { act: 'right', icon: 'right', label: 'Right', tone: 'purple' },
+];
+
 const WELL_PAD = 6;
-const FIELD_GAP = 10;
+/** Room around the board for its 4px ring, plus the area's own 1px. */
+const RING_ROOM = 10;
+const MAX_CELL = 42;
+
+/** The hourglass of the timer row (canvas glyph, stroke 2.6). */
+function Hourglass() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
+    </svg>
+  );
+}
 
 export default function Play({ index }: { index: number }) {
   const stage = STAGES[index];
   const rule = starRule(stage);
+  const player = useActivePlayer();
+  const plan = timerPlan(stage, player?.timerMode ?? 'relaxed', player?.ageBand ?? '7-8');
   const fresh = () => newGame(stage, (Date.now() ^ Math.imul(index + 1, 2654435761)) >>> 0);
 
   const gameRef = useRef<GameState | null>(null);
@@ -63,6 +87,13 @@ export default function Play({ index }: { index: number }) {
   const lastBump = useRef(0);
   const endTimer = useRef(0);
   const [result, setResult] = useState({ stars: 0, newBest: false });
+
+  // Seconds played on this stage, counted only while the game is running.
+  const elapsedMs = useRef(0);
+  const [secs, setSecs] = useState(0);
+  // The word that pops up when rows clear.
+  const [flash, setFlash] = useState('');
+  const flashTimer = useRef(0);
 
   const setPhase = (p: Phase) => {
     phaseRef.current = p;
@@ -76,8 +107,12 @@ export default function Play({ index }: { index: number }) {
       else if (e === 'rotate') sfx.tap();
       else if (e === 'hold') sfx.good();
       else if (e === 'drop') sfx.bump();
-      else if (e === 'clear') sfx.line(s.clearing.length);
-      else if (e === 'win') sfx.win();
+      else if (e === 'clear') {
+        sfx.line(s.clearing.length);
+        setFlash(clearMessage(s.clearing.length));
+        window.clearTimeout(flashTimer.current);
+        flashTimer.current = window.setTimeout(() => setFlash(''), 900);
+      } else if (e === 'win') sfx.win();
       else if (e === 'over') sfx.lose();
       else if (e === 'bump') {
         const now = performance.now();
@@ -112,7 +147,8 @@ export default function Play({ index }: { index: number }) {
       next.queue !== prev.queue ||
       next.hold !== prev.hold ||
       next.holdUsed !== prev.holdUsed ||
-      next.status !== prev.status
+      next.status !== prev.status ||
+      next.lines !== prev.lines
     )
       redraw();
     if (next.status !== prev.status && (next.status === 'won' || next.status === 'over')) finish(next, next.status === 'won');
@@ -151,6 +187,10 @@ export default function Play({ index }: { index: number }) {
 
   function restart() {
     window.clearTimeout(endTimer.current);
+    window.clearTimeout(flashTimer.current);
+    setFlash('');
+    elapsedMs.current = 0;
+    setSecs(0);
     gameRef.current = fresh();
     setPhase('playing');
     redraw();
@@ -171,6 +211,8 @@ export default function Play({ index }: { index: number }) {
           held.current.set(a, t >= d ? t + every : d);
         }
         apply((s) => step(s, dt));
+        elapsedMs.current += dt;
+        setSecs(Math.floor(elapsedMs.current / 1000));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -178,6 +220,7 @@ export default function Play({ index }: { index: number }) {
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(endTimer.current);
+      window.clearTimeout(flashTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -217,7 +260,7 @@ export default function Play({ index }: { index: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Size the board from the space that is left after the top bar and the buttons.
+  // Size the board from the space that is left between the tiles and the buttons.
   const areaRef = useRef<HTMLDivElement>(null);
   const [area, setArea] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
@@ -230,13 +273,10 @@ export default function Play({ index }: { index: number }) {
   }, []);
 
   const { cols, rows } = stage;
-  const wide = area.w >= 440;
-  const sideW = wide ? 118 : 74;
-  const cell = Math.max(
-    10,
-    Math.min(38, Math.floor(Math.min((area.w - sideW - FIELD_GAP - WELL_PAD * 2) / cols, (area.h - WELL_PAD * 2) / rows))),
-  );
-  const mini = Math.max(8, Math.min(Math.floor((sideW - 18) / 4), Math.round(cell * 0.62)));
+  const room = WELL_PAD * 2 + RING_ROOM;
+  const cell = Math.max(10, Math.min(MAX_CELL, Math.floor(Math.min((area.w - room) / cols, (area.h - room) / rows))));
+  const ghostBorder = cell >= 28 ? 3 : 2;
+  const radius = cell >= 28 ? 5 : 4;
 
   // Swipe and tap on the board: drag sideways to move, swipe down to drop, tap to turn.
   const touch = useRef<{ id: number; x0: number; y0: number; t0: number; sx: number; axis: '' | 'h' | 'v' } | null>(null);
@@ -285,12 +325,7 @@ export default function Play({ index }: { index: number }) {
     row.forEach((c, x) => {
       if (c)
         bricks.push(
-          <span
-            key={`b${x},${y}`}
-            className={`brick brick--studs drop-cell${flashing.has(y) ? ' is-clearing' : ''}`}
-            data-color={c}
-            style={pos(x, y)}
-          />,
+          <Brick key={`b${x},${y}`} color={c} stud={cell - 2} radius={radius} className={`drop-cell${flashing.has(y) ? ' is-clearing' : ''}`} style={pos(x, y)} />,
         );
     }),
   );
@@ -299,40 +334,85 @@ export default function Play({ index }: { index: number }) {
     const cells = activeCells(a);
     if (gy !== null && gy !== a.y)
       cells.forEach(([cx, cy]) =>
-        bricks.push(<span key={`g${cx},${cy}`} className="drop-ghost" data-color={color} style={pos(a.x + cx, gy + cy)} />),
+        bricks.push(
+          <span
+            key={`g${cx},${cy}`}
+            className="drop-ghost"
+            data-brick={color}
+            style={{ ...pos(a.x + cx, gy + cy), width: cell - 2, height: cell - 2, borderWidth: ghostBorder, borderRadius: radius }}
+          />,
+        ),
       );
     cells.forEach(([cx, cy]) =>
       bricks.push(
-        <span key={`a${cx},${cy}`} className="brick brick--studs drop-cell is-active" data-color={color} style={pos(a.x + cx, a.y + cy)} />,
+        <Brick key={`a${cx},${cy}`} color={color} stud={cell - 2} radius={radius} className="drop-cell is-active" style={pos(a.x + cx, a.y + cy)} />,
       ),
     );
   }
 
   const isLast = index === STAGES.length - 1;
   const fresh0 = newPieces(index);
+  const next = g.queue[0];
+  const dialogOpen = phase === 'intro' || phase === 'won' || phase === 'over';
+  const paused = phase === 'paused';
+
+  // Timer row
+  const left = plan.kind === 'countdown' ? plan.seconds - secs : 0;
+  const tState = plan.kind === 'countdown' ? timerState(left, plan.seconds) : 'ok';
+  const clock = plan.kind === 'countdown' ? formatClock(left) : formatClock(secs);
 
   return (
-    <div className="drop-play">
-      <div className="drop-play__inner">
-        <TopBar
-          title={`Stage ${index + 1}`}
-          subtitle={`${stage.name}${stage.speedy ? ' · speedy!' : ''}`}
-          back="/drop"
-          right={
-            <IconButton
-              icon={phase === 'paused' ? 'play' : 'pause'}
-              label={phase === 'paused' ? 'Keep playing' : 'Pause'}
-              onClick={togglePause}
-              disabled={phase !== 'playing' && phase !== 'paused'}
-            />
-          }
-        />
+    <div className="drop-root">
+      <Screen className="drop-frame">
+        <div className="drop-content" inert={dialogOpen}>
+          <TopBar
+            title={`Stage ${index + 1}`}
+            subtitle={`Brick Drop · ${stage.name}`}
+            back="/game/drop/levels"
+            backLabel="Back to stages"
+            action={
+              <IconButton
+                icon={paused ? 'play' : 'pause'}
+                label={paused ? 'Keep playing' : 'Pause'}
+                onClick={togglePause}
+                disabled={phase !== 'playing' && phase !== 'paused'}
+              />
+            }
+          />
 
-        <div className="drop-area" ref={areaRef}>
-          <div className="drop-field" style={{ gap: FIELD_GAP }}>
+          {plan.kind !== 'off' && (
+            <div className="drop-timer" data-state={tState}>
+              <Hourglass />
+              <span className="drop-timer__clock" role="timer" aria-label={plan.kind === 'countdown' ? `Time left ${clock}` : `Time played ${clock}`}>
+                {clock}
+              </span>
+              {plan.kind === 'countdown' && (
+                <span className="drop-timer__track" aria-hidden="true">
+                  <span style={{ width: `${Math.max(0, Math.min(100, (left / plan.seconds) * 100))}%` }} />
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="drop-tiles">
+            <div className="drop-tile">
+              <span className="drop-tile__label">Next</span>
+              <span className="drop-tile__next">{next && <MiniPiece id={next} boxW={76} boxH={40} />}</span>
+            </div>
+            <div className="drop-tile">
+              <span className="drop-tile__label">Rows</span>
+              <span className="drop-tile__value">
+                {Math.min(g.lines, stage.goalRows)}
+                <small>/{stage.goalRows}</small>
+              </span>
+            </div>
+          </div>
+
+          <div className="drop-area" ref={areaRef}>
             <div
-              className="drop-well"
+              className={`drop-well${paused ? ' is-paused' : ''}`}
               style={{ width: cols * cell + WELL_PAD * 2, height: rows * cell + WELL_PAD * 2, padding: WELL_PAD }}
+              role="group"
               onPointerDown={onBoardDown}
               onPointerMove={onBoardMove}
               onPointerUp={onBoardUp}
@@ -342,7 +422,7 @@ export default function Play({ index }: { index: number }) {
             >
               <div
                 className="drop-grid"
-                style={{ width: cols * cell, height: rows * cell, ['--cell' as string]: `${cell}px`, backgroundSize: `${cell}px ${cell}px` }}
+                style={{ width: cols * cell, height: rows * cell, backgroundSize: `${cell}px ${cell}px` }}
               >
                 {bricks}
                 {g.clearing.map((y) => (
@@ -350,211 +430,152 @@ export default function Play({ index }: { index: number }) {
                 ))}
               </div>
             </div>
+          </div>
 
-            <aside className="drop-side" style={{ width: sideW }}>
-              <button
-                type="button"
-                tabIndex={-1}
-                className={`drop-box drop-box--hold${g.holdUsed ? ' is-used' : ''}`}
-                aria-label="Hold brick"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  press('hold');
-                }}
-              >
-                <span className="drop-box__label">Hold</span>
-                <span className="drop-box__slot" style={{ minHeight: mini * 2 }}>
-                  <MiniPiece id={g.hold} size={mini} dim={g.holdUsed} />
-                </span>
-              </button>
-              <div className="drop-box">
-                <span className="drop-box__label">Next</span>
-                {g.queue.slice(0, PREVIEW).map((id, i) => (
-                  <span key={i} className={`drop-box__slot${i > 0 ? ' is-later' : ''}`} style={{ minHeight: mini * 2 }}>
-                    <MiniPiece id={id} size={mini} />
-                  </span>
-                ))}
-              </div>
-              <div className="drop-stat">
-                <span className="drop-stat__label">Rows</span>
-                <b className="drop-stat__value">
-                  {Math.min(g.lines, stage.goalRows)}
-                  <small>/{stage.goalRows}</small>
-                </b>
-                <span className="drop-meter" aria-hidden="true">
-                  <span style={{ width: `${(Math.min(g.lines, stage.goalRows) / stage.goalRows) * 100}%` }} />
-                </span>
-              </div>
-              <div className="drop-stat">
-                <span className="drop-stat__label">Bricks</span>
-                <b className="drop-stat__value">{g.placed}</b>
-              </div>
-            </aside>
+          <div className="drop-pad" role="group" aria-label="Controls">
+            {PAD.map((p) => (
+              <PadButton key={p.act} {...p} press={press} release={release} />
+            ))}
           </div>
         </div>
 
-        <div className="drop-pad" role="group" aria-label="Controls">
-          <PadButton act="hold" icon="hold" label="Hold" press={press} release={release} />
-          <PadButton act="rotate" icon="rotate" label="Turn" variant="go" press={press} release={release} />
-          <PadButton act="drop" icon="drop" label="Drop" variant="warm" press={press} release={release} />
-          <PadButton act="left" icon="left" label="Left" press={press} release={release} />
-          <PadButton act="down" icon="down" label="Down" press={press} release={release} />
-          <PadButton act="right" icon="right" label="Right" press={press} release={release} />
-        </div>
-        <p className="drop-keys">
-          Keys: <kbd>←</kbd> <kbd>→</kbd> move · <kbd>↑</kbd> turn · <kbd>↓</kbd> down · <kbd>Space</kbd> drop · <kbd>C</kbd> hold ·{' '}
-          <kbd>P</kbd> pause
+        <p className="drop-say" role="status">
+          {flash}
         </p>
-      </div>
 
-      {phase === 'intro' && (
-        <ResultCard
-          title={stage.name}
-          message={
-            <span className="drop-intro">
-              <span className="drop-intro__goal">
-                Goal: clear <b>{stage.goalRows}</b> rows
-              </span>
-              <span className="drop-intro__pieces">
-                {stage.pieces.map((id) => (
-                  <span key={id} className={`drop-intro__piece${fresh0.includes(id) ? ' is-new' : ''}`}>
-                    <MiniPiece id={id} size={14} />
-                    {fresh0.includes(id) && <span className="drop-intro__tag">New: {PIECES[id].name}</span>}
-                  </span>
-                ))}
-              </span>
-              <span className="drop-intro__tip">{stage.tip}</span>
-              <span className="drop-intro__rule">
-                <Stars value={3} /> use {rule.three} bricks or fewer
-              </span>
-            </span>
-          }
-        >
-          <button
-            className="btn btn--go"
-            onClick={() => {
-              sfx.tap();
-              setPhase('playing');
-            }}
+        {phase === 'intro' && (
+          <Sheet
+            title={stage.name}
+            actions={
+              <PressButton
+                variant="green"
+                size="md"
+                data-autofocus
+                onClick={() => {
+                  setPhase('playing');
+                }}
+              >
+                Let's go!
+              </PressButton>
+            }
           >
-            Let's go!
-          </button>
-          <button className="btn" onClick={() => go('/drop')}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+            <p className="drop-sheet__line">
+              Goal: clear <b>{stage.goalRows}</b> rows
+            </p>
+            <ul className="drop-intro__pieces">
+              {stage.pieces.map((id) => (
+                <li key={id} className={`drop-intro__piece${fresh0.includes(id) ? ' is-new' : ''}`}>
+                  <MiniPiece id={id} unit={14} />
+                  {fresh0.includes(id) && <span className="drop-intro__tag">New: {PIECES[id].name}</span>}
+                </li>
+              ))}
+            </ul>
+            <p className="drop-sheet__note">{stage.tip}</p>
+            <p className="drop-sheet__note">Use {rule.three} bricks or fewer for 3 stars.</p>
+            <p className="drop-sheet__keys">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
+          </Sheet>
+        )}
 
-      {phase === 'paused' && (
-        <ResultCard title="Paused" message="Take a break. Your bricks will wait for you.">
-          <button className="btn btn--go" onClick={() => { sfx.tap(); setPhase('playing'); }}>
-            Keep playing
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); restart(); }}>
-            Start over
-          </button>
-          <button className="btn" onClick={() => go('/drop')}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+        {phase === 'won' && (
+          <Sheet
+            title={isLast ? 'Master Builder!' : 'Stage clear!'}
+            actions={
+              <>
+                <PressButton variant="purple" size="md" data-autofocus={isLast || undefined} onClick={restart}>
+                  Play again
+                </PressButton>
+                {!isLast && (
+                  <PressButton variant="green" size="md" href={toHref(`/game/drop/${index + 2}`)} data-autofocus>
+                    Next stage
+                  </PressButton>
+                )}
+              </>
+            }
+          >
+            <StarRow value={result.stars} />
+            <p className="drop-sheet__line">
+              You cleared {stage.goalRows} rows with <b>{g.placed}</b> bricks.
+            </p>
+            <p className="drop-sheet__note">
+              3 stars: {rule.three} bricks or fewer. 2 stars: {rule.two} or fewer.
+            </p>
+            <p className="drop-sheet__note">
+              Score {g.score}
+              {result.newBest && <b className="drop-sheet__best"> New best!</b>}
+            </p>
+            {isLast && <p className="drop-sheet__note">You finished every stage. Amazing planning!</p>}
+          </Sheet>
+        )}
 
-      {phase === 'won' && (
-        <ResultCard
-          title={isLast ? 'Master Builder!' : 'Stage clear!'}
-          stars={result.stars}
-          message={
-            <span className="drop-result">
-              <span>
-                You cleared {stage.goalRows} rows with <b>{g.placed}</b> bricks.
-              </span>
-              <span className="drop-result__rule">
-                3 stars: {rule.three} bricks or fewer. 2 stars: {rule.two} or fewer.
-              </span>
-              <span className="drop-result__score">
-                Score {g.score}
-                {result.newBest && <b className="drop-result__best"> New best!</b>}
-              </span>
-              {isLast && <span>You finished every stage. Amazing planning!</span>}
-            </span>
-          }
-        >
-          {!isLast && (
-            <button className="btn btn--go" onClick={() => { sfx.tap(); go(`/drop/${index + 2}`); }}>
-              Next stage
-            </button>
-          )}
-          <button className="btn" onClick={() => { sfx.tap(); restart(); }}>
-            Play again
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); go('/drop'); }}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
-
-      {phase === 'over' && (
-        <ResultCard
-          title="Nice try!"
-          message={
-            <span className="drop-result">
-              <span>
-                The bricks reached the top. You cleared <b>{Math.min(g.lines, stage.goalRows)}</b> of {stage.goalRows} rows.
-              </span>
-              <span className="drop-result__rule">Tip: {stage.tip}</span>
-            </span>
-          }
-        >
-          <button className="btn btn--go" onClick={() => { sfx.tap(); restart(); }}>
-            Try again
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); go('/drop'); }}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+        {phase === 'over' && (
+          <Sheet
+            title="Nice try!"
+            actions={
+              <>
+                <PressButton variant="purple" size="md" href={toHref('/game/drop/levels')}>
+                  Stages
+                </PressButton>
+                <PressButton variant="green" size="md" data-autofocus onClick={restart}>
+                  Try again
+                </PressButton>
+              </>
+            }
+          >
+            <p className="drop-sheet__line">
+              The bricks reached the top. You cleared <b>{Math.min(g.lines, stage.goalRows)}</b> of {stage.goalRows} rows.
+            </p>
+            <p className="drop-sheet__note">Tip: {stage.tip}</p>
+          </Sheet>
+        )}
+      </Screen>
     </div>
   );
 }
 
+/** One control of the row: icon over label, 62px tall. Pressing and holding repeats; Enter works from the keyboard. */
 function PadButton({
   act,
   icon,
   label,
-  variant,
+  tone,
   press,
   release,
 }: {
   act: Action;
-  icon: string;
+  icon: IconName;
   label: string;
-  variant?: 'go' | 'warm';
+  tone: 'purple' | 'green';
   press: (a: Action) => void;
   release: (a: Action) => void;
 }) {
   const up = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.currentTarget.classList.remove('is-down');
+    e.currentTarget.classList.remove('is-pressed');
     release(act);
   };
   return (
     <button
       type="button"
-      tabIndex={-1}
-      className={`btn drop-pad__btn drop-pad__btn--${act}${variant ? ` btn--${variant}` : ''}`}
-      aria-label={label}
+      className="bw-press drop-pad__btn"
+      data-tone={tone}
       onPointerDown={(e) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture?.(e.pointerId);
-        e.currentTarget.classList.add('is-down');
+        e.currentTarget.classList.add('is-pressed');
         press(act);
       }}
       onPointerUp={up}
       onPointerCancel={up}
       onLostPointerCapture={up}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || e.repeat) return;
+        e.preventDefault();
+        press(act);
+        release(act);
+      }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Icon name={icon} size={28} />
-      <span className="drop-pad__label">{label}</span>
+      <Icon name={icon} size={26} strokeWidth={3} />
+      {label}
     </button>
   );
 }
