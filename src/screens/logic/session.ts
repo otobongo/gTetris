@@ -5,7 +5,7 @@
 import { replace, type Route } from '../../shared/router';
 import { AVATAR_COLORS, activePlayer, isBreakTime, progressStore, type AvatarColor, type Player } from '../../shared/progress';
 
-/** Routes a used-up daily limit blocks (brief 3.4): Home, Levels and the games. */
+/** Routes a used-up daily limit blocks (brief 3.4): Home and the games (and the old Levels path). Never the grown-up level picker. */
 export function isPlayRoute(route: Route): boolean {
   return route.name === 'home' || route.name === 'levels' || route.name === 'game';
 }
@@ -46,15 +46,15 @@ export function breakBefore(
   return true;
 }
 
-/** Screens a passed grown-up check covers: Settings, the account screens, Support and the legal pages. */
-const GROWN_UP_ROUTES: readonly Route['name'][] = ['settings', 'signin', 'signup', 'help', 'terms', 'privacy'];
+/** Screens a passed grown-up check covers: Settings, the level picker, the account screens, Support and the legal pages. */
+const GROWN_UP_ROUTES: readonly Route['name'][] = ['settings', 'levelPicker', 'signin', 'signup', 'help', 'terms', 'privacy'];
 
 export function isGrownUpRoute(route: Route): boolean {
   return GROWN_UP_ROUTES.includes(route.name);
 }
 
-/** Screens that open only after the grown-up check: Settings and the account screens. Support, Terms and Privacy stay open. */
-const CHECKED_ROUTES: readonly Route['name'][] = ['settings', 'signin', 'signup'];
+/** Screens that open only after the grown-up check: Settings, the level picker and the account screens. Support, Terms and Privacy stay open. */
+const CHECKED_ROUTES: readonly Route['name'][] = ['settings', 'levelPicker', 'signin', 'signup'];
 
 export function needsGrownUpCheck(route: Route): boolean {
   return CHECKED_ROUTES.includes(route.name);
@@ -94,3 +94,25 @@ export function notePath(path: string) {
 export function backTarget(allowed: readonly string[], fallback: string): string {
   return previousPath && allowed.includes(previousPath) ? previousPath : fallback;
 }
+
+/**
+ * What Settings shows when a grown-up comes back from the level picker: the child whose game was
+ * open there, and the toast of a level set for another child ("Leo plays Level 5 next in Brick Escape.").
+ * Settings takes the toast once.
+ */
+let settingsChild: string | null = null;
+let settingsToast = '';
+export const settingsReturn = {
+  child: () => settingsChild,
+  setChild: (id: string | null) => {
+    settingsChild = id;
+  },
+  setToast: (text: string) => {
+    settingsToast = text;
+  },
+  takeToast: () => {
+    const t = settingsToast;
+    settingsToast = '';
+    return t;
+  },
+};

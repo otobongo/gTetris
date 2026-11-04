@@ -1,24 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import type { GameEntry } from '../games/registry';
-import { gameOf, useActivePlayer } from '../shared/progress';
-import { toHref } from '../shared/router';
-import { say } from '../shared/speech';
+import { gameOf, progressStore, useProgressState } from '../shared/progress';
+import { go } from '../shared/router';
 import { sfx } from '../shared/sound';
-import { Icon, IconButton, PressButton, Screen, TopBar, useLayout } from '../shared/ui';
-import ComingSoon from './ComingSoon';
-import { lockMessage, planLevels, tileLabel } from './logic/levels';
+import { Icon, PressButton, Screen, TopBar, cx, useLayout } from '../shared/ui';
+import { pickerCopy, planLevels, tileLabel } from './logic/levels';
+import { settingsReturn } from './logic/session';
+import { Overlay } from './parts/Controls';
 import './screens.css';
 
 /**
- * Level select, one screen for every playable game (design/canvas/Levels.dc.html, brief 3.2):
- * chapters of tiles (done, current, open, locked) and the big Play button. Reads the game's
- * meta.ts through the registry and the active player's progress.
+ * The grown-up level picker (design/canvas/Levels.dc.html, brief 7.3), at
+ * '#/settings/levels/<game>/<playerId>' behind the grown-up check. Children never see it.
+ * Any tile can be picked, locked ones too (user decision 4). The footer saves the pick: for the
+ * active player it opens the game at that level, for another child it returns to Settings with a
+ * toast. The panel at the end of the list resets this one game; stickers stay (user decision 5).
  */
-export default function Levels({ game }: { game: GameEntry }) {
-  const player = useActivePlayer();
+export default function Levels({ game, playerId }: { game: GameEntry; playerId: string }) {
+  const state = useProgressState();
   const tablet = useLayout().mode === 'tablet';
-  const [status, setStatus] = useState('');
+  const kid = state.players.find((p) => p.id === playerId) ?? null;
+  const [picked, setPicked] = useState<number | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  const [toast, setToast] = useState('');
   const scroller = useRef<HTMLDivElement>(null);
+
+  // Back to Settings shows the same child.
+  useEffect(() => {
+    settingsReturn.setChild(playerId);
+  }, [playerId]);
 
   // On arrival, bring the chapter that holds the current level into view.
   useEffect(() => {
@@ -30,28 +40,43 @@ export default function Levels({ game }: { game: GameEntry }) {
     }
   }, [game.id]);
 
-  if (!game.meta) return <ComingSoon game={game} />;
+  if (!kid || !game.meta) return null; // App sends an unknown game or child back to Settings.
 
-  const band = player?.ageBand ?? '7-8';
-  const small = band === '3-4';
-  const reads = band === '3-4' || band === '5-6';
-  const plan = planLevels(game.meta, gameOf(player, game.id), band);
+  const meta = game.meta;
+  const active = state.activePlayerId === kid.id;
+  const plan = planLevels(meta, gameOf(kid, game.id), kid.ageBand);
+  const copy = pickerCopy(game, kid, active);
   const noun = game.noun;
-  const cols = tablet ? (small ? 6 : 8) : small ? 4 : 5;
-  const playN = (plan.current ?? 0) + 1;
-  const playLabel = `Play ${noun} ${playN}`;
-  const doneMsg = `You finished every ${noun.toLowerCase()}! Pick one to play again.`;
-  const levelHref = (n: number) => toHref(`/game/${game.id}/${n}`);
+  const target = picked ?? plan.current;
+
+  const pick = (index: number) => {
+    sfx.tap();
+    setPicked(index);
+    setToast('');
+  };
+
+  const save = () => {
+    if (target === null) return;
+    progressStore.pickLevel(game.id, target, meta.levelCount, kid.id);
+    if (active) {
+      go(`/game/${game.id}/${target + 1}`);
+      return;
+    }
+    settingsReturn.setToast(copy.toast(target));
+    go('/settings');
+  };
+
+  const reset = () => {
+    progressStore.resetGame(game.id, kid.id);
+    setConfirm(false);
+    setPicked(null);
+    setToast(copy.reset.toast);
+  };
 
   return (
     <Screen>
-      <TopBar
-        title={game.title}
-        subtitle={plan.stars > 0 ? `${plan.stars} of ${plan.maxStars} stars` : 'No stars yet'}
-        back="/"
-        backLabel="Back to home"
-        action={reads ? <IconButton icon="speaker" label="Read this page aloud" onClick={() => say(`${game.title}. ${plan.complete ? doneMsg : playLabel}`)} /> : undefined}
-      />
+      <TopBar title={game.title} subtitle={copy.sub} back="/settings" backLabel="Back to settings" />
+      <p className="sc-sub sc-picker__intro">{copy.intro}</p>
 
       <div ref={scroller} className="sc-scroll sc-levels">
         {plan.chapters.map((c) => (
@@ -60,78 +85,93 @@ export default function Levels({ game }: { game: GameEntry }) {
               <h2 className="sc-h2">{c.title}</h2>
               {c.note && <span className="sc-note">{c.note}</span>}
             </div>
-            <div className="sc-grid" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+            <div className="sc-grid" style={{ gridTemplateColumns: `repeat(${tablet ? 8 : 5}, minmax(0, 1fr))` }}>
               {c.tiles.map((t) => {
-                const label = tileLabel(t, noun);
-                if (t.state === 'locked') {
-                  return (
-                    <button
-                      key={t.index}
-                      type="button"
-                      className="sc-tile is-locked"
-                      aria-disabled="true"
-                      aria-label={label}
-                      onClick={() => {
-                        const msg = lockMessage(plan, t.index, noun);
-                        setStatus(msg);
-                        if (reads) say(msg);
-                      }}
-                    >
-                      <span className="sc-tile__lock">
-                        <Icon name="lock" size={18} strokeWidth={2.4} />
-                      </span>
-                      <span className="sc-tile__n" aria-hidden="true">
-                        {t.n}
-                      </span>
-                    </button>
-                  );
-                }
+                const locked = t.state === 'locked';
                 const current = t.state === 'current';
                 return (
-                  <a
+                  <button
                     key={t.index}
-                    className="sc-tile"
-                    data-tone={current ? 'yellow' : 'purple'}
-                    href={levelHref(t.n)}
-                    aria-label={label}
+                    type="button"
+                    className={cx('sc-tile', locked && 'is-locked')}
+                    data-tone={locked ? undefined : current ? 'yellow' : 'purple'}
+                    aria-label={tileLabel(t, noun, kid.name)}
+                    aria-pressed={picked === t.index}
                     aria-current={current ? 'step' : undefined}
-                    onClick={() => sfx.tap()}
+                    onClick={() => pick(t.index)}
                   >
-                    <span className="sc-tile__n" aria-hidden="true">
-                      {t.n}
-                    </span>
-                    {current ? (
-                      <span aria-hidden="true" style={{ marginLeft: 2, display: 'grid' }}>
-                        <Icon name="play" size={16} />
-                      </span>
+                    {locked ? (
+                      <>
+                        <span className="sc-tile__lock">
+                          <Icon name="lock" size={18} strokeWidth={2.4} />
+                        </span>
+                        <span className="sc-tile__n" aria-hidden="true">
+                          {t.n}
+                        </span>
+                      </>
                     ) : (
-                      <span className="sc-tile__stars" aria-hidden="true">
-                        {[1, 2, 3].map((i) => (
-                          <span key={i} className={i <= t.stars ? 'sc-tile__star' : 'sc-tile__star is-off'}>
-                            <Icon name="star" size={12} />
+                      <>
+                        <span className="sc-tile__n sc-tile__n--row" aria-hidden="true">
+                          {t.n}
+                          {current && <Icon name="play" size={16} />}
+                        </span>
+                        {(!current || t.stars > 0) && (
+                          <span className="sc-tile__stars" aria-hidden="true">
+                            {[1, 2, 3].map((i) => (
+                              <span key={i} className={i <= t.stars ? 'sc-tile__star' : 'sc-tile__star is-off'}>
+                                <Icon name="star" size={12} />
+                              </span>
+                            ))}
                           </span>
-                        ))}
-                      </span>
+                        )}
+                      </>
                     )}
-                  </a>
+                  </button>
                 );
               })}
               {c.more && <div className="sc-tile sc-tile--more">More soon</div>}
             </div>
           </section>
         ))}
+
+        <section className="sc-panel sc-picker__reset" aria-labelledby="pick-reset">
+          <h2 id="pick-reset" className="sc-panel__title sc-panel__title--sm">
+            {copy.reset.heading}
+          </h2>
+          <p className="sc-helper">{copy.reset.helper}</p>
+          <button type="button" className="sc-btn sc-btn--outline-danger" onClick={() => setConfirm(true)}>
+            {copy.reset.button}
+          </button>
+        </section>
       </div>
 
       <div className="sc-levels__foot">
-        <p role="status" className="sc-status">
-          {status || (plan.complete ? doneMsg : '')}
+        <p role="status" className={toast ? 'sc-toast sc-toast--inline' : 'sc-status sc-status--strong'}>
+          {toast || copy.status(picked)}
         </p>
-        {!plan.complete && (
-          <PressButton variant="green" size="xl" icon="play" iconEnd block href={levelHref(playN)}>
-            {playLabel}
+        {target !== null && (
+          <PressButton variant="green" size="xl" icon={active ? 'play' : undefined} iconEnd block onClick={save}>
+            {copy.button(target)}
           </PressButton>
         )}
       </div>
+
+      {confirm && (
+        <Overlay role="alertdialog" label={copy.reset.title} describedBy="pick-reset-body" onClose={() => setConfirm(false)}>
+          <h2 className="sc-overlay__title">{copy.reset.title}</h2>
+          <p id="pick-reset-body" className="sc-sub">
+            {copy.reset.body}
+          </p>
+          <div className="sc-overlay__actions">
+            <button type="button" className="sc-btn sc-btn--flat sc-btn--md" data-autofocus onClick={() => setConfirm(false)}>
+              Keep it
+            </button>
+            <button type="button" className="sc-btn sc-btn--danger sc-btn--md" onClick={reset}>
+              {copy.reset.go}
+            </button>
+          </div>
+        </Overlay>
+      )}
     </Screen>
   );
 }

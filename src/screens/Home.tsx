@@ -3,19 +3,20 @@ import { GAMES } from '../games/registry';
 import { gameOf, progressStore, totalStars, useActivePlayer } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { Icon, IconButton, Pill, Screen, cx, useLayout } from '../shared/ui';
-import { homePill } from './logic/levels';
-import { grownUpGate } from './logic/session';
+import { homeCardName, homePill } from './logic/levels';
+import { grownUpGate, settingsReturn } from './logic/session';
 import { STICKERS, earnedCount, stickersDue } from './logic/stickers';
 import { Avatar, GameArt } from './parts/Art';
 import './screens.css';
 
-/** Home (design/canvas/Hub.dc.html, brief 3.6): greeting, sticker line, Today's discovery, all nine games. */
+/** Home (design/canvas/Hub.dc.html, brief 3.6 and four-puzzle brief 7.2): greeting, sticker line, Today's discovery, all nine games. */
 export default function Home() {
   const player = useActivePlayer();
   const tablet = useLayout().mode === 'tablet';
 
   useEffect(() => {
     grownUpGate.reset();
+    settingsReturn.setChild(null);
   }, []);
 
   // Chapters finished since the last visit turn into stickers.
@@ -55,7 +56,7 @@ export default function Home() {
 
       <div className="sc-scroll sc-home__scroll">
         {/* Today's discovery: the board's sample question. It opens Color Mixer, which is not built yet. */}
-        <a className="sc-discovery" href={toHref('/game/mixer/levels')}>
+        <a className="sc-discovery" href={toHref('/game/mixer')}>
           <span className="sc-art" aria-hidden="true" style={{ width: 56, height: 44 }}>
             <span className="sc-art__piece sc-art__disc" data-brick="red" style={{ left: 0, top: 4, width: 34, height: 34, opacity: 0.9 }} />
             <span className="sc-art__piece sc-art__disc sc-art__blend" data-brick="blue" style={{ left: 20, top: 4, width: 34, height: 34, opacity: 0.85 }} />
@@ -69,11 +70,12 @@ export default function Home() {
 
         <h2 className="sc-h2 sc-home__games-h">Games</h2>
         <ul className={cx('sc-games', tablet && 'sc-games--two')}>
+          {/* Each card opens the game at the child's current level (brief 2.1); the pill names that level. */}
           {GAMES.map((g) => {
             const pill = homePill(g.meta, gameOf(player, g.id), player.ageBand, g.noun);
             return (
               <li key={g.id}>
-                <a className={cx('sc-gamecard', !g.playable && 'is-soon')} href={toHref(g.route)} aria-label={`${g.title}. ${g.sub}. ${pill}`}>
+                <a className={cx('sc-gamecard', !g.playable && 'is-soon')} href={toHref(g.route)} aria-label={homeCardName(g, player)}>
                   <GameArt art={g.art} />
                   <span className="sc-gamecard__title">{g.title}</span>
                   <span className="sc-gamecard__sub">{g.sub}</span>

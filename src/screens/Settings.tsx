@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { getGame, type GameId } from '../games/registry';
+import { useEffect, useState, type ReactNode } from 'react';
+import { GAMES, getGame, type GameId } from '../games/registry';
 import { auth } from '../shared/account';
 import {
   LEGACY_KEY,
@@ -14,10 +14,11 @@ import {
   type SettingKey,
   type TimerMode,
 } from '../shared/progress';
-import { go, toHref } from '../shared/router';
+import { go, pathFor, toHref } from '../shared/router';
 import { sfx } from '../shared/sound';
 import { Icon, Screen, TopBar } from '../shared/ui';
-import { grownUpGate } from './logic/session';
+import { settingsRowName, settingsRowSub } from './logic/levels';
+import { grownUpGate, settingsReturn } from './logic/session';
 import { Notice, ProviderButtons, useAuthNotice, LegalLinks } from './parts/Account';
 import { AddChild, bandText } from './parts/AddChild';
 import { Avatar } from './parts/Art';
@@ -73,7 +74,8 @@ type Confirm = { kind: 'one'; player: Player } | { kind: 'all' } | { kind: 'dele
  */
 export default function Settings() {
   const state = useProgressState();
-  const [kidId, setKidId] = useState<string | null>(state.activePlayerId ?? state.players[0]?.id ?? null);
+  // Coming back from the level picker shows the child whose game was open there.
+  const [kidId, setKidId] = useState<string | null>(() => settingsReturn.child() ?? state.activePlayerId ?? state.players[0]?.id ?? null);
   const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [toast, showToast] = useToast();
@@ -81,6 +83,11 @@ export default function Settings() {
 
   const kid = state.players.find((p) => p.id === kidId) ?? state.players[0] ?? null;
 
+  // A level set for another child in the picker ends here, with its toast.
+  useEffect(() => {
+    const t = settingsReturn.takeToast();
+    if (t) showToast(t);
+  }, []);
 
   const doConfirm = () => {
     if (!confirm) return;
@@ -153,6 +160,7 @@ export default function Settings() {
                 onClick={() => {
                   sfx.tap();
                   setKidId(p.id);
+                  settingsReturn.setChild(p.id);
                   setAdding(false);
                 }}
               >
@@ -198,6 +206,25 @@ export default function Settings() {
             <h2 id="set-progress" className="sc-panel__title sc-panel__title--sm">
               Progress
             </h2>
+            <div className="sc-gamerows">
+              {GAMES.filter((g) => g.playable).map((g) => (
+                <a
+                  key={g.id}
+                  className="sc-gamerow"
+                  href={toHref(pathFor({ name: 'levelPicker', game: g.id, playerId: kid.id }))}
+                  aria-label={settingsRowName(g, kid)}
+                  onClick={() => sfx.tap()}
+                >
+                  <span className="sc-gamerow__text">
+                    <span className="sc-gamerow__name">{g.title}</span>
+                    <span className="sc-gamerow__sub">{settingsRowSub(g, kid)}</span>
+                  </span>
+                  <span className="sc-gamerow__chev" aria-hidden="true">
+                    <Icon name="chevronRight" size={20} strokeWidth={2.8} />
+                  </span>
+                </a>
+              ))}
+            </div>
             <button type="button" className="sc-btn sc-btn--outline-danger" onClick={() => setConfirm({ kind: 'one', player: kid })}>
               Reset {kid.name}'s progress
             </button>

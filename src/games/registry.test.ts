@@ -11,8 +11,8 @@ describe('game registry', () => {
     expect(getGame('slide')).toBeUndefined();
   });
 
-  it('points every card at its Levels route', () => {
-    for (const g of GAMES) expect(parseRoute(splitPath(g.route))).toEqual({ name: 'levels', id: g.id });
+  it('points every card at the game itself, which opens the current level (brief 7.2)', () => {
+    for (const g of GAMES) expect(parseRoute(splitPath(g.route))).toEqual({ name: 'game', id: g.id, level: null });
   });
 
   it('has chapters that cover each playable game’s levels in order, with no gaps', () => {

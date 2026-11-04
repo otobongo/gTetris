@@ -25,11 +25,12 @@ describe('router', () => {
     }
   });
 
-  it('redirects the old game paths', () => {
-    expect(legacyRedirect(['slide'])).toBe('/game/escape/levels');
+  it('redirects the old game paths to the game, never to a level grid (brief 7.4)', () => {
+    expect(legacyRedirect(['slide'])).toBe('/game/escape');
     expect(legacyRedirect(['slide', '3'])).toBe('/game/escape/3');
     expect(legacyRedirect(['drop', '2'])).toBe('/game/drop/2');
-    expect(legacyRedirect(['letters'])).toBe('/game/letters/levels');
+    expect(legacyRedirect(['letters'])).toBe('/game/letters');
+    expect(legacyRedirect(['drop'])).toBe('/game/drop');
     expect(legacyRedirect(['game', 'escape'])).toBeNull();
     expect(legacyRedirect([])).toBeNull();
     expect(legacyRedirect(['slide', '3', 'x'])).toBeNull();

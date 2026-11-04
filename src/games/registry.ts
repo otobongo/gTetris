@@ -6,6 +6,7 @@
 import type { BrickColor } from '../shared/ui/palette';
 import type { GameMeta } from './meta';
 import { meta as dropMeta } from './drop/meta';
+import { LEVELS as LETTERS_LEVELS } from './letters/levels';
 import { meta as lettersMeta } from './letters/meta';
 import { meta as escapeMeta } from './slide/meta';
 
@@ -43,10 +44,15 @@ export interface GameEntry {
   art: ArtPiece[];
   /** False until the game exists in the app; Home can still show its card. */
   playable: boolean;
-  /** Where the Home card goes: every card opens that game's Levels (user decision 5). */
+  /**
+   * Where the Home card goes: the game itself, which opens the child's current level (brief 2.1).
+   * Children never see a level grid; grown-ups pick levels in Settings.
+   */
   route: string;
-  /** The game itself, without a level. */
+  /** The game itself, without a level (the same path as `route`). */
   playRoute: string;
+  /** What one puzzle of a level is called in progress lines: 'word' on spelling levels, otherwise 'puzzle' (brief 9). */
+  unit: (level: number) => 'puzzle' | 'word';
   /** Level count and chapters; null for games not built yet. */
   meta: GameMeta | null;
 }
@@ -59,8 +65,20 @@ const brick = (color: BrickColor, x: number, y: number, w: number, h: number, st
   kind: 'brick', color, x, y, w, h, stud, text, fontSize: text ? 15 : undefined,
 });
 
-function entry(id: GameId, title: string, sub: string, art: ArtPiece[], meta: GameMeta | null, noun: 'Level' | 'Stage' = 'Level'): GameEntry {
-  return { id, title, sub, noun, art, playable: meta !== null, route: `/game/${id}/levels`, playRoute: `/game/${id}`, meta };
+const puzzles = (): 'puzzle' => 'puzzle';
+/** Letter Builder's spelling levels count words built; every other level counts puzzles solved. */
+const lettersUnit = (level: number): 'puzzle' | 'word' => (LETTERS_LEVELS[level]?.kind === 'spell' ? 'word' : 'puzzle');
+
+function entry(
+  id: GameId,
+  title: string,
+  sub: string,
+  art: ArtPiece[],
+  meta: GameMeta | null,
+  noun: 'Level' | 'Stage' = 'Level',
+  unit: (level: number) => 'puzzle' | 'word' = puzzles,
+): GameEntry {
+  return { id, title, sub, noun, art, playable: meta !== null, route: `/game/${id}`, playRoute: `/game/${id}`, unit, meta };
 }
 
 export const GAMES: readonly GameEntry[] = [
@@ -79,7 +97,7 @@ export const GAMES: readonly GameEntry[] = [
     brick('orange', 0, 9, 18, 26, undefined, 'A'),
     brick('pink', 19, 9, 18, 26, undefined, 'B'),
     brick('blue', 38, 9, 18, 26, undefined, 'C'),
-  ], lettersMeta),
+  ], lettersMeta, 'Level', lettersUnit),
   entry('mixer', 'Color Mixer', 'Mix two colors to make a new one', [
     { kind: 'disc', color: 'yellow', x: 6, y: 7, w: 30, h: 30 },
     { kind: 'disc', color: 'blue', x: 24, y: 7, w: 30, h: 30, blend: true },
