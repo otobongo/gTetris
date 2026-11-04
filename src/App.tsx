@@ -1,8 +1,9 @@
-import { useEffect, type ComponentType } from 'react';
+import { useEffect, useMemo, type ComponentType } from 'react';
 import { getGame, type GameId } from './games/registry';
 import DropApp from './games/drop/DropApp';
 import LettersApp from './games/letters/LettersApp';
 import SlideApp from './games/slide/SlideApp';
+import { activePlayer, progressStore, useProgressState } from './shared/progress';
 import { legacyRedirect, parseRoute, replace, useRoute } from './shared/router';
 import Break from './screens/Break';
 import ComingSoon from './screens/ComingSoon';
@@ -15,6 +16,8 @@ import Settings from './screens/Settings';
 import Signin from './screens/Signin';
 import Signup from './screens/Signup';
 import Stickers from './screens/Stickers';
+import { notePath, setResumePath, shouldBreak } from './screens/logic/session';
+import { usePlayClock } from './screens/playClock';
 
 /** The playable games. Each takes the path segments after its id: [] for its start screen, ['3'] for level 3. */
 const GAME_SCREENS: Partial<Record<GameId, ComponentType<{ params: string[] }>>> = {
@@ -25,14 +28,33 @@ const GAME_SCREENS: Partial<Record<GameId, ComponentType<{ params: string[] }>>>
 
 export default function App() {
   const segments = useRoute();
+  const state = useProgressState();
+  const player = activePlayer(state);
+  const path = `/${segments.join('/')}`;
   const redirect = legacyRedirect(segments);
   const route = parseRoute(segments);
   const unknown = route.name === 'notFound' || ((route.name === 'game' || route.name === 'levels') && !getGame(route.id));
-  const target = redirect ?? (unknown ? '/' : null);
+
+  // Break is decided when a screen opens, not while it is open, so a level in progress is not
+  // cut off; the next screen change after the limit is used up shows Break instead.
+  const breakNow = useMemo(() => shouldBreak(route, activePlayer(progressStore.getState()), progressStore.now()), [path]);
+  // Home and Break need a player: before anyone is set up, or with nobody picked, Who's playing opens.
+  const needsPlayer = (route.name === 'home' || route.name === 'break') && !player;
+
+  const target = redirect ?? (unknown ? '/' : breakNow ? '/break' : needsPlayer ? '/players' : null);
 
   useEffect(() => {
-    if (target) replace(target);
-  }, [target]);
+    if (!target) notePath(path);
+  }, [path, target]);
+
+  useEffect(() => {
+    if (!target) return;
+    if (target === '/break') setResumePath(path);
+    replace(target);
+  }, [target, path]);
+
+  usePlayClock(!target && route.name === 'game' && route.level !== null);
+
   if (target) return null;
 
   switch (route.name) {
@@ -53,8 +75,10 @@ export default function App() {
     case 'terms':
     case 'privacy':
       return <HelpDoc page={route.name} />;
-    case 'levels':
-      return <Levels game={getGame(route.id)!} />;
+    case 'levels': {
+      const game = getGame(route.id)!;
+      return game.playable ? <Levels game={game} /> : <ComingSoon game={game} />;
+    }
     case 'game': {
       const game = getGame(route.id)!;
       const Game = GAME_SCREENS[game.id];
