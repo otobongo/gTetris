@@ -213,12 +213,15 @@ export default function SlideGame({ index }: { index: number }) {
     (block: number, gate: GateDef) => {
       sfx.exit();
       setExiting({ block, side: gate.side });
+      // keyboard players keep their place: focus moves to another brick when this one leaves
+      const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-brick');
       later(() => {
         const ns = withMove(stateRef.current, block, null);
         stateRef.current = ns;
         setExiting(null);
         setState(ns);
         finishIfSolved(ns);
+        if (hadFocus) later(() => document.querySelector<HTMLElement>('.esc-brick:not(.is-exiting)')?.focus(), 0);
       }, 320);
     },
     [finishIfSolved],

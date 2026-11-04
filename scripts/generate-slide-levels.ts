@@ -318,15 +318,16 @@ export function build(t: Tier, rand: Rand): LevelSpec | null {
 
 const WORDS = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];
 
-/** A short factual subtitle from what the level contains, in the canvas style ("Three colors, one icy door"). */
+/**
+ * A short factual subtitle from what the level contains, in the canvas style ("Three colors, one icy door").
+ * Colors plus the one obstacle that matters most, so it fits the top bar on a small phone.
+ */
 export function describe(colors: number, gates: GateDef[], stones: boolean): string {
-  const parts = [`${WORDS[colors] ?? colors} colors`];
+  const count = (n: number, one: string) => `${WORDS[n].toLowerCase()} ${one}${n === 1 ? '' : 's'}`;
   const ice = gates.filter((g) => g.lock).length;
   const locks = gates.filter((g) => g.lockColor).length;
-  if (ice) parts.push(`${WORDS[ice].toLowerCase()} icy door${ice === 1 ? '' : 's'}`);
-  if (locks) parts.push(`${WORDS[locks].toLowerCase()} color lock${locks === 1 ? '' : 's'}`);
-  if (stones) parts.push('stones');
-  return parts.join(', ');
+  const extra = locks ? count(locks, 'color lock') : ice ? count(ice, 'icy door') : stones ? 'stones' : '';
+  return [`${WORDS[colors] ?? colors} colors`, extra].filter(Boolean).join(', ');
 }
 
 /* ---------- solving ---------- */
@@ -468,7 +469,10 @@ async function main() {
       out.push({ spec, par: s.par, order: s.order });
     } else {
       const next = picked.get(slot.tier)!.shift();
-      if (next) out.push({ spec: next.spec, par: next.par, order: next.order });
+      if (!next) continue;
+      // name from the current describe(), so cached boards pick up wording changes
+      const spec = { ...next.spec, name: describe(new Set(Object.values(next.spec.colors)).size, next.spec.gates, next.spec.map.some((l) => l.includes('*'))) };
+      out.push({ spec, par: next.par, order: next.order });
     }
   }
 

@@ -14,6 +14,10 @@
   align-items: center;
 }
 
+/* App.tsx wraps games in the old padded .app column; Screen already pads, so the board would overflow one
+   screen by that padding. Drop it while the Escape board is showing (reported to the foundations owner). */
+.app:has(> .bw-screen .esc) { padding: 0; }
+
 .esc-sr {
   position: absolute;
   width: 1px;
@@ -46,6 +50,8 @@
 .esc-status__glass { flex-shrink: 0; }
 .esc-status__clock { font-size: var(--bw-fs-title); line-height: 1; }
 .esc-status__spacer { flex-grow: 1; }
+.esc-status__moves,
+.esc-status__best { white-space: nowrap; }
 .esc-status__best { color: var(--bw-accent); }
 .esc-status__track {
   height: 10px;
@@ -153,7 +159,7 @@
   transition: transform var(--bw-fast) ease-out, opacity 0.3s ease-in;
 }
 .esc-brick:active { cursor: grabbing; }
-.esc-brick:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+.esc-brick:focus-visible { z-index: 3; outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
 .esc-brick .esc-brick__face {
   display: block;
   background-position: -2px -2px;
