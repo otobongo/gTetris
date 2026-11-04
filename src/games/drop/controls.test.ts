@@ -22,7 +22,7 @@ import { emptyBoard, newGame, withBoard, type GameState, type Rules } from './en
 
 const rules: Rules = { cols: 10, rows: 18, pieces: ['tee'], goalRows: 3, gravityMs: 1000, lockDelayMs: 500 };
 const game = (): GameState => newGame(rules, 1);
-const ALL: Action[] = ['left', 'right', 'down', 'rotate', 'rotateBack', 'drop', 'hold'];
+const ALL: Action[] = ['left', 'right', 'down', 'rotate', 'rotateBack', 'drop'];
 
 describe('Brick Drop keys', () => {
   it('maps the arrows, Space and the letter keys to the board moves', () => {
@@ -31,14 +31,12 @@ describe('Brick Drop keys', () => {
     expect(keyAction('ArrowDown')).toBe('down');
     expect(keyAction('ArrowUp')).toBe('rotate');
     expect(keyAction(' ')).toBe('drop');
-    expect(keyAction('Shift')).toBe('hold');
   });
 
   it('treats upper and lower case letters the same', () => {
-    for (const [lower, upper] of [['x', 'X'], ['z', 'Z'], ['c', 'C']]) expect(keyAction(lower)).toBe(keyAction(upper));
+    for (const [lower, upper] of [['x', 'X'], ['z', 'Z']]) expect(keyAction(lower)).toBe(keyAction(upper));
     expect(keyAction('x')).toBe('rotate');
     expect(keyAction('z')).toBe('rotateBack');
-    expect(keyAction('c')).toBe('hold');
   });
 
   it('ignores every other key, including names that exist on every object', () => {
@@ -85,7 +83,7 @@ describe('Brick Drop control row', () => {
 
   it('repeats only moving and dropping one row when held, never turns, hard drops or holds', () => {
     expect(Object.keys(REPEAT).sort()).toEqual(['down', 'left', 'right']);
-    for (const a of ['rotate', 'rotateBack', 'drop', 'hold'] as const) expect(REPEAT[a], a).toBeUndefined();
+    for (const a of ['rotate', 'rotateBack', 'drop'] as const) expect(REPEAT[a], a).toBeUndefined();
   });
 
   it('waits before repeating, and steps down faster than sideways', () => {
@@ -125,12 +123,14 @@ describe('Brick Drop actions on the game', () => {
     expect(next.active!.y).toBe(g.active!.y);
   });
 
-  it('puts the brick on hold once per brick', () => {
+  it('has no hold: C, c and Shift do nothing, and no action puts a brick on hold', () => {
+    for (const key of ['c', 'C', 'Shift']) expect(keyAction(key), key).toBeNull();
     const g = game();
-    const held = applyAction(g, 'hold');
-    expect(held.hold).toBe('tee');
-    expect(held.holdUsed).toBe(true);
-    expect(applyAction(held, 'hold')).toBe(held);
+    for (const a of ALL) {
+      const next = applyAction(g, a);
+      expect(next.hold, a).toBeNull();
+      expect(next.holdUsed, a).toBe(false);
+    }
   });
 
   it('bumps at the wall and stays inside the board however often Left is pressed', () => {
@@ -204,9 +204,9 @@ describe('Brick Drop board gestures', () => {
 });
 
 describe('Brick Drop keys and gestures: review additions', () => {
-  it('still holds with Shift and turns with Shift+X, since Shift is not a browser shortcut key', () => {
+  it('ignores Shift on its own and still turns with Shift+X, since Shift is not a browser shortcut key', () => {
     // A real Shift press arrives with shiftKey set; it must not be treated like Ctrl, Cmd or Alt.
-    expect(keyCommand({ key: 'Shift', shiftKey: true } as KeyLike)).toBe('hold');
+    expect(keyCommand({ key: 'Shift', shiftKey: true } as KeyLike)).toBeNull();
     expect(keyCommand({ key: 'X', shiftKey: true } as KeyLike)).toBe('rotate');
     expect(keyCommand({ key: 'P', shiftKey: true } as KeyLike)).toBe('pause');
   });

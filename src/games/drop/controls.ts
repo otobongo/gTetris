@@ -3,9 +3,9 @@
  * does to the game. Pure, so the mapping can be tested without a browser. Play.tsx wires it up.
  */
 import type { IconName } from '../../shared/ui';
-import { hardDrop, hold, move, rotate, softDrop, type GameState } from './engine';
+import { hardDrop, move, rotate, softDrop, type GameState } from './engine';
 
-export type Action = 'left' | 'right' | 'down' | 'rotate' | 'rotateBack' | 'drop' | 'hold';
+export type Action = 'left' | 'right' | 'down' | 'rotate' | 'rotateBack' | 'drop';
 
 /** Hold-to-repeat timings (ms). Gentle on purpose so small fingers don't overshoot. */
 export const REPEAT: Partial<Record<Action, { delay: number; every: number }>> = {
@@ -14,7 +14,7 @@ export const REPEAT: Partial<Record<Action, { delay: number; every: number }>> =
   down: { delay: 120, every: 45 },
 };
 
-/** Keyboard controls. The on-screen row has Left, Turn, Down and Right; Space and C are keyboard only. */
+/** Keyboard controls. The on-screen row has Left, Turn, Down and Right; Space is keyboard only. There is no hold. */
 export const KEYS: Readonly<Record<string, Action>> = {
   ArrowLeft: 'left',
   ArrowRight: 'right',
@@ -25,9 +25,6 @@ export const KEYS: Readonly<Record<string, Action>> = {
   z: 'rotateBack',
   Z: 'rotateBack',
   ' ': 'drop',
-  c: 'hold',
-  C: 'hold',
-  Shift: 'hold',
 };
 
 /** Keys that pause and resume. */
@@ -75,8 +72,6 @@ export function applyAction(s: GameState, a: Action): GameState {
       return rotate(s, -1);
     case 'drop':
       return hardDrop(s);
-    case 'hold':
-      return hold(s);
   }
 }
 
