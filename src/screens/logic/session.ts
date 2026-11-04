@@ -36,6 +36,13 @@ export function isGrownUpRoute(route: Route): boolean {
   return GROWN_UP_ROUTES.includes(route.name);
 }
 
+/** Screens that open only after the grown-up check: Settings and the account screens. Support, Terms and Privacy stay open. */
+const CHECKED_ROUTES: readonly Route['name'][] = ['settings', 'signin', 'signup'];
+
+export function needsGrownUpCheck(route: Route): boolean {
+  return CHECKED_ROUTES.includes(route.name);
+}
+
 /**
  * The grown-up check on Settings stays passed while a grown-up moves between Settings,
  * Support and the account screens, and ends on the first screen outside them. App calls

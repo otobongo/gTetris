@@ -4,7 +4,7 @@ import DropApp from './games/drop/DropApp';
 import LettersApp from './games/letters/LettersApp';
 import SlideApp from './games/slide/SlideApp';
 import { activePlayer, progressStore, useProgressState } from './shared/progress';
-import { legacyRedirect, parseRoute, replace, useRoute } from './shared/router';
+import { legacyRedirect, parseRoute, replace, useRoute, type Route } from './shared/router';
 import Break from './screens/Break';
 import ComingSoon from './screens/ComingSoon';
 import Help from './screens/Help';
@@ -16,7 +16,8 @@ import Settings from './screens/Settings';
 import Signin from './screens/Signin';
 import Signup from './screens/Signup';
 import Stickers from './screens/Stickers';
-import { grownUpGate, notePath, setResumePath, shouldBreak } from './screens/logic/session';
+import { grownUpGate, needsGrownUpCheck, notePath, setResumePath, shouldBreak } from './screens/logic/session';
+import { GrownUpOnly } from './screens/parts/GrownUpOnly';
 import { usePlayClock } from './screens/playClock';
 
 /** The playable games. Each takes the path segments after its id: [] for its start screen, ['3'] for level 3. */
@@ -62,6 +63,21 @@ export default function App() {
 
   if (target) return null;
 
+  // Settings, Sign in and Sign up open only after the grown-up check; Support, Terms and Privacy stay open.
+  if (needsGrownUpCheck(route)) {
+    return (
+      <GrownUpOnly key={route.name} title={GROWN_UP_TITLES[route.name] ?? 'Grown-ups'}>
+        <Screens route={route} />
+      </GrownUpOnly>
+    );
+  }
+  return <Screens route={route} />;
+}
+
+const GROWN_UP_TITLES: Partial<Record<Route['name'], string>> = { settings: 'Settings', signin: 'Sign in', signup: 'Sign up' };
+
+/** The screen for a route that needs no redirect. */
+function Screens({ route }: { route: Route }) {
   switch (route.name) {
     case 'players':
       return <Players />;

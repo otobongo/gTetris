@@ -25,9 +25,10 @@ the `not-enabled` result, which the screen turns into a calm message.
 
 Sign up calls `createAccount(email, password)` for the email path. The email, Apple, Google and
 Facebook paths all require the "parent or guardian, 18 or older" box first
-(`src/screens/logic/signup.ts`); unticked, no AuthService call is made. Support (`src/screens/logic/help.ts`) promises sync
-across devices and deletion on every device only when `ACCOUNTS_ACTIVE` is true, not just when
-the flag is on.
+(`src/screens/logic/signup.ts`); unticked, no AuthService call is made. Sign in and Sign up
+sit behind the same grown-up check as Settings (`GrownUpOnly` in `src/App.tsx`). Support
+(`src/screens/logic/help.ts`) promises sync across devices and deletion on every device only
+when `ACCOUNTS_ACTIVE` is true, not just when the flag is on.
 
 ## Plugging in a provider
 

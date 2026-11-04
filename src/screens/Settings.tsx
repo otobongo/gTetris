@@ -21,7 +21,7 @@ import { grownUpGate } from './logic/session';
 import { Notice, ProviderButtons, useAuthNotice, LegalLinks } from './parts/Account';
 import { AddChild, bandText } from './parts/AddChild';
 import { Avatar } from './parts/Art';
-import { GrownUpCheck, Overlay, Segmented, SwitchRow, Toast, useToast } from './parts/Controls';
+import { Overlay, Segmented, SwitchRow, Toast, useToast } from './parts/Controls';
 import { Glyph } from './parts/Glyph';
 import './screens.css';
 
@@ -66,13 +66,13 @@ const TOGGLES: { key: SettingKey; label: string; note: string; icon: ReactNode }
 type Confirm = { kind: 'one'; player: Player } | { kind: 'all' } | { kind: 'delete' };
 
 /**
- * Settings for grown-ups (design/canvas/Grownups.dc.html), behind the typed-number check.
+ * Settings for grown-ups (design/canvas/Grownups.dc.html), behind the typed-number check (App puts
+ * it behind GrownUpOnly, like Sign in and Sign up).
  * Children, timer and daily limit, skills, sound switches, progress resets, the account panel
  * (switched off: every provider answers with the coming-soon note), help links and Delete.
  */
 export default function Settings() {
   const state = useProgressState();
-  const [open, setOpen] = useState(grownUpGate.passed());
   const [kidId, setKidId] = useState<string | null>(state.activePlayerId ?? state.players[0]?.id ?? null);
   const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
@@ -81,23 +81,6 @@ export default function Settings() {
 
   const kid = state.players.find((p) => p.id === kidId) ?? state.players[0] ?? null;
 
-  if (!open) {
-    return (
-      <Screen>
-        <TopBar title="Settings" subtitle="For grown-ups" back="/" backLabel="Back to home" />
-        <div className="sc-locked">
-          <p className="sc-locked__title">This area is for grown-ups</p>
-          <GrownUpCheck
-            onPass={() => {
-              grownUpGate.pass();
-              setOpen(true);
-            }}
-            onCancel={() => go('/')}
-          />
-        </div>
-      </Screen>
-    );
-  }
 
   const doConfirm = () => {
     if (!confirm) return;
