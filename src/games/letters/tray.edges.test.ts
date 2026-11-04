@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AGE_BANDS } from '../../shared/progress';
+import { AGE_BANDS, PUZZLES_PER_LEVEL } from '../../shared/progress';
 import { rng } from '../../shared/rng';
 import { CVC, EIGHT, FIVE, FOUR, SEVEN, SIX, THREE } from './data';
 import { LEVELS, makeRound, type FillPrompt, type MatchPrompt } from './levels';
@@ -79,9 +79,12 @@ describe('Letter Builder words by age: edges', () => {
     for (const band of AGE_BANDS) {
       for (const { def, i } of SPELL) {
         if (def.kind !== 'spell') continue;
-        expect(spellWords(band, def.tier).length, `${band} level ${i + 1}`).toBeGreaterThanOrEqual(def.prompts);
+        // Four-puzzle levels (brief 4.3): every level holds 6 puzzles, so every pool needs 6 different words.
+        expect(spellWords(band, def.tier).length, `${band} level ${i + 1}`).toBeGreaterThanOrEqual(PUZZLES_PER_LEVEL);
         const round = makeRound(i, 1234, band);
-        expect(round.prompts, `${band} level ${i + 1}`).toHaveLength(def.prompts);
+        expect(round.prompts, `${band} level ${i + 1}`).toHaveLength(PUZZLES_PER_LEVEL);
+        const words = (round.prompts as FillPrompt[]).map((p) => p.word!.word);
+        expect(new Set(words).size, `${band} level ${i + 1}`).toBe(PUZZLES_PER_LEVEL);
       }
     }
   });

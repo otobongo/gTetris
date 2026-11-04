@@ -38,6 +38,52 @@ const ART: Record<string, { viewBox: string; art: ReactNode }> = {
       </>
     ),
   },
+  cat: {
+    viewBox: '0 0 100 94',
+    art: (
+      <>
+        <path d="M22 42L17 10l23 15z" fill="#ffab5e" stroke="#c4500a" strokeWidth="3" strokeLinejoin="round"></path>
+        <path d="M78 42l5-32-23 15z" fill="#ffab5e" stroke="#c4500a" strokeWidth="3" strokeLinejoin="round"></path>
+        <path d="M23 20l2 12 8-5z" fill="#ff9fd4"></path><path d="M77 20l-2 12-8-5z" fill="#ff9fd4"></path>
+        <ellipse cx="50" cy="54" rx="34" ry="30" fill="#ffab5e" stroke="#c4500a" strokeWidth="3"></ellipse>
+        <path d="M43 26v8M50 25v10M57 26v8" fill="none" stroke="#ff7a1a" strokeWidth="3.5" strokeLinecap="round"></path>
+        <circle cx="37" cy="51" r="5" fill="#2e2e38"></circle><circle cx="63" cy="51" r="5" fill="#2e2e38"></circle>
+        <circle cx="38.5" cy="49.5" r="1.6" fill="#ffffff"></circle><circle cx="64.5" cy="49.5" r="1.6" fill="#ffffff"></circle>
+        <path d="M45 61h10l-5 5z" fill="#c72f84"></path>
+        <path d="M50 66c-2 4-7 5-10 2M50 66c2 4 7 5 10 2" fill="none" stroke="#c4500a" strokeWidth="2.5" strokeLinecap="round"></path>
+        <path d="M30 63H13M30 68l-15 4M70 63h17M70 68l15 4" fill="none" stroke="#c4500a" strokeWidth="2.2" strokeLinecap="round"></path>
+      </>
+    ),
+  },
+  duck: {
+    viewBox: '0 0 120 90',
+    art: (
+      <>
+        <path d="M98 52l14-14-1 22z" fill="#ffc21a" stroke="#d48a00" strokeWidth="3" strokeLinejoin="round"></path>
+        <ellipse cx="62" cy="58" rx="40" ry="22" fill="#ffc21a" stroke="#d48a00" strokeWidth="3"></ellipse>
+        <path d="M52 54c8 11 26 11 32 0-10 4-22 4-32 0z" fill="#ffe266" stroke="#d48a00" strokeWidth="3" strokeLinejoin="round"></path>
+        <circle cx="34" cy="30" r="17" fill="#ffc21a" stroke="#d48a00" strokeWidth="3"></circle>
+        <path d="M19 29c-8 0-13 3-13 5.5s5 4.5 14 3z" fill="#ff7a1a" stroke="#c4500a" strokeWidth="3" strokeLinejoin="round"></path>
+        <circle cx="32" cy="25" r="3.5" fill="#2e2e38"></circle><circle cx="33" cy="24" r="1.2" fill="#ffffff"></circle>
+        <path d="M10 84q10-6 20 0t20 0 20 0 20 0 20 0" fill="none" stroke="#7cc0ff" strokeWidth="4" strokeLinecap="round"></path>
+      </>
+    ),
+  },
+  penguin: {
+    viewBox: '0 0 100 100',
+    art: (
+      <>
+        <path d="M33 88h13l-1 6H31zM54 88h13l2 6H55z" fill="#ff7a1a" stroke="#c4500a" strokeWidth="2.5" strokeLinejoin="round"></path>
+        <path d="M26 46c-11 9-14 21-12 30 7-3 11-10 13-18z" fill="#2e2e38" stroke="#17171d" strokeWidth="3" strokeLinejoin="round"></path>
+        <path d="M74 46c11 9 14 21 12 30-7-3-11-10-13-18z" fill="#2e2e38" stroke="#17171d" strokeWidth="3" strokeLinejoin="round"></path>
+        <path d="M50 8c16 0 26 14 26 34v26c0 14-12 22-26 22S24 82 24 68V42C24 22 34 8 50 8z" fill="#2e2e38" stroke="#17171d" strokeWidth="3"></path>
+        <path d="M50 32c10 0 16 9 16 21v13c0 10-7 16-16 16s-16-6-16-16V53c0-12 6-21 16-21z" fill="#f1eef7"></path>
+        <circle cx="42" cy="24" r="4.5" fill="#ffffff"></circle><circle cx="58" cy="24" r="4.5" fill="#ffffff"></circle>
+        <circle cx="43" cy="24.5" r="2.4" fill="#2e2e38"></circle><circle cx="57" cy="24.5" r="2.4" fill="#2e2e38"></circle>
+        <path d="M44 31h12l-6 7z" fill="#ffc21a" stroke="#d48a00" strokeWidth="2" strokeLinejoin="round"></path>
+      </>
+    ),
+  },
   fish: {
     viewBox: '0 0 120 90',
     art: (
@@ -121,6 +167,9 @@ const ART: Record<string, { viewBox: string; art: ReactNode }> = {
     ),
   },
 };
+
+/** Words drawn as SVG; every other word shows its emoji. */
+export const DRAWN_WORDS: readonly string[] = Object.keys(ART);
 
 /** The picture for a word: the board's drawing when there is one, otherwise the emoji. Decorative; the button around it carries the name. */
 export function WordPicture({ word, emoji }: { word: string; emoji: string }) {

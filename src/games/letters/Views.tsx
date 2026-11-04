@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject,
 import { letterName, say } from '../../shared/speech';
 import { sfx } from '../../shared/sound';
 import { LetterBrick, StaticBrick } from './Brick';
+import { MID_LINE, solvedLine } from './copy';
 import { WordPicture } from './Pictures';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 import {
@@ -24,8 +25,11 @@ import { minViewHeight, slotSize, traySize, type SlotSize, type TraySize } from 
 export interface ViewProps<P> {
   prompt: P;
   active: boolean;
+  /** A wrong tap: a slip, and the stuck count signal (brief 3.1). */
   onSlip: () => void;
-  /** The prompt is finished. Spelling calls this when the word is built; the other kinds call it after their short celebration. */
+  /** A right tap that moves the puzzle on: it hides the stuck offer and resets the time signal (3.1, 3.2). */
+  onProgress?: () => void;
+  /** The puzzle is solved, called on the tap that solves it. The parent then shows Next in the tray well. */
   onDone: () => void;
   /** the parent's hint button calls this; it returns false when there is nothing to point at */
   hintRef: MutableRefObject<(() => boolean) | null>;
@@ -35,6 +39,12 @@ export interface ViewProps<P> {
   innerW: number;
   /** What to tell the child before the first tap. */
   instruction: string;
+  /** A line that takes the help line's place while it is set: the stuck offer (3.2). */
+  helpOverride?: string | null;
+  /** The green New puzzle button, shown in the help row's left slot while the offer is up. */
+  offer?: ReactNode;
+  /** Takes the tray's place inside its well once the puzzle is solved: Next, or Play Level after the level card. */
+  slot?: ReactNode;
 }
 
 /** Smallest slot that can be a real button. Below it the answer row is a plain list. */
@@ -135,21 +145,25 @@ function trayVars(t: TraySize): CSSProperties {
   } as CSSProperties;
 }
 
-/** The help line, with the hint button at its right edge. The line says what to do, then how it is going. */
-function HelpRow({ text, hint }: { text: string; hint: ReactNode }) {
+/**
+ * The help line, with the hint button at its right edge and the stuck offer in the left slot. The
+ * offer comes last in the markup, so it is last in the tab order, and CSS places it on the left (brief 10).
+ */
+function HelpRow({ text, hint, offer }: { text: string; hint: ReactNode; offer?: ReactNode }) {
   return (
     <div className="lb-helprow">
-      <span aria-hidden="true" />
       <p className="lb-help" role="status">
         {text}
       </p>
-      {hint}
+      <span className="lb-helprow__hint">{hint}</span>
+      <span className="lb-helprow__offer">{offer}</span>
     </div>
   );
 }
 
-/** The inset well the tray sits in. */
-function Well({ label, children }: { label?: string; children: ReactNode }) {
+/** The inset well the tray sits in. Once the puzzle is solved, `slot` (the Next button) takes the tray's place, centred. */
+function Well({ label, slot, children }: { label?: string; slot?: ReactNode; children: ReactNode }) {
+  if (slot) return <div className="lb-well lb-well--slot">{slot}</div>;
   return (
     <div className="lb-well">
       {label && <p className="lb-well__label">{label}</p>}
@@ -167,7 +181,7 @@ const rotFor = (i: number) => (i % 2 ? 3 : -3);
 
 /* ---------- Train, missing letters, spelling ---------- */
 
-export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<FillPrompt>) {
+export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<FillPrompt>) {
   const later = useLater();
   const [fill, setFill] = useState(() => newFill(p));
   const [done, setDone] = useState(false);
@@ -203,14 +217,14 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, inn
     say(letterName(p.cells[at]));
     if (fillDone(p, r.state)) {
       setDone(true);
+      // Solved on this tap: the dot fills and Next takes the tray's place. The sound and the word follow the tap.
+      onDone();
       later(() => {
         sfx.good();
         if (p.word) say(p.word.word);
         else say(p.kind === 'train' ? 'Choo choo!' : 'You found them!');
       }, 650);
-      // A spelled word waits for the child on a card; the other kinds move on by themselves.
-      later(onDone, spelling ? 1100 : 2000);
-    }
+    } else onProgress?.();
   };
 
   hintRef.current = () => {
@@ -228,7 +242,7 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, inn
   const slots = slotSize(p.cells.length, innerW);
   const tray = traySize(p.tray.length, innerW);
   const placedCount = fill.placed.filter(Boolean).length;
-  const help = done ? 'Well done!' : (note.note ?? (placedCount === 0 ? instruction : 'Great! What comes next?'));
+  const help = done ? solvedLine(p) : (helpOverride ?? note.note ?? (placedCount === 0 ? instruction : MID_LINE));
   const canPress = slots.w >= MIN_BUTTON;
 
   return (
@@ -278,9 +292,9 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, inn
             );
           })}
         </ol>
-        <HelpRow text={help} hint={hint} />
+        <HelpRow text={help} hint={hint} offer={offer} />
       </div>
-      <Well>
+      <Well slot={slot}>
         {p.tray.map((t: Tile, i) =>
           used.has(t.id) ? (
             <Ghost key={t.id} ch={t.ch} />
@@ -303,8 +317,7 @@ export function FillView({ prompt: p, active, onSlip, onDone, hintRef, hint, inn
 
 /* ---------- Big and small ---------- */
 
-export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<MatchPrompt>) {
-  const later = useLater();
+export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<MatchPrompt>) {
   const [s, setS] = useState(newMatch);
   const { wiggling, nonce, wiggle } = useWiggle();
   const hinting = useHint();
@@ -324,7 +337,8 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
       note.clear();
       sfx.good();
       say(`${letterName(t.ch)}`);
-      if (matchDone(p, r.state)) later(onDone, 1200);
+      if (matchDone(p, r.state)) onDone();
+      else onProgress?.();
     } else {
       sfx.wrong();
       wiggle([t.id, r.other!]);
@@ -341,8 +355,9 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
   };
 
   const size = traySize(p.upper.length, innerW, 64);
+  // Once solved, Next takes the small letters' well; the matched big letters stay in view.
   const row = (side: 'upper' | 'lower', list: Tile[]) => (
-    <Well label={side === 'upper' ? 'Big letters' : 'Small letters'}>
+    <Well label={side === 'upper' ? 'Big letters' : 'Small letters'} slot={side === 'lower' ? slot : undefined}>
       {list.map((t, i) => {
         const matched = s.matched.includes(t.ch.toUpperCase());
         const selected = s.selected?.id === t.id;
@@ -371,11 +386,11 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
   );
 
   const pairs = s.matched.length;
-  const help = done ? 'Well done!' : (note.note ?? (pairs === 0 ? instruction : `${pairs} of ${p.letters.length} pairs found.`));
+  const help = done ? solvedLine(p) : (helpOverride ?? note.note ?? (pairs === 0 ? instruction : `${pairs} of ${p.letters.length} pairs found.`));
 
   return (
     <div className={`lb-view lb-match${done ? ' is-done' : ''}`} style={trayVars(size)}>
-      <HelpRow text={help} hint={hint} />
+      <HelpRow text={help} hint={hint} offer={offer} />
       {row('upper', p.upper)}
       {row('lower', p.lower)}
     </div>
@@ -384,8 +399,7 @@ export function MatchView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
 
 /* ---------- First sounds ---------- */
 
-export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction }: ViewProps<SoundPrompt>) {
-  const later = useLater();
+export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<SoundPrompt>) {
   const [done, setDone] = useState(false);
   const [tried, setTried] = useState<string[]>([]);
   const { wiggling, nonce, wiggle } = useWiggle();
@@ -400,7 +414,7 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
       note.clear();
       sfx.good();
       say(`${letterName(t.ch)} is for ${p.word.word}`);
-      later(onDone, 2200);
+      onDone();
     } else {
       sfx.wrong();
       wiggle([t.id]);
@@ -425,7 +439,7 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
   const w = p.word.word;
   const display = p.answer === p.answer.toLowerCase() ? w : w.toUpperCase();
   const tray = traySize(p.options.length, innerW, 90);
-  const help = done ? 'Well done!' : (note.note ?? instruction);
+  const help = done ? solvedLine(p) : (helpOverride ?? note.note ?? instruction);
 
   return (
     <div className={`lb-view lb-sound${done ? ' is-done' : ''}`} style={{ ...trayVars(tray), '--lb-min': px(minViewHeight(40, tray)) } as CSSProperties}>
@@ -446,9 +460,9 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
             </>
           )}
         </p>
-        <HelpRow text={help} hint={hint} />
+        <HelpRow text={help} hint={hint} offer={offer} />
       </div>
-      <Well>
+      <Well slot={slot}>
         {p.options.map((t, i) => (
           <LetterBrick
             key={`${t.id}:${wiggling(t.id) ? nonce : 0}`}

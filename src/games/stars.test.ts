@@ -140,9 +140,13 @@ describe('every play screen records the capped stars', () => {
     expect(drop).not.toMatch(/starsEarned\(/);
   });
 
-  it('Letter Builder records the stars from lettersStars, never the slip rule alone', () => {
+  it('Letter Builder records the level stars from lettersLevelStars through recordPuzzle, never the slip rule alone', () => {
+    // Four-puzzle levels (brief 5, 6.2): the fourth solve records the stars in the store's recordPuzzle,
+    // whose rules carry lettersLevelStars (the slip rule over the 4 puzzles, then the shared hint cap).
     const letters = source('./letters/LettersApp.tsx');
-    expect(letters).toMatch(/const stars = lettersStars\(slipsRef\.current, usedHintRef\.current\);\s*recordStars\(GAME, level, stars\)/);
+    expect(letters).toMatch(/stars: lettersLevelStars\b/);
+    expect(letters).toMatch(/progressStore\.recordPuzzle\(GAME, level, result, rules,/);
+    expect(letters).not.toMatch(/recordStars\(/);
     expect(letters).not.toMatch(/starsForSlips\(/);
   });
 

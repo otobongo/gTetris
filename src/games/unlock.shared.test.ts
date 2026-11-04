@@ -21,7 +21,6 @@ type Setup = { stars?: Record<number, number>; unlock?: number };
 const GAMES: { id: 'escape' | 'drop' | 'letters'; App: ComponentType<{ params: string[] }> }[] = [
   { id: 'escape', App: SlideApp },
   { id: 'drop', App: DropApp },
-  { id: 'letters', App: LettersApp },
 ];
 
 const SETUPS: Setup[] = [{}, { stars: { 0: 2 } }, { stars: { 0: 3, 1: 1, 2: 2 } }, { stars: { 5: 1 } }, { unlock: 4 }, { stars: { 0: 1 }, unlock: 7 }];
@@ -61,6 +60,28 @@ describe('every game opens exactly the levels the shared rule opens', () => {
       }
     });
   }
+
+  // Four-puzzle levels (brief 2.6, 7.4): Letter Builder's `#/game/letters/<n>` plays only the child's
+  // current level; every other n, open or not, goes back to `#/game/letters`.
+  it('letters: a level opens if and only if it is the current level, at every age', () => {
+    const meta = getGame('letters')!.meta!;
+    for (const band of AGE_BANDS) {
+      for (const setup of [...SETUPS, { stars: Object.fromEntries(Array.from({ length: meta.levelCount }, (_, i) => [i, 2])) }]) {
+        const game = playAs('letters', band, setup);
+        const current = currentLevel(meta, game);
+        for (let i = -1; i <= meta.levelCount; i++) {
+          const where = `letters ${band} ${JSON.stringify(setup)} level ${i + 1}`;
+          expect(opens(LettersApp, i + 1), where).toBe(i >= 0 && i === current);
+        }
+      }
+      // A grown-up's pick, locked or not, is the one level that opens.
+      for (const pick of [9, 20]) {
+        playAs('letters', band, { stars: { 0: 3 } });
+        progressStore.pickLevel('letters', pick, meta.levelCount);
+        for (let i = 0; i < meta.levelCount; i++) expect(opens(LettersApp, i + 1), `letters ${band} pick ${pick} level ${i + 1}`).toBe(i === pick);
+      }
+    }
+  });
 });
 
 describe('currentLevel: where Play goes', () => {

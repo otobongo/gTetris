@@ -1,66 +1,115 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { DEFAULT_PLAYER_NAME, gameOf, useActivePlayer, type AgeBand, type Player } from '../../shared/progress';
+import {
+  DEFAULT_PLAYER_NAME,
+  HINTS_PER_RUN,
+  findPlayer,
+  gameOf,
+  progressStore,
+  runOf,
+  starsFor,
+  totalStars,
+  useActivePlayer,
+  type AgeBand,
+  type LevelRun,
+  type Player,
+  type PuzzleOutcome,
+  type PuzzleResult,
+  type PuzzleRules,
+} from '../../shared/progress';
+import { resolveRun } from '../../shared/progress/model';
 import { go, replace, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { letterName, say } from '../../shared/speech';
-import { recordStars } from '../../shared/storage';
-import { Brick, IconButton, LevelGrid, PressButton, Screen, Stars, TopBar, useLayout } from '../../shared/ui';
-import { CHAPTERS, LEVELS, chapterOf, makeRound, type Prompt } from './levels';
-import { HINTS_PER_LEVEL, STAR_RULE, lettersStars } from './logic';
-import { isLevelOpen } from '../meta';
+import { Brick, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, Screen, useLayout } from '../../shared/ui';
+import { breakBefore } from '../../screens/logic/session';
+import { currentLevel } from '../meta';
+import { STUCK, STUCK_START, lettersLevelStars, lettersSet, levelTotals, puzzleOnScreen, rotateQueue, stuckStep, type StuckEvent } from '../run';
+import { capRule } from '../stars';
+import {
+  BACK_TO_GAMES,
+  GAME_DONE_NOTE,
+  GAME_DONE_TITLE,
+  gameDoneFact,
+  levelFact,
+  levelTitle,
+  nextLabel,
+  offerLine,
+  offerName,
+  playLabel,
+  swapLine,
+} from './copy';
+import { LEVELS, isSpelling, makePuzzles, type Prompt } from './levels';
+import { LEVEL_RULE } from './logic';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
 import './letters.css';
 
 const GAME = 'letters';
-const LEVELS_PATH = '/game/letters/levels';
+const HOME = '/';
+const levelPath = (level: number) => `/game/letters/${level + 1}`;
 
+/**
+ * Letter Builder. `#/game/letters` opens the child's current level (games/meta.ts currentLevel), or
+ * the finished state when every level has stars. `#/game/letters/<n>` plays only the current level;
+ * any other n goes back to `#/game/letters`. Children never see a level grid (brief 2.1, 7.4).
+ */
 export default function LettersApp({ params }: { params: string[] }) {
   const player = useActivePlayer();
-  // Same rule as the Levels screen, so every tile it shows open also opens here.
-  const isOpen = (i: number) => isLevelOpen(meta, gameOf(player, GAME), player?.ageBand, i);
-  const n = Number(params[0]);
-  const level = Number.isInteger(n) && n >= 1 && n <= LEVELS.length ? n - 1 : -1;
-  const open = level >= 0 && isOpen(level);
-  const [nonce, setNonce] = useState(0);
+  const current = currentLevel(meta, gameOf(player, GAME));
+  const key = params.join('/');
+  const n = params.length ? Number(params[0]) : NaN;
+  const asked = Number.isInteger(n) && n >= 1 && n <= LEVELS.length ? n - 1 : -1;
+  // Which level may play is decided when the route changes, never while a level is on screen: its
+  // fourth solve moves `current` on, and the level card must stay up over the finished level.
+  const [entry, setEntry] = useState(() => ({ key, ok: asked >= 0 && asked === current }));
+  let ok = entry.ok;
+  if (entry.key !== key) {
+    ok = asked >= 0 && asked === current;
+    setEntry({ key, ok });
+  }
+  const target = !params.length ? (current === null ? null : levelPath(current)) : ok ? null : '/game/letters';
 
   useEffect(() => {
-    // A level number that does not exist or is still locked goes back to the level screen, without a history entry.
-    if (params.length && !open) replace(LEVELS_PATH);
-  }, [params.length, open]);
+    if (target) replace(target);
+  }, [target]);
 
-  if (!params.length) return <LevelList player={player} isOpen={isOpen} />;
-  if (!open) return null;
-  return <Play key={`${level}:${nonce}`} level={level} player={player} onRestart={() => setNonce((x) => x + 1)} />;
+  if (target) return null;
+  if (!params.length) return <Finished player={player} />;
+  return <Play key={asked} level={asked} player={player} />;
 }
 
-/** The game's own level list, opened by /game/letters with no level. The Levels screen replaces it as the way in. */
-function LevelList({ player, isOpen }: { player: Player | null; isOpen: (i: number) => boolean }) {
+/** Avatar and name, as on the board. Puzzle progress lives in the dots under the title. */
+function PlayerStrip({ player }: { player: Player | null }) {
+  const name = player?.name ?? DEFAULT_PLAYER_NAME;
   return (
-    <Screen>
-      <TopBar title="Letter Builder" subtitle="Letters, sounds and words" back={LEVELS_PATH} backLabel="Back to levels" />
-      <div className="lb-list">
-        {CHAPTERS.map((c) => (
-          <section key={c.title} className="lb-chapter" aria-labelledby={`lb-ch-${c.start}`}>
-            <h2 id={`lb-ch-${c.start}`} className="lb-chapter__title">
-              {c.title} <small>{c.note}</small>
-            </h2>
-            <LevelGrid
-              count={c.count}
-              offset={c.start}
-              starsOf={(i) => (player ? (gameOf(player, GAME).stars[i] ?? 0) : 0)}
-              unlocked={isOpen}
-              onPick={(i) => go(`/game/letters/${i + 1}`)}
-            />
-          </section>
-        ))}
-      </div>
-    </Screen>
+    <div className="lb-player">
+      <Brick color={player?.color ?? 'blue'} width={34} height={34} radius={12} style={{ fontSize: 18 }}>
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </Brick>
+      <span className="lb-player__name">{name}</span>
+    </div>
   );
 }
 
-/** What to show and say for each prompt. Speech is read aloud only when the child taps a speaker or a picture. */
+/**
+ * The game's top bar: back to Home, the title, then the dots in place of the subtitle (brief 7.1).
+ * The shared TopBar puts its subtitle in a paragraph, which cannot hold the dots' block.
+ */
+function GameBar({ title, dots, action }: { title: string; dots?: ReactNode; action?: ReactNode }) {
+  return (
+    <header className="bw-topbar">
+      <IconButton icon="back" label="Back to home" href={toHref(HOME)} />
+      <div className="bw-topbar__title">
+        <h1>{title}</h1>
+        {dots}
+      </div>
+      {action ?? <span aria-hidden="true" />}
+    </header>
+  );
+}
+
+/** What to show and say for each puzzle. Speech is read aloud only when the child taps a speaker or a picture. */
 function promptText(p: Prompt): { text: string; speech: string } {
   switch (p.kind) {
     case 'train': {
@@ -79,124 +128,258 @@ function promptText(p: Prompt): { text: string; speech: string } {
   }
 }
 
-const initialOf = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
+/** A fresh run seed: it fixes the level's runs, letters, pictures, word order and trays. */
+const newSeed = () => (Math.random() * 2 ** 31) | 0;
 
-/** Avatar, name and progress dots, as on the board. */
-function PlayerStrip({ player, total, index, finished, noun }: { player: Player | null; total: number; index: number; finished: boolean; noun: string }) {
-  const name = player?.name ?? DEFAULT_PLAYER_NAME;
-  return (
-    <div className="lb-player">
-      <Brick color={player?.color ?? 'blue'} width={34} height={34} radius={12} style={{ fontSize: 18 }}>
-        {initialOf(name)}
-      </Brick>
-      <span className="lb-player__name">{name}</span>
-      <div className="lb-dots" role="img" aria-label={`${noun} ${Math.min(index + 1, total)} of ${total}`}>
-        {Array.from({ length: total }, (_, i) => (
-          <span key={i} className={`lb-dot${i < index || (i === index && finished) ? ' is-done' : i === index ? ' is-now' : ''}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
+/** Where the puzzle on screen stands. */
+type Moment = 'play' | 'solved' | 'levelDone';
 
-interface CardProps {
-  title: string;
-  stars?: number;
-  text: string;
-  note?: string;
-  children: ReactNode;
-}
+type Finish = Extract<PuzzleOutcome, { kind: 'finished' }>;
 
-/** The card over the game, as on the board: a title, one line, and the next step. */
-function WinCard({ title, stars, text, note, children }: CardProps) {
-  return (
-    <div className="lb-overlay">
-      <div className="lb-win" role="dialog" aria-modal="true" aria-labelledby="lb-win-title">
-        <h2 id="lb-win-title">{title}</h2>
-        {stars !== undefined && <Stars value={stars} />}
-        <p className="lb-win__text">{text}</p>
-        {note && <p className="lb-win__note">{note}</p>}
-        <div className="lb-win__actions">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function Play({ level, player, onRestart }: { level: number; player: Player | null; onRestart: () => void }) {
-  const band: AgeBand = player?.ageBand ?? '5-6';
-  const [seed] = useState(() => (Math.random() * 2 ** 31) | 0);
-  const round = useMemo(() => makeRound(level, seed, band), [level, seed, band]);
+function Play({ level, player }: { level: number; player: Player | null }) {
   const layout = useLayout();
-  const [idx, setIdx] = useState(0);
-  const [slips, setSlips] = useState(0);
-  const [hints, setHints] = useState(HINTS_PER_LEVEL);
-  const [result, setResult] = useState<number | null>(null);
-  /** True while the card between two spelled words is up. */
-  const [between, setBetween] = useState(false);
+  // The band at the level's start: a band changed later applies from the next visit (2.3).
+  const [band] = useState<AgeBand>(() => player?.ageBand ?? '5-6');
+  const spelling = isSpelling(level);
+  const set = lettersSet(band);
+  const [run, setRun] = useState<LevelRun>(() => {
+    const stored = runOf(player, GAME, level);
+    // keepSolved: a band change keeps the solved puzzles and refills the rest with the new band's words.
+    return resolveRun(stored, { set, seed: stored?.seed ?? newSeed(), hintsLeft: HINTS_PER_RUN, keepSolved: true }, progressStore.now());
+  });
+  // Words already built when the level opened, so the puzzles never repeat one after a band change.
+  const [built] = useState(() => run.solved.map((r) => ({ puzzle: r.puzzle, word: r.word })));
+  const puzzles = useMemo(() => makePuzzles(level, run.seed, band, built, player?.id ?? ''), [level, run.seed, band, built, player?.id]);
+
+  const [moment, setMoment] = useState<Moment>('play');
+  const [finish, setFinish] = useState<Finish | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  /** Remounts the puzzle view on Next and on a swap. */
+  const [nonce, setNonce] = useState(0);
+  const [swapped, setSwapped] = useState(false);
+  const [hintsLeft, setHintsLeft] = useState(run.hintsLeft ?? HINTS_PER_RUN);
+  const [stuck, setStuck] = useState(STUCK_START);
   const slipsRef = useRef(0);
   const usedHintRef = useRef(false);
   const hintRef = useRef<(() => boolean) | null>(null);
-  const prompt = round.prompts[idx];
-  const chapter = chapterOf(level);
-  const { text, speech } = promptText(prompt);
-  const spelling = round.def.kind === 'spell';
-  const locked = result !== null || between;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
+  /** Where focus goes after the next render: the tray's first tile (after Next or a swap) or the slot's button. */
+  const focusNext = useRef<'tray' | 'slot' | null>(null);
+  const timer = useRef<number>(0);
 
-  const slip = () => {
-    slipsRef.current += 1;
-    setSlips(slipsRef.current);
+  const limit = STUCK.letters[band];
+  /** The puzzle on screen. It stays put after a solve, while the run's queue already points at the next one. */
+  const [puzzle, setPuzzle] = useState(() => puzzleOnScreen(run));
+  const prompt = puzzles[puzzle];
+  const { text, speech } = promptText(prompt);
+  const playing = moment === 'play';
+  const offer = playing && stuck.offer;
+  const levelCount = LEVELS.length;
+  const playerId = () => player?.id ?? progressStore.ensureActivePlayer();
+  const stuckOn = (e: StuckEvent) => setStuck((s) => stuckStep(s, e, limit));
+
+  // Save the run when the level opens (new, or moved to the new band's set). Nothing else is saved mid-puzzle.
+  useEffect(() => {
+    if (player) progressStore.startRun(GAME, level, { set, seed: run.seed, hintsLeft: HINTS_PER_RUN, keepSolved: true }, player.id);
+    // Once, when the level opens.
+  }, []);
+
+  // The time signal: seconds with no right tap, only while the puzzle is on screen, the page is visible and no card is open (3.1).
+  useEffect(() => {
+    if (!playing || cardOpen || limit.seconds === null) return;
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      stuckOn({ type: 'tick', seconds: 1 });
+    }, 1000);
+    return () => window.clearInterval(id);
+    // stuckOn only reads `limit`, which is fixed for the level.
+  }, [playing, cardOpen, limit.seconds]);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  useEffect(() => {
+    const to = focusNext.current;
+    if (!to) return;
+    focusNext.current = null;
+    const el = to === 'slot' ? slotRef.current?.querySelector<HTMLElement>('a, button') : bodyRef.current?.querySelector<HTMLElement>('.lb-tray button');
+    el?.focus();
+  });
+
+  /** Back to a puzzle's first position: its slips, hint and stuck counts start again. */
+  const freshPuzzle = (event: 'start' | 'swap', from: LevelRun) => {
+    setPuzzle(puzzleOnScreen(from));
+    slipsRef.current = 0;
+    usedHintRef.current = false;
+    stuckOn({ type: event });
+    setSwapped(event === 'swap');
+    setNonce((x) => x + 1);
+    setMoment('play');
+    focusNext.current = 'tray';
   };
 
-  const done = () => {
-    const last = idx + 1 >= round.prompts.length;
-    if (!last) {
-      if (prompt.kind === 'spell') setBetween(true);
-      else setIdx(idx + 1);
+  const rules: PuzzleRules = { set, seed: run.seed, hintsLeft: HINTS_PER_RUN, keepSolved: true, levelCount, stars: lettersLevelStars };
+
+  const solved = () => {
+    const result: PuzzleResult = { puzzle, count: slipsRef.current, usedHint: usedHintRef.current, outOfTime: false };
+    if (prompt.kind === 'spell' && prompt.word) result.word = prompt.word.word;
+    let outcome = progressStore.recordPuzzle(GAME, level, result, rules, playerId());
+    if (outcome.kind === 'ignored') {
+      // The store refused the result (never expected): keep playing on this screen, so a solve is never lost to the child.
+      const results = [...run.solved, result];
+      outcome =
+        results.length >= 4
+          ? { kind: 'finished', level, stars: lettersLevelStars(results), results, next: level + 1 < levelCount ? level + 1 : null }
+          : { kind: 'saved', run: { ...run, queue: run.queue.filter((x) => x !== puzzle), solved: results } };
+    }
+    if (outcome.kind === 'saved') {
+      setRun(outcome.run);
+      setMoment('solved');
+      focusNext.current = 'slot';
       return;
     }
-    const stars = lettersStars(slipsRef.current, usedHintRef.current);
-    recordStars(GAME, level, stars);
-    sfx.win();
-    say(stars === 3 ? 'Super builder!' : 'You did it!');
-    setResult(stars);
+    if (outcome.kind !== 'finished') return;
+    setFinish(outcome);
+    setMoment('levelDone');
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      sfx.win();
+      setCardOpen(true);
+    }, LEVEL_CARD_DELAY_MS);
+  };
+
+  const next = () => {
+    if (breakBefore(levelPath(level))) return;
+    freshPuzzle('start', run);
+  };
+
+  const swap = () => {
+    const saved = (player ? progressStore.swapPuzzle(GAME, level, player.id) : null) ?? { ...run, queue: rotateQueue(run.queue) };
+    setRun(saved);
+    freshPuzzle('swap', saved);
   };
 
   const askHint = () => {
-    if (hints <= 0 || locked) return;
-    if (hintRef.current?.()) {
-      setHints(hints - 1);
-      usedHintRef.current = true;
+    if (hintsLeft <= 0 || !playing) return;
+    if (!hintRef.current?.()) return;
+    // The level's 3 hints are a budget, saved at once: a hint used on a puzzle swapped away stays spent (3.3).
+    const left = player ? progressStore.spendHint(GAME, level, player.id) : null;
+    setHintsLeft(left ?? Math.max(0, hintsLeft - 1));
+    usedHintRef.current = true;
+  };
+
+  const playNextLevel = (to: number) => {
+    if (breakBefore(levelPath(to))) return;
+    go(levelPath(to));
+  };
+
+  const closeCard = () => {
+    setCardOpen(false);
+    if (finish?.next === null) {
+      go(HOME);
+      return;
     }
+    // The tray well then holds the same Play button, and focus goes there (brief 10).
+    focusNext.current = 'slot';
   };
 
   const hint = (
-    <IconButton icon="hint" label="Hint" badge={hints} disabled={hints <= 0 || locked} onClick={askHint} variant="yellow" />
+    <IconButton icon="hint" label="Hint" badge={hintsLeft} disabled={hintsLeft <= 0 || !playing} onClick={askHint} variant="yellow" />
   );
+
+  let slot: ReactNode = null;
+  if (moment === 'solved') {
+    slot = (
+      <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={next}>
+        {nextLabel(spelling)}
+      </PressButton>
+    );
+  } else if (moment === 'levelDone' && finish && !cardOpen) {
+    slot =
+      finish.next === null ? (
+        <PressButton variant="green" size="lg" className="lb-next bw-appear" href={toHref(HOME)}>
+          {BACK_TO_GAMES}
+        </PressButton>
+      ) : (
+        <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={() => playNextLevel(finish.next!)}>
+          {playLabel(finish.next + 1)}
+        </PressButton>
+      );
+  } else if (moment === 'levelDone') {
+    // Behind the card the well stays as it was at the last solve, with no controls.
+    slot = <span className="lb-next-space" aria-hidden="true" />;
+  }
+
   const viewProps = {
-    active: !locked,
-    onSlip: slip,
-    onDone: done,
+    active: playing,
+    onSlip: () => {
+      slipsRef.current += 1;
+      setSwapped(false);
+      stuckOn({ type: 'fail' });
+    },
+    onProgress: () => {
+      setSwapped(false);
+      stuckOn({ type: 'progress' });
+    },
+    onDone: solved,
     hintRef,
     hint,
     innerW: innerWidth(layout.mode, layout.width),
-    instruction: text,
+    instruction: swapped ? swapLine(spelling) : text,
+    helpOverride: offer ? offerLine(spelling) : null,
+    offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" onClick={swap} /> : null,
+    slot: slot ? <div ref={slotRef} className="lb-slot-wrap">{slot}</div> : undefined,
   };
-  const hasNext = level + 1 < LEVELS.length;
-  const noun = spelling ? 'Word' : 'Part';
-  const word = prompt.kind === 'spell' ? prompt.word!.word : '';
-  const total = round.prompts.length;
+
+  const solvedNow = moment !== 'play';
+  const doneCount = moment === 'levelDone' ? 4 : run.solved.length;
+  const dots = <PuzzleDots solved={doneCount} puzzle={solvedNow ? Math.max(1, doneCount) : undefined} noun={spelling ? 'word' : 'puzzle'} />;
+
+  const card = (() => {
+    if (!cardOpen || !finish) return null;
+    if (finish.next === null) {
+      const total = totalStars(findPlayer(progressStore.getState(), player?.id ?? progressStore.getState().activePlayerId ?? ''), GAME);
+      return (
+        <LevelCard
+          title={GAME_DONE_TITLE}
+          stars={finish.stars}
+          fact={gameDoneFact(levelCount, total)}
+          primary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}
+          onClose={closeCard}
+        />
+      );
+    }
+    const totals = levelTotals(finish.results);
+    return (
+      <LevelCard
+        title={levelTitle(level + 1)}
+        stars={finish.stars}
+        fact={levelFact(spelling, totals.count)}
+        rule={LEVEL_RULE}
+        cap={totals.usedHint ? capRule({ hint: true }) : undefined}
+        primary={{ label: playLabel(finish.next + 1), onClick: () => playNextLevel(finish.next!) }}
+        secondary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}
+        onClose={closeCard}
+      />
+    );
+  })();
 
   return (
     <Screen className="lb-screen" gap={14}>
-      <TopBar
-        title={chapter.title}
-        subtitle={`Letter Builder · Level ${level + 1}`}
-        back={LEVELS_PATH}
-        backLabel="Back to levels"
-        action={<IconButton icon="speaker" label={spelling ? 'Say the word' : 'Hear it again'} onClick={() => say(speech)} />}
+      <GameBar
+        title={`Level ${level + 1}`}
+        dots={dots}
+        action={
+          offer ? (
+            // While the offer shows, the speaker reads the offer line (brief 10).
+            <IconButton icon="speaker" label="Read the help line aloud" onClick={() => say(offerLine(spelling))} />
+          ) : (
+            <IconButton icon="speaker" label={spelling ? 'Say the word' : 'Hear it again'} onClick={() => say(speech)} />
+          )
+        }
       />
-      <PlayerStrip player={player} total={total} index={idx} finished={between || result !== null} noun={noun} />
-      <div className="lb-body" key={idx}>
+      <PlayerStrip player={player} />
+      <div className="lb-body" key={`${puzzle}:${nonce}`} ref={bodyRef}>
         {prompt.kind === 'match' ? (
           <MatchView prompt={prompt} {...viewProps} />
         ) : prompt.kind === 'sound' ? (
@@ -205,52 +388,34 @@ function Play({ level, player, onRestart }: { level: number; player: Player | nu
           <FillView prompt={prompt} {...viewProps} />
         )}
       </div>
-      {between && (
-        <WinCard
-          title={`You built ${word.toUpperCase()}!`}
-          text={`${word.toUpperCase().split('').join('-')}… ${word}. Ready for the next one?`}
-        >
-          <PressButton
-            variant="green"
-            size="lg"
-            block
-            onClick={() => {
-              setBetween(false);
-              setIdx(idx + 1);
-            }}
-          >
-            Next word
-          </PressButton>
-        </WinCard>
-      )}
-      {result !== null && (
-        <WinCard
-          title={spelling ? `You built ${total} words!` : result === 3 ? 'Super builder!' : result === 2 ? 'Great building!' : 'You did it!'}
-          stars={result}
-          text={(slips === 0 ? 'No slips at all!' : `${slips} slip${slips === 1 ? '' : 's'}.`) + (hints < HINTS_PER_LEVEL ? ' You used a hint.' : '')}
-          note={STAR_RULE}
-        >
-          {hasNext ? (
-            <PressButton variant="green" size="lg" block href={toHref(`/game/letters/${level + 2}`)}>
-              Next level
-            </PressButton>
-          ) : (
-            <PressButton variant="green" size="lg" block onClick={onRestart}>
-              Play again
-            </PressButton>
-          )}
-          <div className="lb-win__row">
-            {hasNext && (
-              <PressButton variant="purple" size="md" icon="restart" onClick={onRestart}>
-                Play again
-              </PressButton>
-            )}
-            <PressButton variant="purple" size="md" href={toHref(LEVELS_PATH)}>
-              All levels
-            </PressButton>
-          </div>
-        </WinCard>
-      )}
+      {card}
+    </Screen>
+  );
+}
+
+/**
+ * The finished state (brief 2.5): every level has stars. The top bar names the game, the empty tray
+ * well sits behind the scrim, and the card's one button, the Escape key and the scrim all go Home.
+ */
+function Finished({ player }: { player: Player | null }) {
+  const last = LEVELS.length - 1;
+  return (
+    <Screen className="lb-screen" gap={14}>
+      <GameBar title="Letter Builder" />
+      <div className="lb-body lb-body--finished">
+        <div className="lb-view">
+          <div className="lb-top" />
+          <div className="lb-well lb-well--empty" aria-hidden="true" />
+        </div>
+      </div>
+      <LevelCard
+        title={GAME_DONE_TITLE}
+        stars={starsFor(player, GAME, last)}
+        fact={gameDoneFact(LEVELS.length, totalStars(player, GAME))}
+        note={GAME_DONE_NOTE}
+        primary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}
+        onClose={() => go(HOME)}
+      />
     </Screen>
   );
 }

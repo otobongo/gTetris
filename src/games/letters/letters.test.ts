@@ -117,11 +117,16 @@ describe('levels', () => {
     expect(JSON.stringify(makeRound(18, 42))).toBe(JSON.stringify(makeRound(18, 42)));
   });
 
-  it('A to Z covers the whole alphabet in order', () => {
-    const round = makeRound(3, 1);
-    const all = round.prompts.flatMap((p) => (p as FillPrompt).cells);
-    expect(all.join('')).toBe(ALPHABET.join(''));
-    for (const p of round.prompts) expect((p as FillPrompt).cells.length).toBeLessThanOrEqual(7);
+  it('A to Z covers the whole alphabet in order with its first four runs', () => {
+    // Four-puzzle levels (brief 4.3): runs of 7, the first ones covering the span: A to G, H to N, O to U, T to Z.
+    for (const seed of SEEDS) {
+      const round = makeRound(3, seed);
+      const first = round.prompts.slice(0, 4).map((p) => (p as FillPrompt).cells.join(''));
+      expect(first).toEqual(['ABCDEFG', 'HIJKLMN', 'OPQRSTU', 'TUVWXYZ']);
+      const covered = new Set(first.join(''));
+      expect([...covered].sort().join('')).toBe(ALPHABET.join(''));
+      for (const p of round.prompts) expect((p as FillPrompt).cells.length).toBe(7);
+    }
   });
 });
 
