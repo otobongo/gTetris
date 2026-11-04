@@ -30,11 +30,16 @@ export function isLevelOpen(meta: GameMeta, game: GameProgress, band: AgeBand | 
 }
 
 /**
- * Where Play goes: the first level that is open and has no stars yet, else the last level (every
- * level has a star, so Play replays it). Null only for a game with no levels.
+ * The current level (brief 2.6), the one rule every screen uses: the `#/game/<id>` redirect, Home's
+ * pill and card name, the Settings row, the picker and Break's line.
+ * 1. A stored `current` (a finish or a grown-up pick) when it is a level of this game.
+ * 2. Otherwise the first level with no stars (always open: the level before it has stars).
+ * 3. Otherwise null: every level is finished.
  */
-export function firstOpenLevel(meta: GameMeta, game: GameProgress, band: AgeBand | null | undefined): number | null {
-  if (meta.levelCount <= 0) return null;
-  for (let i = 0; i < meta.levelCount; i++) if ((game.stars[i] ?? 0) === 0 && isLevelOpen(meta, game, band, i)) return i;
-  return meta.levelCount - 1;
+export function currentLevel(meta: GameMeta, game: GameProgress): number | null {
+  const count = meta.levelCount;
+  const stored = game.current;
+  if (typeof stored === 'number' && Number.isInteger(stored) && stored >= 0 && stored < count) return stored;
+  for (let i = 0; i < count; i++) if (!((game.stars[i] ?? 0) > 0)) return i;
+  return null;
 }

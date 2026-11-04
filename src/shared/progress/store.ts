@@ -7,7 +7,20 @@
  * this tab's next write never brings back a child another tab removed.
  */
 import * as m from './model';
-import { LEGACY_KEY, STORAGE_KEY, type NewPlayer, type Player, type PlayerPatch, type ProgressState, type SettingKey } from './types';
+import {
+  LEGACY_KEY,
+  STORAGE_KEY,
+  type LevelRun,
+  type NewPlayer,
+  type Player,
+  type PlayerPatch,
+  type ProgressState,
+  type PuzzleOutcome,
+  type PuzzleResult,
+  type PuzzleRules,
+  type RunInit,
+  type SettingKey,
+} from './types';
 
 /** The part of the Web Storage API the store uses. Tests pass an in-memory one. */
 export interface KeyValueStorage {
@@ -50,6 +63,23 @@ export interface ProgressStore {
   addMinutesPlayed(minutes: number, playerId?: string): void;
   addExtraMinutes(minutes: number, playerId?: string): void;
   resetPlayerProgress(playerId: string): void;
+
+  /**
+   * Four-puzzle levels (brief 6.2). The store stays game-agnostic: each game passes its set, seed and
+   * star rule. Every action reads and writes the active player unless `playerId` is given.
+   */
+  /** Open a level: the run it continues from (saved when new, or moved to a new set). */
+  startRun(gameId: string, level: number, init: RunInit, playerId?: string): LevelRun;
+  /** Save a solved puzzle; the fourth finishes the level (stars, best, current) in the same write. */
+  recordPuzzle(gameId: string, level: number, result: PuzzleResult, rules: PuzzleRules, playerId?: string): PuzzleOutcome;
+  /** Take a different puzzle: queue[0] moves to the end. Null when the level has no run. */
+  swapPuzzle(gameId: string, level: number, playerId?: string): LevelRun | null;
+  /** Spend one of a Letter Builder level's hints, saved at once. The hints left, or null with no budget. */
+  spendHint(gameId: string, level: number, playerId?: string): number | null;
+  /** A grown-up picks the level a child plays next (any level below levelCount). */
+  pickLevel(gameId: string, level: number, levelCount: number, playerId?: string): void;
+  /** Settings "Start <game> over" for one child: that game only; stickers stay. */
+  resetGame(gameId: string, playerId?: string): void;
 
   setSetting(key: SettingKey, value: boolean): void;
   /** Replace the whole state (used after a sync merge). */
@@ -183,6 +213,29 @@ export function createProgressStore(options: ProgressStoreOptions = {}): Progres
     addMinutesPlayed: (min, p) => commit(m.addMinutesPlayed(state, target(p), min, now())),
     addExtraMinutes: (min, p) => commit(m.addExtraMinutes(state, target(p), min, now())),
     resetPlayerProgress: (id) => commit(m.resetPlayerProgress(state, id)),
+
+    startRun(g, level, init, p) {
+      const out = m.startRun(state, target(p), g, level, init, now());
+      commit(out.state);
+      return out.run;
+    },
+    recordPuzzle(g, level, result, rules, p) {
+      const out = m.recordPuzzle(state, target(p), g, level, result, rules, now());
+      commit(out.state);
+      return out.outcome;
+    },
+    swapPuzzle(g, level, p) {
+      const out = m.swapPuzzle(state, target(p), g, level, now());
+      commit(out.state);
+      return out.run;
+    },
+    spendHint(g, level, p) {
+      const out = m.spendHint(state, target(p), g, level, now());
+      commit(out.state);
+      return out.hintsLeft;
+    },
+    pickLevel: (g, level, count, p) => commit(m.pickLevel(state, target(p), g, level, count)),
+    resetGame: (g, p) => commit(m.resetGame(state, target(p), g)),
 
     setSetting: (key, value) => commit(m.setSetting(state, key, value, now())),
     replace: (next) => commit(m.sanitize(next, now())),

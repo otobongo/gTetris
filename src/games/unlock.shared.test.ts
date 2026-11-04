@@ -1,7 +1,7 @@
 /**
  * One unlock rule for every game (review): the Levels screen, Brick Escape, Brick Drop and Letter
  * Builder all open a level by games/meta.ts isLevelOpen, and the Play button of Brick Drop picks its
- * stage by firstOpenLevel. The games are server-rendered here (no browser): a level that opens draws
+ * stage by currentLevel (brief 2.6). The games are server-rendered here (no browser): a level that opens draws
  * its board, a locked one draws nothing and redirects to Levels.
  */
 import { createElement, type ComponentType } from 'react';
@@ -13,7 +13,7 @@ import { currentStage } from './drop/stages';
 import DropApp from './drop/DropApp';
 import LettersApp from './letters/LettersApp';
 import SlideApp from './slide/SlideApp';
-import { firstOpenLevel, isLevelOpen, type GameMeta } from './meta';
+import { currentLevel, isLevelOpen, type GameMeta } from './meta';
 import { getGame } from './registry';
 
 type Setup = { stars?: Record<number, number>; unlock?: number };
@@ -55,7 +55,7 @@ describe('every game opens exactly the levels the shared rule opens', () => {
   }
 });
 
-describe('firstOpenLevel: where Play goes', () => {
+describe('currentLevel: where Play goes', () => {
   const META: GameMeta = {
     levelCount: 6,
     chapters: [
@@ -65,15 +65,17 @@ describe('firstOpenLevel: where Play goes', () => {
   };
   const game = (stars: Record<number, number>, unlocked = 0): GameProgress => ({ ...emptyGame(), stars, unlocked });
 
-  it('is the first open level with no stars', () => {
-    expect(firstOpenLevel(META, game({}), '7-8')).toBe(0);
-    expect(firstOpenLevel(META, game({ 0: 2, 1: 1 }, 2), '7-8')).toBe(2);
-    expect(firstOpenLevel(META, game({ 0: 1, 2: 3 }, 3), '5-6')).toBe(1);
+  it('is the first level with no stars', () => {
+    expect(currentLevel(META, game({}))).toBe(0);
+    expect(currentLevel(META, game({ 0: 2, 1: 1 }, 2))).toBe(2);
+    expect(currentLevel(META, game({ 0: 1, 2: 3 }, 3))).toBe(1);
   });
 
-  it('is the last level once every level has a star, and null for a game with no levels', () => {
-    expect(firstOpenLevel(META, game({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }, 6), '9-10')).toBe(5);
-    expect(firstOpenLevel({ levelCount: 0, chapters: [] }, game({}), '7-8')).toBeNull();
+  // Updated for brief 2.5 and 2.6 (decision 3): a game with every level starred is finished (null)
+  // instead of replaying its last level; a game with no levels is also null.
+  it('is null once every level has a star, and for a game with no levels', () => {
+    expect(currentLevel(META, game({ 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 }, 6))).toBeNull();
+    expect(currentLevel({ levelCount: 0, chapters: [] }, game({}))).toBeNull();
   });
 
   it('agrees with the Levels plan for every game, age and setup', () => {
@@ -83,7 +85,7 @@ describe('firstOpenLevel: where Play goes', () => {
         for (const setup of SETUPS) {
           const g = playAs(id, band, setup);
           const plan = planLevels(meta, g, band);
-          expect(firstOpenLevel(meta, g, band), `${id} ${band} ${JSON.stringify(setup)}`).toBe(plan.current ?? meta.levelCount - 1);
+          expect(currentLevel(meta, g), `${id} ${band} ${JSON.stringify(setup)}`).toBe(plan.current);
         }
       }
     }
@@ -94,7 +96,7 @@ describe('firstOpenLevel: where Play goes', () => {
     for (const band of AGE_BANDS) {
       for (const setup of SETUPS) {
         const g = playAs('drop', band, setup);
-        expect(currentStage(), `${band} ${JSON.stringify(setup)}`).toBe(firstOpenLevel(meta, g, band));
+        expect(currentStage(), `${band} ${JSON.stringify(setup)}`).toBe(currentLevel(meta, g));
       }
     }
   });

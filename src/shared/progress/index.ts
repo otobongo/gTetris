@@ -1,4 +1,4 @@
-/** Progress store v2: players, per-game progress, stickers, daily play time and settings. */
+/** Progress store: players, per-game progress and level runs, stickers, daily play time and settings. */
 export * from './types';
 export {
   DEFAULT_SETTINGS,
@@ -11,11 +11,15 @@ export {
   emptyGame,
   emptyState,
   findPlayer,
+  freshRun,
   gameOf,
   isBreakTime,
   minutesLeft,
+  nextCurrentLevel,
   playToday,
+  runOf,
   sanitize,
+  solvedCount,
   starsFor,
   stickerCount,
   toGameId,

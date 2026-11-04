@@ -6,19 +6,29 @@
 import {
   AGE_BANDS,
   AVATAR_COLORS,
+  HINTS_PER_RUN,
   LIMIT_DEFAULT,
   LIMIT_MAX,
   LIMIT_MIN,
+  MAX_LEVEL_INDEX,
+  MAX_SET_LENGTH,
+  PUZZLES_PER_LEVEL,
   SCHEMA_VERSION,
+  SOLVES_PER_LEVEL,
   TIMER_MODES,
   type AgeBand,
   type AvatarColor,
   type GameProgress,
+  type LevelRun,
   type NewPlayer,
   type PlayToday,
   type Player,
   type PlayerPatch,
   type ProgressState,
+  type PuzzleOutcome,
+  type PuzzleResult,
+  type PuzzleRules,
+  type RunInit,
   type SettingKey,
   type Settings,
   type StickerRecord,
@@ -125,12 +135,82 @@ function cleanLevelMap(raw: unknown, valid: (n: number) => boolean): Record<numb
   return out;
 }
 
+const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+const isPuzzleNo = (v: unknown): v is number => isInt(v) && v >= 0 && v < PUZZLES_PER_LEVEL;
+const isHints = (v: unknown): v is number => isInt(v) && v >= 0 && v <= HINTS_PER_RUN;
+/** A puzzle set id: 1 to 64 characters. */
+export const isSetId = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= MAX_SET_LENGTH;
+const isSeed = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
+/** A built word: 1 to 16 letters A to Z (either case, as the word lists store them). */
+const WORD = /^[A-Za-z]{1,16}$/;
+
+/** One stored puzzle result, or null when any field breaks the rules (6.2). Unknown fields are dropped. */
+export function cleanResult(raw: unknown): PuzzleResult | null {
+  if (!isObj(raw) || !isPuzzleNo(raw.puzzle) || !isCount(raw.count)) return null;
+  if (typeof raw.usedHint !== 'boolean' || typeof raw.outOfTime !== 'boolean') return null;
+  const out: PuzzleResult = { puzzle: raw.puzzle, count: raw.count, usedHint: raw.usedHint, outOfTime: raw.outOfTime };
+  for (const k of ['par', 'three', 'two', 'score'] as const) {
+    if (raw[k] === undefined) continue;
+    if (!isCount(raw[k])) return null;
+    out[k] = raw[k] as number;
+  }
+  if (raw.word !== undefined) {
+    if (typeof raw.word !== 'string' || !WORD.test(raw.word)) return null;
+    out.word = raw.word;
+  }
+  return out;
+}
+
+/**
+ * One stored level run, or null when it breaks any rule (6.2): queue and solved together hold each
+ * puzzle 0 to 5 exactly once, solved holds 0 to 3 results, so the queue is never empty.
+ */
+export function cleanRun(raw: unknown): LevelRun | null {
+  if (!isObj(raw) || !isSetId(raw.set) || !isSeed(raw.seed)) return null;
+  if (!Array.isArray(raw.queue) || !Array.isArray(raw.solved)) return null;
+  if (raw.solved.length >= SOLVES_PER_LEVEL) return null;
+  const solved: PuzzleResult[] = [];
+  for (const r of raw.solved) {
+    const clean = cleanResult(r);
+    if (!clean) return null;
+    solved.push(clean);
+  }
+  const queue: number[] = [];
+  for (const n of raw.queue) {
+    if (!isPuzzleNo(n)) return null;
+    queue.push(n);
+  }
+  const seen = new Set<number>([...queue, ...solved.map((r) => r.puzzle)]);
+  if (seen.size !== PUZZLES_PER_LEVEL || queue.length + solved.length !== PUZZLES_PER_LEVEL) return null;
+  if (raw.hintsLeft !== undefined && !isHints(raw.hintsLeft)) return null;
+  const run: LevelRun = { set: raw.set, seed: raw.seed as number, queue, solved, updatedAt: time(raw.updatedAt, 0) };
+  if (raw.hintsLeft !== undefined) run.hintsLeft = raw.hintsLeft as number;
+  return run;
+}
+
+function cleanRuns(raw: unknown): Record<number, LevelRun> {
+  const out: Record<number, LevelRun> = {};
+  if (!isObj(raw)) return out;
+  for (const [k, v] of Object.entries(raw)) {
+    const level = parseLevelKey(k);
+    const run = level === null ? null : cleanRun(v);
+    if (level !== null && run) out[level] = run;
+  }
+  return out;
+}
+
+const isLevelIndex = (v: unknown): v is number => isInt(v) && v >= 0 && v <= MAX_LEVEL_INDEX;
+
 function cleanGame(raw: unknown): GameProgress {
   if (!isObj(raw)) return emptyGame();
   const stars = cleanLevelMap(raw.stars, (v) => isInt(v) && v >= 1 && v <= 3);
   const best = cleanLevelMap(raw.best, (v) => Number.isFinite(v) && v >= 0);
   const unlocked = isInt(raw.unlocked) && raw.unlocked >= 0 ? raw.unlocked : 0;
-  return { unlocked: Math.max(unlocked, unlockedFromStars(stars)), stars, best };
+  const game: GameProgress = { unlocked: Math.max(unlocked, unlockedFromStars(stars)), stars, best };
+  if (isLevelIndex(raw.current)) game.current = raw.current;
+  const runs = cleanRuns(raw.runs);
+  if (Object.keys(runs).length > 0) game.runs = runs;
+  return game;
 }
 
 function cleanStickers(raw: unknown): Record<string, StickerRecord> {
@@ -259,6 +339,17 @@ export function activePlayer(state: ProgressState): Player | null {
 
 export function gameOf(player: Player | null, gameId: string): GameProgress {
   return player?.games[toGameId(gameId)] ?? emptyGame();
+}
+
+/** The stored run for a level, or null when that level has none (not started, or finished). */
+export function runOf(player: Player | null, gameId: string, level: number): LevelRun | null {
+  const runs = gameOf(player, gameId).runs;
+  return runs && Object.hasOwn(runs, level) ? runs[level] : null;
+}
+
+/** Puzzles solved so far in a level's run (0 to 3); 0 when there is no run. */
+export function solvedCount(player: Player | null, gameId: string, level: number): number {
+  return runOf(player, gameId, level)?.solved.length ?? 0;
 }
 
 export function starsFor(player: Player | null, gameId: string, level: number): number {
@@ -423,6 +514,163 @@ export function addExtraMinutes(state: ProgressState, playerId: string, minutes:
 export function setSetting(state: ProgressState, key: SettingKey, value: boolean, now: number): ProgressState {
   if (!(key in DEFAULT_SETTINGS) || state.settings[key] === value) return state;
   return { ...state, settings: { ...state.settings, [key]: value }, settingsUpdatedAt: now };
+}
+
+/* ---------- Level runs (brief 6.2): four solved puzzles finish a level ---------- */
+
+/** A new run: every puzzle in order, none solved. */
+export function freshRun(init: RunInit, now: number): LevelRun {
+  const run: LevelRun = {
+    set: init.set,
+    seed: isSeed(init.seed) ? init.seed : 0,
+    queue: Array.from({ length: PUZZLES_PER_LEVEL }, (_, i) => i),
+    solved: [],
+    updatedAt: now,
+  };
+  if (init.hintsLeft !== undefined) run.hintsLeft = isHints(init.hintsLeft) ? init.hintsLeft : HINTS_PER_RUN;
+  return run;
+}
+
+/**
+ * The run a level should continue from, given what is stored: the stored one when its set matches;
+ * on a set change, the stored one moved to the new set and seed when `keepSolved` (Letter Builder's
+ * band change), otherwise a fresh run.
+ */
+export function resolveRun(stored: LevelRun | null, init: RunInit, now: number): LevelRun {
+  if (!stored) return freshRun(init, now);
+  if (stored.set === init.set) return stored;
+  if (init.keepSolved) return { ...stored, set: init.set, seed: isSeed(init.seed) ? init.seed : 0, updatedAt: now };
+  return freshRun(init, now);
+}
+
+function withRuns(g: GameProgress, level: number, run: LevelRun | null): GameProgress {
+  const runs: Record<number, LevelRun> = { ...(g.runs ?? {}) };
+  if (run) runs[level] = run;
+  else delete runs[level];
+  const next: GameProgress = { ...g, runs };
+  if (Object.keys(runs).length === 0) delete next.runs;
+  return next;
+}
+
+const validLevel = (level: number) => isInt(level) && level >= 0 && level <= MAX_LEVEL_INDEX;
+
+/**
+ * Open a level: returns the run it continues from (6.2 set changes) and saves it when it is new or
+ * moved. Without a player, or with a bad level or set, nothing is saved and a fresh run comes back.
+ */
+export function startRun(state: ProgressState, playerId: string, gameId: string, level: number, init: RunInit, now: number): { state: ProgressState; run: LevelRun } {
+  const player = findPlayer(state, playerId);
+  if (!player || !validLevel(level) || !isSetId(init.set)) return { state, run: freshRun(init, now) };
+  const stored = runOf(player, gameId, level);
+  const run = resolveRun(stored, init, now);
+  if (run === stored) return { state, run };
+  return { state: withPlayer(state, playerId, (p) => withGame(p, gameId, (g) => withRuns(g, level, run))), run };
+}
+
+/**
+ * The level a finish moves on to: the first level after it with no stars, wrapping round to the
+ * first level with no stars; null when every level has stars.
+ */
+export function nextCurrentLevel(stars: Record<number, number>, level: number, levelCount: number): number | null {
+  const open = (i: number) => !((stars[i] ?? 0) > 0);
+  for (let i = level + 1; i < levelCount; i++) if (open(i)) return i;
+  for (let i = 0; i < Math.min(level, levelCount); i++) if (open(i)) return i;
+  return null;
+}
+
+const clampStars = (v: number) => (Number.isFinite(v) ? Math.min(3, Math.max(1, Math.round(v))) : 1);
+
+/**
+ * Save a solved puzzle (6.2). It joins `solved` and leaves the queue. The fourth result finishes the
+ * level in the same write: stars by `rules.stars` (the higher count is kept, the next level opens),
+ * the score by `rules.score` into `best` when higher, the run is deleted, and `current` moves to the
+ * next level with no stars (deleted when every level has stars). A missing run, or one on another
+ * set, is first resolved as startRun does, so a solve is never lost.
+ */
+export function recordPuzzle(
+  state: ProgressState,
+  playerId: string,
+  gameId: string,
+  level: number,
+  result: PuzzleResult,
+  rules: PuzzleRules,
+  now: number,
+): { state: ProgressState; outcome: PuzzleOutcome } {
+  const ignored = { state, outcome: { kind: 'ignored' } as PuzzleOutcome };
+  const player = findPlayer(state, playerId);
+  const clean = cleanResult(result);
+  if (!player || !clean || !validLevel(level) || !isInt(rules.levelCount) || level >= rules.levelCount || !isSetId(rules.set)) return ignored;
+  const run = resolveRun(runOf(player, gameId, level), rules, now);
+  if (!run.queue.includes(clean.puzzle)) return ignored;
+  const solved = [...run.solved, clean];
+  const queue = run.queue.filter((n) => n !== clean.puzzle);
+
+  if (solved.length < SOLVES_PER_LEVEL) {
+    const next: LevelRun = { ...run, queue, solved, updatedAt: now };
+    return {
+      state: withPlayer(state, playerId, (p) => withGame(p, gameId, (g) => withRuns(g, level, next))),
+      outcome: { kind: 'saved', run: next },
+    };
+  }
+
+  const stars = clampStars(rules.stars(solved));
+  const score = rules.score ? rules.score(solved) : null;
+  let next: number | null = null;
+  const after = withPlayer(state, playerId, (p) =>
+    withGame(p, gameId, (g) => {
+      const allStars = { ...g.stars, [level]: Math.max(g.stars[level] ?? 0, stars) };
+      const best = score !== null && Number.isFinite(score) && score >= 0 && score > (g.best[level] ?? 0) ? { ...g.best, [level]: score } : g.best;
+      const done = withRuns({ ...g, unlocked: Math.max(g.unlocked, level + 1), stars: allStars, best }, level, null);
+      next = nextCurrentLevel(allStars, level, rules.levelCount);
+      if (next === null) delete done.current;
+      else done.current = next;
+      return done;
+    }),
+  );
+  return { state: after, outcome: { kind: 'finished', level, stars, results: solved, next } };
+}
+
+/** Take a different puzzle (3.3): queue[0] moves to the end. Returns the saved run, or null when the level has none. */
+export function swapPuzzle(state: ProgressState, playerId: string, gameId: string, level: number, now: number): { state: ProgressState; run: LevelRun | null } {
+  const run = runOf(findPlayer(state, playerId), gameId, level);
+  if (!run || run.queue.length < 2) return { state, run };
+  const next: LevelRun = { ...run, queue: [...run.queue.slice(1), run.queue[0]], updatedAt: now };
+  return { state: withPlayer(state, playerId, (p) => withGame(p, gameId, (g) => withRuns(g, level, next))), run: next };
+}
+
+/**
+ * Letter Builder spends one hint from the level's budget, saved at once so it stays spent when the
+ * puzzle is left or swapped. Returns the hints left after it, or null when the run has no budget.
+ * With none left nothing changes and 0 comes back.
+ */
+export function spendHint(state: ProgressState, playerId: string, gameId: string, level: number, now: number): { state: ProgressState; hintsLeft: number | null } {
+  const run = runOf(findPlayer(state, playerId), gameId, level);
+  if (!run || run.hintsLeft === undefined) return { state, hintsLeft: null };
+  if (run.hintsLeft <= 0) return { state, hintsLeft: 0 };
+  const next: LevelRun = { ...run, hintsLeft: run.hintsLeft - 1, updatedAt: now };
+  return { state: withPlayer(state, playerId, (p) => withGame(p, gameId, (g) => withRuns(g, level, next))), hintsLeft: next.hintsLeft! };
+}
+
+/**
+ * A grown-up picks the level a child plays next (any level, locked ones too): `current` becomes it
+ * and `unlocked` rises to it. An existing run for it continues. Levels outside the game are ignored.
+ */
+export function pickLevel(state: ProgressState, playerId: string, gameId: string, level: number, levelCount: number): ProgressState {
+  if (!validLevel(level) || !isInt(levelCount) || level >= levelCount) return state;
+  return withPlayer(state, playerId, (p) =>
+    withGame(p, gameId, (g) => (g.current === level && g.unlocked >= level ? null : { ...g, current: level, unlocked: Math.max(g.unlocked, level) })),
+  );
+}
+
+/** Settings "Start <game> over": that game's levels, stars, scores, current level and runs go. Other games and stickers stay. */
+export function resetGame(state: ProgressState, playerId: string, gameId: string): ProgressState {
+  const id = toGameId(gameId);
+  return withPlayer(state, playerId, (p) => {
+    if (!Object.hasOwn(p.games, id)) return null;
+    const games = { ...p.games };
+    delete games[id];
+    return { ...p, games };
+  });
 }
 
 /** Settings "Reset progress": stars, levels, scores and stickers go back to the start. The player stays. */

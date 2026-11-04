@@ -107,6 +107,13 @@ const paths = {
       <path d="M18 4l3 3-3 3M18 14l3 3-3 3" />
     </>
   ),
+  /** Take a different puzzle (the stuck offer, brief section 8). */
+  swap: (
+    <>
+      <path d="M4 8h12M13 5l3 3-3 3" />
+      <path d="M20 16H8M11 13l-3 3 3 3" />
+    </>
+  ),
   home: (
     <>
       <path d="M4 11l8-7 8 7" />

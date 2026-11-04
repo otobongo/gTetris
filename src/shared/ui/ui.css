@@ -256,10 +256,99 @@
   color: var(--bw-text-2);
 }
 
+/* ---------- Puzzle dots (brief 7.1, 8, 10) ---------- */
+.bw-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--bw-sp-2);
+  margin-top: var(--bw-sp-1);
+}
+.bw-dot {
+  display: block;
+  width: 22px;
+  height: 10px;
+  border-radius: var(--bw-r-pill);
+  overflow: hidden;
+  background: var(--bw-well);
+  box-shadow: inset 0 0 0 2px var(--bw-decor);
+  transition: width var(--bw-base) var(--bw-ease);
+}
+.bw-dot.is-current { width: 32px; background: var(--brick-blue-light); box-shadow: none; }
+.bw-dot.is-solved { box-shadow: none; }
+.bw-dot__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--bw-accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0;
+  transition: transform var(--bw-slow) var(--bw-ease);
+}
+.bw-dot.is-solved .bw-dot__fill { transform: scaleX(1); opacity: 1; }
+
+/* ---------- Appearing controls: Next and the stuck offer fade in over 150ms (brief 8) ---------- */
+@keyframes bw-fade-in { from { opacity: 0; } }
+.bw-appear { animation: bw-fade-in 150ms linear; }
+
+/* ---------- Level card (brief 2.1, 2.5, 8) ---------- */
+@keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } }
+.bw-levelcard-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--bw-z-overlay);
+  display: grid;
+  place-items: center;
+  padding: var(--bw-gutter);
+  background: var(--bw-scrim);
+}
+.bw-levelcard {
+  width: 100%;
+  max-width: 330px;
+  box-sizing: border-box;
+  text-align: center;
+  padding: var(--bw-sp-10) var(--bw-sp-9) var(--bw-sp-9);
+  border-radius: var(--bw-r-xl);
+  background: linear-gradient(180deg, var(--bw-purple-top), var(--bw-purple-bottom));
+  box-shadow: var(--bw-card-shadow);
+  color: var(--bw-text);
+  animation: bw-card-in var(--bw-base) var(--bw-ease);
+}
+.bw-levelcard__title {
+  margin: 0;
+  font-size: var(--bw-fs-display);
+  font-weight: var(--bw-fw-display);
+  line-height: var(--bw-lh-display);
+  text-wrap: balance;
+}
+.bw-levelcard__stars { display: flex; justify-content: center; gap: var(--bw-sp-1); margin: var(--bw-sp-4) 0; color: var(--bw-star-off); }
+.bw-levelcard__stars .is-on { color: var(--bw-star); }
+.bw-levelcard__stars > span { display: block; line-height: 0; }
+.bw-levelcard__fact {
+  margin: 0;
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: var(--bw-lh-body);
+  text-wrap: balance;
+}
+.bw-levelcard__line {
+  margin: var(--bw-sp-2) 0 0;
+  font-size: var(--bw-fs-label);
+  font-weight: 700;
+  line-height: var(--bw-lh-body);
+  text-wrap: balance;
+}
+.bw-levelcard__actions { display: flex; flex-direction: column; gap: var(--bw-sp-4); margin-top: var(--bw-sp-6); }
+.bw-levelcard .bw-levelcard__secondary { --tone-top: var(--bw-secondary-top); --tone-bottom: var(--bw-secondary); }
+
 @media (prefers-reduced-motion: reduce) {
   .bw-press,
   .bw-iconbtn,
   .bw-sand__fill {
     transition: none;
   }
+  /* every moving item becomes a 150ms opacity crossfade, with no width or scale change */
+  .bw-dot { transition: none; }
+  .bw-dot__fill { transition: opacity 150ms linear; }
+  .bw-levelcard { animation: bw-fade-in 150ms linear; }
 }

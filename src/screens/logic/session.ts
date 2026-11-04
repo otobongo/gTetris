@@ -2,8 +2,8 @@
  * Screen-level rules that sit between the router and the progress store: when Break takes
  * over, where the child goes back to afterwards, and the avatar colour a new player gets.
  */
-import type { Route } from '../../shared/router';
-import { AVATAR_COLORS, isBreakTime, type AvatarColor, type Player } from '../../shared/progress';
+import { replace, type Route } from '../../shared/router';
+import { AVATAR_COLORS, activePlayer, isBreakTime, progressStore, type AvatarColor, type Player } from '../../shared/progress';
 
 /** Routes a used-up daily limit blocks (brief 3.4): Home, Levels and the games. */
 export function isPlayRoute(route: Route): boolean {
@@ -27,6 +27,23 @@ export function setResumePath(path: string) {
 }
 export function getResumePath(): string {
   return resumePath;
+}
+
+/**
+ * The daily-limit check the games run on every Next puzzle and Play Level tap (brief 2.4), so a
+ * puzzle in progress is never cut off. When the limit is used up it records `path` (the level's
+ * route) as where Break resumes, opens Break in place of the current entry, and returns true: the
+ * game then loads nothing. Otherwise it returns false and the game goes on.
+ * `go` and `now` are for tests; they default to the router's replace and the store's clock.
+ */
+export function breakBefore(
+  path: string,
+  { player = activePlayer(progressStore.getState()), now = progressStore.now(), go = replace }: { player?: Player | null; now?: number; go?: (path: string) => void } = {},
+): boolean {
+  if (!player || !isBreakTime(player, now)) return false;
+  setResumePath(path);
+  go('/break');
+  return true;
 }
 
 /** Screens a passed grown-up check covers: Settings, the account screens, Support and the legal pages. */

@@ -26,3 +26,11 @@ export function capRule({ hint = false, clock = false }: { hint?: boolean; clock
   const what = hint && clock ? 'Using a hint, or running out of time,' : hint ? 'Using a hint' : clock ? 'Running out of time' : '';
   return what ? `${what} caps the ${noun} at ${CAPPED_STARS} stars.` : '';
 }
+
+/**
+ * The caps of a whole level (brief section 5): a hint used, or a counted clock run out, in any of its
+ * solved puzzles caps the level. Puzzles swapped away are never passed in, so they never cap.
+ */
+export function levelCaps(puzzles: readonly StarCaps[]): Required<StarCaps> {
+  return { usedHint: puzzles.some((p) => p.usedHint === true), outOfTime: puzzles.some((p) => p.outOfTime === true) };
+}
