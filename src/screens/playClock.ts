@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { progressStore } from '../shared/progress';
+import { TICK_MS, countPlayTime } from './logic/minutes';
 
-const MINUTE = 60_000;
 /** Visible play time not yet counted as a whole minute, kept across levels. */
 let carry = 0;
 
@@ -16,14 +16,12 @@ export function usePlayClock(playing: boolean) {
     let last = Date.now();
     const tick = () => {
       const now = Date.now();
-      if (document.visibilityState === 'visible') carry += now - last;
+      const count = countPlayTime(carry, now - last, document.visibilityState === 'visible');
       last = now;
-      while (carry >= MINUTE) {
-        carry -= MINUTE;
-        if (progressStore.getState().activePlayerId) progressStore.addMinutesPlayed(1);
-      }
+      carry = count.carry;
+      if (count.minutes > 0 && progressStore.getState().activePlayerId) progressStore.addMinutesPlayed(count.minutes);
     };
-    const id = window.setInterval(tick, 5_000);
+    const id = window.setInterval(tick, TICK_MS);
     return () => {
       tick();
       window.clearInterval(id);
