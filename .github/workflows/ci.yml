@@ -34,7 +34,8 @@ jobs:
     # Draft PRs skip CI; it runs once the PR is marked ready for review.
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    # Raised from 6 for the solver check and the browser journeys, which run only on PRs into claude/kids-brick-games.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -51,3 +52,22 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The heavy checks (four-puzzle brief 12, user decision 8) run only on pull requests into
+      # claude/kids-brick-games and by hand, never on every push: the full Brick Escape solver check,
+      # then the Playwright journeys in Chromium at phone and tablet size.
+      - name: Brick Escape solver check
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'claude/kids-brick-games')
+        run: npm run test:solver
+      - name: Install Chromium for the journeys
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'claude/kids-brick-games')
+        run: npx playwright install --with-deps chromium
+      - name: Journeys (Playwright)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'claude/kids-brick-games')
+        run: npm run test:e2e
+      - name: Keep the journey traces when one fails
+        if: failure() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.base_ref == 'claude/kids-brick-games'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
