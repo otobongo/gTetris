@@ -9,9 +9,9 @@ const CHAPTERS = [
   { title: 'Getting started', note: 'one idea at a time', count: 8 },
   { title: 'Think first', note: 'some bricks block others', count: 5 },
   { title: 'Icy doors', note: 'wait for the ice to melt', count: 6 },
-  // The Levels board shows a placeholder here: the old name, "Frozen bricks", was a mechanic that was removed.
-  // These levels now teach grey stones and shaped trays (the canvas "Stone blocks" board opens the chapter).
-  { title: '[PLACEHOLDER: chapter name]', note: '', count: 6 },
+  // Formerly "Frozen bricks", a mechanic that was removed. These levels teach grey stones and shaped trays
+  // (the canvas "Stone blocks" board opens the chapter).
+  { title: 'Stone blocks', note: '', count: 6 },
   { title: 'Big bricks', note: 'tight squeeze', count: 5 },
   // Open-ended: the canvas Master mix board, then the Levels screen's "More soon" tile.
   { title: 'Master', note: 'for real brick experts', count: 1, more: true },

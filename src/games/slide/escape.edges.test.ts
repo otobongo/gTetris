@@ -53,11 +53,11 @@ describe('Brick Escape level set', () => {
 
   it('teaches one idea per chapter: icy doors in Icy doors, stones or shaped trays in the chapter after', () => {
     for (const l of chapter('Icy doors')) expect(l.gates.some((g) => g.lock || g.lockColor), `level ${l.id}`).toBe(true);
-    for (const l of chapter('[PLACEHOLDER: chapter name]')) expect(Boolean(l.stone) || l.void.flat().some(Boolean), `level ${l.id}`).toBe(true);
+    for (const l of chapter('Stone blocks')) expect(Boolean(l.stone) || l.void.flat().some(Boolean), `level ${l.id}`).toBe(true);
   });
 
   it('brings in grey stones only once their chapter starts', () => {
-    const first = meta.chapters.find((c) => c.title === '[PLACEHOLDER: chapter name]')!.start;
+    const first = meta.chapters.find((c) => c.title === 'Stone blocks')!.start;
     for (const l of LEVELS.slice(0, first)) expect(l.stone, `level ${l.id}`).toBeUndefined();
   });
 

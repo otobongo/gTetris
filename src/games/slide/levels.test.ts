@@ -89,7 +89,7 @@ describe('shipped Brick Escape levels', () => {
   it('the canvas teaching boards open their chapters', () => {
     const start = (title: string) => meta.chapters.find((c) => c.title === title)!.start;
     expect(LEVELS[start('Icy doors')].tip).toBe(canvas('ice').spec.tip);
-    expect(LEVELS[start('[PLACEHOLDER: chapter name]')].tip).toBe(canvas('walls').spec.tip);
+    expect(LEVELS[start('Stone blocks')].tip).toBe(canvas('walls').spec.tip);
     expect(LEVELS[start('Master')].tip).toBe(canvas('master').spec.tip);
   });
 
