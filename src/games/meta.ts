@@ -28,3 +28,13 @@ export function isLevelOpen(meta: GameMeta, game: GameProgress, band: AgeBand | 
   if (index === 0 || index <= game.unlocked || (game.stars[index - 1] ?? 0) > 0) return true;
   return band === '9-10' && meta.chapters.some((c) => c.count > 0 && c.start === index);
 }
+
+/**
+ * Where Play goes: the first level that is open and has no stars yet, else the last level (every
+ * level has a star, so Play replays it). Null only for a game with no levels.
+ */
+export function firstOpenLevel(meta: GameMeta, game: GameProgress, band: AgeBand | null | undefined): number | null {
+  if (meta.levelCount <= 0) return null;
+  for (let i = 0; i < meta.levelCount; i++) if ((game.stars[i] ?? 0) === 0 && isLevelOpen(meta, game, band, i)) return i;
+  return meta.levelCount - 1;
+}

@@ -3,7 +3,9 @@ import { go, replace } from '../../shared/router';
 import { gameOf, useActivePlayer } from '../../shared/progress';
 import { starsFor, totalStars, useProgress } from '../../shared/storage';
 import { LevelGrid, Screen, TopBar } from '../../shared/ui';
+import { isLevelOpen } from '../meta';
 import { CHAPTERS, LEVELS } from './levels';
+import { meta } from './meta';
 import SlideGame from './SlideGame';
 import './slide.css';
 
@@ -14,10 +16,8 @@ import './slide.css';
 export default function SlideApp({ params }: { params: string[] }) {
   useProgress(); // re-render when stars change
   const player = useActivePlayer();
-  const unlockedUpTo = gameOf(player, 'escape').unlocked;
-  // Levels board rule: linear; ages 9 to 10 also get the first level of every chapter
-  const firsts = new Set(player?.ageBand === '9-10' ? CHAPTERS.filter((c) => c.to > c.from).map((c) => c.from) : []);
-  const unlocked = (i: number) => i === 0 || i <= unlockedUpTo || starsFor('slide', i - 1) > 0 || firsts.has(i);
+  // Same rule as the Levels screen, so every tile it shows open also opens here.
+  const unlocked = (i: number) => isLevelOpen(meta, gameOf(player, 'escape'), player?.ageBand, i);
 
   const n = Number(params[0]);
   const playable = Number.isInteger(n) && n >= 1 && n <= LEVELS.length && unlocked(n - 1);

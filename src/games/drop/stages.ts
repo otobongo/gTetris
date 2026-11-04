@@ -1,4 +1,5 @@
-import { starsFor } from '../../shared/storage';
+import { activePlayer, gameOf, progressStore } from '../../shared/progress';
+import { firstOpenLevel, type GameMeta } from '../meta';
 import { PIECES, type PieceId } from './pieces';
 
 export interface Stage {
@@ -108,12 +109,23 @@ export function newPieces(index: number): PieceId[] {
   return STAGES[index].pieces.filter((id) => !seen.has(id));
 }
 
-export function isUnlocked(index: number): boolean {
-  return index === 0 || starsFor('drop', index - 1) >= 1;
-}
+/**
+ * Brick Drop stage groups for the Levels screen (Brick Drop calls levels "Stage"); meta.ts publishes
+ * this. Chapters follow the bricks: stages 1 to 3 use bricks of 1 to 3 squares; stage 4 brings in the
+ * first four-square bricks (Square, Long Stick); stage 10 brings in the first five-square brick (Flag).
+ * It lives here, next to STAGES, so currentStage can use it without an import cycle.
+ */
+export const dropMeta: GameMeta = {
+  levelCount: STAGES.length,
+  chapters: [
+    { title: 'Small bricks', note: '1 to 3 squares', start: 0, count: 3 },
+    { title: 'Four-square bricks', note: 'up to 4 squares', start: 3, count: 6 },
+    { title: 'Big bricks', note: 'up to 5 squares', start: 9, count: STAGES.length - 9 },
+  ],
+};
 
-/** The stage to open when the player taps Play: the first open stage with no stars yet, else the last one. */
+/** The stage to open when the player taps Play: the shared rule (games/meta.ts), the first open stage with no stars yet, else the last one. */
 export function currentStage(): number {
-  for (let i = 0; i < STAGES.length; i++) if (isUnlocked(i) && starsFor('drop', i) === 0) return i;
-  return STAGES.length - 1;
+  const player = activePlayer(progressStore.getState());
+  return firstOpenLevel(dropMeta, gameOf(player, 'drop'), player?.ageBand) ?? 0;
 }
