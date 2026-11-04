@@ -1,8 +1,10 @@
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { go } from '../../shared/router';
+import { type CSSProperties, type KeyboardEvent, type PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { recordStars } from '../../shared/storage';
-import { IconButton, ResultCard, TopBar } from '../../shared/ui';
+import { useActivePlayer } from '../../shared/progress';
+import type { AgeBand, TimerMode } from '../../shared/progress';
+import { Brick, IconButton, PressButton, Screen, TopBar } from '../../shared/ui';
 import {
   type BlockDef,
   type Cell,
@@ -16,16 +18,92 @@ import {
   exitGate,
   gateDepth,
   initialState,
-  isFrozen,
   isLocked,
-  isPlayable,
   isSolved,
+  locksLeft,
   occupancy,
   starsFor,
   withMove,
 } from './engine';
 import { LEVELS } from './levels';
-import { solve, type Move } from './solver';
+import { solve } from './solver';
+
+/* ---------- clock (Grownups board: base seconds x the age factor) ---------- */
+
+/** Age factor from the Grownups board: ages 3 to 4 get no countdown, then x2, x1.5 and x1. */
+export function ageFactor(band: AgeBand): number {
+  return band === '3-4' ? 0 : band === '5-6' ? 2 : band === '7-8' ? 1.5 : 1;
+}
+
+export interface Clock {
+  /** counted: running out costs the speed star. relaxed: a sand timer for fun. off: no timer. */
+  kind: 'counted' | 'relaxed' | 'off';
+  seconds: number;
+  factor: number;
+}
+
+export function clockFor(base: number, band: AgeBand, mode: TimerMode): Clock {
+  const factor = ageFactor(band);
+  if (mode === 'off') return { kind: 'off', seconds: 0, factor };
+  // the relaxed sand timer has no age factor for ages 3 to 4, so it runs at the slowest factor there is (x2)
+  if (mode === 'relaxed' || factor === 0) return { kind: 'relaxed', seconds: Math.round(base * (factor || 2)), factor };
+  return { kind: 'counted', seconds: Math.round(base * factor), factor };
+}
+
+export const fmtClock = (sec: number) => {
+  const s = Math.max(0, Math.round(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+/* ---------- board size ---------- */
+
+const PAD = 22; // frame around the tray, also the door thickness + 4 (Escape board)
+
+/**
+ * Size of one square. The board draws a 304px grid (Escape board) and shrinks to fit the space the stage
+ * gets between the status panel and the tools. The stage is measured in the frame's own px, so the tablet
+ * zoom is already taken out.
+ */
+function useCell(level: Level) {
+  const stage = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const measure = () => setRoom({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const n = Math.max(level.rows, level.cols);
+  // 8px for the frame's bottom edge
+  const grid = room ? Math.min(304, room.w - PAD * 2, room.h - PAD * 2 - 8) : 304;
+  return { stage, cell: Math.max(24, Math.floor(grid / n)) };
+}
+
+/* ---------- copy ---------- */
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function lockLine(level: Level, state: State): string {
+  for (const g of level.gates) {
+    if (!isLocked(g, state, level)) continue;
+    if (g.lockColor && locksLeft(g, state) === 0) return `An icy door melts when every ${g.lockColor} brick is out.`;
+    const n = locksLeft(g, state);
+    return `An icy door melts after ${n} more ${n === 1 ? 'brick leaves' : 'bricks leave'}.`;
+  }
+  return '';
+}
+
+function doorLabel(level: Level, g: GateDef, state: State): string {
+  if (!isLocked(g, state, level)) return `${cap(g.color)} door`;
+  if (g.lockColor && locksLeft(g, state) === 0) return `Frozen door, melts when every ${g.lockColor} brick is out`;
+  const n = locksLeft(g, state);
+  return `Frozen door, melts after ${n} more ${n === 1 ? 'brick leaves' : 'bricks leave'}`;
+}
+
+/* ---------- the play screen ---------- */
 
 interface Drag {
   block: number;
@@ -33,116 +111,129 @@ interface Drag {
   x0: number;
   y0: number;
   start: Cell;
-  before: State;
+  before: Snapshot;
   moved: boolean;
 }
 
-interface Exiting {
-  block: number;
-  side: Side;
+interface Snapshot {
+  state: State;
+  moves: number;
 }
 
-function useCellSize(level: Level) {
-  const calc = useCallback(() => {
-    const w = Math.min(window.innerWidth - 32, 560);
-    const h = window.innerHeight - 290;
-    // leave room for the frame (about 0.8 of a cell across both sides)
-    const size = Math.floor(Math.min(w / (level.cols + 0.8), h / (level.rows + 0.8)));
-    return Math.max(34, Math.min(84, size));
-  }, [level]);
-  const [cell, setCell] = useState(calc);
-  useEffect(() => {
-    const onResize = () => setCell(calc());
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [calc]);
-  return cell;
-}
+const LEVELS_ROUTE = '/game/escape/levels';
 
 export default function SlideGame({ index }: { index: number }) {
   const level = LEVELS[index];
-  const cell = useCellSize(level);
-  const pad = Math.round(cell * 0.4);
+  const { stage, cell } = useCell(level);
+  const player = useActivePlayer();
+  const band: AgeBand = player?.ageBand ?? '5-6';
+  const clock = clockFor(level.base ?? 45, band, player?.timerMode ?? 'auto');
 
   const [state, setState] = useState<State>(() => initialState(level));
-  const [history, setHistory] = useState<State[]>([]);
+  const [history, setHistory] = useState<Snapshot[]>([]);
   const [moves, setMoves] = useState(0);
   const [usedHint, setUsedHint] = useState(false);
-  const [hint, setHint] = useState<Move | null>(null);
-  const [noHint, setNoHint] = useState(false);
-  const [exiting, setExiting] = useState<Exiting | null>(null);
+  const [hintBlock, setHintBlock] = useState<number | null>(null);
+  const [exiting, setExiting] = useState<{ block: number; side: Side } | null>(null);
   const [bumped, setBumped] = useState<number | null>(null);
-  const [showTip, setShowTip] = useState(Boolean(level.tip));
-  const [won, setWon] = useState<number | null>(null);
+  const [tLeft, setTLeft] = useState(clock.seconds);
+  const [won, setWon] = useState<{ stars: number; inTime: boolean } | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+
   const drag = useRef<Drag | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
-  const movesRef = useRef(0);
+  const movesRef = useRef(moves);
   movesRef.current = moves;
-  const hintRef = useRef(false);
+  const tLeftRef = useRef(tLeft);
+  tLeftRef.current = tLeft;
+  const hintRef = useRef(usedHint);
   hintRef.current = usedHint;
   /** keyboard: consecutive arrow presses on the same brick count as one move */
   const keySession = useRef<number | null>(null);
+  const timers = useRef<number[]>([]);
 
-  // reset when the level changes
-  useEffect(() => {
-    setState(initialState(level));
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
+
+  const reset = useCallback(() => {
+    drag.current = null;
+    keySession.current = null;
+    stateRef.current = initialState(level);
+    movesRef.current = 0;
+    setState(stateRef.current);
     setHistory([]);
     setMoves(0);
     setUsedHint(false);
-    setHint(null);
+    setHintBlock(null);
     setExiting(null);
-    setShowTip(Boolean(level.tip));
+    setBumped(null);
+    setTLeft(clock.seconds);
     setWon(null);
-    keySession.current = null;
-  }, [level]);
+    setCardOpen(false);
+  }, [level, clock.seconds]);
+
+  // the clock ticks while the level is open, visible and not won
+  const ticking = clock.kind !== 'off' && won === null;
+  useEffect(() => {
+    if (!ticking) return;
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      setTLeft((t) => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [ticking]);
 
   const finishIfSolved = useCallback(
     (s: State) => {
       if (!isSolved(s)) return;
-      const stars = starsFor(movesRef.current, level.par, hintRef.current);
+      const inTime = clock.kind !== 'counted' || tLeftRef.current > 0;
+      const stars = starsFor(movesRef.current, level.par, hintRef.current, !inTime);
       recordStars('slide', index, stars);
-      window.setTimeout(() => {
+      later(() => {
         sfx.win();
-        setWon(stars);
+        setWon({ stars, inTime });
+        setCardOpen(true);
       }, 350);
     },
-    [index, level.par],
+    [index, level.par, clock.kind],
   );
 
-  /** Begin a new move: snapshot (the state before the move) for undo, bump the counter. */
-  const beginMove = useCallback((before: State) => {
+  /** A new move starts: keep the state before it for undo, and count it. */
+  const beginMove = useCallback((before: Snapshot) => {
     setHistory((h) => [...h, before]);
-    movesRef.current += 1;
+    movesRef.current = before.moves + 1;
     setMoves(movesRef.current);
-    setHint(null);
-    setNoHint(false);
+    setHintBlock(null);
   }, []);
 
-  const doExit = useCallback(
+  const leave = useCallback(
     (block: number, gate: GateDef) => {
       sfx.exit();
       setExiting({ block, side: gate.side });
-      window.setTimeout(() => {
+      // keyboard players keep their place: focus moves to another brick when this one leaves
+      const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-brick');
+      later(() => {
         const ns = withMove(stateRef.current, block, null);
         stateRef.current = ns;
         setExiting(null);
         setState(ns);
         finishIfSolved(ns);
+        if (hadFocus) later(() => document.querySelector<HTMLElement>('.esc-brick:not(.is-exiting)')?.focus(), 0);
       }, 320);
     },
     [finishIfSolved],
   );
 
-  /** Try to slide `block` one cell. Returns 'moved' | 'exit' | 'blocked'. */
+  /** Slide `block` one square. A brick at its open door that is pushed toward it leaves. */
   const step = useCallback(
     (block: number, dr: number, dc: number): 'moved' | 'exit' | 'blocked' => {
       const s = stateRef.current;
       const p = s.pos[block];
       if (!p) return 'blocked';
       const occ = occupancy(level, s);
-      // already touching a matching open door and pushing toward it: leave
       const here = exitGate(level, occ, s, block, p[0], p[1]);
       if (here >= 0) {
         const [gr, gc] = DIRS[level.gates[here].side];
@@ -155,42 +246,48 @@ export default function SlideGame({ index }: { index: number }) {
       stateRef.current = ns;
       setState(ns);
       sfx.move();
-      const gi = exitGate(level, occ, ns, block, nr, nc);
-      return gi >= 0 ? 'exit' : 'moved';
+      return exitGate(level, occ, ns, block, nr, nc) >= 0 ? 'exit' : 'moved';
     },
     [level],
   );
 
   const exitNow = (block: number) => {
     const s = stateRef.current;
-    const p = s.pos[block]!;
+    const p = s.pos[block];
+    if (!p) return;
     const gi = exitGate(level, occupancy(level, s), s, block, p[0], p[1]);
-    if (gi >= 0) doExit(block, level.gates[gi]);
+    if (gi >= 0) leave(block, level.gates[gi]);
   };
 
   const bump = (block: number) => {
     sfx.bump();
     setBumped(block);
-    window.setTimeout(() => setBumped(null), 300);
+    later(() => setBumped(null), 350);
   };
 
-  /* ---------- pointer dragging ---------- */
-  const onPointerDown = (e: React.PointerEvent, block: number) => {
-    if (exiting || won !== null) return;
-    if (isFrozen(level, state, block)) {
-      bump(block);
-      return;
+  const busy = exiting !== null || won !== null;
+
+  /* ---------- dragging ---------- */
+  const onPointerDown = (e: PointerEvent<HTMLButtonElement>, block: number) => {
+    if (busy) return;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* capture is a nicety */
     }
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start: state.pos[block]!, before: state, moved: false };
+    const start = stateRef.current.pos[block];
+    if (!start) return;
+    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start, before: { state: stateRef.current, moves: movesRef.current }, moved: false };
     keySession.current = null;
   };
 
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
-    const target: Cell = [d.start[0] + Math.round((e.clientY - d.y0) / cell), d.start[1] + Math.round((e.clientX - d.x0) / cell)];
-    // walk toward the target one cell at a time, preferring the axis with more distance left
+    // pointer distance is in screen px; the tablet frame is zoomed, so measure one square on screen
+    const unit = e.currentTarget.getBoundingClientRect().width / ((blockSize(level.blocks[d.block]).w * cell - 4) / cell);
+    const target: Cell = [d.start[0] + Math.round((e.clientY - d.y0) / unit), d.start[1] + Math.round((e.clientX - d.x0) / unit)];
+    // walk toward the target one square at a time, trying the longer way first
     for (let guard = 0; guard < 24; guard++) {
       const p = stateRef.current.pos[d.block];
       if (!p) return;
@@ -219,24 +316,20 @@ export default function SlideGame({ index }: { index: number }) {
     }
   };
 
-  const onPointerUp = (e: React.PointerEvent) => {
+  const onPointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
     drag.current = null;
-    if (!d.moved) {
-      // a tap (or a push into a wall): nudge feedback, and select it for keyboard play
-      const dist = Math.hypot(e.clientX - d.x0, e.clientY - d.y0);
-      if (dist > cell * 0.3) bump(d.block);
-    }
+    // pushed into a wall or another brick: a small nudge says it can not go there
+    if (!d.moved && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
   };
 
-  /* ---------- keyboard: focus a brick, use arrow keys ---------- */
-  const onKeyDown = (e: React.KeyboardEvent, block: number) => {
-    const dir = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key] as Cell | undefined;
-    if (!dir || exiting || won !== null) return;
+  /* ---------- keyboard: focus a brick, slide it with the arrow keys ---------- */
+  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, block: number) => {
+    const dir = ({ ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] } as Record<string, Cell>)[e.key];
+    if (!dir || busy) return;
     e.preventDefault();
-    if (isFrozen(level, state, block)) return bump(block);
-    const before = stateRef.current;
+    const before = { state: stateRef.current, moves: movesRef.current };
     const res = step(block, dir[0], dir[1]);
     if (res === 'blocked') return bump(block);
     if (keySession.current !== block) beginMove(before);
@@ -247,102 +340,146 @@ export default function SlideGame({ index }: { index: number }) {
     }
   };
 
-  /* ---------- toolbar ---------- */
+  /* ---------- tools ---------- */
   const undo = () => {
     if (!history.length || exiting) return;
-    setState(history[history.length - 1]);
+    const last = history[history.length - 1];
+    stateRef.current = last.state;
+    movesRef.current = last.moves;
+    setState(last.state);
+    setMoves(last.moves);
     setHistory((h) => h.slice(0, -1));
-    setMoves((m) => m - 1);
-    setNoHint(false);
-    setHint(null);
+    setHintBlock(null);
     keySession.current = null;
   };
 
-  const restart = () => {
-    setState(initialState(level));
-    setHistory([]);
-    setMoves(0);
-    setHint(null);
-    setWon(null);
-    keySession.current = null;
-  };
-
-  const showHint = () => {
-    const sol = solve(level, state, 200_000);
-    if (!sol || !sol.moves.length) {
-      setNoHint(true);
-      return;
-    }
+  const hint = () => {
+    if (busy) return;
+    const s = stateRef.current;
+    // a short live search from where the child is now; the level's stored best order is the fallback
+    const sol = solve(level, s, 40_000);
+    const next = sol?.moves[0]?.block ?? (level.order ?? level.blocks.map((_, i) => i)).find((i) => s.pos[i] !== null) ?? null;
+    if (next === null) return;
     setUsedHint(true);
-    setHint(sol.moves[0]);
+    setHintBlock(next);
   };
 
-  const stuck = noHint;
+  /* ---------- what the screen shows ---------- */
+  const limit = clock.seconds;
+  const timerColor = tLeft > limit * 0.33 ? 'ok' : tLeft > 0 ? 'low' : 'out';
+  const timeUp = clock.kind === 'counted' && tLeft <= 0 && won === null;
+  const lockMsg = lockLine(level, state);
+  const help = timeUp
+    ? "Time's up! Keep going, you can still finish."
+    : hintBlock !== null
+      ? 'Try the glowing brick first.'
+      : lockMsg || level.tip || 'Drag each brick to the door of its color.';
+  const who = player && !player.unnamed ? `${player.name}: ` : '';
+  const caption =
+    clock.kind === 'counted'
+      ? `${who}level ${index + 1} gets ${level.base ?? 45}s x ${clock.factor} = ${fmtClock(limit)}`
+      : clock.kind === 'relaxed'
+        ? 'A gentle sand timer for fun. It never costs a star.'
+        : '';
+  const hasNext = index + 1 < LEVELS.length;
+  const stars = won?.stars ?? 0;
+  const winText = won
+    ? `${moves} ${moves === 1 ? 'move' : 'moves'}` +
+      (clock.kind !== 'counted' ? '.' : won.inTime ? ', with time to spare!' : '. Next time, try to beat the clock!')
+    : '';
 
-  const boardW = level.cols * cell;
-  const boardH = level.rows * cell;
+  const gridPx = cell * level.cols;
+  const gridPy = cell * level.rows;
+
+  const frames = useMemo(() => {
+    const out: { key: string; style: CSSProperties; bottom: boolean }[] = [];
+    const open = (r: number, c: number) => r < 0 || c < 0 || r >= level.rows || c >= level.cols || level.void[r][c];
+    for (let r = 0; r < level.rows; r++)
+      for (let c = 0; c < level.cols; c++) {
+        if (level.void[r][c]) continue;
+        const rad = (dr: number, dc: number) => (open(r + dr, c) && open(r, c + dc) && open(r + dr, c + dc) ? PAD : 0);
+        out.push({
+          key: `${r}-${c}`,
+          bottom: open(r + 1, c),
+          style: {
+            left: c * cell - PAD,
+            top: r * cell - PAD,
+            width: cell + 2 * PAD,
+            height: cell + 2 * PAD,
+            borderRadius: `${rad(-1, -1)}px ${rad(-1, 1)}px ${rad(1, 1)}px ${rad(1, -1)}px`,
+          },
+        });
+      }
+    return out;
+  }, [level, cell]);
 
   return (
-    <div className="screen slide">
+    <Screen className="esc">
       <TopBar
         title={`Level ${index + 1}`}
-        subtitle={level.name}
-        back="/slide"
-        right={<IconButton icon="restart" label="Restart level" onClick={restart} />}
+        subtitle={`Brick Escape · ${level.name ?? ''}`}
+        back={LEVELS_ROUTE}
+        backLabel="Back to levels"
+        action={<IconButton icon="restart" label="Restart level" onClick={reset} />}
       />
-      <div className="stats">
-        <span className="pill">Moves {moves}</span>
-        <span className="pill" title="Fewest moves possible">
-          ⭐ Best {level.par}
-        </span>
-      </div>
 
-      <div className="slide-stage">
-        <div
-          className="slide-board"
-          style={{ width: boardW + pad * 2, height: boardH + pad * 2, '--cell': `${cell}px`, '--pad': `${pad}px` } as CSSProperties}
-        >
-          <div className="slide-board__inner" style={{ left: pad, top: pad, width: boardW, height: boardH }}>
-            {/* frame: each tray cell grown by the pad; corners round only where the tray outline turns */}
+      <section className="esc-status" aria-label="Level status">
+        <div className="esc-status__row">
+          {clock.kind !== 'off' && (
+            <>
+              <svg className="esc-status__glass" data-state={timerColor} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
+              </svg>
+              {clock.kind === 'counted' && (
+                <span className="esc-status__clock">
+                  <span className="esc-sr">Time left </span>
+                  {fmtClock(tLeft)}
+                </span>
+              )}
+            </>
+          )}
+          <span className="esc-status__spacer" />
+          <span className="esc-status__moves">Moves {moves}</span>
+          <span className="esc-status__best">Best {level.par}</span>
+        </div>
+        {clock.kind !== 'off' && (
+          <div className="esc-status__track" aria-hidden="true">
+            <div className="esc-status__fill" data-state={timerColor} style={{ width: `${limit ? Math.round((Math.max(0, tLeft) / limit) * 100) : 0}%` }} />
+          </div>
+        )}
+        {caption && <p className="esc-status__caption">{caption}</p>}
+      </section>
+
+      <div className="esc-stage" ref={stage}>
+        <div className="esc-board" style={{ width: gridPx + PAD * 2, height: gridPy + PAD * 2 }}>
+          <div className="esc-board__grid" style={{ left: PAD, top: PAD, width: gridPx, height: gridPy }}>
+            {frames.map((f) => (
+              <div key={`f${f.key}`} className={`esc-frame${f.bottom ? ' is-bottom' : ''}`} style={f.style} />
+            ))}
             {level.void.flatMap((row, r) =>
-              row.map((v, c) => {
-                if (v) return null;
-                const open = (dr: number, dc: number) => !isPlayable(level, r + dr, c + dc);
-                const corner = (dr: number, dc: number) => (open(dr, 0) && open(0, dc) ? pad : 0);
-                return (
-                  <div
-                    key={`f${r}-${c}`}
-                    className={`slide-frame${open(1, 0) ? ' is-bottom' : ''}`}
-                    style={{
-                      left: c * cell - pad,
-                      top: r * cell - pad,
-                      width: cell + pad * 2,
-                      height: cell + pad * 2,
-                      borderRadius: `${corner(-1, -1)}px ${corner(-1, 1)}px ${corner(1, 1)}px ${corner(1, -1)}px`,
-                    }}
-                  />
-                );
-              }),
+              row.map((v, c) => (v ? null : <div key={`w${r}-${c}`} className="esc-well" style={{ left: c * cell, top: r * cell, width: cell, height: cell }} />)),
             )}
-            {level.void.flatMap((row, r) =>
-              row.map((v, c) => (v ? null : <div key={`w${r}-${c}`} className="slide-well" style={{ left: c * cell, top: r * cell, width: cell, height: cell }} />)),
+            {level.stone?.flatMap((row, r) =>
+              row.map((s, c) =>
+                s ? (
+                  <div key={`s${r}-${c}`} className="esc-stone" role="img" aria-label="Stone block, it never moves" style={{ left: c * cell + 2, top: r * cell + 2, width: cell - 4, height: cell - 4 }} />
+                ) : null,
+              ),
             )}
             {level.gates.map((g, gi) => (
-              <Gate key={gi} level={level} gate={g} cell={cell} pad={pad} state={state} hinted={hint?.to === null && level.blocks[hint.block].color === g.color} />
+              <Door key={gi} level={level} gate={g} cell={cell} state={state} />
             ))}
-            {hint?.to && <Ghost block={level.blocks[hint.block]} at={hint.to} cell={cell} />}
             {level.blocks.map((b, i) => {
               const p = state.pos[i];
               if (!p) return null;
               return (
-                <Brick
+                <BrickPiece
                   key={b.id}
                   block={b}
                   at={p}
                   cell={cell}
-                  frozen={isFrozen(level, state, i) ? (b.frozen ?? 0) - state.exited : 0}
                   exiting={exiting?.block === i ? exiting.side : null}
-                  hinted={hint?.block === i}
+                  hinted={hintBlock === i}
                   bumped={bumped === i}
                   onPointerDown={(e) => onPointerDown(e, i)}
                   onPointerMove={onPointerMove}
@@ -355,70 +492,36 @@ export default function SlideGame({ index }: { index: number }) {
         </div>
       </div>
 
-      <p className="slide-help muted" aria-live="polite">
-        {stuck
-          ? 'Hmm, no way out from here. Try undo!'
-          : hint
-            ? hint.to
-              ? 'Try sliding the glowing brick to the dotted spot.'
-              : 'The glowing brick can go out its door now!'
-            : 'Drag a brick to its matching door.'}
+      <p className="esc-help" aria-live="polite">
+        {won && !cardOpen ? `${won.stars === 3 ? 'Brilliant!' : 'Great job!'} ${winText}` : help}
       </p>
 
-      <div className="slide-tools">
-        <IconButton icon="undo" label="Undo" onClick={undo} disabled={!history.length} />
-        <IconButton icon="hint" label="Hint (max 2 stars)" onClick={showHint} variant="warm" />
-        <IconButton icon="restart" label="Restart" onClick={restart} disabled={!history.length} />
+      <div className="esc-tools">
+        <IconButton icon="undo" label="Undo" onClick={undo} disabled={!history.length || busy} className="esc-tool" />
+        <IconButton icon="hint" label="Hint" onClick={hint} variant="yellow" disabled={busy} className="esc-tool" />
       </div>
 
-      {showTip && level.tip && (
-        <ResultCard title={level.name ?? `Level ${index + 1}`} message={level.tip}>
-          <button className="btn btn--go" onClick={() => setShowTip(false)} autoFocus>
-            Let's go!
-          </button>
-        </ResultCard>
+      {won && cardOpen && (
+        <WinCard
+          title={stars === 3 ? 'Brilliant!' : 'Great job!'}
+          stars={stars}
+          text={winText}
+          onReplay={reset}
+          nextLabel={hasNext ? `Next: Level ${index + 2}` : 'All levels'}
+          nextHref={toHref(hasNext ? `/game/escape/${index + 2}` : LEVELS_ROUTE)}
+          onClose={() => setCardOpen(false)}
+        />
       )}
-
-      {won !== null && (
-        <ResultCard
-          title={won === 3 ? 'Brilliant!' : won === 2 ? 'Great job!' : 'You did it!'}
-          stars={won}
-          message={
-            moves <= level.par
-              ? `${moves} ${moves === 1 ? 'move' : 'moves'}, the fewest possible!`
-              : `${moves} moves. Can you do it in ${level.par}?${usedHint ? ' (Hints give up to 2 stars.)' : ''}`
-          }
-        >
-          <button className="btn" onClick={restart}>
-            Replay
-          </button>
-          {index + 1 < LEVELS.length ? (
-            <button className="btn btn--go" onClick={() => go(`/slide/${index + 2}`)} autoFocus>
-              Next level
-            </button>
-          ) : (
-            <button className="btn btn--go" onClick={() => go('/slide')} autoFocus>
-              All levels
-            </button>
-          )}
-        </ResultCard>
-      )}
-    </div>
+    </Screen>
   );
 }
 
 /* ---------- pieces ---------- */
 
-function isRect(b: BlockDef) {
-  const { h, w } = blockSize(b);
-  return b.cells.length === h * w;
-}
-
-function Brick({
+function BrickPiece({
   block,
   at,
   cell,
-  frozen,
   exiting,
   hinted,
   bumped,
@@ -427,98 +530,143 @@ function Brick({
   block: BlockDef;
   at: Cell;
   cell: number;
-  frozen: number;
   exiting: Side | null;
   hinted: boolean;
   bumped: boolean;
-  onPointerDown: (e: React.PointerEvent) => void;
-  onPointerMove: (e: React.PointerEvent) => void;
-  onPointerUp: (e: React.PointerEvent) => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
+  onPointerDown: (e: PointerEvent<HTMLButtonElement>) => void;
+  onPointerMove: (e: PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp: (e: PointerEvent<HTMLButtonElement>) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLButtonElement>) => void;
 }) {
   const { h, w } = blockSize(block);
-  let tx = at[1] * cell;
-  let ty = at[0] * cell;
+  let x = at[1] * cell + 2;
+  let y = at[0] * cell + 2;
   if (exiting) {
     const [dr, dc] = DIRS[exiting];
-    tx += dc * (w + 0.5) * cell;
-    ty += dr * (h + 0.5) * cell;
+    x += dc * (w + 0.6) * cell;
+    y += dr * (h + 0.6) * cell;
   }
-  const cls = ['slide-brick', exiting && 'is-exiting', hinted && 'is-hinted', bumped && 'is-bumped', frozen > 0 && 'is-frozen'].filter(Boolean).join(' ');
-  const label = `${block.color} brick${frozen > 0 ? `, frozen for ${frozen} more` : ''}`;
+  if (bumped) x += 5;
+  const cls = ['esc-brick', exiting && 'is-exiting', hinted && 'is-hinted'].filter(Boolean).join(' ');
   return (
-    <div
+    <button
+      type="button"
       className={cls}
-      style={{ width: w * cell, height: h * cell, transform: `translate(${tx}px, ${ty}px)` }}
-      role="button"
-      tabIndex={0}
-      aria-label={label}
+      style={{ width: w * cell - 4, height: h * cell - 4, transform: `translate(${x}px, ${y}px)` }}
+      aria-label={`${cap(block.color)} brick`}
+      aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
       {...handlers}
       onPointerCancel={handlers.onPointerUp}
     >
-      {isRect(block) ? (
-        <div className="brick slide-brick__body" data-color={block.color} style={{ inset: 2 }}>
-          <div className="slide-studs" />
-        </div>
-      ) : (
-        block.cells.map(([r, c]) => {
-          const has = (dr: number, dc: number) => block.cells.some(([a, b]) => a === r + dr && b === c + dc);
-          return (
-            <div
-              key={`${r}-${c}`}
-              className="brick slide-brick__body"
-              data-color={block.color}
-              style={{
-                left: c * cell + (has(0, -1) ? 0 : 2),
-                top: r * cell + (has(-1, 0) ? 0 : 2),
-                right: (w - c - 1) * cell + (has(0, 1) ? 0 : 2),
-                bottom: (h - r - 1) * cell + (has(1, 0) ? 0 : 2),
-                borderRadius: 6,
-              }}
-            >
-              <div className="slide-studs" />
-            </div>
-          );
-        })
-      )}
-      {frozen > 0 && (
-        <div className="slide-ice" aria-hidden="true">
-          <span>{frozen}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Ghost({ block, at, cell }: { block: BlockDef; at: Cell; cell: number }) {
-  return (
-    <>
-      {block.cells.map(([r, c]) => (
-        <div key={`${r}-${c}`} className="slide-ghost" data-color={block.color} style={{ left: (at[1] + c) * cell, top: (at[0] + r) * cell, width: cell, height: cell }} />
-      ))}
-    </>
+      <Brick color={block.color} stud={cell} width={w * cell - 4} height={h * cell - 4} radius={9} className="esc-brick__face" />
+    </button>
   );
 }
 
 const ARROW: Record<Side, string> = { right: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', top: 'M6 15l6-6 6 6', bottom: 'M6 9l6 6 6-6' };
 
-function Gate({ level, gate, cell, pad, state, hinted }: { level: Level; gate: GateDef; cell: number; pad: number; state: State; hinted: boolean }) {
+function Door({ level, gate, cell, state }: { level: Level; gate: GateDef; cell: number; state: State }) {
   const d = gateDepth(level, gate);
-  const horizontal = gate.side === 'left' || gate.side === 'right';
-  const style: CSSProperties = horizontal
-    ? { top: gate.at * cell + 3, height: gate.len * cell - 6, width: pad - 4, left: gate.side === 'right' ? (d + 1) * cell + 2 : d * cell - pad + 2 }
-    : { left: gate.at * cell + 3, width: gate.len * cell - 6, height: pad - 4, top: gate.side === 'bottom' ? (d + 1) * cell + 2 : d * cell - pad + 2 };
-  const locked = isLocked(gate, state);
-  const left = (gate.lock ?? 0) - state.exited;
+  const span = gate.len * cell - 8;
+  const thick = PAD - 4;
+  const style: CSSProperties =
+    gate.side === 'right'
+      ? { left: (d + 1) * cell + 2, top: gate.at * cell + 4, width: thick, height: span }
+      : gate.side === 'left'
+        ? { left: d * cell - PAD + 2, top: gate.at * cell + 4, width: thick, height: span }
+        : gate.side === 'bottom'
+          ? { left: gate.at * cell + 4, top: (d + 1) * cell + 2, width: span, height: thick }
+          : { left: gate.at * cell + 4, top: d * cell - PAD + 2, width: span, height: thick };
+  const locked = isLocked(gate, state, level);
+  const count = locksLeft(gate, state);
+  const upright = gate.side === 'left' || gate.side === 'right';
   return (
-    <div className={`slide-gate brick${locked ? ' is-locked' : ''}${hinted ? ' is-hinted' : ''}`} data-color={gate.color} style={style} aria-label={`${gate.color} door${locked ? `, opens after ${left} more` : ''}`}>
+    <div className={`esc-door${locked ? ' is-iced' : ''}`} data-brick={locked ? undefined : gate.color} role="img" aria-label={doorLabel(level, gate, state)} style={style}>
       {locked ? (
-        <span className="slide-gate__count">{left}</span>
+        <span className={`esc-door__ice${upright ? ' is-upright' : ''}`}>
+          {gate.lockColor && <span className="esc-door__swatch" data-brick={gate.lockColor} />}
+          {count > 0 && <span>{count}</span>}
+        </span>
       ) : (
-        <svg viewBox="0 0 24 24" width={Math.min(pad, 26)} height={Math.min(pad, 26)} aria-hidden="true">
-          <path d={ARROW[gate.side]} fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="esc-door__arrow">
+          <path d={ARROW[gate.side]} />
         </svg>
       )}
+    </div>
+  );
+}
+
+function WinCard({
+  title,
+  stars,
+  text,
+  onReplay,
+  nextLabel,
+  nextHref,
+  onClose,
+}: {
+  title: string;
+  stars: number;
+  text: string;
+  onReplay: () => void;
+  nextLabel: string;
+  nextHref: string;
+  onClose: () => void;
+}) {
+  const card = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    // the main action (Next) takes focus when the card opens; focus goes back when it closes
+    card.current?.querySelector<HTMLElement>('.esc-win__next')?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+  // keep focus inside the card; Escape closes it and the board stays as it is
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key !== 'Tab' || !card.current) return;
+    const items = [...card.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')];
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  return (
+    <div className="esc-scrim" onKeyDown={onKeyDown}>
+      <div ref={card} className="esc-win" role="dialog" aria-modal="true" aria-labelledby="esc-win-title" aria-describedby="esc-win-text">
+        <h2 id="esc-win-title" className="esc-win__title">
+          {title}
+        </h2>
+        <div className="esc-win__stars" role="img" aria-label={`${stars} of 3 stars`}>
+          {[0, 1, 2].map((i) => (
+            <svg key={i} width="48" height="48" viewBox="0 0 24 24" aria-hidden="true" className={i < stars ? 'is-on' : undefined}>
+              <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" />
+            </svg>
+          ))}
+        </div>
+        <p id="esc-win-text" className="esc-win__text">
+          {text}
+        </p>
+        <div className="esc-win__actions">
+          <PressButton size="md" onClick={onReplay} className="esc-win__replay">
+            Replay
+          </PressButton>
+          <PressButton size="md" variant="green" href={nextHref} className="esc-win__next">
+            {nextLabel}
+          </PressButton>
+        </div>
+      </div>
     </div>
   );
 }
