@@ -83,11 +83,8 @@ export default function App() {
       const game = getGame(route.id)!;
       const Game = GAME_SCREENS[game.id];
       if (!game.playable || !Game) return <ComingSoon game={game} />;
-      return (
-        <div className="app">
-          <Game params={route.level === null ? [] : [String(route.level)]} />
-        </div>
-      );
+      // Every game draws its own Screen, which pads itself, so no shell wrapper goes around it.
+      return <Game params={route.level === null ? [] : [String(route.level)]} />;
     }
     default:
       return <Home />;

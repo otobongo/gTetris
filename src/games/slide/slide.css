@@ -14,10 +14,6 @@
   align-items: center;
 }
 
-/* App.tsx wraps games in the old padded .app column; Screen already pads, so the board would overflow one
-   screen by that padding. Drop it while the Escape board is showing (reported to the foundations owner). */
-.app:has(> .bw-screen .esc) { padding: 0; }
-
 .esc-sr {
   position: absolute;
   width: 1px;

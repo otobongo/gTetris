@@ -7,6 +7,8 @@ import { recordStars } from '../../shared/storage';
 import { Brick, IconButton, LevelGrid, PressButton, Screen, Stars, TopBar, useLayout } from '../../shared/ui';
 import { CHAPTERS, LEVELS, chapterOf, makeRound, type Prompt } from './levels';
 import { HINTS_PER_LEVEL, STAR_RULE, starsForSlips } from './logic';
+import { isLevelOpen } from '../meta';
+import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
 import './letters.css';
@@ -16,8 +18,8 @@ const LEVELS_PATH = '/game/letters/levels';
 
 export default function LettersApp({ params }: { params: string[] }) {
   const player = useActivePlayer();
-  const reached = gameOf(player, GAME).unlocked;
-  const isOpen = (i: number) => i <= reached;
+  // Same rule as the Levels screen, so every tile it shows open also opens here.
+  const isOpen = (i: number) => isLevelOpen(meta, gameOf(player, GAME), player?.ageBand, i);
   const n = Number(params[0]);
   const level = Number.isInteger(n) && n >= 1 && n <= LEVELS.length ? n - 1 : -1;
   const open = level >= 0 && isOpen(level);

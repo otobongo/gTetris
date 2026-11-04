@@ -8,8 +8,6 @@
   --lb-frame-top: #4a3ca8;
   --lb-fs-help: 17px;
 }
-/* The game sits inside the app shell's own padding; the screen frame already pads itself. */
-.app:has(.lb-screen) { padding: 0; min-height: 0; }
 
 /* ---------- Player strip ---------- */
 .lb-player {

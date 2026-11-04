@@ -2,7 +2,7 @@
  * Level select rules (design/canvas/Levels.dc.html, brief 3.2), as pure functions so they can
  * be tested without a browser. Level indexes are 0-based; the numbers a child sees are 1-based.
  */
-import type { GameMeta } from '../../games/meta';
+import { isLevelOpen, type GameMeta } from '../../games/meta';
 import type { AgeBand, GameProgress } from '../../shared/progress';
 
 export type TileState = 'done' | 'current' | 'open' | 'locked';
@@ -43,10 +43,7 @@ export interface LevelPlan {
 export function planLevels(meta: GameMeta, game: GameProgress, band: AgeBand): LevelPlan {
   const count = meta.levelCount;
   const starsOf = (i: number) => Math.max(0, Math.min(3, game.stars[i] ?? 0));
-  const firsts = new Set<number>();
-  if (band === '9-10') for (const c of meta.chapters) if (c.count > 0 && c.start < count) firsts.add(c.start);
-
-  const isOpen = (i: number) => i === 0 || starsOf(i - 1) > 0 || i <= game.unlocked || firsts.has(i);
+  const isOpen = (i: number) => isLevelOpen(meta, game, band, i);
 
   let current: number | null = null;
   for (let i = 0; i < count; i++) {

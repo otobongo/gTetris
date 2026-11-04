@@ -54,14 +54,6 @@ body {
 
 button { font-family: inherit; color: inherit; }
 
-.app {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
-}
-
 .screen {
   width: 100%;
   max-width: 560px;
