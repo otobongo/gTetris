@@ -1,21 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { Icon } from '../../shared/ui';
-
-/** Three stars, 48px, as on the win card of the boards. Earned stars are filled; the rest are dim. */
-export function StarRow({ value }: { value: number }) {
-  return (
-    <div className="drop-starrow" role="img" aria-label={`${value} of 3 stars`}>
-      {[0, 1, 2].map((i) => (
-        <span key={i} className={i < value ? 'is-on' : undefined}>
-          <Icon name="star" size={48} />
-        </span>
-      ))}
-    </div>
-  );
-}
 
 /**
- * The overlay card of the boards (scrim, centred card, title, content, buttons). It sits inside the
+ * The intro and Out of room cards of the boards (scrim, centred card, title, lines, stacked buttons). It sits inside the
  * screen frame, so on a tablet it scales with the rest of the screen. The page behind it is inert.
  */
 export function Sheet({ title, children, actions }: { title: string; children?: ReactNode; actions: ReactNode }) {

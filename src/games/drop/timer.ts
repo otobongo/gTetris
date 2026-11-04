@@ -18,7 +18,8 @@ export const AGE_FACTOR: Record<AgeBand, number> = { '3-4': 0, '5-6': 2, '7-8': 
 /** [PLACEHOLDER: seconds of base time per goal row. The boards only show a sample (2:00 for a 6-row stage at age 7). Confirm before release.] */
 export const SECONDS_PER_ROW = 15;
 
-export function timerPlan(stage: Stage, mode: TimerMode, band: AgeBand): TimerPlan {
+/** `stage` needs only its goal rows: a puzzle passes its own (puzzles.ts puzzleGoalRows), so each puzzle gets its own clock. */
+export function timerPlan(stage: Pick<Stage, 'goalRows'>, mode: TimerMode, band: AgeBand): TimerPlan {
   if (mode === 'off') return { kind: 'off' };
   const factor = AGE_FACTOR[band];
   const base = stage.goalRows * SECONDS_PER_ROW;

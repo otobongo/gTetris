@@ -134,10 +134,10 @@ export const dropMeta: GameMeta = {
 };
 
 /**
- * The stage to open when the player taps Play: the shared rule (games/meta.ts currentLevel). Until
- * Brick Drop shows the finished state (brief 2.5), a game with every stage starred opens the last one.
+ * The stage to open when the player taps Play: the shared rule (games/meta.ts currentLevel). Null once
+ * every stage has stars: `#/game/drop` then shows the finished state (brief 2.5).
  */
-export function currentStage(): number {
+export function currentStage(): number | null {
   const player = activePlayer(progressStore.getState());
-  return currentLevel(dropMeta, gameOf(player, 'drop')) ?? Math.max(0, dropMeta.levelCount - 1);
+  return currentLevel(dropMeta, gameOf(player, 'drop'));
 }

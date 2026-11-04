@@ -231,17 +231,21 @@ describe('Brick Drop: the Play button opens the stage Home and Levels name (revi
         const plan = planLevels(meta, game, band);
         const where = `${band} ${JSON.stringify(stars)}`;
         expect(currentStage(), where).toBe(plan.current);
-        expect(homePill(meta, game, band, drop.noun), where).toBe(`Stage ${currentStage() + 1}`);
+        // none of these samples is finished, so there is always a current stage
+        expect(homePill(meta, game, band, drop.noun), where).toBe(`Stage ${currentStage()! + 1}`);
         // DropApp plays the stage instead of bouncing back to Levels
-        expect(isLevelOpen(meta, game, band, currentStage()), where).toBe(true);
+        expect(isLevelOpen(meta, game, band, currentStage()!), where).toBe(true);
       }
     }
   });
 
-  it('replays the last stage once every stage has a star, and that stage still opens', () => {
+  // Updated for brief 2.5 and 2.6 (decision 3): once every stage has a star there is no current stage
+  // (null), and `#/game/drop` shows the finished state instead of replaying the last stage. The last
+  // stage still opens, for a grown-up's pick.
+  it('has no current stage once every stage has a star, and the last stage still opens', () => {
     const game = playAs('7-8', allStars(n, 2));
     expect(planLevels(meta, game, '7-8').complete).toBe(true);
-    expect(currentStage()).toBe(n - 1);
+    expect(currentStage()).toBeNull();
     expect(isLevelOpen(meta, game, '7-8', n - 1)).toBe(true);
   });
 });
