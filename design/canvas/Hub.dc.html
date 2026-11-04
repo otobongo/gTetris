@@ -11,8 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } a[data-press] { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } a[data-press="tile"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; } a[data-press="yellow"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #d48a00 !important; } @media (prefers-reduced-motion: reduce) { a[data-press] { transition: none; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px;">
 
 <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
 <a href="{{whoHref}}" aria-label="Switch player" style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; text-decoration: none; color: #ffffff; font-size: 28px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{avatar}}">M</a>
@@ -44,7 +44,7 @@
 </a>
 
 <h2 style="margin: 22px 0 10px; font-size: 20px; font-weight: 800; line-height: 1.1;">Games</h2>
-<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gameCols}}; grid-auto-rows: 1fr; gap: 10px;">
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gamecols}}; grid-auto-rows: 1fr; gap: 10px;">
 <sc-for list="{{games}}" as="g" hint-placeholder-count="9">
 <li style="display: grid; min-width: 0;">
 <a href="{{g.href}}" aria-label="{{g.name}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardgrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
@@ -92,10 +92,10 @@ class Component extends DCLogic {
     var t = tablet ? 'Tablet' : '';
     var b = function (c, s) { return 'border-radius: 5px; ' + self.brick(c, s); };
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       // Phone: one row per game, pill beside the title. Tablet: two columns are only 277px wide,
       // so the art and pill sit on top and the title and subtitle get the full card width.
-      gameCols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
+      gamecols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
       cardgrid: tablet
         ? "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: 44px 6px auto auto; grid-template-areas: 'art . pill' '. . .' 'title title title' 'sub sub sub';"
         : "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: 'art title pill' 'art sub sub';",
