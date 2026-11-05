@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AVATAR_COLORS, type Player } from '../../shared/progress';
 import type { Route } from '../../shared/router';
-import { backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
+import { GROWN_UP_PASS_MS, backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
 
 const NOON = new Date(2026, 10, 4, 12, 0).getTime();
 
@@ -182,5 +182,64 @@ describe('review additions: resume path and Back', () => {
     notePath('/help');
     notePath('help');
     expect(backTarget(['/players'], '/')).toBe('/players');
+  });
+});
+
+describe('the grown-up pass runs out 10 minutes after it was given', () => {
+  // The pass reads the store's clock, which is Date.now, so fake timers move it.
+  const START = new Date(2026, 10, 5, 9, 0).getTime();
+
+  it('holds for 10 minutes on the grown-up pages, then the check asks again', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      grownUpGate.follow({ name: 'help' });
+      vi.setSystemTime(START + GROWN_UP_PASS_MS - 1);
+      expect(grownUpGate.passed()).toBe(true);
+      vi.setSystemTime(START + GROWN_UP_PASS_MS);
+      expect(grownUpGate.passed()).toBe(false);
+      // Moving between grown-up pages does not bring it back.
+      grownUpGate.follow({ name: 'terms' });
+      grownUpGate.follow({ name: 'settings' });
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('a new pass starts a new 10 minutes', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      vi.setSystemTime(START + 9 * 60_000);
+      grownUpGate.pass();
+      vi.setSystemTime(START + 18 * 60_000);
+      expect(grownUpGate.passed()).toBe(true);
+      vi.setSystemTime(START + 19 * 60_000);
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('a clock set back before the pass does not stretch it', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      vi.setSystemTime(START - 60_000);
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('is 10 minutes', () => {
+    expect(GROWN_UP_PASS_MS).toBe(10 * 60_000);
   });
 });

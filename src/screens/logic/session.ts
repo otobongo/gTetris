@@ -65,18 +65,28 @@ export function needsGrownUpCheck(route: Route): boolean {
  * Support and the account screens, and ends on the first screen outside them. App calls
  * `follow` on every route, including one it redirects (Home that turns into Break), so the
  * pass never outlives the grown-up pages, whichever way they were left (Back, device Back, a link).
+ * It also runs out GROWN_UP_PASS_MS after it was given, so a device left open on Support, Terms or
+ * Privacy does not keep Settings and the level picker open for the next child. Time comes from the
+ * store's clock, so tests can move it.
  */
-let grownUp = false;
+export const GROWN_UP_PASS_MS = 10 * 60_000;
+let passedAt: number | null = null;
 export const grownUpGate = {
-  passed: () => grownUp,
+  passed: () => {
+    if (passedAt === null) return false;
+    const age = progressStore.now() - passedAt;
+    if (age >= 0 && age < GROWN_UP_PASS_MS) return true;
+    passedAt = null;
+    return false;
+  },
   pass: () => {
-    grownUp = true;
+    passedAt = progressStore.now();
   },
   reset: () => {
-    grownUp = false;
+    passedAt = null;
   },
   follow: (route: Route) => {
-    if (!isGrownUpRoute(route)) grownUp = false;
+    if (!isGrownUpRoute(route)) passedAt = null;
   },
 };
 

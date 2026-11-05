@@ -66,6 +66,22 @@ an official JS client). Any provider works if it meets the rules below.
 - Settings: the newer change (`settingsUpdatedAt`) wins; a tie keeps the local value.
 - The active player stays this device's choice.
 
+Known gap: the four-puzzle levels added two fields to each game, `current` (the level a Home tap
+opens) and `runs` (puzzles solved in levels not yet finished, keyed by level). When both devices
+hold a game, `mergeGame` in `src/shared/account/merge.ts` keeps only `unlocked`, `stars` and
+`best`, so a sync today would drop every level in progress and every grown-up's pick. Before sync
+is switched on, the merge must carry both and merge them safely:
+
+- `runs`, per level: a run only on one side is kept; when both sides hold a run on the same `set`,
+  keep the one with more `solved` results (then the newer `updatedAt`); on different sets, keep
+  the newer one. A level that has stars on either side after the merge drops its run. Letter
+  Builder's `hintsLeft` takes the lower of the two on the same set, so a spent hint never comes back.
+- `current`: the value of the side that has one; when both do, this device's value (as with the
+  active player). Dropped when that level has stars after the merge, so the next Home tap works it
+  out, as `currentLevel` in `src/games/meta.ts` does.
+- The merged state goes through `sanitize` as today, so a broken run from the server is dropped
+  rather than trusted.
+
 Known gap: removing a child on one device does not remove them on others, because the union
 brings them back. Before launch, add deletion markers (an id plus deletion time) to the snapshot
 and drop marked players in the merge. Account deletion is a server action, not a merge.

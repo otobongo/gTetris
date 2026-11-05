@@ -168,6 +168,8 @@ export function cleanResult(raw: unknown): PuzzleResult | null {
 export function cleanRun(raw: unknown): LevelRun | null {
   if (!isObj(raw) || !isSetId(raw.set) || !isSeed(raw.seed)) return null;
   if (!Array.isArray(raw.queue) || !Array.isArray(raw.solved)) return null;
+  // Lengths first, so an oversized list from storage is never walked.
+  if (raw.queue.length > PUZZLES_PER_LEVEL || raw.solved.length > PUZZLES_PER_LEVEL) return null;
   if (raw.solved.length >= SOLVES_PER_LEVEL) return null;
   const solved: PuzzleResult[] = [];
   for (const r of raw.solved) {
@@ -193,8 +195,10 @@ function cleanRuns(raw: unknown): Record<number, LevelRun> {
   if (!isObj(raw)) return out;
   for (const [k, v] of Object.entries(raw)) {
     const level = parseLevelKey(k);
-    const run = level === null ? null : cleanRun(v);
-    if (level !== null && run) out[level] = run;
+    // A key past the highest level index is never a real level: skip it before reading its run.
+    if (level === null || level > MAX_LEVEL_INDEX) continue;
+    const run = cleanRun(v);
+    if (run) out[level] = run;
   }
   return out;
 }
