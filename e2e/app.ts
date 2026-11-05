@@ -9,6 +9,8 @@ import { type Cell, type Level, type State, DIRS, canPlace, fromSpec, initialSta
 import { keyStep } from '../src/games/slide/drag';
 import { PUZZLE_DATA } from '../src/games/slide/puzzles.data';
 import { solve } from '../src/games/slide/solver';
+import { CLEAR_MS, hardDrop as dropHardDrop, move as dropMove, rotate as dropRotate, step as dropStep, type GameState as DropGame } from '../src/games/drop/engine';
+import { puzzleGame } from '../src/games/drop/puzzles';
 
 export const STORAGE_KEY = 'brickwise:v2';
 
@@ -218,10 +220,24 @@ function stepsTo(level: Level, state: State, block: number, to: Cell): Cell[] {
  * plays only that many of the solver's drags and leaves the board unsolved.
  */
 export async function solveEscapeBoard(page: Page, level: number, puzzle: number, stopAfter = Infinity): Promise<number> {
+  return (await playEscapeBoard(page, level, puzzle, { stopAfter })).moves;
+}
+
+/**
+ * The solver's drags on the board on screen, as solveEscapeBoard plays them, from the board's first position
+ * or from `from` (where earlier presses left it). Returns the moves counted here, where the board stands, and
+ * the brick still taking presses as one move (`open`; null once a brick has left, which ends the move).
+ */
+export async function playEscapeBoard(
+  page: Page,
+  level: number,
+  puzzle: number,
+  { stopAfter = Infinity, from }: { stopAfter?: number; from?: State } = {},
+): Promise<{ moves: number; state: State; open: number | null }> {
   const board = escapeBoard(level, puzzle);
-  let state = initialState(board);
+  let state = from ?? initialState(board);
   const bricks = page.locator('.esc-brick');
-  await expect(bricks).toHaveCount(board.blocks.length);
+  await expect(bricks).toHaveCount(state.pos.filter(Boolean).length);
   let moves = 0;
   let last = -1;
   for (let drags = 0; !isSolved(state) && drags < stopAfter; drags++) {
@@ -256,7 +272,144 @@ export async function solveEscapeBoard(page: Page, level: number, puzzle: number
       await expect(bricks).toHaveCount(state.pos.filter(Boolean).length);
     }
   }
-  return moves;
+  return { moves, state, open: last >= 0 ? last : null };
+}
+
+/** One arrow press on brick `block` (focused first), from `state`. Returns the board after it; the step must be a slide. */
+export async function pressEscapeBrick(page: Page, level: Level, state: State, block: number, dir: Cell): Promise<State> {
+  const step = keyStep(level, state, block, dir);
+  if (step.kind !== 'moved') throw new Error(`Brick ${block} can not slide that way`);
+  const k = state.pos.slice(0, block).filter(Boolean).length;
+  await page.locator('.esc-brick').nth(k).focus();
+  await page.keyboard.press(ARROW[`${dir[0]},${dir[1]}`]);
+  return withMove(state, block, step.at);
+}
+
+export interface EscapePress {
+  block: number;
+  dir: Cell;
+}
+
+/**
+ * Four one-square slides on two bricks in turn (A, then B, then A back, then B back) that bring the board back
+ * to where it was and never take a brick out. The brick changes on every press, so each press is a new move;
+ * `notFirst` is the brick whose move is still open, which the first press avoids. Null when there is no room.
+ */
+export function escapeWiggle(level: Level, state: State, notFirst: number | null = null): EscapePress[] | null {
+  const slid = (s: State, block: number, dir: Cell) => {
+    const step = keyStep(level, s, block, dir);
+    return step.kind === 'moved' ? withMove(s, block, step.at) : null;
+  };
+  const back = (d: Cell): Cell => [-d[0], -d[1]];
+  const same = (a: State, b: State) => JSON.stringify(a.pos) === JSON.stringify(b.pos);
+  for (let a = 0; a < level.blocks.length; a++)
+    for (const da of STEPS) {
+      // a press on the brick that last took presses would carry on that move instead of starting one
+      if (a === notFirst) continue;
+      const s1 = slid(state, a, da);
+      if (!s1) continue;
+      for (let b = 0; b < level.blocks.length; b++) {
+        if (b === a) continue;
+        for (const db of STEPS) {
+          const s2 = slid(s1, b, db);
+          const s3 = s2 && slid(s2, a, back(da));
+          const s4 = s3 && slid(s3, b, back(db));
+          if (s4 && same(s4, state)) return [{ block: a, dir: da }, { block: b, dir: db }, { block: a, dir: back(da) }, { block: b, dir: back(db) }];
+        }
+      }
+    }
+  return null;
+}
+
+/* ---------- Brick Drop: clearing a puzzle with the keys ---------- */
+
+/** Where one brick goes: turns from where it appears, then columns (minus is left), then Space. */
+export interface DropPlacement {
+  turns: number;
+  shift: number;
+}
+
+export interface DropPlan {
+  placements: DropPlacement[];
+  /** Bricks used and the score the engine gives for them, as the game will count them. */
+  bricks: number;
+  score: number;
+}
+
+/** A plain stacking score: rows cleared first, then few covered holes, a low and flat stack. */
+function dropBoardScore(board: (string | null)[][], lines: number): number {
+  const rows = board.length;
+  let holes = 0;
+  let total = 0;
+  let bumps = 0;
+  let prev = -1;
+  for (let x = 0; x < board[0].length; x++) {
+    let h = 0;
+    for (let y = 0; y < rows; y++) {
+      if (board[y][x]) h ||= rows - y;
+      else if (h) holes++;
+    }
+    total += h;
+    if (prev >= 0) bumps += Math.abs(h - prev);
+    prev = h;
+  }
+  return lines * 1000 - holes * 60 - total * 3 - bumps * 4;
+}
+
+/**
+ * Plan a whole Brick Drop puzzle (0-based stage, puzzle 0 to 5) with the game's own engine: each brick drops
+ * straight down after its turns and shifts, at the place that clears the most rows and leaves the flattest
+ * stack. The game's starter stack and brick order are fixed per puzzle, so the plan is what the screen will do.
+ */
+export function planDropPuzzle(stage: number, puzzle: number): DropPlan {
+  let game: DropGame = puzzleGame(stage, puzzle);
+  const placements: DropPlacement[] = [];
+  for (let n = 0; game.status === 'playing' && n < 80; n++) {
+    let best: { place: DropPlacement; after: DropGame; score: number } | null = null;
+    for (let turns = 0; turns < 4; turns++) {
+      let turned: DropGame | null = game;
+      for (let i = 0; i < turns && turned; i++) {
+        const next: DropGame = dropRotate(turned, 1);
+        turned = next.active === turned.active ? null : next;
+      }
+      if (!turned) continue;
+      for (const dir of [-1, 1]) {
+        let at = turned;
+        for (let k = 0; k <= game.rules.cols; k++) {
+          if (k > 0) {
+            const next = dropMove(at, dir);
+            if (next.active === at.active) break;
+            at = next;
+          }
+          if (k === 0 && dir === 1) continue;
+          const after = dropHardDrop(at);
+          if (after.status === 'over') continue;
+          const left = after.board.filter((_, y) => !after.clearing.includes(y));
+          const score = dropBoardScore(left, after.clearing.length);
+          if (!best || score > best.score) best = { place: { turns, shift: dir * k }, after, score };
+        }
+      }
+    }
+    if (!best) throw new Error(`No place for the next brick: stage ${stage + 1}, puzzle ${puzzle}`);
+    placements.push(best.place);
+    game = best.after.status === 'clearing' ? dropStep(best.after, CLEAR_MS) : best.after;
+  }
+  if (game.status !== 'won') throw new Error(`The plan does not clear stage ${stage + 1}, puzzle ${puzzle}`);
+  return { placements, bricks: game.placed, score: game.score };
+}
+
+/**
+ * Play a planned Brick Drop puzzle with the keys (Up turns, the arrows shift, Space drops). The page's clock
+ * must be paused (page.clock), so no brick falls between presses; each drop then runs the clock on 400 ms,
+ * past the 340 ms row-clear flash, so the next brick is in play before its presses.
+ */
+export async function playDropPuzzle(page: Page, plan: DropPlan) {
+  for (const { turns, shift } of plan.placements) {
+    for (let i = 0; i < turns; i++) await page.keyboard.press('ArrowUp');
+    for (let i = 0; i < Math.abs(shift); i++) await page.keyboard.press(shift < 0 ? 'ArrowLeft' : 'ArrowRight');
+    await page.keyboard.press(' ');
+    await page.clock.runFor(400);
+  }
 }
 
 /** The Brick Escape puzzle on screen for a 0-based level: the saved run's queue[0]. */

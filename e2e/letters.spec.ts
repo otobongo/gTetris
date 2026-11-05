@@ -1,7 +1,7 @@
 /**
  * Letter Builder journeys (four-puzzle brief 12): stuck, swap and finish; Break between puzzles and back after
- * extra time; a grown-up's jump to Level 20 that every screen names; an age band change mid-level; and the
- * last level of the game.
+ * extra time; a grown-up's jump to Level 20 that every screen names; an age band change mid-level; the last
+ * level of the game; the level's hint budget over a swap (3.3); and Break on the level card's Play tap (2.4).
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
@@ -308,4 +308,74 @@ test('finishing the last level shows the finished card, then the finished state 
   await expect(levelCard(page)).toContainText('A grown-up can pick a stage to play again.');
   await page.locator('.bw-levelcard-scrim').click({ position: { x: 8, y: 8 } });
   await expect(page).toHaveURL(/#\/$/);
+});
+
+test('a hint stays spent after a swap but only caps the level when it helped a solved puzzle', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+  const hint = (left: number) => page.getByRole('button', { name: `Hint (${left})` });
+
+  // A hint on the first puzzle, then three wrong taps and a swap: the badge does not count back up.
+  await hint(3).click();
+  await expect(hint(2)).toBeVisible();
+  await expect(page.locator('.lb-tray button.is-hint')).toHaveCount(1);
+  for (let i = 0; i < 3; i++) await lettersWrongTap(page);
+  await page.getByRole('button', { name: 'New puzzle' }).click();
+  await expect(help(page)).toHaveText('Here is a different puzzle.');
+  await expect(hint(2)).toBeVisible();
+  expect((await savedRun(page, 'letters', 0)).hintsLeft).toBe(2);
+
+  // The puzzle after the swap is built with no hint: its result carries none. After Next, the first tile has focus.
+  await solveLettersPuzzle(page);
+  expect((await savedRun(page, 'letters', 0)).solved.map((r) => r.usedHint)).toEqual([false]);
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(page.locator('.lb-tray button').first()).toBeFocused();
+  // Leaving and coming back keeps the spent hint.
+  await page.reload();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+  await expect(hint(2)).toBeVisible();
+  await buildAndGoOn(page, 1);
+  await buildAndGoOn(page, 2);
+
+  // A hint on the fourth puzzle, which the child then builds: that one caps the level.
+  await hint(2).click();
+  await expect(hint(1)).toBeVisible();
+  await solveLettersPuzzle(page);
+  const dialog = levelCard(page);
+  await expect(dialog.getByRole('heading')).toHaveText('You finished Level 1');
+  // The swapped puzzle's three slips do not count.
+  await expect(dialog).toContainText('4 puzzles, no slips.');
+  await expect(dialog).toContainText('Using a hint caps the level at 2 stars.');
+  await expect(dialog.getByRole('img', { name: '2 of 3 stars' })).toBeVisible();
+  expect((await savedGame(page, 'letters'))?.stars['0']).toBe(2);
+});
+
+test('Play Level checks the daily limit too: Break opens and the child goes on at the next level', async ({ page }) => {
+  await page.clock.install();
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', dailyLimit: 20, minutesToday: 15 }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+  for (let n = 0; n < 4; n++) await buildAndGoOn(page, n);
+  const dialog = levelCard(page);
+  await expect(dialog.getByRole('heading')).toHaveText('You finished Level 1');
+
+  // The limit runs out while the card is up: nothing cuts it off.
+  await page.clock.runFor(6 * 60_000);
+  await expect(dialog).toBeVisible();
+  await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+
+  // The Play tap opens Break. Level 2 has nothing solved yet, so Break has no mid-level line.
+  await dialog.getByRole('button', { name: 'Play Level 2' }).click();
+  await expect(page).toHaveURL(/#\/break$/);
+  await expect(page.getByRole('heading', { name: 'Time for a break, Maya' })).toBeVisible();
+  await expect(page.locator('.sc-saved')).not.toContainText('is saved with');
+
+  await page.getByRole('button', { name: 'Grown-ups: add time' }).click();
+  await passGrownUpCheck(page);
+  await page.getByRole('button', { name: 'Add 10 minutes' }).click();
+  // Back at the level the Play button named, at its first puzzle.
+  await expect(page).toHaveURL(/#\/game\/letters\/2$/);
+  await expect(title(page)).toHaveText('Level 2');
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
 });

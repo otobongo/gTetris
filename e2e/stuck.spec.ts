@@ -4,7 +4,8 @@
  * Out of room sheet. The rules themselves are unit-tested in src/games/run.test.ts; this checks the screens.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { dots, escapeBoard, escapePuzzleOnScreen, homeCard, savedRun, seed, solveEscapeBoard } from './app';
+import { initialState, isSolved } from '../src/games/slide/engine';
+import { dots, escapeBoard, escapePuzzleOnScreen, escapeWiggle, homeCard, playEscapeBoard, pressEscapeBrick, savedRun, seed, solveEscapeBoard } from './app';
 
 /** Pretend the tab went to the background, or came back. */
 async function setHidden(page: Page, hidden: boolean) {
@@ -76,6 +77,105 @@ test('Brick Escape: the clock stops while the page is hidden', async ({ page }) 
   await setHidden(page, false);
   await page.clock.runFor(5_000);
   await expect(clock).not.toHaveText(hiddenAt!);
+});
+
+test('Brick Escape: 90 s with no brick leaving brings New puzzle, a brick leaving hides it, and 90 s more bring it back', async ({ page }) => {
+  await page.clock.install();
+  // Ages 5 to 6: the time signal's limit is 90 s with no brick leaving the board.
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/escape');
+  await expect(page).toHaveURL(/#\/game\/escape\/1$/);
+  const puzzle = await escapePuzzleOnScreen(page, 0);
+  await expect(page.locator('.esc-brick')).toHaveCount(escapeBoard(0, puzzle).blocks.length);
+  await pauseClock(page);
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  const help = page.locator('.esc-help');
+
+  await page.clock.runFor(75_000);
+  await expect(offer).toHaveCount(0);
+  // Two minutes in the background count for nothing.
+  await setHidden(page, true);
+  await page.clock.runFor(120_000);
+  await setHidden(page, false);
+  await expect(offer).toHaveCount(0);
+  // Back on screen, the signal carries on from about 75 s and reaches the limit.
+  await page.clock.runFor(20_000);
+  await expect(offer).toBeVisible();
+  await expect(help).toHaveText('This one is tricky. Want a different puzzle?');
+  await expect(offer).not.toBeFocused();
+  // It sits last in the tools row's tab order, after Hint.
+  await page.getByRole('button', { name: 'Hint' }).focus();
+  await page.keyboard.press('Tab');
+  await expect(offer).toBeFocused();
+
+  // A brick leaving is progress: the offer hides and the time signal starts again from 0.
+  await page.clock.resume();
+  const { state } = await playEscapeBoard(page, 0, puzzle, { stopAfter: 1 });
+  expect(state.exited).toBe(1);
+  await expect(offer).toHaveCount(0);
+  await expect(help).not.toHaveText('This one is tricky. Want a different puzzle?');
+  await pauseClock(page);
+  await page.clock.runFor(80_000);
+  await expect(offer).toHaveCount(0);
+  await page.clock.runFor(15_000);
+  await expect(offer).toBeVisible();
+  // The dots never moved: nothing was solved.
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
+});
+
+test('Brick Escape: reaching 3 times Best is one failed try, and an Undo does not count it twice', async ({ page }) => {
+  // Ages 5 to 6: two failed tries bring the offer.
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/escape');
+  await expect(page).toHaveURL(/#\/game\/escape\/1$/);
+  const puzzle = await escapePuzzleOnScreen(page, 0);
+  const board = escapeBoard(0, puzzle);
+  const limit = 3 * board.par;
+  const movesShown = page.locator('.esc-status__moves');
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+
+  // The board starts packed, so let bricks out with the solver until two bricks can slide to and fro.
+  let moves = 0;
+  let state = initialState(board);
+  let wiggle = escapeWiggle(board, state);
+  while (!wiggle) {
+    const played = await playEscapeBoard(page, 0, puzzle, { stopAfter: 1, from: state });
+    moves += played.moves;
+    state = played.state;
+    wiggle = escapeWiggle(board, state, played.open);
+  }
+  expect(isSolved(state)).toBe(false);
+  await expect(movesShown).toHaveText(`Moves ${moves}`);
+
+  // Every press moves a different brick from the one before, so each press is one more move.
+  const presses = Array.from({ length: limit - moves }, (_, i) => wiggle![i % 4]);
+  let beforeLast = state;
+  for (const [i, p] of presses.entries()) {
+    if (i === presses.length - 1) {
+      // One move under 3 times Best: not a failed try yet.
+      await expect(movesShown).toHaveText(`Moves ${limit - 1}`);
+      await expect(offer).toHaveCount(0);
+      beforeLast = state;
+    }
+    state = await pressEscapeBrick(page, board, state, p.block, p.dir);
+  }
+  // 3 times Best is one failed try; one is not enough for the offer at ages 5 to 6.
+  await expect(movesShown).toHaveText(`Moves ${limit}`);
+  await expect(offer).toHaveCount(0);
+
+  // Undo takes the move back; making it again in the same try does not count a second failed try.
+  const last = presses[presses.length - 1];
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(movesShown).toHaveText(`Moves ${limit - 1}`);
+  await pressEscapeBrick(page, board, beforeLast, last.block, last.dir);
+  await expect(movesShown).toHaveText(`Moves ${limit}`);
+  await expect(offer).toHaveCount(0);
+
+  // A Restart is the second failed try: now the offer shows.
+  await page.getByRole('button', { name: 'Restart puzzle' }).click();
+  await expect(movesShown).toHaveText('Moves 0');
+  await expect(offer).toBeVisible();
+  await expect(page.locator('.esc-help')).toHaveText('This one is tricky. Want a different puzzle?');
 });
 
 test('Letter Builder: 40 s with no right tap brings the offer, and hidden time does not count', async ({ page }) => {
