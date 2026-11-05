@@ -53,11 +53,12 @@ Standing rules kept as they are: age bands only; the random two-digit sum check;
 - Brick Drop shows its intro sheet whenever a stage is entered from Home (a first visit or a resume), because it carries the stage's goal and star rule. Its Start button leads to the waiting first brick.
 
 ### 2.3 Age band changed by a grown-up
-- Brick Escape and Brick Drop: the boards do not depend on age. The new band's clock, sand timer and stuck limits apply from the next puzzle; the puzzle on screen keeps its clock.
-- Letter Builder: spelling words depend on age. Solved puzzles stay solved and still count; the unsolved ones get the new band's words (4.3, 6.2).
+- Brick Escape and Brick Drop: the boards do not depend on age. The new band's clock, sand timer and stuck limits apply from the next puzzle; the puzzle on screen keeps its clock, its stuck limits and whether running out caps it, until Next puzzle or a swap. Restart and Try again keep them too, as the same puzzle.
+- Letter Builder: spelling words depend on age. The word on screen stays; from the next puzzle, solved puzzles stay solved and still count, and the unsolved ones get the new band's words (4.3, 6.2).
+- Settings has an Age row per child (decision D2 in 11.2), so a grown-up can change the band there.
 
 ### 2.4 Break time mid-level
-- The daily limit is checked on every screen change, as `App.tsx` does now, and on every **Next puzzle** and **Play Level** tap. A puzzle in progress is never cut off (open question 2).
+- The daily limit is checked on every screen change, as `App.tsx` does now, and on every **Next puzzle**, **Play Level**, **New puzzle** (a swap), **Restart puzzle** and **Try again** tap. A puzzle in progress is never cut off (open question 2): the child finishes it, and Break opens at the next of these taps.
 - When the limit is used up, that tap opens Break instead of the next puzzle, with the level's route as the resume path. After a grown-up adds time, the child lands on the next unsolved puzzle.
 - Break's mid-level line becomes "Level 9 is saved with 2 of 4 puzzles solved." (Brick Drop says "Stage"; spelling levels say "words built"). It shows only when the current level has at least one solved puzzle, and names the level from 2.6.
 - A Brick Drop stage can take longer than one day's limit at ages 3 to 6 (4.2). That is fine: progress is saved per puzzle.
@@ -151,6 +152,7 @@ A puzzle is stuck when either of its signals reaches the limit for the child's a
   - Every stack row has at least one hole cell, so no row starts complete.
   - At least one hole has the shape of a brick the stage adds (`newPieces`). Stages 8 (Plan Ahead) and 9 (Speedy) add none, because they reuse Stage 7's set, so they use Stage 7's new bricks (Zig or Zag).
   - All 6 stacks of a stage cut the same number of cells, so their star counts are equal. Stack cells use the brick palette by column.
+  - **Decided (user, 2026-11-05, D3):** on Stages 7 to 9 the Zig and Zag holes are step-shaped, as built. They stay as they are.
 - **Same difficulty:** the stage's rules, plus equal stack height, hole count and cut cells.
 - **Variety:** different hole shapes and places, and a different brick order. Every hole's brick comes in the puzzle's first bag (the existing 7-bag randomizer).
 - **Generation:** a pure function in `src/games/drop/starters.ts`, seeded with 1000 x stage + puzzle, run at play time; a test checks all 72.
@@ -290,7 +292,7 @@ Draft 1's `swapped` list is gone: the queue order already holds which spare come
 
 ### 7.3 Settings and the grown-up level picker
 - **Progress panel**, for the selected child: above today's two reset buttons, one 52px row per playable game with the game name, a sub line ("Level 9, 2 of 4 puzzles", section 9 for every variant) and a chevron. Each row links to the picker; rows are divided like Support's legal rows.
-- **Picker** at `#/settings/levels/<game>/<playerId>` (route in 7.4), behind the grown-up check and counted as a grown-up page, so the pass carries over from Settings. It is the Levels board: back to Settings, the game as title, sub "Maya · 17 of 93 stars", no speaker button, an intro line, a status line, then the chapters and tiles (done, current, open, locked) in 5 columns on phone and 8 on tablet for every age. Tapping a tile selects it (yellow ring) and fills the status line (section 9 covers a level with a run, the current level, finished, open and locked). Locked tiles can be picked (open question 4). The footer button reads "Play Level 5" when that child is the active player (it saves the pick and opens the game) or "Set Level 5 for Leo" otherwise (it saves, returns to Settings and shows a toast). Brick Drop says "Stage" throughout.
+- **Picker** at `#/settings/levels/<game>/<playerId>` (route in 7.4), behind the grown-up check and counted as a grown-up page, so the pass carries over from Settings. It is the Levels board: back to Settings, the game as title, sub "Maya · 17 of 93 stars", no speaker button, an intro line, a status line, then the chapters and tiles (done, current, open, locked) in 5 columns on phone and 8 on tablet for every age. Tapping a tile selects it (yellow ring) and fills the status line (section 9 covers a level with a run, the current level, finished, open and locked). Locked tiles can be picked (open question 4). The footer button reads "Play Level 5" when that child is the active player (it saves the pick and opens the game) or "Set Level 5 for Leo" otherwise (it saves, returns to Settings and shows a toast). **Decided (user, 2026-11-05, D5):** "Set Level N" keeps this behaviour: it saves, returns to Settings and shows the toast there. Brick Drop says "Stage" throughout.
 - **Reset one game:** a flat panel at the end of the picker's scroll area, with an outline-danger button, then the existing confirm dialog and toast.
 - Settings keeps "Reset Maya's progress" and "Reset every child's progress" as they are. Support gets one new question (section 9).
 
@@ -422,6 +424,16 @@ The brief is approved. Answers to the open questions above:
 11. Letter Builder Level 1: runs of 4, alternating A to D and B to E.
 12. Doors away from corners: keep the exception for Levels 9 and 26 to 31.
 13. Brick Escape help line becomes "Drag each brick out through the door of its color." (bricks now leave only when dragged out through the door, commit `8be12ac`).
+
+### 11.2 Decisions (user, 2026-11-05)
+After the stage review:
+1. **D1.** Brick Escape's Restart keeps the caps: a hint used on the puzzle, or a counted clock that ran out, still caps the level at 2 stars after a Restart. Restart only puts the bricks back; the clock keeps running from where it was. Brick Drop's Try again works the same way. Letter Builder has no restart.
+2. **D2.** Settings has an Age row per child with the four bands (3 to 4, 5 to 6, 7 to 8, 9 to 10), in the Segmented style of Add a child. A change applies from the next puzzle; solved puzzles stay solved; Letter Builder moves the run with `keepSolved` (2.3, 6.2).
+3. **D3.** Brick Drop's Zig and Zag step holes on Stages 7 to 9 are accepted as built (4.2).
+4. **D4.** Letter Builder keeps "Choo choo!" and "You found them!" after the child's tap.
+5. **D5.** The picker's "Set Level N" keeps saving, returning to Settings and showing the toast there (7.3).
+6. **D6.** The finished state on a later visit shows the game's star total ("78 of 93") in place of a level's star row, in all three games.
+7. **D7.** Brick Drop's finished card keeps "A grown-up can pick a stage to play again."
 
 ## 12. Work plan
 

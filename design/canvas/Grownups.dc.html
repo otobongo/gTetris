@@ -313,7 +313,7 @@ class Component extends DCLogic {
       ? 'No timer at all. Stars come from moves and mistakes only.'
       : k.mode === 'relaxed' || f === 0
         ? 'A gentle sand timer for fun. It never ends a game or costs a star.'
-        : 'Time is set by the level (harder levels get more) times ' + k.name + "'s age factor (x" + f + '). Running out never ends the game; it only skips the speed star.';
+        : 'Time is set by the level (harder levels get more) times ' + k.name + "'s age factor (x" + f + '). Running out never ends the game. The level can then get at most 2 stars.';
     var skillNames = ['Planning (Brick Escape)', 'Shapes and space (Brick Drop)', 'Letters and spelling', 'Colors and shapes', 'Numbers and math'];
     var skillColors = ['#5fe06e', '#c79bff', '#ffab5e', '#ff9fd4', '#6aeee4'];
     var swatch = ['#2f8cff', '#ff7a1a', '#ff5fb4', '#14c8c0', '#9b4dff', '#1fb53c'];

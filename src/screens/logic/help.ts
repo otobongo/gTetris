@@ -11,7 +11,7 @@ export function helpFaqs(accountsActive: boolean): Faq[] {
     accountsActive
       ? { q: 'How do I use Brickwise on another device?', a: 'Sign in with the same family account on each device. Stars, levels and stickers stay in sync.' }
       : { q: 'How do I use Brickwise on another device?', a: 'Not yet. Family accounts are coming soon; until then, progress stays on the device it was made on.' },
-    { q: 'What happens when the game timer runs out?', a: 'The game keeps going; your child only misses the speed star. Ages 3 to 4 play with no countdown.' },
+    { q: 'What happens when the game timer runs out?', a: 'The game keeps going, and the level can get at most 2 stars. Ages 3 to 4 play with a sand timer that never costs a star.' },
     { q: 'How do I change the daily play limit?', a: 'In Settings, under your child’s game timer. When time is up, your child sees a break screen, where you can add time for today.' },
     { q: 'How do I reset progress?', a: 'In Settings, under Progress. A reset can’t be undone.' },
     { q: 'How does my child replay a level?', a: 'In Settings, under Progress, tap the game and pick the level. Children can’t pick levels themselves.' },

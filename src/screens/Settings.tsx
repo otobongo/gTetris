@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { GAMES, getGame, type GameId } from '../games/registry';
 import { auth } from '../shared/account';
 import {
+  AGE_BANDS,
   LEGACY_KEY,
   LIMIT_MAX,
   LIMIT_MIN,
@@ -20,7 +21,7 @@ import { Icon, Screen, TopBar } from '../shared/ui';
 import { settingsRowName, settingsRowSub } from './logic/levels';
 import { grownUpGate, settingsReturn } from './logic/session';
 import { Notice, ProviderButtons, useAuthNotice, LegalLinks } from './parts/Account';
-import { AddChild, bandText } from './parts/AddChild';
+import { AddChild, BAND_LABEL, bandText } from './parts/AddChild';
 import { Avatar } from './parts/Art';
 import { Overlay, Segmented, SwitchRow, Toast, useToast } from './parts/Controls';
 import { Glyph } from './parts/Glyph';
@@ -189,6 +190,7 @@ export default function Settings() {
           />
         )}
 
+        {kid && <KidAge kid={kid} />}
         {kid && <KidTimer kid={kid} />}
         {kid && <KidSkills kid={kid} />}
 
@@ -267,6 +269,27 @@ export default function Settings() {
   );
 }
 
+/**
+ * The child's age band (user decision D2), in the Add a child form's Segmented style. A new band applies from the
+ * next puzzle in every game: the puzzle on screen keeps its clock, and solved puzzles stay solved.
+ */
+function KidAge({ kid }: { kid: Player }) {
+  return (
+    <section className="sc-panel" aria-labelledby="set-age">
+      <h2 id="set-age" className="sc-panel__title sc-panel__title--sm">
+        {kid.name}'s age
+      </h2>
+      <Segmented<AgeBand>
+        label={`${kid.name}'s age`}
+        value={kid.ageBand}
+        onChange={(v) => progressStore.updatePlayer(kid.id, { ageBand: v })}
+        options={AGE_BANDS.map((b) => ({ value: b, label: BAND_LABEL[b], name: bandText(b) }))}
+      />
+      <p className="sc-sub sc-sub--small">A new age applies from the next puzzle. Solved puzzles stay solved.</p>
+    </section>
+  );
+}
+
 function KidTimer({ kid }: { kid: Player }) {
   const f = FACTOR[kid.ageBand];
   const relaxed = kid.timerMode === 'relaxed' || f === 0;
@@ -275,7 +298,7 @@ function KidTimer({ kid }: { kid: Player }) {
       ? 'No timer at all. Stars come from moves and mistakes only.'
       : relaxed
         ? 'A gentle sand timer for fun. It never ends a game or costs a star.'
-        : `Time is set by the level (harder levels get more) times ${kid.name}'s age factor (x${f}). Running out never ends the game; it only skips the speed star.`;
+        : `Time is set by the level (harder levels get more) times ${kid.name}'s age factor (x${f}). Running out never ends the game. The level can then get at most 2 stars.`;
   const setLimit = (m: number) => progressStore.updatePlayer(kid.id, { dailyLimit: Math.min(LIMIT_MAX, Math.max(LIMIT_MIN, m)) });
 
   return (

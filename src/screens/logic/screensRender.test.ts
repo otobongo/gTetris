@@ -110,6 +110,21 @@ describe('Settings', () => {
     expect(html).toContain('Stage 1');
     expect(html).toContain("Reset Maya's progress");
   });
+
+  it('says what running out of time costs, as the star rules do (F5)', () => {
+    grownUpGate.pass();
+    const html = decode(renderAt('#/settings'));
+    expect(html).toContain('Running out never ends the game. The level can then get at most 2 stars.');
+    expect(html).not.toContain('speed star');
+  });
+
+  it('has an Age row for the child, with the four bands (D2)', () => {
+    grownUpGate.pass();
+    const html = decode(renderAt('#/settings'));
+    expect(html).toContain('role="group" aria-label="Maya\'s age"');
+    for (const band of ['3 to 4', '5 to 6', '7 to 8', '9 to 10']) expect(html).toContain(`aria-label="Ages ${band}"`);
+    expect(html).toContain('A new age applies from the next puzzle. Solved puzzles stay solved.');
+  });
 });
 
 describe('Break', () => {
@@ -131,5 +146,11 @@ describe('Support', () => {
     const html = decode(renderAt('#/help'));
     expect(html).toContain('How does my child replay a level?');
     expect(html).toContain('In Settings, under Progress, tap the game and pick the level. Children can’t pick levels themselves.');
+  });
+
+  it('answers what running out of time costs, as the star rules do (F5)', () => {
+    const html = decode(renderAt('#/help'));
+    expect(html).toContain('The game keeps going, and the level can get at most 2 stars. Ages 3 to 4 play with a sand timer that never costs a star.');
+    expect(html).not.toContain('speed star');
   });
 });
