@@ -20,7 +20,7 @@ export function AddChild({ onAdded, onCancel, heading = 'Add a child', primaryLa
 
   return (
     <form
-      className="sc-panel sc-adding"
+      className="sc-panel"
       aria-label={heading}
       onSubmit={(e) => {
         e.preventDefault();

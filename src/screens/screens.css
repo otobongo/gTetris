@@ -614,7 +614,6 @@ button.sc-tile { cursor: pointer; }
 .sc-chip-btn__name { font-size: var(--bw-fs-body); font-weight: 800; }
 .sc-chip-btn__age { font-size: var(--bw-fs-helper); font-weight: 700; color: var(--bw-text-2); }
 .sc-chip-btn--add { padding: var(--bw-sp-2) var(--bw-sp-6); background: transparent; border: 2px dashed var(--bw-dashed); color: var(--bw-text-2); font-size: var(--bw-fs-sub); font-weight: 800; gap: var(--bw-sp-2); }
-.sc-adding { box-shadow: 0 0 0 3px var(--bw-accent); }
 .sc-section-label { margin: 0; font-size: var(--bw-fs-body); font-weight: 800; color: var(--bw-text-2); }
 .sc-times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--bw-sp-3); }
 .sc-time { padding: var(--bw-sp-3); border-radius: 14px; background: var(--bw-well); text-align: center; line-height: 1.15; }
