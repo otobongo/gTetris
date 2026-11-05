@@ -128,6 +128,16 @@ Add a child
 </sc-if>
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
+<div style="font-size: 16px; font-weight: 800;">{{kidName}}'s age</div>
+<div role="group" aria-label="{{kidName}}'s age" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;">
+<sc-for list="{{kidAges}}" as="a" hint-placeholder-count="4">
+<button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Ages {{a.label}}" style="border: 0; cursor: pointer; font-family: inherit; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 800; white-space: nowrap; {{a.style}}">{{a.label}}</button>
+</sc-for>
+</div>
+<span style="font-size: 13px; font-weight: 700; color: #c9c2ff;">A new age applies from the next puzzle. Solved puzzles stay solved.</span>
+</div>
+
+<div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">{{kidName}}'s game timer</div>
 <div style="display: flex; gap: 6px; padding: 4px; border-radius: 14px; background: #1d1550;">
 <sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
@@ -402,6 +412,11 @@ class Component extends DCLogic {
         self.showToast(name + ' was added. They can now pick their brick on any of your devices.');
       },
       kidName: k.name,
+      // The child's Age row (decision D2): the same four bands and style as Add a child.
+      kidAges: [4, 6, 8, 10].map(function (n) {
+        var on = self.bandLabel(n) === self.bandLabel(k.age);
+        return { label: self.bandLabel(n), on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: #1d1550; color: #c9c2ff;', pick: function () { self.updateKid({ age: n }); } };
+      }),
       gameRows: this.gameRows(k, tablet),
       modes: [['auto', 'Auto by age'], ['relaxed', 'Relaxed'], ['off', 'Off']].map(function (m) {
         var on = k.mode === m[0];

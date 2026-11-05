@@ -133,10 +133,13 @@
 </sc-if>
 
 <sc-if value="{{isLevel}}" hint-placeholder-val="{{ false }}">
-<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; gap: 4px; margin: 10px 0;">
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsGap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
 <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
 </sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
 </div>
 <p id="drop-card-line" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
@@ -441,11 +444,15 @@ class Component extends DCLogic {
       isStuck: m === 'stuck',
       isPlainOver: m === 'over',
       overLine: 'The bricks reached the top. You cleared ' + s.rows + ' of 6 rows.',
-      tryAgain: function () { var cs = self.st(); self.put(Object.assign(self.fresh(cs.mirror), { moment: 'ready' })); },
+      tryAgain: function () { var cs = self.st(); self.put(Object.assign(self.fresh(cs.mirror), { moment: 'ready', tLeft: cs.tLeft })); }, // D1: the clock and its cap carry on.
       swap: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { moment: 'ready', tries: 0, swapped: true })); },
       isLevel: cardKind === 'level',
-      stars: [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
-      starsLabel: starsWon + ' of 3 stars',
+      // Every stage done (decision D6): one star and the game's total, never the last stage's star row.
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '30 of 36 stars' : starsWon + ' of 3 stars',
+      starsGap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '30 of 36',
       // Score and the every-stage totals are sample data.
       cardFact: finished ? '12 stages, 30 of 36 stars.' : '4 puzzles with ' + total + ' bricks. Score 4820.',
       showRule: !finished,
