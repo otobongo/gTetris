@@ -126,7 +126,7 @@ export default function Break() {
               Switch player
             </a>
           )}
-          <button type="button" className="sc-textlink" onClick={() => setView('gate')}>
+          <button type="button" className="sc-btn sc-btn--secondary" onClick={() => setView('gate')}>
             Grown-ups: add time
           </button>
         </div>
