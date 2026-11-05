@@ -21,6 +21,8 @@ import {
   solvedLine,
 } from './puzzles';
 import SlideApp from './SlideApp';
+import { clockFor } from './SlideGame';
+import { AGE_BANDS } from '../../shared/progress';
 
 const result = (puzzle: number, count: number, par: number, over: Partial<PuzzleResult> = {}): PuzzleResult => ({
   puzzle,
@@ -94,6 +96,23 @@ describe('copy (brief 9.1)', () => {
       expect(line).not.toMatch(/[–—]/);
       expect(line).not.toMatch(/Brilliant|Great job/);
     }
+  });
+});
+
+describe('only a counted clock can cap (section 5)', () => {
+  // SlideGame stores outOfTime only when the board's clock is 'counted' and has run out.
+  it('the relaxed sand timer and Off never count, for every age band', () => {
+    for (const band of AGE_BANDS) {
+      expect(clockFor(45, band, 'relaxed').kind, band).toBe('relaxed');
+      expect(clockFor(45, band, 'off').kind, band).toBe('off');
+    }
+  });
+
+  it('auto counts the clock from ages 5 to 6, and gives ages 3 to 4 the sand timer', () => {
+    expect(clockFor(30, '3-4', 'auto').kind).toBe('relaxed');
+    expect(clockFor(30, '5-6', 'auto')).toEqual({ kind: 'counted', seconds: 60, factor: 2 });
+    expect(clockFor(45, '7-8', 'auto')).toEqual({ kind: 'counted', seconds: 68, factor: 1.5 });
+    expect(clockFor(75, '9-10', 'auto')).toEqual({ kind: 'counted', seconds: 75, factor: 1 });
   });
 });
 

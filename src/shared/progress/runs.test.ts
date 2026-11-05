@@ -69,6 +69,17 @@ describe('sanitize: runs and current', () => {
     expect(loadRun(goodRun({ queue: [] , solved: [] }))).toBeNull();
   });
 
+  it('drops a run whose solved results repeat a puzzle, even when the counts add up to 6', () => {
+    expect(loadRun(goodRun({ queue: [0, 2, 3, 4], solved: [res(1), res(1)] }))).toBeNull();
+    expect(loadRun(goodRun({ queue: [0, 1, 2, 3, 4], solved: [res(5)] }))).not.toBeNull();
+  });
+
+  it('drops a run whose set, queue or solved has the wrong type', () => {
+    for (const bad of [{ set: 5 }, { set: null }, { queue: { 0: 2 } }, { solved: 'none' }, { seed: undefined }]) {
+      expect(loadRun({ ...goodRun(), ...bad }), JSON.stringify(bad)).toBeNull();
+    }
+  });
+
   it('drops a run with more than 3 results', () => {
     expect(loadRun(goodRun({ queue: [4, 5], solved: [res(0), res(1), res(2), res(3)] }))).toBeNull();
     expect(loadRun(goodRun({ queue: [3, 4, 5], solved: [res(0), res(1), res(2)] }))).not.toBeNull();

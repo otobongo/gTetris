@@ -379,3 +379,38 @@ test('Play Level checks the daily limit too: Break opens and the child goes on a
   await expect(title(page)).toHaveText('Level 2');
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
 });
+
+test('speech plays only after a tap: not on opening, not when the offer comes up by itself, not at the level’s end', async ({ page }) => {
+  // Record what the app asks the browser's voice to say, instead of saying it.
+  await page.addInitScript(() => {
+    const spoken: string[] = [];
+    (window as unknown as { __spoken: string[] }).__spoken = spoken;
+    const voice = { speak: (u: { text: string }) => spoken.push(u.text), cancel: () => {}, getVoices: () => [], addEventListener: () => {} };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => voice });
+  });
+  const spoken = () => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.slice());
+  await page.clock.install();
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+  await expect(page.locator('.lb-tray button').first()).toBeVisible();
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+
+  // Nothing on opening, and nothing when 40 s with no right tap bring the offer.
+  await page.clock.runFor(45_000);
+  await expect(page.getByRole('button', { name: 'New puzzle' })).toBeVisible();
+  expect(await spoken()).toEqual([]);
+
+  // While the offer shows, the speaker reads the offer line (brief 10).
+  await page.getByRole('button', { name: 'Read the help line aloud' }).click();
+  expect(await spoken()).toEqual(['This one is tricky. Want a different puzzle?']);
+
+  // Four puzzles; then the card opens and nothing more is said by itself.
+  for (let n = 0; n < 4; n++) await buildAndGoOn(page, n);
+  await page.clock.runFor(1_000);
+  await expect(levelCard(page).getByRole('heading')).toHaveText('You finished Level 1');
+  const atCard = await spoken();
+  await page.clock.runFor(10_000);
+  expect(await spoken()).toEqual(atCard);
+  for (const line of atCard) expect(line).not.toMatch(/Super builder|You did it|Great building|You built|Well done/i);
+});

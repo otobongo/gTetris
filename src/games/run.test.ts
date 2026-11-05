@@ -168,6 +168,18 @@ describe('stuck signals and the offer (3.1, 3.2)', () => {
     expect(run([{ type: 'tick', seconds: 10 }], past).offer).toBe(false);
   });
 
+  it('a Restart, or a try reaching 3 times Best, is a fresh event too once the count is at its limit', () => {
+    const hidden = run([{ type: 'fail' }, { type: 'fail' }, { type: 'progress' }]);
+    expect(hidden).toMatchObject({ count: 2, offer: false });
+    expect(run([{ type: 'restart' }], hidden)).toMatchObject({ count: 3, offer: true });
+    expect(run([{ type: 'moves', moves: 18, best: 6 }], hidden)).toMatchObject({ count: 3, offer: true });
+  });
+
+  it('a count signal under its limit is not raised by time, and time under its limit is not raised by a count', () => {
+    const s = run([{ type: 'fail' }, { type: 'tick', seconds: 59 }]);
+    expect(s).toMatchObject({ count: 1, seconds: 59, offer: false });
+  });
+
   it('a swap clears the offer and every signal', () => {
     expect(run([{ type: 'fail' }, { type: 'fail' }, { type: 'tick', seconds: 70 }, { type: 'swap' }])).toEqual(STUCK_START);
   });
@@ -227,6 +239,24 @@ describe('Brick Escape failed tries', () => {
     expect(s.offer).toBe(true);
   });
 
+  it('a brick leaving is progress, not a new try: the moves that follow do not count 3 times Best again', () => {
+    let s = STUCK_START;
+    s = step(s, { type: 'moves', moves: 18, best });
+    s = step(s, { type: 'progress' });
+    s = step(s, { type: 'moves', moves: 19, best });
+    s = step(s, { type: 'moves', moves: 25, best });
+    expect(s.count).toBe(1);
+  });
+
+  it('a swap or a new puzzle starts a new try, which can count its own 3 times Best', () => {
+    for (const fresh of [{ type: 'swap' }, { type: 'start' }] as const) {
+      let s = step(STUCK_START, { type: 'moves', moves: 18, best });
+      s = step(s, fresh);
+      expect(s.tryCounted).toBe(false);
+      expect(step(s, { type: 'moves', moves: 18, best }).count).toBe(1);
+    }
+  });
+
   it('a board with no Best never counts moves', () => {
     expect(step(STUCK_START, { type: 'moves', moves: 99, best: 0 })).toBe(STUCK_START);
     expect(step(STUCK_START, { type: 'moves', moves: 99, best: Number.NaN })).toBe(STUCK_START);
@@ -276,6 +306,23 @@ describe('level stars over 4 puzzles (section 5)', () => {
     expect(at(2)).toBe(2);
     expect(at(4)).toBe(2);
     expect(at(5)).toBe(1);
+  });
+
+  it('Brick Drop and Letter Builder: a cap on any one of the 4 counts, not only the last', () => {
+    for (let i = 0; i < 4; i++) {
+      const clock = four({ count: 10, three: 10, two: 14 });
+      clock[i] = { ...clock[i], outOfTime: true };
+      expect(dropLevelStars(clock), `Drop clock on ${i}`).toBe(2);
+      const hint = four({ count: 0 });
+      hint[i] = { ...hint[i], usedHint: true };
+      expect(lettersLevelStars(hint), `Letters hint on ${i}`).toBe(2);
+    }
+  });
+
+  it('a cap only ever takes the third star: 1 and 2 star levels keep what they earned', () => {
+    expect(dropLevelStars(four({ count: 20, three: 10, two: 14 }, { outOfTime: true }))).toBe(1);
+    expect(dropLevelStars(four({ count: 12, three: 10, two: 14 }, { outOfTime: true }))).toBe(2);
+    expect(escapeLevelStars(four({ count: 10, par: 8 }, { usedHint: true, outOfTime: true }))).toBe(2);
   });
 
   it('Letter Builder: a hint caps at 2, and the slips still count', () => {
