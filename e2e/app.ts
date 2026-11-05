@@ -115,7 +115,7 @@ export interface SavedRun {
   set: string;
   seed: number;
   queue: number[];
-  solved: { puzzle: number; count: number; word?: string; usedHint: boolean }[];
+  solved: { puzzle: number; count: number; word?: string; usedHint: boolean; outOfTime: boolean }[];
   hintsLeft?: number;
 }
 

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { go, replace, toHref } from '../../shared/router';
-import { activePlayer, gameOf, progressStore, totalStars, useActivePlayer } from '../../shared/progress';
-import { LevelCard, Screen } from '../../shared/ui';
+import { activePlayer, progressStore, totalStars, useActivePlayer } from '../../shared/progress';
+import { LevelCard, Screen, TopBar } from '../../shared/ui';
 import { useProgress } from '../../shared/storage';
-import Play, { DropBar, Well, useCellSize } from './Play';
+import Play, { Well, useCellSize } from './Play';
 import { GAME_DONE_NOTE, gameDoneCard } from './puzzles';
 import { STAGES, currentStage } from './stages';
 import './drop.css';
@@ -57,7 +57,7 @@ function Finished() {
     <div className="drop-root">
       <Screen className="drop-frame">
         <div className="drop-content" inert>
-          <DropBar title="Brick Drop" />
+          <TopBar title="Brick Drop" backLabel="Back to home" />
           <div className="drop-area" ref={areaRef}>
             <Well cols={stage.cols} rows={stage.rows} cell={cell} aria-hidden="true" />
           </div>
@@ -65,7 +65,7 @@ function Finished() {
         </div>
         <LevelCard
           title={card.title}
-          stars={gameOf(player, 'drop').stars[STAGES.length - 1] ?? 0}
+          total={{ stars: totalStars(player, 'drop'), max: STAGES.length * 3 }}
           fact={card.fact}
           note={GAME_DONE_NOTE}
           primary={{ label: 'Back to games', href: toHref('/') }}

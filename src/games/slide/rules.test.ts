@@ -159,7 +159,7 @@ describe('stars', () => {
     expect(starsFor(14, 10, false)).toBe(1);
   });
 
-  it('running out of time on a counted clock costs only the speed star', () => {
+  it('running out of time on a counted clock caps the board at 2 stars', () => {
     expect(starsFor(10, 10, false, true)).toBe(2);
     expect(starsFor(13, 10, false, true)).toBe(2);
     expect(starsFor(20, 10, false, true)).toBe(1);

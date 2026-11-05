@@ -1,9 +1,9 @@
 import { type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
-import { activePlayer, freshRun, progressStore, runOf, starsFor, totalStars, useActivePlayer } from '../../shared/progress';
+import { activePlayer, freshRun, progressStore, runOf, totalStars, useActivePlayer } from '../../shared/progress';
 import type { AgeBand, LevelRun, PuzzleResult, TimerMode } from '../../shared/progress';
-import { IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, Brick } from '../../shared/ui';
+import { IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, Brick, TopBar } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
 import {
   SOLVES_PER_LEVEL,
@@ -59,7 +59,7 @@ export function ageFactor(band: AgeBand): number {
 }
 
 export interface Clock {
-  /** counted: running out costs the speed star. relaxed: a sand timer for fun. off: no timer. */
+  /** counted: running out caps the level at 2 stars. relaxed: a sand timer for fun. off: no timer. */
   kind: 'counted' | 'relaxed' | 'off';
   seconds: number;
   factor: number;
@@ -172,14 +172,29 @@ function runToStart(index: number): LevelRun {
   return stored && stored.set === rules.set ? stored : freshRun(rules, progressStore.now());
 }
 
+/** The age band and timer mode a puzzle started with. They hold until the next puzzle, so a band changed
+ * in Settings or another tab never rewrites the clock, the stuck limits or the cap of the puzzle on screen (2.3). */
+interface PuzzleAge {
+  band: AgeBand;
+  mode: TimerMode;
+}
+
+function ageNow(): PuzzleAge {
+  const p = activePlayer(progressStore.getState());
+  return { band: p?.ageBand ?? '5-6', mode: p?.timerMode ?? 'auto' };
+}
+
 const focusLater = (selector: string) =>
   window.setTimeout(() => document.querySelector<HTMLElement>(selector)?.focus(), 0);
 
 export default function SlideGame({ index }: { index: number }) {
   const boards = PUZZLE_LEVELS[index].puzzles;
   const player = useActivePlayer();
-  const band: AgeBand = player?.ageBand ?? '5-6';
-  const limit = STUCK.escape[band];
+  const [age, setAge] = useState<PuzzleAge>(ageNow);
+  const ageRef = useRef(age);
+  ageRef.current = age;
+  const limit = STUCK.escape[age.band];
+  const path = `/game/escape/${index + 1}`;
 
   const [run, setRun] = useState<LevelRun>(() => runToStart(index));
   const [puzzle, setPuzzle] = useState(() => puzzleOnScreen(run));
@@ -191,7 +206,7 @@ export default function SlideGame({ index }: { index: number }) {
 
   const level = boards[puzzle] ?? boards[0];
   const { stage, cell } = useCell(level);
-  const clock = clockFor(level.base ?? 45, band, player?.timerMode ?? 'auto');
+  const clock = clockFor(level.base ?? 45, age.band, age.mode);
 
   const [state, setState] = useState<State>(() => initialState(level));
   const [history, setHistory] = useState<Snapshot[]>([]);
@@ -244,41 +259,47 @@ export default function SlideGame({ index }: { index: number }) {
 
   const stuckEvent = (e: StuckEvent) => setStuck((s) => stuckStep(s, e, limit));
 
-  /** A fresh try at one board: the board, moves, hint and clock start again. */
-  const freshBoard = useCallback(
-    (lvl: Level) => {
-      drag.current = null;
-      keySession.current = null;
-      stateRef.current = initialState(lvl);
-      movesRef.current = 0;
-      setState(stateRef.current);
-      setHistory([]);
-      setMoves(0);
-      setUsedHint(false);
-      setHintBlock(null);
-      setExiting(null);
-      setBumped(null);
-      setPull(null);
-      setTLeft(clockFor(lvl.base ?? 45, band, player?.timerMode ?? 'auto').seconds);
-    },
-    [band, player?.timerMode],
-  );
+  /** The bricks back where the board starts, with no moves made. The hint used and the clock stay as they are. */
+  const bricksBack = (lvl: Level) => {
+    drag.current = null;
+    keySession.current = null;
+    stateRef.current = initialState(lvl);
+    movesRef.current = 0;
+    setState(stateRef.current);
+    setHistory([]);
+    setMoves(0);
+    setHintBlock(null);
+    setExiting(null);
+    setBumped(null);
+    setPull(null);
+  };
 
-  /** Put puzzle `p` of this level on the board (after Next or a swap). */
+  /** Put puzzle `p` of this level on the board (after Next or a swap): its own clock, at the band played now. */
   const showPuzzle = (p: number, why: 'start' | 'swap') => {
     const lvl = boards[p] ?? boards[0];
+    const a = ageNow();
+    ageRef.current = a;
+    setAge(a);
     levelRef.current = lvl;
     puzzleRef.current = p;
     setPuzzle(p);
-    freshBoard(lvl);
+    bricksBack(lvl);
+    hintRef.current = false;
+    setUsedHint(false);
+    setTLeft(clockFor(lvl.base ?? 45, a.band, a.mode).seconds);
     stuckEvent({ type: why });
     setNote(why === 'swap' ? SWAPPED_LINE : '');
     setPhase('play');
   };
 
+  /**
+   * Restart puzzle only puts the bricks back (user decision D1): a hint used on this board, or a counted
+   * clock that ran out, still caps the level. It checks the daily limit first, like every puzzle boundary (2.4).
+   */
   const restart = () => {
     if (phaseRef.current !== 'play') return;
-    freshBoard(levelRef.current);
+    if (breakBefore(path)) return;
+    bricksBack(levelRef.current);
     stuckEvent({ type: 'restart' });
     setNote('');
   };
@@ -300,7 +321,7 @@ export default function SlideGame({ index }: { index: number }) {
     (s: State) => {
       if (!isSolved(s) || phaseRef.current !== 'play') return;
       const lvl = levelRef.current;
-      const counted = clockFor(lvl.base ?? 45, band, player?.timerMode ?? 'auto').kind === 'counted';
+      const counted = clockFor(lvl.base ?? 45, ageRef.current.band, ageRef.current.mode).kind === 'counted';
       const result: PuzzleResult = {
         puzzle: puzzleRef.current,
         count: movesRef.current,
@@ -335,7 +356,7 @@ export default function SlideGame({ index }: { index: number }) {
       // the controls it replaces are gone, so focus moves to Next puzzle (brief 10)
       focusLater('.esc-next');
     },
-    [index, band, player?.timerMode],
+    [index],
   );
 
   /** A new move starts: keep the state before it for undo, and count it. */
@@ -505,14 +526,15 @@ export default function SlideGame({ index }: { index: number }) {
   /** Next puzzle: Break first when the daily limit is used up (2.4), else the next unsolved puzzle. */
   const nextPuzzle = () => {
     if (phaseRef.current !== 'solved') return;
-    if (breakBefore(`/game/escape/${index + 1}`)) return;
+    if (breakBefore(path)) return;
     showPuzzle(puzzleOnScreen(runRef.current), 'start');
     focusLater('.esc-brick');
   };
 
-  /** The stuck offer: a different board of the same level, free (3.3). The dots stay where they are. */
+  /** The stuck offer: a different board of the same level, free (3.3). The dots stay where they are. Break first when the limit is used up. */
   const swap = () => {
     if (phaseRef.current !== 'play' || exiting) return;
+    if (breakBefore(path)) return;
     const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-offer');
     const saved = progressStore.swapPuzzle(GAME, index);
     const next = saved ?? { ...runRef.current, queue: rotateQueue(runRef.current.queue) };
@@ -563,10 +585,11 @@ export default function SlideGame({ index }: { index: number }) {
 
   return (
     <Screen className="esc">
-      <EscapeBar
+      <TopBar
         title={`Level ${index + 1}`}
-        dots={<PuzzleDots solved={solvedDots} puzzle={dotOnScreen} />}
-        action={playing ? <IconButton icon="restart" label="Restart puzzle" onClick={restart} /> : null}
+        backLabel="Back to home"
+        below={<PuzzleDots solved={solvedDots} puzzle={dotOnScreen} />}
+        action={playing ? <IconButton icon="restart" label="Restart puzzle" onClick={restart} /> : undefined}
       />
 
       <section className="esc-status" aria-label="Puzzle status">
@@ -686,37 +709,19 @@ export function EscapeFinished() {
   const card = finishedCard(totalStars(player, GAME));
   return (
     <Screen className="esc">
-      <EscapeBar title="Brick Escape" />
+      <TopBar title="Brick Escape" backLabel="Back to home" />
       <div className="esc-stage" ref={stage}>
         <Tray level={level} cell={cell} />
       </div>
       <LevelCard
         title={card.title}
-        stars={starsFor(player, GAME, last)}
+        total={{ stars: totalStars(player, GAME), max: PUZZLE_LEVELS.length * 3 }}
         fact={card.fact}
         note={FINISHED_NOTE}
         primary={{ label: card.primary, href: toHref(HOME) }}
         onClose={() => go(HOME)}
       />
     </Screen>
-  );
-}
-
-/**
- * The game's top bar: Back to home, the title with the four dots under it, and Restart while a puzzle is on.
- * The shared TopBar puts its subtitle in a <p>, which cannot hold the dots' block, so the bar is drawn here
- * with the same classes.
- */
-function EscapeBar({ title, dots, action }: { title: string; dots?: ReactNode; action?: ReactNode }) {
-  return (
-    <header className="bw-topbar">
-      <IconButton icon="back" label="Back to home" href={toHref(HOME)} />
-      <div className="bw-topbar__title">
-        <h1>{title}</h1>
-        {dots}
-      </div>
-      {action ?? <span aria-hidden="true" />}
-    </header>
   );
 }
 

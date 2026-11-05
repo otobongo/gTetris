@@ -6,12 +6,14 @@ import {
   runOf,
   totalStars,
   useActivePlayer,
+  type AgeBand,
   type LevelRun,
   type PuzzleOutcome,
+  type TimerMode,
 } from '../../shared/progress';
 import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
-import { Brick, Icon, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, type IconName } from '../../shared/ui';
+import { Brick, Icon, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, TopBar, type IconName } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
 import { STUCK, STUCK_START, puzzleOnScreen, stuckStep, type StuckState } from '../run';
 import { PAD, REPEAT, dragMoves, dragStep, gestureAxis, keyAction, keyCommand, releaseAction, type Action } from './controls';
@@ -29,6 +31,7 @@ import {
   puzzleGoalRows,
   puzzleResult,
   readyLines,
+  retryRound,
   runRules,
   solvedLine,
   stageCard,
@@ -77,20 +80,6 @@ export function useCellSize(areaRef: RefObject<HTMLDivElement | null>, cols: num
   return Math.max(10, Math.min(MAX_CELL, Math.floor(Math.min((area.w - room) / cols, (area.h - room) / rows))));
 }
 
-/** The top bar of the boards: back to Home, the title with the puzzle dots under it, and one action. */
-export function DropBar({ title, dots, action }: { title: string; dots?: ReactNode; action?: ReactNode }) {
-  return (
-    <header className="bw-topbar">
-      <IconButton icon="back" label="Back to home" href={HOME} />
-      <div className="bw-topbar__title">
-        <h1>{title}</h1>
-        {dots}
-      </div>
-      {action ?? <span aria-hidden="true" />}
-    </header>
-  );
-}
-
 /** The well and its grid, empty or with bricks in it. */
 export function Well({ cols, rows, cell, paused, children, ...board }: { cols: number; rows: number; cell: number; paused?: boolean } & Omit<ComponentProps<'div'>, 'className' | 'style'>) {
   return (
@@ -108,16 +97,31 @@ export function Well({ cols, rows, cell, paused, children, ...board }: { cols: n
 
 type Finished = Extract<PuzzleOutcome, { kind: 'finished' }>;
 
+/**
+ * The age band and timer mode a puzzle started with. They hold until the next puzzle (brief 2.3), so a band
+ * changed in Settings or another tab never rewrites the clock, the stuck limits or the cap of the puzzle on screen.
+ */
+interface PuzzleAge {
+  band: AgeBand;
+  mode: TimerMode;
+}
+
+function ageNow(): PuzzleAge {
+  const p = activePlayer(progressStore.getState());
+  return { band: p?.ageBand ?? '7-8', mode: p?.timerMode ?? 'relaxed' };
+}
+
 export default function Play({ index }: { index: number }) {
   const stage = STAGES[index];
   const goal = puzzleGoalRows(index);
   const player = useActivePlayer();
-  const band = player?.ageBand ?? '7-8';
-  const plan = timerPlan({ goalRows: goal }, player?.timerMode ?? 'relaxed', band);
+  const [age, setAge] = useState<PuzzleAge>(ageNow);
+  const plan = timerPlan({ goalRows: goal }, age.mode, age.band);
   const planRef = useRef(plan);
   planRef.current = plan;
-  const limitRef = useRef(STUCK.drop[band]);
-  limitRef.current = STUCK.drop[band];
+  const limitRef = useRef(STUCK.drop[age.band]);
+  limitRef.current = STUCK.drop[age.band];
+  const path = `/game/drop/${index + 1}`;
 
   // Entered from Home: the intro sheet first. From the level card: straight to the waiting brick.
   const [fromCard] = useState(() => startedFromCard === index);
@@ -263,15 +267,26 @@ export default function Play({ index }: { index: number }) {
     else if (ph === 'paused') setPhase('playing');
   }
 
-  /** Put a puzzle on screen with its stack drawn and its first brick waiting (brief 4.2). */
-  function startPuzzle(puzzle: number, after: { swapped: boolean }) {
+  /**
+   * Put a puzzle on screen with its stack drawn and its first brick waiting (brief 4.2). A new puzzle takes the
+   * band played now; a retry of the same puzzle keeps its band and its clock (D1).
+   */
+  function startPuzzle(puzzle: number, after: { swapped: boolean; retry?: boolean }) {
     window.clearTimeout(endTimer.current);
     window.clearTimeout(flashTimer.current);
     setFlash('');
-    setSecs(0);
     setOffer(false);
     setSwapped(after.swapped);
-    roundRef.current = newRound(index, puzzle, 'ready');
+    if (after.retry) {
+      roundRef.current = retryRound(roundRef.current!);
+    } else {
+      const a = ageNow();
+      setAge(a);
+      limitRef.current = STUCK.drop[a.band];
+      planRef.current = timerPlan({ goalRows: goal }, a.mode, a.band);
+      roundRef.current = newRound(index, puzzle, 'ready');
+    }
+    setSecs(Math.floor(roundRef.current.elapsedMs / 1000));
     setPhaseState('ready');
     held.current.clear();
     setFocusTo('board');
@@ -280,18 +295,23 @@ export default function Play({ index }: { index: number }) {
 
   /** Next puzzle: the daily limit first (brief 2.4), then the next unsolved puzzle on the same screen. */
   function nextPuzzle() {
-    if (breakBefore(`/game/drop/${index + 1}`)) return;
+    if (breakBefore(path)) return;
     stuckRef.current = stuckStep(stuckRef.current, { type: 'start' }, limitRef.current);
     startPuzzle(puzzleOnScreen(runRef.current), { swapped: false });
   }
 
-  /** Try again: the same puzzle from its first position. Failed tries still count toward the offer. */
+  /**
+   * Try again: the same puzzle from its first position, with its clock where it was (D1). Failed tries still
+   * count toward the offer. The daily limit is checked first, as at every puzzle boundary (2.4).
+   */
   function tryAgain() {
-    startPuzzle(roundRef.current!.puzzle, { swapped: false });
+    if (breakBefore(path)) return;
+    startPuzzle(roundRef.current!.puzzle, { swapped: false, retry: true });
   }
 
-  /** New puzzle: a free swap (3.3). The dots stay; the next spare in the queue comes up. */
+  /** New puzzle: a free swap (3.3). The dots stay; the next spare in the queue comes up. Break first when the limit is used up. */
   function newPuzzle() {
+    if (breakBefore(path)) return;
     const id = progressStore.ensureActivePlayer();
     let swappedRun = progressStore.swapPuzzle(GAME, index, id);
     if (!swappedRun) {
@@ -509,9 +529,10 @@ export default function Play({ index }: { index: number }) {
     <div className="drop-root">
       <Screen className="drop-frame">
         <div className="drop-content" inert={dialogOpen}>
-          <DropBar
+          <TopBar
             title={`Stage ${index + 1}`}
-            dots={<PuzzleDots solved={solvedCount} puzzle={dotAt} />}
+            backLabel="Back to home"
+            below={<PuzzleDots solved={solvedCount} puzzle={dotAt} />}
             action={
               phase === 'ready' || phase === 'playing' || phase === 'paused' ? (
                 <IconButton icon={paused ? 'play' : 'pause'} label={paused ? 'Keep playing' : 'Pause'} onClick={togglePause} disabled={phase === 'ready'} />

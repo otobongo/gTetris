@@ -204,7 +204,9 @@ describe('the play screen as it first draws', () => {
     expect(out).toContain('You finished every level!');
     expect(out).toContain('31 levels, 92 of 93 stars.');
     expect(out).toContain('A grown-up can pick a level to play again.');
-    expect(out).toContain('aria-label="2 of 3 stars"');
+    // User decision D6: the game's total stars, not the last level's 2 of 3.
+    expect(out).toContain('aria-label="92 of 93 stars"');
+    expect(out).not.toContain('of 3 stars');
     expect(out).toContain('Back to games');
     expect(out).not.toContain('Puzzle 1 of 4');
   });

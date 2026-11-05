@@ -324,6 +324,15 @@
 .bw-levelcard__stars { display: flex; justify-content: center; gap: var(--bw-sp-1); margin: var(--bw-sp-4) 0; color: var(--bw-star-off); }
 .bw-levelcard__stars .is-on { color: var(--bw-star); }
 .bw-levelcard__stars > span { display: block; line-height: 0; }
+.bw-levelcard__total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bw-sp-2);
+  margin: var(--bw-sp-4) 0;
+}
+.bw-levelcard__total-star { display: block; line-height: 0; color: var(--bw-star); }
+.bw-levelcard__total-count { font-size: var(--bw-fs-title); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .bw-levelcard__fact {
   margin: 0;
   font-size: var(--bw-fs-body);

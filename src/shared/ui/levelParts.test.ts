@@ -102,6 +102,16 @@ describe('LevelCard', () => {
     expect(card({ stars: 7 })).toContain('3 of 3 stars');
   });
 
+  it('the finished state shows the game’s star total in place of a level’s star row (D6)', () => {
+    const html = card({ stars: undefined, total: { stars: 78, max: 93 }, rule: undefined, secondary: undefined });
+    expect(html).toContain('role="img" aria-label="78 of 93 stars"');
+    expect(html).toContain('78 of 93');
+    expect(html).not.toContain('of 3 stars');
+    // Given both, the total wins: the card never shows a level's stars beside the game's.
+    expect(card({ stars: 3, total: { stars: 63, max: 93 } })).not.toContain('3 of 3 stars');
+    expect(card({ total: { stars: Number.NaN, max: 93 } })).toContain('aria-label="0 of 93 stars"');
+  });
+
   it('opens 600ms after the last dot', () => {
     expect(LEVEL_CARD_DELAY_MS).toBe(600);
   });

@@ -7,7 +7,6 @@ import {
   progressStore,
   resolveRun,
   runOf,
-  starsFor,
   totalStars,
   useActivePlayer,
   type AgeBand,
@@ -20,7 +19,7 @@ import {
 import { go, replace, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { letterName, say } from '../../shared/speech';
-import { Brick, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, Screen, useLayout } from '../../shared/ui';
+import { Brick, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, Screen, TopBar, useLayout } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
 import { currentLevel } from '../meta';
 import { STUCK, STUCK_START, lettersLevelStars, lettersSet, levelTotals, puzzleOnScreen, rotateQueue, stuckStep, type StuckEvent } from '../run';
@@ -92,23 +91,6 @@ function PlayerStrip({ player }: { player: Player | null }) {
   );
 }
 
-/**
- * The game's top bar: back to Home, the title, then the dots in place of the subtitle (brief 7.1).
- * The shared TopBar puts its subtitle in a paragraph, which cannot hold the dots' block.
- */
-function GameBar({ title, dots, action }: { title: string; dots?: ReactNode; action?: ReactNode }) {
-  return (
-    <header className="bw-topbar">
-      <IconButton icon="back" label="Back to home" href={toHref(HOME)} />
-      <div className="bw-topbar__title">
-        <h1>{title}</h1>
-        {dots}
-      </div>
-      {action ?? <span aria-hidden="true" />}
-    </header>
-  );
-}
-
 /** What to show and say for each puzzle. Speech is read aloud only when the child taps a speaker or a picture. */
 function promptText(p: Prompt): { text: string; speech: string } {
   switch (p.kind) {
@@ -138,8 +120,8 @@ type Finish = Extract<PuzzleOutcome, { kind: 'finished' }>;
 
 function Play({ level, player }: { level: number; player: Player | null }) {
   const layout = useLayout();
-  // The band at the level's start: a band changed later applies from the next visit (2.3).
-  const [band] = useState<AgeBand>(() => player?.ageBand ?? '5-6');
+  // The band the puzzle on screen started with: a band changed later applies from the next puzzle (2.3, D2).
+  const [band, setBand] = useState<AgeBand>(() => player?.ageBand ?? '5-6');
   const spelling = isSpelling(level);
   const set = lettersSet(band);
   const [run, setRun] = useState<LevelRun>(() => {
@@ -147,8 +129,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     // keepSolved: a band change keeps the solved puzzles and refills the rest with the new band's words.
     return resolveRun(stored, { set, seed: stored?.seed ?? newSeed(), hintsLeft: HINTS_PER_RUN, keepSolved: true }, progressStore.now());
   });
-  // Words already built when the level opened, so the puzzles never repeat one after a band change.
-  const [built] = useState(() => run.solved.map((r) => ({ puzzle: r.puzzle, word: r.word })));
+  // Words already built when the level opened or the band last changed, so the puzzles never repeat one after a band change.
+  const [built, setBuilt] = useState(() => run.solved.map((r) => ({ puzzle: r.puzzle, word: r.word })));
   const puzzles = useMemo(() => makePuzzles(level, run.seed, band, built, player?.id ?? ''), [level, run.seed, band, built, player?.id]);
 
   const [moment, setMoment] = useState<Moment>('play');
@@ -206,8 +188,25 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     el?.focus();
   });
 
+  /**
+   * A band changed since the puzzle on screen started (Settings or another tab) takes over here, at the next
+   * puzzle: the run moves to the new band's set and keeps its solved puzzles (keepSolved), and the unsolved
+   * ones get the new band's words, skipping every word built so far (2.3, 4.3, D2).
+   */
+  const withBandNow = (from: LevelRun): LevelRun => {
+    const live = findPlayer(progressStore.getState(), player?.id ?? '')?.ageBand;
+    if (!live || live === band) return from;
+    const init = { set: lettersSet(live), seed: from.seed, hintsLeft: HINTS_PER_RUN, keepSolved: true };
+    const moved = player ? progressStore.startRun(GAME, level, init, player.id) : resolveRun(from, init, progressStore.now());
+    setBand(live);
+    setBuilt(moved.solved.map((r) => ({ puzzle: r.puzzle, word: r.word })));
+    setRun(moved);
+    return moved;
+  };
+
   /** Back to a puzzle's first position: its slips, hint and stuck counts start again. */
-  const freshPuzzle = (event: 'start' | 'swap', from: LevelRun) => {
+  const freshPuzzle = (event: 'start' | 'swap', start: LevelRun) => {
+    const from = withBandNow(start);
     setPuzzle(puzzleOnScreen(from));
     slipsRef.current = 0;
     usedHintRef.current = false;
@@ -254,6 +253,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   };
 
   const swap = () => {
+    // The daily limit first, as at every puzzle boundary (2.4); the swap waits until after Break.
+    if (breakBefore(levelPath(level))) return;
     const saved = (player ? progressStore.swapPuzzle(GAME, level, player.id) : null) ?? { ...run, queue: rotateQueue(run.queue) };
     setRun(saved);
     freshPuzzle('swap', saved);
@@ -366,9 +367,10 @@ function Play({ level, player }: { level: number; player: Player | null }) {
 
   return (
     <Screen className="lb-screen" gap={14}>
-      <GameBar
+      <TopBar
         title={`Level ${level + 1}`}
-        dots={dots}
+        backLabel="Back to home"
+        below={dots}
         action={
           offer ? (
             // While the offer shows, the speaker reads the offer line (brief 10).
@@ -398,10 +400,9 @@ function Play({ level, player }: { level: number; player: Player | null }) {
  * well sits behind the scrim, and the card's one button, the Escape key and the scrim all go Home.
  */
 function Finished({ player }: { player: Player | null }) {
-  const last = LEVELS.length - 1;
   return (
     <Screen className="lb-screen" gap={14}>
-      <GameBar title="Letter Builder" />
+      <TopBar title="Letter Builder" backLabel="Back to home" />
       <div className="lb-body lb-body--finished">
         <div className="lb-view">
           <div className="lb-top" />
@@ -410,7 +411,7 @@ function Finished({ player }: { player: Player | null }) {
       </div>
       <LevelCard
         title={GAME_DONE_TITLE}
-        stars={starsFor(player, GAME, last)}
+        total={{ stars: totalStars(player, GAME), max: LEVELS.length * 3 }}
         fact={gameDoneFact(LEVELS.length, totalStars(player, GAME))}
         note={GAME_DONE_NOTE}
         primary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}

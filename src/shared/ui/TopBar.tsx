@@ -6,6 +6,11 @@ export interface TopBarProps {
   /** The screen's one h1. */
   title: ReactNode;
   subtitle?: ReactNode;
+  /**
+   * A block under the title, such as a game's four puzzle dots (brief 7.1). It is drawn as a sibling of the
+   * h1, outside the subtitle's paragraph, since a paragraph cannot hold a block.
+   */
+  below?: ReactNode;
   /** Route the back button opens ('/' is Home), or null for no back button (Break). */
   back?: string | null;
   /** Accessible name of the back button, such as "Back to home". */
@@ -17,7 +22,7 @@ export interface TopBarProps {
 }
 
 /** Grid 54px / 1fr / 54px: back link, centred title and sub, then an action or an empty slot. */
-export function TopBar({ title, subtitle, back = '/', backLabel = 'Back', action, right }: TopBarProps) {
+export function TopBar({ title, subtitle, below, back = '/', backLabel = 'Back', action, right }: TopBarProps) {
   const end = action ?? right;
   return (
     <header className="bw-topbar">
@@ -25,6 +30,7 @@ export function TopBar({ title, subtitle, back = '/', backLabel = 'Back', action
       <div className="bw-topbar__title">
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
+        {below}
       </div>
       {end ?? <span aria-hidden="true" />}
     </header>

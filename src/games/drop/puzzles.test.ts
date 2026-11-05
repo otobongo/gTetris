@@ -17,6 +17,7 @@ import {
   puzzleRules,
   puzzleTargets,
   readyLines,
+  retryRound,
   runRules,
   solvedLine,
   stageCard,
@@ -223,5 +224,36 @@ describe('Brick Drop lines (brief 9.1)', () => {
   it('uses no em or en dashes', () => {
     const lines = [...readyLines(6, true), ...introLines(11, true), solvedLine(3), overLine(1, 4), gameDoneCard(1).title, gameDoneCard(1).fact, GAME_DONE_NOTE];
     for (const l of lines) expect(l).not.toMatch(/[–—]/);
+  });
+});
+
+describe('Try again only puts the bricks back (user decision D1)', () => {
+  /** A round played on for `ms`, with one press to start it. */
+  const played = (ms: number) => tickRound(pressRound(newRound(0, 2), 'left'), ms);
+
+  it('starts the same puzzle again from its first stack, its first brick waiting', () => {
+    const before = played(5_000);
+    const again = retryRound({ ...before, phase: 'over' });
+    const fresh = newRound(0, 2);
+    expect(again.index).toBe(0);
+    expect(again.puzzle).toBe(2);
+    expect(again.phase).toBe('ready');
+    expect(again.game).toEqual(fresh.game);
+  });
+
+  it('keeps the time already on the clock, so a run-out clock still caps the level', () => {
+    const plan = timerPlan({ goalRows: puzzleGoalRows(0) }, 'auto', '7-8');
+    expect(plan.kind).toBe('countdown');
+    const seconds = plan.kind === 'countdown' ? plan.seconds : 0;
+    const before = played(seconds * 1000 + 1_000);
+    const again = retryRound({ ...before, phase: 'over' });
+    expect(again.elapsedMs).toBe(before.elapsedMs);
+    // The waiting brick does not move the clock, and play goes on from where it was.
+    expect(tickRound(again, 10_000).elapsedMs).toBe(before.elapsedMs);
+    expect(tickRound(pressRound(again, 'left'), 500).elapsedMs).toBe(before.elapsedMs + 500);
+  });
+
+  it('a round with no time played comes back at 0', () => {
+    expect(retryRound(newRound(3, 1)).elapsedMs).toBe(0);
   });
 });

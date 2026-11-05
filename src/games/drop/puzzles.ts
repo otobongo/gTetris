@@ -71,6 +71,14 @@ export function newRound(index: number, puzzle: number, phase: 'intro' | 'ready'
   return { index, puzzle, phase, game: puzzleGame(index, puzzle), elapsedMs: 0 };
 }
 
+/**
+ * Try again (user decision D1): the same puzzle from its first stack with its first brick waiting, and the
+ * clock where it was. Only the bricks go back, so a counted clock that ran out still caps the stage.
+ */
+export function retryRound(r: Round): Round {
+  return { ...newRound(r.index, r.puzzle, 'ready'), elapsedMs: r.elapsedMs };
+}
+
 /** Time passes: only a round being played falls, locks and counts time. A waiting, paused or ended round stays as it is. */
 export function tickRound(r: Round, dt: number): Round {
   if (r.phase !== 'playing' || !(dt > 0)) return r;
