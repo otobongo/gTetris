@@ -224,7 +224,7 @@
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
 <div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="lb-card-title" aria-describedby="lb-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="lb-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
-<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsGap}}px; margin: 10px 0;">
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
 <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
 </sc-for>
@@ -521,7 +521,7 @@ class Component extends DCLogic {
       // Every level done (decision D6): one star and the game's total, never the last level's star row.
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '60 of 72 stars' : starsWon + ' of 3 stars',
-      starsGap: finished ? 6 : 4,
+      starsgap: finished ? 6 : 4,
       showTotal: finished,
       totalText: '60 of 72',
       // The every-level totals are sample data.

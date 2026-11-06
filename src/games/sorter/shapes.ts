@@ -81,23 +81,4 @@ export type SorterColor = (typeof SORTER_COLORS)[number];
 /** The only colour on the shape levels (1 to 3). */
 export const SHAPE_LEVEL_COLOR: SorterColor = 'yellow';
 
-/**
- * Pairs that colour puzzles never put together (9.4), as the kit's colorPairs.ts will list them: red with green,
- * blue with purple, red with pink. Kept here until the kit lands, because this module must not import from it.
- */
-export const AVOID_PAIRS: readonly (readonly [SorterColor, SorterColor])[] = [
-  ['red', 'green'],
-  ['blue', 'purple'],
-  ['red', 'pink'],
-];
-
-/** True when two colours are on the avoid list, in either order. */
-export function colorsClash(a: SorterColor, b: SorterColor): boolean {
-  return AVOID_PAIRS.some(([x, y]) => (a === x && b === y) || (a === y && b === x));
-}
-
-/** True when no two colours of the list clash. */
-export function colorsFit(colors: readonly SorterColor[]): boolean {
-  for (let i = 0; i < colors.length; i++) for (let j = i + 1; j < colors.length; j++) if (colorsClash(colors[i], colors[j])) return false;
-  return true;
-}
+/* The colours that must not meet in one puzzle (9.4) are the kit's list, src/games/kit/colorPairs.ts. */

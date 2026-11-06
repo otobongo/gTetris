@@ -140,6 +140,21 @@ describe('content checks: every level, every puzzle, 200 seeds (4.1)', () => {
     }
   });
 
+  it('shows the same 3 colours on both Guess twins, differing only in slot order and choice order (4.1)', () => {
+    for (const { seed, levels: ls } of ALL) {
+      for (const level of TWIN_LEVELS.filter((l) => LEVELS[l].form === 'guess')) {
+        for (const [a, b] of twinsOf(ls[level] as GuessPuzzle[])) {
+          const where = `level ${level + 1} seed ${seed} ${a.answer}`;
+          expect(b.answer, where).toBe(a.answer);
+          expect(sorted(b.choices), where).toEqual(sorted(a.choices));
+          expect(b.choices.join(), where).not.toBe(a.choices.join());
+          expect(sorted(b.paints), where).toEqual(sorted(a.paints));
+          expect(b.paints, where).toEqual([a.paints[1], a.paints[0]]);
+        }
+      }
+    }
+  });
+
   it('shows the 3 mixes as the choices on every Level 2 puzzle', () => {
     for (const { levels: ls } of ALL) for (const p of ls[1] as GuessPuzzle[]) expect(sorted(p.choices)).toEqual(sorted(MIXES));
   });
