@@ -1,15 +1,18 @@
 /**
  * Four-puzzle levels, the shared rules (brief sections 3 and 5): queue order and swaps, the STUCK
- * table, the stuck signals and the offer, and the level's stars over its 4 solved puzzles.
+ * table, the stuck signals and the offer, and the level's stars over its 4 solved puzzles. Also the
+ * six kit games' additions (six-games brief 3.2, 3.3): their sets, STUCK rows and slip star rule.
  */
 import { describe, expect, it } from 'vitest';
-import { AGE_BANDS, type PuzzleResult } from '../shared/progress';
+import { AGE_BANDS, MAX_SET_LENGTH, type PuzzleResult } from '../shared/progress';
 import { STAGES, averageCells, starRule } from './drop/stages';
 import {
   LEVEL_STAR_RULES,
+  SLIP_GAMES,
   STUCK,
   STUCK_START,
   TRY_OVER_FACTOR,
+  builderSet,
   dotPosition,
   dropLevelStars,
   dropSet,
@@ -22,9 +25,16 @@ import {
   levelTotals,
   lettersLevelStars,
   lettersSet,
+  mathSet,
+  mixerSet,
+  numbersSet,
+  patternSet,
   puzzleOnScreen,
   rotateQueue,
+  slipLevelStars,
+  sorterSet,
   stuckStep,
+  type RunGame,
   type StuckEvent,
   type StuckLimit,
   type StuckState,
@@ -34,6 +44,9 @@ const result = (over: Partial<PuzzleResult> = {}): PuzzleResult => ({ puzzle: 0,
 const four = (each: Partial<PuzzleResult>, last: Partial<PuzzleResult> = {}): PuzzleResult[] =>
   [0, 1, 2, 3].map((i) => result({ puzzle: i, ...each, ...(i === 3 ? last : {}) }));
 
+/** Every game on the four-puzzle levels: the three built games and the six kit games. */
+const ALL_GAMES: readonly RunGame[] = ['escape', 'drop', 'letters', ...SLIP_GAMES];
+
 describe('puzzle sets', () => {
   it('names each game’s set as the brief stores it', () => {
     expect(escapeSet('a1b2')).toBe('escape:a1b2');
@@ -41,6 +54,39 @@ describe('puzzle sets', () => {
     expect(dropSet(2)).toBe('drop:2');
     expect(lettersSet('5-6')).toBe('letters:1:5-6');
     expect(lettersSet('9-10', 3)).toBe('letters:3:9-10');
+  });
+
+  it('names the six kit games’ sets at version 1 (six-games 3.2, 6)', () => {
+    expect(mixerSet()).toBe('mixer:1');
+    expect(sorterSet()).toBe('sorter:1');
+    expect(patternSet()).toBe('pattern:1');
+    expect(builderSet()).toBe('builder:1');
+    expect(numbersSet('5-6')).toBe('numbers:1:5-6');
+    expect(mathSet('9-10')).toBe('math:1:9-10');
+  });
+
+  it('takes a raised version, so stored runs on the old rules restart', () => {
+    expect(mixerSet(2)).toBe('mixer:2');
+    expect(sorterSet(3)).toBe('sorter:3');
+    expect(patternSet(2)).toBe('pattern:2');
+    expect(builderSet(2)).toBe('builder:2');
+    expect(numbersSet('3-4', 2)).toBe('numbers:2:3-4');
+    expect(mathSet('7-8', 4)).toBe('math:4:7-8');
+  });
+
+  it('gives Number Line-up and Brick Calculator a different set per band, the other four one set for every band', () => {
+    expect(new Set(AGE_BANDS.map((b) => numbersSet(b))).size).toBe(AGE_BANDS.length);
+    expect(new Set(AGE_BANDS.map((b) => mathSet(b))).size).toBe(AGE_BANDS.length);
+    expect(numbersSet('5-6')).not.toBe(mathSet('5-6'));
+    expect(new Set([mixerSet(), sorterSet(), patternSet(), builderSet()]).size).toBe(4);
+  });
+
+  it('keeps every set id within the store’s limit, so sanitize keeps the run', () => {
+    for (const band of AGE_BANDS) {
+      for (const id of [mixerSet(99), sorterSet(99), patternSet(99), builderSet(99), numbersSet(band, 99), mathSet(band, 99)]) {
+        expect(id.length, id).toBeLessThanOrEqual(MAX_SET_LENGTH);
+      }
+    }
   });
 });
 
@@ -80,14 +126,27 @@ describe('queue and swaps', () => {
 });
 
 describe('the STUCK table (3.1)', () => {
-  const table = {
+  // Brick Escape, Brick Drop and Letter Builder from the four-puzzle brief 3.1; the six kit games
+  // from the six-games brief 3.3. Bands in order 3-4, 5-6, 7-8, 9-10.
+  const table: Record<RunGame, readonly (readonly [number, number | null])[]> = {
     escape: [[2, 60], [2, 90], [3, 120], [3, 150]],
     drop: [[2, null], [2, null], [3, null], [3, null]],
     letters: [[3, 30], [3, 40], [4, 50], [4, 60]],
-  } as const;
+    mixer: [[3, 30], [3, 40], [4, 50], [4, 60]],
+    sorter: [[3, 30], [3, 40], [4, 50], [4, 60]],
+    numbers: [[3, 45], [3, 60], [4, 75], [4, 90]],
+    pattern: [[3, 30], [3, 40], [4, 50], [4, 60]],
+    math: [[2, 45], [2, 45], [3, 60], [3, 60]],
+    builder: [[3, 30], [3, 40], [4, 50], [4, 60]],
+  };
+
+  it('has one row for every RunGame and no other', () => {
+    expect(Object.keys(STUCK).sort()).toEqual([...ALL_GAMES].sort());
+    for (const game of ALL_GAMES) expect(Object.keys(STUCK[game]).sort(), game).toEqual([...AGE_BANDS].sort());
+  });
 
   it('holds the brief’s limits for every game and age band', () => {
-    for (const game of ['escape', 'drop', 'letters'] as const) {
+    for (const game of ALL_GAMES) {
       AGE_BANDS.forEach((band, i) => {
         const [count, seconds] = table[game][i];
         expect(STUCK[game][band], `${game} ${band}`).toEqual({ count, seconds });
@@ -96,7 +155,7 @@ describe('the STUCK table (3.1)', () => {
   });
 
   it('fires the count signal at the limit and not one below, for every game and band', () => {
-    for (const game of ['escape', 'drop', 'letters'] as const) {
+    for (const game of ALL_GAMES) {
       for (const band of AGE_BANDS) {
         const limit = STUCK[game][band];
         let s = STUCK_START;
@@ -109,7 +168,7 @@ describe('the STUCK table (3.1)', () => {
   });
 
   it('fires the time signal at the limit and not one second below; Brick Drop has none', () => {
-    for (const game of ['escape', 'letters'] as const) {
+    for (const game of ALL_GAMES.filter((g) => g !== 'drop')) {
       for (const band of AGE_BANDS) {
         const limit = STUCK[game][band];
         const below = stuckStep(STUCK_START, { type: 'tick', seconds: limit.seconds! - 1 }, limit);
@@ -341,6 +400,7 @@ describe('level stars over 4 puzzles (section 5)', () => {
     expect(levelStars('escape', r)).toBe(escapeLevelStars(r));
     expect(levelStars('drop', r)).toBe(dropLevelStars(r));
     expect(levelStars('letters', r)).toBe(lettersLevelStars(r));
+    for (const game of SLIP_GAMES) expect(levelStars(game, r), game).toBe(slipLevelStars(game)(r));
   });
 
   it('totals add the 4 results, skipping fields a game does not store', () => {
@@ -366,5 +426,64 @@ describe('Brick Drop brick targets', () => {
     // G 4, C 8, K 12, A 4: ideal (32 - 12) / 4 = 5; T3 = ceil(5 + 5) = 10; T2 = ceil(5 + 12) = 17
     expect(dropTargets({ goalRows: 4, cols: 8, filled: 12, avgCells: 4 })).toEqual({ three: 10, two: 17 });
     expect(dropTargets({ goalRows: 4, cols: 8, avgCells: 4 })).toEqual({ three: 13, two: 20 });
+  });
+});
+
+describe('the six kit games’ stars (six-games 3.2)', () => {
+  it('lists the six kit games', () => {
+    expect([...SLIP_GAMES].sort()).toEqual(['builder', 'math', 'mixer', 'numbers', 'pattern', 'sorter']);
+  });
+
+  it('uses Letter Builder’s rule on slips for all six: 3 stars at 1 slip or none, 2 at 4 or fewer', () => {
+    for (const game of SLIP_GAMES) expect(LEVEL_STAR_RULES[game], game).toEqual({ three: 1, two: 4 });
+  });
+
+  it('gives slips S = 0, 1, 2, 4, 5 stars 3, 3, 2, 2, 1 in every kit game', () => {
+    for (const game of SLIP_GAMES) {
+      const at = (slips: number) => levelStars(game, four({ count: 0 }, { count: slips }));
+      expect([0, 1, 2, 4, 5].map(at), game).toEqual([3, 3, 2, 2, 1]);
+      expect(at(30), game).toBe(1);
+    }
+  });
+
+  it('adds the slips over the 4 puzzles, wherever they fall', () => {
+    for (const game of SLIP_GAMES) {
+      const stars = slipLevelStars(game);
+      expect(stars(four({ count: 1 })), `${game} 1 each`).toBe(2); // S = 4
+      expect(stars([result({ count: 2 }), result({ count: 2 }), result({ count: 1 }), result()]), `${game} 5`).toBe(1);
+      expect(stars([result(), result({ count: 1 }), result(), result()]), `${game} 1`).toBe(3);
+    }
+  });
+
+  it('caps at 2 when a hint was used on any one of the 4, and the slips still count', () => {
+    for (const game of SLIP_GAMES) {
+      for (let i = 0; i < 4; i++) {
+        const r = four({ count: 0 });
+        r[i] = { ...r[i], usedHint: true };
+        expect(levelStars(game, r), `${game} hint on ${i}`).toBe(2);
+      }
+      expect(levelStars(game, four({}, { count: 5, usedHint: true })), game).toBe(1);
+      expect(levelStars(game, four({}, { count: 3, usedHint: true })), game).toBe(2);
+    }
+  });
+
+  it('never gives fewer than 1 star or more than 3', () => {
+    for (const game of SLIP_GAMES) {
+      for (const slips of [0, 1, 4, 5, 99, 10_000]) {
+        const s = levelStars(game, four({}, { count: slips }));
+        expect(s, `${game} ${slips}`).toBeGreaterThanOrEqual(1);
+        expect(s, `${game} ${slips}`).toBeLessThanOrEqual(3);
+      }
+    }
+  });
+
+  it('skips a slip count that is not a number rather than losing the level’s stars', () => {
+    expect(levelStars('mixer', four({}, { count: Number.NaN }))).toBe(3);
+    expect(levelStars('sorter', [result({ count: 2 }), result({ count: Number.POSITIVE_INFINITY }), result({ count: 1 }), result()])).toBe(2);
+  });
+
+  it('gives each game its own function, with the same answers as Letter Builder’s rule', () => {
+    const r = four({ count: 1 }, { count: 2 });
+    for (const game of SLIP_GAMES) expect(slipLevelStars(game)(r), game).toBe(lettersLevelStars(r));
   });
 });
