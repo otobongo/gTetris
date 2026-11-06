@@ -77,7 +77,7 @@ export const DRAG_IDLE: DragTrack<never> = Object.freeze({ phase: Object.freeze(
 export type DragInput<I extends string> =
   | { type: 'down'; item: I; pointerId: number; point: Point }
   | { type: 'move'; pointerId: number; point: Point; zoom?: number }
-  /** `target`: what targetAt found under the release point (the caller looks it up). */
+  /** `target`: what targetAt found under the release point (the caller looks it up, leaving out the dragged item itself). */
   | { type: 'up'; pointerId: number; target: string | null }
   /** pointercancel or a lost capture: the drag is dropped, with no slip. */
   | { type: 'cancel'; pointerId: number }
@@ -122,7 +122,7 @@ export function dragStep<I extends string>(track: DragTrack<I>, input: DragInput
       if (p.kind === 'idle' || p.pointerId !== input.pointerId) return { track, effect: NONE };
       // under the threshold it was a tap: the click that follows does the work
       if (p.kind === 'pressed') return { track: { phase: { kind: 'idle' }, swallowClick: false }, effect: NONE };
-      const effect: DragEffect<I> = input.target !== null && input.target !== p.item ? { kind: 'drop', item: p.item, target: input.target } : { kind: 'miss', item: p.item };
+      const effect: DragEffect<I> = input.target !== null ? { kind: 'drop', item: p.item, target: input.target } : { kind: 'miss', item: p.item };
       return { track: { phase: { kind: 'idle' }, swallowClick: true }, effect };
     }
     case 'cancel': {
