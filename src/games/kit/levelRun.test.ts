@@ -164,6 +164,21 @@ describe('a level opens', () => {
     expect(s.band).toBe('7-8');
   });
 
+  it('keepSolved: a stored run under an older set version starts the level again (brief 6)', () => {
+    const v2 = kitGame({ id: 'numbers', meta: meta(12), set: (b) => numbersSet(b, 2), keepSolved: true, hints: true });
+    const s = open(v2, { stored: storedRun('numbers:1:5-6', 77, 2, { hintsLeft: 1 }) });
+    expect(s.run).toMatchObject({ set: 'numbers:2:5-6', seed: SEED, queue: [0, 1, 2, 3, 4, 5], solved: [] });
+    expect(s.puzzleNo).toBe(0);
+    expect(s.hintsLeft).toBe(3);
+  });
+
+  it('keepSolved: a raised version with a band change starts the level again too', () => {
+    const v2 = kitGame({ id: 'math', meta: meta(12), set: (b) => mathSet(b, 2), keepSolved: true });
+    const s = open(v2, { band: '9-10', stored: storedRun('math:1:3-4', 77, 3) });
+    expect(s.run).toMatchObject({ set: 'math:2:9-10', seed: SEED, solved: [] });
+    expect(s.puzzleNo).toBe(0);
+  });
+
   it('gives a hint game 3 hints for a new level, and a game without hints none', () => {
     const numbers = open(NUMBERS);
     expect(numbers.hintsLeft).toBe(3);
@@ -209,6 +224,13 @@ describe('the opening seed', () => {
   it('keeps the stored seed when the run continues, on the same set or a keepSolved band move', () => {
     expect(openingSeed(mixer, '5-6', storedRun('mixer:1', 77, 1), () => 9)).toBe(77);
     expect(openingSeed(numbers, '9-10', storedRun('numbers:1:3-4', 77, 1), () => 9)).toBe(77);
+  });
+
+  it('is a new seed for a keepSolved game whose stored run is under an older version', () => {
+    const v2 = configFor(kitGame({ id: 'numbers', set: (b) => numbersSet(b, 2), keepSolved: true }), 0);
+    expect(openingSeed(v2, '5-6', storedRun('numbers:1:5-6', 77, 1), () => 9)).toBe(9);
+    expect(openingSeed(v2, '7-8', storedRun('numbers:1:3-4', 77, 1), () => 9)).toBe(9);
+    expect(openingSeed(v2, '7-8', storedRun('numbers:2:3-4', 77, 1), () => 9)).toBe(77);
   });
 
   it('makes seeds the store accepts: whole numbers from 0 up to 2^31', () => {
