@@ -9,41 +9,53 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff; position: relative;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff; position: relative;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
-<a href="{{hubHref}}" aria-label="Back to levels" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
 <div style="font-size: 24px; font-weight: 800;">{{lvTitle}}</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Brick Escape · {{lvSub}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
+</sc-for>
 </div>
-<button onClick="{{restart}}" aria-label="Restart level" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showRestart}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{restart}}" aria-label="Restart puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
 </button>
+</sc-if>
+</div>
 </div>
 
+<sc-if value="{{showPanel}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
 <div style="display: flex; align-items: center; gap: 10px;">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{timerColor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{timercolor}}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"></path></svg>
 <span style="font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums;">{{clock}}</span>
 <span style="flex-grow: 1;"></span>
-<span style="font-size: 16px; font-weight: 800;">Moves {{moves}}</span>
-<span style="font-size: 16px; font-weight: 800; color: #ffc21a;">Best {{best}}</span>
+<span style="font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums;">Moves {{moves}}</span>
+<span style="font-size: 16px; font-weight: 800; color: #ffc21a; font-variant-numeric: tabular-nums;">Best {{best}}</span>
 </div>
 <div style="height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
-<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timePct}}%; background: {{timerColor}};"></div>
+<div style="height: 100%; border-radius: 999px; transition: width 1s linear; width: {{timepct}}%; background: {{timercolor}};"></div>
 </div>
 <div style="font-size: 13px; font-weight: 700; color: #8e85d6;">{{caption}}</div>
 </div>
+</sc-if>
 
 <div style="flex-grow: 1; display: grid; place-items: center; width: 100%;">
-<div style="position: relative; width: {{boardPx}}px; height: {{boardPx}}px; touch-action: none; filter: drop-shadow(0 16px 22px rgba(0,0,0,0.35));">
-<div style="position: absolute; left: {{pad}}px; top: {{pad}}px; width: {{gridPx}}px; height: {{gridPx}}px;">
+<div style="position: relative; width: {{boardpx}}px; height: {{boardpx}}px; touch-action: none; filter: drop-shadow(0 16px 22px rgba(0,0,0,0.35));">
+<div style="position: absolute; left: {{pad}}px; top: {{pad}}px; width: {{gridpx}}px; height: {{gridpx}}px;">
 <sc-for list="{{frames}}" as="f" hint-placeholder-count="16">
 <div style="position: absolute; background: #3a2d8f; {{f.style}}"></div>
 </sc-for>
@@ -77,7 +89,7 @@
 </sc-if>
 <sc-if value="{{b.hasAxis}}" hint-placeholder-val="{{ false }}">
 <span style="position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.92); box-shadow: 0 2px 0 rgba(0,0,0,0.3);">
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241a63" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{b.axisDeg}}deg);"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241a63" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{b.axisdeg}}deg);"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg>
 </span>
 </sc-if>
 </button>
@@ -86,8 +98,15 @@
 </div>
 </div>
 
-<p style="margin: 0; text-align: center; font-size: 16px; font-weight: 700; color: #c9c2ff; min-height: 22px;">{{help}}</p>
+<sc-if value="{{showPlay}}" hint-placeholder-val="{{ true }}">
+<p aria-live="polite" style="margin: 0; width: 100%; text-align: center; font-size: 16px; font-weight: 700; line-height: 1.35; color: #c9c2ff; min-height: 22px; text-wrap: balance;">{{help}}</p>
+</sc-if>
 
+<sc-if value="{{showPlay}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; min-height: 63px;">
+<span></span>
+<div style="display: flex; justify-content: center;">
+<sc-if value="{{showTools}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; gap: 18px;">
 <button onClick="{{undo}}" aria-label="Undo" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 0 12h-3"></path></svg>
@@ -96,20 +115,51 @@
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
 </button>
 </div>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
+</div>
+<div style="justify-self: end; display: flex;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
+</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
 
-<sc-if value="{{won}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div style="width: 100%; max-width: 340px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
-<div style="font-size: 32px; font-weight: 800; line-height: 1.1;">{{winTitle}}</div>
-<div style="display: flex; justify-content: center; gap: 4px; margin: 10px 0;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="esc-card-title" aria-describedby="esc-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="esc-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsGap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
 <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
 </sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
 </div>
-<div style="font-size: 17px; font-weight: 700; color: #c9c2ff;">{{winText}}</div>
-<div style="display: flex; gap: 10px; justify-content: center; margin-top: 14px;">
-<button onClick="{{restart}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Replay</button>
-<button onClick="{{nextLevel}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 18px; font-weight: 800; padding: 12px 20px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}</button>
+<p id="esc-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardRule}}</p>
+</sc-if>
+<sc-if value="{{showCap}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardCap}}</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
 </div>
 </div>
 </div>
@@ -118,12 +168,13 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","5","9","ice","walls","master"],"default":"1"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","5","9","ice","walls","master"],"default":"1"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = this.fresh(this.props.level ?? '1');
     this.drag = null;
+    this.mirrors = {};
+    this.state = this.fromLever();
   }
   /**
    * Sample levels. map: '.' open square, '#' outside the tray, 'X' stone block.
@@ -133,24 +184,98 @@ class Component extends DCLogic {
   levels() {
     return {"1":{"title":"Level 1","sub":"Two colors","base":30,"next":"5","N":4,"bricks":{"A":{"color":"white","w":2,"h":2,"at":[0,0]},"B":{"color":"black","w":2,"h":2,"at":[0,2]},"C":{"color":"white","w":2,"h":2,"at":[2,0]},"D":{"color":"black","w":2,"h":2,"at":[2,2]}},"gates":[{"color":"white","side":"left","at":0,"len":2},{"color":"black","side":"left","at":2,"len":2}],"best":4,"order":["A","C","B","D"]},"5":{"title":"Level 5","sub":"Three colors, one icy door","base":45,"next":"9","N":6,"bricks":{"A":{"color":"white","w":4,"h":2,"at":[0,0]},"B":{"color":"black","w":2,"h":4,"at":[0,4]},"C":{"color":"red","w":4,"h":2,"at":[2,0]},"D":{"color":"white","w":2,"h":2,"at":[4,0]},"E":{"color":"black","w":2,"h":2,"at":[4,2]},"F":{"color":"red","w":2,"h":2,"at":[4,4]}},"gates":[{"color":"black","side":"bottom","at":4,"len":2},{"color":"white","side":"left","at":0,"len":2},{"color":"red","side":"left","at":4,"len":2,"lockCount":2}],"best":10,"order":["A","C","D","E","F","B"]},"9":{"title":"Level 9","sub":"Color locks, one at a time","base":60,"next":null,"N":8,"bricks":{"A":{"color":"white","w":4,"h":2,"at":[0,0]},"B":{"color":"black","w":4,"h":2,"at":[0,4]},"H":{"color":"blue","w":3,"h":2,"at":[2,0]},"I":{"color":"blue","w":3,"h":2,"at":[2,3]},"C":{"color":"white","w":2,"h":2,"at":[2,6]},"D":{"color":"yellow","w":2,"h":4,"at":[4,0]},"E":{"color":"green","w":2,"h":2,"at":[4,2]},"F":{"color":"black","w":2,"h":2,"at":[6,2]},"G":{"color":"red","w":4,"h":4,"at":[4,4]}},"gates":[{"color":"white","side":"right","at":2,"len":2},{"color":"black","side":"bottom","at":2,"len":4},{"color":"blue","side":"left","at":2,"len":2},{"color":"yellow","side":"top","at":0,"len":2,"lockColor":"white"},{"color":"green","side":"right","at":5,"len":2},{"color":"red","side":"top","at":4,"len":4,"lockColor":"yellow"}],"best":10,"order":["H","I","C","A","D","B","F","G","E"]},"ice":{"title":"Frozen doors","sub":"Ice hides the door color","base":45,"next":null,"tip":"Icy doors melt as bricks leave. The color only shows once it melts!","N":6,"bricks":{"A":{"color":"white","w":2,"h":2,"at":[0,0]},"B":{"color":"yellow","w":4,"h":2,"at":[0,2]},"C":{"color":"yellow","w":2,"h":2,"at":[2,0]},"D":{"color":"white","w":2,"h":4,"at":[2,2]},"E":{"color":"black","w":2,"h":4,"at":[2,4]},"F":{"color":"black","w":2,"h":2,"at":[4,0]}},"gates":[{"color":"yellow","side":"right","at":0,"len":2,"lockCount":2},{"color":"white","side":"bottom","at":0,"len":2,"lockCount":3},{"color":"black","side":"bottom","at":4,"len":2}],"best":12,"order":["E","D","C","A","B","F"]},"walls":{"title":"Stone blocks","sub":"A shaped tray with stones","base":60,"next":null,"tip":"Grey stones never move. Find a way around them.","N":8,"map":["...##...","...##...","...XX...","...XX...","........","........","...##...","...##..."],"bricks":{"A":{"color":"pink","w":3,"h":2,"at":[0,0]},"B":{"color":"blue","w":3,"h":2,"at":[0,5]},"C":{"color":"green","w":3,"h":2,"at":[2,0]},"D":{"color":"green","w":3,"h":2,"at":[2,5]},"E":{"color":"white","w":3,"h":2,"at":[4,0]},"F":{"color":"pink","w":2,"h":2,"at":[4,3]},"G":{"color":"blue","w":3,"h":2,"at":[4,5]},"H":{"color":"pink","w":3,"h":2,"at":[6,0]},"I":{"color":"white","w":3,"h":2,"at":[6,5]}},"gates":[{"color":"pink","side":"left","at":0,"len":2},{"color":"blue","side":"right","at":0,"len":2},{"color":"green","side":"right","at":6,"len":2},{"color":"white","side":"bottom","at":0,"len":3}],"best":18,"order":["A","B","C","D","E","G","F","H","I"]},"master":{"title":"Master mix","sub":"Everything at once","base":75,"next":null,"tip":"Stones, icy doors and color locks together. Plan before you drag!","N":8,"map":["........","........","........","...XX...","...XX...","........","........","##....##"],"bricks":{"A":{"color":"black","w":2,"h":3,"at":[0,0]},"B":{"color":"green","w":2,"h":3,"at":[0,2]},"C":{"color":"red","w":2,"h":3,"at":[0,4]},"D":{"color":"black","w":2,"h":3,"at":[0,6]},"E":{"color":"white","w":3,"h":2,"at":[3,0]},"F":{"color":"white","w":3,"h":2,"at":[3,5]},"G":{"color":"green","w":2,"h":2,"at":[5,0]},"H":{"color":"blue","w":2,"h":3,"at":[5,2]},"I":{"color":"blue","w":2,"h":3,"at":[5,4]},"J":{"color":"red","w":2,"h":2,"at":[5,6]}},"gates":[{"color":"red","side":"top","at":4,"len":2,"lockCount":1},{"color":"blue","side":"bottom","at":4,"len":2},{"color":"green","side":"top","at":0,"len":2},{"color":"white","side":"left","at":3,"len":2},{"color":"black","side":"right","at":0,"len":3,"lockColor":"white"}],"best":14,"order":["E","C","B","A","G","I","H","J","F","D"]}};
   }
-  lv() { return this.levels()[this.state.level]; }
+  // Each sample board is puzzle 1 (the anchor) of this level (brief 4.1).
+  levelNo(key) { return { '1': 1, '5': 5, '9': 9, ice: 14, walls: 20, master: 31 }[key]; }
+  // The next sample board on the canvas. The app opens Level n + 1; the canvas only holds these six.
+  nextKey(key) { return { '1': '5', '5': '9', '9': 'ice', ice: 'walls', walls: 'master', master: null }[key]; }
+  // Stuck limits for Maya, ages 7 to 8 (brief 3.1): 3 failed tries, or 120 s with no brick leaving.
+  stuckTries() { return 3; }
+  stuckSecs() { return 120; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.level, p.puzzle, p.moment].join('|');
+  }
+  // The state a lever combination shows. Moves and clock values are sample data.
+  fromLever() {
+    var p = this.props || {};
+    var key = this.levels()[p.level] ? p.level : '1';
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var s = Object.assign(this.fresh(key, puzzle % 2 === 0), { lever: this.leverKey(), level: key, puzzle: puzzle, moment: moment, usedHint: false, ranOut: false });
+    var L = this.board(key, s.mirror);
+    var limit = Math.round(L.base * 1.5);
+    if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
+      Object.keys(L.bricks).forEach(function (k) { s.gone[k] = true; });
+      s.moves = moment === 'solved' ? L.best + 2 : L.best;
+      s.tLeft = Math.round(limit * 0.4);
+    }
+    if (moment === 'stuck') {
+      s.moves = L.best * 3;
+      s.tries = this.stuckTries();
+      s.overMoves = true;
+      s.offer = true;
+      s.tLeft = Math.round(limit * 0.25);
+    }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  // A mirrored copy of a board stands in for the level's other puzzles on the canvas.
+  board(key, mirror) {
+    var L = this.levels()[key];
+    if (!mirror) return L;
+    if (this.mirrors[key]) return this.mirrors[key];
+    var N = L.N, bricks = {};
+    Object.keys(L.bricks).forEach(function (k) {
+      var b = L.bricks[k];
+      bricks[k] = Object.assign({}, b, { at: [b.at[0], N - b.at[1] - b.w] });
+    });
+    var gates = L.gates.map(function (g) {
+      var side = g.side === 'left' ? 'right' : g.side === 'right' ? 'left' : g.side;
+      var at = g.side === 'top' || g.side === 'bottom' ? N - g.at - g.len : g.at;
+      return Object.assign({}, g, { side: side, at: at });
+    });
+    var map = L.map ? L.map.map(function (row) { return row.split('').reverse().join(''); }) : null;
+    var M = Object.assign({}, L, { bricks: bricks, gates: gates });
+    if (map) M.map = map;
+    this.mirrors[key] = M;
+    return M;
+  }
+  lv() { var s = this.st(); return this.board(s.level, s.mirror); }
   limit() { return Math.round(this.lv().base * 1.5); }
-  fresh(level) {
-    var all = this.levels();
-    var key = all[level] ? level : '1';
-    var L = all[key];
+  // A fresh board for one puzzle; the level, puzzle number and moment are kept by the caller.
+  fresh(key, mirror) {
+    var L = this.board(key, mirror);
     var pos = {};
     Object.keys(L.bricks).forEach(function (k) { pos[k] = L.bricks[k].at; });
-    return { level: key, pos: pos, gone: {}, exiting: null, moves: 0, history: [], hintKey: null, tLeft: Math.round(L.base * 1.5), won: false, bumped: null, note: '' };
+    return { mirror: !!mirror, pos: pos, gone: {}, exiting: null, moves: 0, history: [], hintKey: null, tLeft: Math.round(L.base * 1.5), bumped: null, note: '', tries: 0, overMoves: false, idle: 0, offer: false };
   }
   componentDidMount() {
     var self = this;
     this.timer = setInterval(function () {
-      if (self.state.won || self.state.tLeft <= 0) return;
-      self.setState({ tLeft: self.state.tLeft - 1 });
+      var s = self.st();
+      if (s.moment !== 'play' && s.moment !== 'stuck') return;
+      var patch = { idle: s.idle + 1 };
+      if (s.tLeft > 0) patch.tLeft = s.tLeft - 1;
+      if (s.tLeft === 1) patch.ranOut = true;
+      if (patch.idle === self.stuckSecs()) patch.offer = true;
+      self.put(patch);
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); }
   defs() { return this.lv().bricks; }
   gateList() { return this.lv().gates; }
   cellAt(r, c) {
@@ -206,7 +331,7 @@ class Component extends DCLogic {
     var gates = this.gateList();
     for (var i = 0; i < gates.length; i++) {
       var g = gates[i];
-      if (g.color !== d.color || this.locked(g, this.state.gone)) continue;
+      if (g.color !== d.color || this.locked(g, this.st().gone)) continue;
       if (d.axis === 'h' && (g.side === 'top' || g.side === 'bottom')) continue;
       if (d.axis === 'v' && (g.side === 'left' || g.side === 'right')) continue;
       var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
@@ -218,22 +343,42 @@ class Component extends DCLogic {
     }
     return null;
   }
+  // A brick that leaves is progress: it hides the offer and resets the time signal (brief 3.1, 3.2).
   leave(k, side) {
     var self = this;
-    this.setState({ exiting: { k: k, side: side } });
+    this.put({ exiting: { k: k, side: side } });
     setTimeout(function () {
-      var gone = Object.assign({}, self.state.gone);
+      var s = self.st();
+      var gone = Object.assign({}, s.gone);
       gone[k] = true;
-      var won = Object.keys(gone).length === Object.keys(self.defs()).length;
-      self.setState({ gone: gone, exiting: null, won: won });
+      var done = Object.keys(gone).length === Object.keys(self.defs()).length;
+      var patch = { gone: gone, exiting: null, idle: 0, offer: false, note: '' };
+      if (done) patch.moment = s.puzzle < 4 ? 'solved' : 'lastSolved';
+      self.put(patch);
+      if (done && s.puzzle === 4) {
+        clearTimeout(self.cardT);
+        self.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600);
+      }
     }, 320);
   }
-  begin(before) {
-    var s = this.state;
-    this.setState({ history: s.history.concat([before]), moves: before.moves + 1, hintKey: null, note: '' });
+  // A failed try: a Restart, or the move counter reaching 3 times Best once per try (brief 3.1).
+  failedTry(patch) {
+    var tries = this.st().tries + 1;
+    patch.tries = tries;
+    if (tries >= this.stuckTries()) patch.offer = true;
+    return patch;
   }
+  begin(before) {
+    var s = this.st();
+    var moves = before.moves + 1;
+    var patch = { history: s.history.concat([before]), moves: moves, hintKey: null, note: '' };
+    if (!s.overMoves && moves >= this.lv().best * 3) { patch.overMoves = true; this.failedTry(patch); }
+    this.put(patch);
+  }
+  // A brick moves one square. It leaves only when it is pushed on through an open door of its color;
+  // stopping beside the door keeps it on the board (commit 8be12ac).
   step(k, dr, dc) {
-    var s = this.state;
+    var s = this.st();
     var d = this.defs()[k];
     if ((d.axis === 'h' && dr) || (d.axis === 'v' && dc)) return 'blocked';
     var p = s.pos[k];
@@ -244,18 +389,18 @@ class Component extends DCLogic {
     if (!this.fits(k, nr, nc, s.pos, s.gone)) return 'blocked';
     var pos = Object.assign({}, s.pos);
     pos[k] = [nr, nc];
-    this.state.pos = pos;
-    this.setState({ pos: pos });
-    return this.exitSide(k, nr, nc) ? 'exit' : 'moved';
+    s.pos = pos;
+    this.put({ pos: pos });
+    return 'moved';
   }
   bump(k, note) {
     var self = this;
-    this.setState({ bumped: k, note: note });
-    setTimeout(function () { self.setState({ bumped: null }); }, 350);
+    this.put({ bumped: k, note: note });
+    setTimeout(function () { self.put({ bumped: null }); }, 350);
   }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
     var L = this.lv();
     var N = L.N;
@@ -266,8 +411,21 @@ class Component extends DCLogic {
     var mm = Math.floor(Math.max(0, s.tLeft) / 60), ss = Math.max(0, s.tLeft) % 60;
     var arrows = { right: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', bottom: 'M6 9l6 6 6-6', top: 'M6 15l6-6 6 6' };
     var p = this.pal();
-    var starsWon = s.moves <= L.best ? 3 : s.moves <= L.best + 3 ? 2 : 1;
-    var inTime = s.tLeft > 0;
+    var no = this.levelNo(s.level);
+    var nextKey = this.nextKey(s.level);
+    var finished = s.moment === 'gameDone';
+    var solvedNow = s.moment === 'solved' || s.moment === 'lastSolved' || s.moment === 'levelDone';
+    var playing = s.moment === 'play' || s.moment === 'stuck';
+
+    // Level card totals. Puzzles 1 to 3 are sample results (one extra move each); puzzle 4 is this board.
+    var sumBest = 4 * L.best;
+    var total = 3 * (L.best + 1) + s.moves;
+    var extra = total - sumBest;
+    var base = extra <= 4 ? 3 : extra <= 12 ? 2 : 1;
+    var cap = s.usedHint && s.ranOut ? 'Using a hint, or running out of time,' : s.usedHint ? 'Using a hint' : s.ranOut ? 'Running out of time' : '';
+    var starsWon = finished ? 3 : cap ? Math.min(2, base) : base;
+    var lastLevel = !nextKey;
+
     var lockMsg = '';
     var gl = this.gateList();
     for (var gi = 0; gi < gl.length && !lockMsg; gi++) {
@@ -288,17 +446,42 @@ class Component extends DCLogic {
       wells.push({ style: box });
       if (t === 'X') walls.push({ style: 'left: ' + (c * cell + 2) + 'px; top: ' + (r * cell + 2) + 'px; width: ' + (cell - 4) + 'px; height: ' + (cell - 4) + 'px;' });
     }
-    var help = s.tLeft <= 0 && !s.won ? "Time's up! Keep going, you can still finish." : s.note ? s.note : s.hintKey ? 'Try the glowing brick first.' : lockMsg || L.tip || 'Drag each brick to the door of its color.';
+    var help = solvedNow ? 'Solved in ' + s.moves + ' moves.'
+      : s.offer ? 'This one is tricky. Want a different puzzle?'
+      : s.note ? s.note
+      : s.tLeft <= 0 ? "Time's up! Keep going, you can still finish."
+      : s.hintKey ? 'Try the glowing brick first.'
+      : lockMsg || L.tip || 'Drag each brick out through the door of its color.';
+
+    // Four dots: solved (filled), current (light blue, wider), to do (well with a ring). Brief 7.1, 8.
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return {
+        w: isCur ? 32 : 22,
+        bg: isCur ? '#7cc0ff' : '#1d1550',
+        ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6',
+        fill: filled ? 1 : 0
+      };
+    });
+    var dotsLabel = solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.';
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
-      hubHref: tablet ? 'LevelsTablet.dc.html' : 'Levels.dc.html',
-      cell: cell, pad: pad, gridPx: grid, boardPx: grid + pad * 2,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      lvTitle: finished ? 'Brick Escape' : 'Level ' + no,
+      showDots: !finished, dots: dots, dotsLabel: dotsLabel,
+      showRestart: playing,
+      showPanel: !finished,
+      showPlay: !finished,
+      cell: cell, pad: pad, gridpx: grid, boardpx: grid + pad * 2,
       clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
-      timePct: Math.round((Math.max(0, s.tLeft) / limit) * 100),
-      timerColor: s.tLeft > limit * 0.33 ? '#5fe06e' : s.tLeft > 0 ? '#ffc21a' : '#ff9fd4',
+      timepct: Math.round((Math.max(0, s.tLeft) / limit) * 100),
+      timercolor: s.tLeft > limit * 0.33 ? '#5fe06e' : s.tLeft > 0 ? '#ffc21a' : '#ff9fd4',
       moves: s.moves,
       frames: frames, wells: wells, walls: walls,
-      gates: this.gateList().map(function (g) {
+      gates: finished ? [] : this.gateList().map(function (g) {
         var span = g.len * cell - 8;
         var st = g.side === 'right'
           ? 'left: ' + (grid + 2) + 'px; top: ' + (g.at * cell + 4) + 'px; width: ' + (pad - 4) + 'px; height: ' + span + 'px;'
@@ -333,37 +516,38 @@ class Component extends DCLogic {
         return {
           label: d.color + ' brick' + (frozen ? ', frozen until ' + (d.frozen - outCount) + ' more bricks leave' : '') + (d.axis ? (d.axis === 'h' ? ', slides left and right only' : ', slides up and down only') : ''),
           isFrozen: frozen, frozenLeft: frozen ? String(d.frozen - outCount) : '',
-          hasAxis: !!d.axis && !frozen, axisDeg: d.axis === 'v' ? 90 : 0,
+          hasAxis: !!d.axis && !frozen, axisdeg: d.axis === 'v' ? 90 : 0,
           style: 'width: ' + (d.w * cell - 4) + 'px; height: ' + (d.h * cell - 4) + 'px; transform: translate(' + x + 'px, ' + y + 'px); opacity: ' + (ex ? 0 : 1) + '; ' + self.brick(d.color, cell) + 'background-position: -2px -2px;' + glow + (frozen ? ' cursor: not-allowed;' : ''),
           down: function (e) {
-            if (s.won || s.exiting) return;
-            if (self.isFrozen(k, self.state.gone)) { self.bump(k, 'That brick is frozen. Get ' + (d.frozen - Object.keys(self.state.gone).length) + ' more bricks out to melt it.'); return; }
+            var cs = self.st();
+            if (!(cs.moment === 'play' || cs.moment === 'stuck') || cs.exiting) return;
+            if (self.isFrozen(k, cs.gone)) { self.bump(k, 'That brick is frozen. Get ' + (d.frozen - Object.keys(cs.gone).length) + ' more bricks out to melt it.'); return; }
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
             var rect = e.currentTarget.getBoundingClientRect();
-            self.drag = { k: k, id: e.pointerId, x0: e.clientX, y0: e.clientY, start: self.state.pos[k], before: { pos: self.state.pos, gone: self.state.gone, moves: self.state.moves }, unit: rect.width / (d.w - 4 / cell), moved: false };
+            self.drag = { k: k, id: e.pointerId, x0: e.clientX, y0: e.clientY, start: cs.pos[k], before: { pos: cs.pos, gone: cs.gone, moves: cs.moves }, unit: rect.width / (d.w - 4 / cell), moved: false };
           },
           move: function (e) {
             var dg = self.drag;
             if (!dg || dg.id !== e.pointerId) return;
             var tr = dg.start[0] + Math.round((e.clientY - dg.y0) / dg.unit);
             var tc = dg.start[1] + Math.round((e.clientX - dg.x0) / dg.unit);
-            if (d.axis === 'h') tr = self.state.pos[dg.k][0];
-            if (d.axis === 'v') tc = self.state.pos[dg.k][1];
+            if (d.axis === 'h') tr = self.st().pos[dg.k][0];
+            if (d.axis === 'v') tc = self.st().pos[dg.k][1];
             for (var guard = 0; guard < 10; guard++) {
-              var cp = self.state.pos[dg.k];
+              var cp = self.st().pos[dg.k];
               var ry = tr - cp[0], rx = tc - cp[1];
               if (!ry && !rx) return;
               var tries = Math.abs(ry) >= Math.abs(rx) ? [[Math.sign(ry), 0], [0, Math.sign(rx)]] : [[0, Math.sign(rx)], [Math.sign(ry), 0]];
               var progressed = false;
               for (var i = 0; i < tries.length; i++) {
                 if (!tries[i][0] && !tries[i][1]) continue;
+                var side = self.exitSide(dg.k, cp[0], cp[1]);
                 var res = self.step(dg.k, tries[i][0], tries[i][1]);
                 if (res === 'blocked') continue;
                 if (!dg.moved) { dg.moved = true; self.begin(dg.before); }
                 if (res === 'exit') {
                   self.drag = null;
-                  var np = self.state.pos[dg.k];
-                  self.leave(dg.k, self.exitSide(dg.k, np[0], np[1]));
+                  self.leave(dg.k, side);
                   return;
                 }
                 progressed = true;
@@ -377,23 +561,58 @@ class Component extends DCLogic {
       }),
       help: help,
       undo: function () {
-        if (!s.history.length || s.exiting) return;
-        var last = s.history[s.history.length - 1];
-        self.setState({ pos: last.pos, gone: last.gone, moves: last.moves, history: s.history.slice(0, -1), hintKey: null, note: '' });
+        var cs = self.st();
+        if (!cs.history.length || cs.exiting) return;
+        var last = cs.history[cs.history.length - 1];
+        self.put({ pos: last.pos, gone: last.gone, moves: last.moves, history: cs.history.slice(0, -1), hintKey: null, note: '' });
       },
       hint: function () {
-        var next = L.order.filter(function (k) { return !s.gone[k]; })[0];
-        self.setState({ hintKey: next || null });
+        var cs = self.st();
+        var nextBrick = L.order.filter(function (k) { return !cs.gone[k]; })[0];
+        self.put({ hintKey: nextBrick || null, usedHint: true });
       },
-      restart: function () { self.drag = null; self.setState(self.fresh(s.level)); },
-      lvTitle: L.title, lvSub: L.sub, best: L.best,
-      caption: 'Maya, age 7: ' + L.title.toLowerCase() + ' gets ' + L.base + 's x 1.5 = ' + Math.floor(limit / 60) + ':' + (limit % 60 < 10 ? '0' : '') + (limit % 60),
-      nextLabel: L.next ? 'Next: ' + this.levels()[L.next].title : 'Play again',
-      nextLevel: function () { self.drag = null; self.setState(self.fresh(L.next || s.level)); },
-      won: s.won,
-      winTitle: starsWon === 3 ? 'Brilliant!' : 'Great job!',
-      stars: [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
-      winText: s.moves + ' moves' + (inTime ? ', with time to spare!' : '. Next time, try to beat the clock!')
+      restart: function () {
+        self.drag = null;
+        var cs = self.st();
+        self.put(self.failedTry(Object.assign(self.fresh(cs.level, cs.mirror), { tries: cs.tries, offer: cs.offer, tLeft: cs.tLeft }))); // D1: only the bricks go back; the clock, hint and cap stay.
+      },
+      showTools: playing,
+      showNext: s.moment === 'solved',
+      next: function () {
+        var cs = self.st();
+        self.drag = null;
+        self.put(Object.assign(self.fresh(cs.level, !cs.mirror), { puzzle: cs.puzzle + 1, moment: 'play' }));
+      },
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        self.drag = null;
+        self.put(Object.assign(self.fresh(cs.level, !cs.mirror), { note: 'Here is a different puzzle.' }));
+      },
+      best: L.best,
+      caption: 'Maya: each puzzle gets ' + L.base + 's x 1.5 = ' + Math.floor(limit / 60) + ':' + (limit % 60 < 10 ? '0' : '') + (limit % 60),
+      cardOpen: s.moment === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + no,
+      // Every level done (decision D6): one star and the game's total, never the last level's star row.
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '78 of 93 stars' : starsWon + ' of 3 stars',
+      starsGap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '78 of 93',
+      // Every-level totals are sample data.
+      cardFact: finished || lastLevel ? '31 levels, 78 of 93 stars.' : '4 puzzles in ' + total + ' moves.',
+      showRule: !finished && !lastLevel,
+      cardRule: '3 stars: ' + (sumBest + 4) + ' moves or fewer. 2 stars: ' + (sumBest + 12) + ' or fewer.',
+      showCap: !finished && !lastLevel && !!cap,
+      cardCap: cap ? cap + ' caps the level at 2 stars.' : '',
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (no + 1),
+      playNext: function () {
+        self.drag = null;
+        self.put(Object.assign(self.fresh(nextKey || s.level, false), { level: nextKey || s.level, puzzle: 1, moment: 'play', usedHint: false, ranOut: false }));
+      }
     };
   }
 }

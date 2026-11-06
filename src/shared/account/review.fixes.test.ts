@@ -1,0 +1,146 @@
+/** Cases from the security review: pulled snapshots dated in the future cannot win every merge. */
+import { describe, expect, it } from 'vitest';
+import { mergeSnapshot, toSnapshot, type ProgressSnapshot } from './index';
+import { dayKey, emptyState, makePlayer } from '../progress/model';
+import type { Player, ProgressState } from '../progress';
+
+const NOW = new Date(2026, 10, 4, 12, 0).getTime();
+const YEAR = 365 * 24 * 3600 * 1000;
+const FUTURE = NOW + 5 * YEAR;
+
+function player(id: string, patch: Partial<Player> = {}): Player {
+  return { ...makePlayer({ name: 'Maya', ageBand: '7-8', color: 'blue' }, id, NOW - 1000), ...patch };
+}
+function state(players: Player[], patch: Partial<ProgressState> = {}): ProgressState {
+  return { ...emptyState(), players, activePlayerId: players[0]?.id ?? null, ...patch };
+}
+const snap = (s: ProgressState): ProgressSnapshot => toSnapshot(s, FUTURE);
+
+describe('merge rule: a pulled snapshot from the future', () => {
+  it('caps the remote profile edit time at now, so a later local edit still wins', () => {
+    const local = state([player('a', { name: 'Maya', updatedAt: NOW - 10 })]);
+    const remote = state([player('a', { name: 'Remote', updatedAt: FUTURE })]);
+    const merged = mergeSnapshot(local, snap(remote), NOW);
+    expect(merged.players[0].updatedAt).toBeLessThanOrEqual(NOW);
+    // the device then edits again a minute later: that edit is newer than anything pulled
+    const edited = state([{ ...merged.players[0], name: 'Maya', updatedAt: NOW + 60_000 }]);
+    const again = mergeSnapshot(edited, snap(remote), NOW + 60_000);
+    expect(again.players[0].name).toBe('Maya');
+  });
+
+  it('caps settingsUpdatedAt, created and sticker times at now', () => {
+    const local = state([player('a')], { settingsUpdatedAt: NOW - 5 });
+    const remote = state([player('a', { createdAt: FUTURE, stickers: { e1: { earnedAt: FUTURE, seen: false } } }), player('b', { updatedAt: FUTURE, createdAt: FUTURE })], {
+      settingsUpdatedAt: FUTURE,
+      settings: { sound: false, music: true, voice: true, alerts: false },
+    });
+    const merged = mergeSnapshot(local, snap(remote), NOW);
+    expect(merged.settingsUpdatedAt).toBe(NOW);
+    expect(merged.settings.sound).toBe(false); // still the newer change, just not dated after now
+    for (const p of merged.players) {
+      expect(p.updatedAt).toBeLessThanOrEqual(NOW);
+      expect(p.createdAt).toBeLessThanOrEqual(NOW);
+      for (const s of Object.values(p.stickers)) expect(s.earnedAt).toBeLessThanOrEqual(NOW);
+    }
+  });
+
+  it('caps a play day after today at today, so today’s local minutes are not thrown away', () => {
+    const today = dayKey(NOW);
+    const local = state([player('a', { today: { day: today, minutes: 15, extraMinutes: 0 } })]);
+    const remote = state([player('a', { today: { day: '2031-01-01', minutes: 3, extraMinutes: 0 } })]);
+    const merged = mergeSnapshot(local, snap(remote), NOW);
+    expect(merged.players[0].today).toEqual({ day: today, minutes: 15, extraMinutes: 0 });
+  });
+
+  it('leaves times at or before now as they are', () => {
+    const local = state([player('a', { updatedAt: NOW - 100 })]);
+    const remote = state([player('a', { name: 'Nia', updatedAt: NOW - 50, today: { day: dayKey(NOW), minutes: 4, extraMinutes: 5 } })], { settingsUpdatedAt: NOW - 1 });
+    const merged = mergeSnapshot(local, toSnapshot(remote, NOW), NOW);
+    expect(merged.players[0]).toMatchObject({ name: 'Nia', updatedAt: NOW - 50, today: { day: dayKey(NOW), minutes: 4, extraMinutes: 5 } });
+    expect(merged.settingsUpdatedAt).toBe(NOW - 1);
+  });
+});
+
+/* ---------- services picked by the flag, failing closed (review) ---------- */
+
+import { vi } from 'vitest';
+import { ACCOUNTS_ACTIVE, auth, disabledAuth, localOnlySync, pickServices, sync, type AuthService, type SyncAdapter } from './index';
+
+describe('account services: picked by ACCOUNTS_ENABLED, failing closed', () => {
+  // stand-ins for a real provider: different objects with their own functions
+  const realAuth: AuthService = { ...disabledAuth, signOut: () => Promise.resolve({ ok: true, value: undefined }) };
+  const realSync: SyncAdapter = { ...localOnlySync, pull: () => Promise.resolve({ ok: false, reason: 'offline' }) };
+  const provider = { auth: realAuth, sync: realSync };
+
+  it('keeps the disabled services while the flag is off, even with a provider registered', () => {
+    const log = vi.fn();
+    for (const registered of [provider, null]) {
+      const picked = pickServices(false, registered, log);
+      expect(picked.auth).toBe(disabledAuth);
+      expect(picked.sync).toBe(localOnlySync);
+      expect(picked.active).toBe(false);
+    }
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it('uses the registered provider when the flag is on', () => {
+    const picked = pickServices(true, provider, vi.fn());
+    expect(picked.auth).toBe(realAuth);
+    expect(picked.sync).toBe(realSync);
+    expect(picked.active).toBe(true);
+  });
+
+  it('fails closed with a console error, never a throw, when the flag is on but no provider is registered', () => {
+    const log = vi.fn();
+    let picked: ReturnType<typeof pickServices> | undefined;
+    expect(() => {
+      picked = pickServices(true, null, log);
+    }).not.toThrow();
+    expect(picked!.auth).toBe(disabledAuth);
+    expect(picked!.sync).toBe(localOnlySync);
+    expect(picked!.active).toBe(false);
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(String(log.mock.calls[0][0])).toMatch(/no provider/i);
+  });
+
+  it('logs to console.error by default', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    pickServices(true, null);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('this build has no provider: accounts are not active and the disabled services are in use', () => {
+    expect(ACCOUNTS_ACTIVE).toBe(false);
+    expect(auth).toBe(disabledAuth);
+    expect(sync).toBe(localOnlySync);
+  });
+});
+
+describe('AuthService.createAccount', () => {
+  it('answers not-enabled while accounts are off, for any input', async () => {
+    const off = { ok: false, reason: 'not-enabled' };
+    await expect(disabledAuth.createAccount('grown-up@example.com', 'a long password')).resolves.toEqual(off);
+    await expect(disabledAuth.createAccount('', '')).resolves.toEqual(off);
+  });
+});
+
+describe('merge rule: names an object inherits are plain map keys', () => {
+  it('a pulled game or sticker named like an Object method merges as new data, never as NaN', () => {
+    const local = state([player('a')]);
+    const remote = JSON.parse(
+      JSON.stringify(
+        state([
+          player('a', {
+            games: { toString: { unlocked: 2, stars: { 0: 1 }, best: {} } },
+            stickers: { valueOf: { earnedAt: NOW - 5, seen: true }, hasOwnProperty: { earnedAt: NOW - 6, seen: false } },
+          }),
+        ]),
+      ),
+    );
+    const merged = mergeSnapshot(local, toSnapshot(remote, NOW), NOW).players[0];
+    expect(merged.games.toString).toEqual({ unlocked: 2, stars: { 0: 1 }, best: {} });
+    expect(merged.stickers.valueOf).toEqual({ earnedAt: NOW - 5, seen: true });
+    expect(merged.stickers.hasOwnProperty).toEqual({ earnedAt: NOW - 6, seen: false });
+  });
+});

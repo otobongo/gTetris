@@ -1,96 +1,208 @@
-.slide { gap: 10px; }
-.slide-stage { flex: 1; display: grid; place-items: center; width: 100%; min-height: 0; }
+/* Brick Escape play screen, from design/canvas/Escape.dc.html (phone) and EscapeTablet.dc.html (the same
+   board at zoom 1.4, which Screen applies). Colours come from src/styles/tokens.css; the few board-only
+   values the tokens do not have yet (stone, ice) are named here once. */
 
-.slide-board { position: relative; touch-action: none; filter: drop-shadow(0 14px 22px rgb(0 0 0 / 0.3)); }
-.slide-board__inner { position: absolute; }
-
-.slide-frame {
-  position: absolute;
-  background: var(--panel);
+.esc {
+  --esc-stone-a: #6b6488;
+  --esc-stone-b: #5d5679;
+  --esc-ice-top: #f2fbff;
+  --esc-ice-mid: #bfe6f8;
+  --esc-ice-low: #8ccbea;
+  --esc-ice-ink: #6b3f00;
+  --esc-arrow-on-white: #6b6585;
+  --esc-pad: 22px;
+  align-items: center;
 }
-.slide-frame.is-bottom { box-shadow: 0 8px 0 var(--panel-edge); }
-.slide-well {
+
+.esc-sr {
   position: absolute;
-  background: var(--panel-2);
-  box-shadow: inset 0 3px 6px rgb(0 0 0 / 0.35);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.slide-gate {
+/* ---------- status panel: clock, moves, best ---------- */
+.esc-status {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-sp-2);
+  padding: var(--bw-sp-4) var(--bw-sp-6);
+  border-radius: var(--bw-r-lg);
+  background: var(--bw-panel);
+}
+.esc-status__row {
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-4);
+  font-size: var(--bw-fs-body);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.esc-status__glass { flex-shrink: 0; }
+.esc-status__clock { font-size: var(--bw-fs-title); line-height: 1; }
+.esc-status__spacer { flex-grow: 1; }
+.esc-status__moves,
+.esc-status__best { white-space: nowrap; }
+.esc-status__best { color: var(--bw-accent); }
+.esc-status__track {
+  height: 10px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-ground-bottom);
+  overflow: hidden;
+}
+.esc-status__fill {
+  height: 100%;
+  border-radius: var(--bw-r-pill);
+  transition: width 1s linear;
+}
+[data-state='ok'].esc-status__glass { color: var(--bw-green-top); }
+[data-state='low'].esc-status__glass { color: var(--bw-yellow-bottom); }
+[data-state='out'].esc-status__glass { color: var(--bw-error-text); }
+[data-state='ok'].esc-status__fill { background: var(--bw-green-top); }
+[data-state='low'].esc-status__fill { background: var(--bw-yellow-bottom); }
+[data-state='out'].esc-status__fill { background: var(--bw-error-text); }
+.esc-status__caption {
+  margin: 0;
+  font-size: var(--bw-fs-helper);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bw-text-2);
+}
+
+/* ---------- board ---------- */
+.esc-stage {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+.esc-board {
+  position: relative;
+  touch-action: none;
+  filter: drop-shadow(0 16px 22px rgb(0 0 0 / 0.35));
+}
+.esc-board__grid { position: absolute; }
+
+.esc-frame { position: absolute; background: var(--bw-purple-bottom); }
+.esc-frame.is-bottom { box-shadow: 0 8px 0 var(--bw-purple-edge); }
+.esc-well {
   position: absolute;
+  background: var(--bw-panel);
+  box-shadow: var(--bw-well-shadow);
+}
+.esc-stone {
+  position: absolute;
+  border-radius: 8px;
+  background: repeating-linear-gradient(135deg, var(--esc-stone-a) 0 6px, var(--esc-stone-b) 6px 12px);
+  box-shadow: inset 0 3px 0 rgb(255 255 255 / 0.2), inset 0 -4px 0 rgb(0 0 0 / 0.3);
+}
+
+/* doors: an open door wears its brick colour and an arrow; an icy door hides its colour */
+.esc-door {
+  position: absolute;
+  z-index: 1;
   display: grid;
   place-items: center;
   border-radius: 8px;
-  color: rgb(255 255 255 / 0.95);
-  z-index: 1;
+  color: var(--bw-text);
+  background: linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+  transition: background var(--bw-slow) var(--bw-ease), box-shadow var(--bw-slow) var(--bw-ease);
 }
-.slide-gate[data-color='white'] { color: #7a7490; }
-.slide-gate[data-color='yellow'] { color: #8a5400; }
-.slide-gate.is-locked {
-  background: linear-gradient(160deg, #e9f8ff, #a8dcf5 60%, #7cc4ea);
-  box-shadow: inset 0 0 0 3px var(--c), inset 0 2px 0 #fff;
+.esc-door[data-brick='white'] { color: var(--esc-arrow-on-white); }
+.esc-door.is-iced {
+  background: linear-gradient(160deg, var(--esc-ice-top), var(--esc-ice-mid) 55%, var(--esc-ice-low));
+  box-shadow: inset 0 2px 0 var(--bw-text), inset 0 -3px 0 rgb(30 90 140 / 0.25), 0 0 0 2px rgb(255 255 255 / 0.35);
 }
-.slide-gate__count { font-size: 20px; font-weight: 800; color: #6b3f00; text-shadow: 0 1px 0 #fff; }
-.slide-gate.is-hinted { animation: hint-pulse 0.9s ease-in-out infinite; }
+.esc-door__ice {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--bw-fs-sub);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--esc-ice-ink);
+  text-shadow: 0 1px 0 var(--bw-text);
+}
+.esc-door__ice.is-upright { flex-direction: column; }
+.esc-door__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--c);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.4), 0 0 0 2px var(--bw-text);
+}
 
-.slide-brick {
+/* bricks: real buttons, dragged with a pointer or slid with the arrow keys */
+.esc-brick {
   position: absolute;
   left: 0;
   top: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: none;
   cursor: grab;
   touch-action: none;
-  transition: transform 0.09s ease-out;
-  z-index: 2;
-  filter: drop-shadow(0 3px 0 rgb(0 0 0 / 0.25));
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.25);
+  transition: transform var(--bw-fast) ease-out, opacity 0.3s ease-in;
 }
-.slide-brick:active { cursor: grabbing; }
-.slide-brick:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
-.slide-brick__body { position: absolute; border-radius: 8px; }
-.slide-studs {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 46% 42%, var(--cl) 0 19%, transparent 21%),
-    radial-gradient(circle at 50% 50%, var(--c) 0 25%, transparent 27%),
-    radial-gradient(circle at 54% 58%, rgb(0 0 0 / 0.28) 0 26%, transparent 28%);
-  background-size: calc(var(--cell) / 2) calc(var(--cell) / 2);
+.esc-brick:active { cursor: grabbing; }
+.esc-brick:focus-visible { z-index: 3; outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+.esc-brick .esc-brick__face {
+  display: block;
   background-position: -2px -2px;
-  pointer-events: none;
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -4px 0 rgb(0 0 0 / 0.22);
 }
-.slide-brick.is-exiting { transition: transform 0.32s ease-in, opacity 0.32s ease-in; opacity: 0; z-index: 3; }
-.slide-brick.is-hinted .slide-brick__body { animation: hint-pulse 0.9s ease-in-out infinite; }
-.slide-brick.is-bumped { animation: nudge 0.3s; }
-.slide-brick.is-frozen { cursor: not-allowed; }
+/* dragged out through its door: it follows the finger with no lag, then springs back if let go too soon */
+.esc-brick.is-pulled { z-index: 3; transition: none; }
+.esc-brick.is-hinted { box-shadow: 0 0 0 4px var(--bw-text), 0 0 22px var(--bw-text); }
+.esc-brick.is-exiting {
+  z-index: 3;
+  opacity: 0;
+  transition: transform 0.32s ease-in, opacity 0.3s ease-in;
+}
 
-.slide-ice {
-  position: absolute;
-  inset: 2px;
-  border-radius: 8px;
-  background: linear-gradient(160deg, rgb(235 250 255 / 0.6), rgb(150 210 240 / 0.35));
-  backdrop-filter: blur(1px);
-  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.8);
+.esc-help {
+  margin: 0;
+  min-height: 22px;
+  max-width: 34ch;
+  text-align: center;
+  text-wrap: balance;
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: var(--bw-lh-body);
+  color: var(--bw-text-2);
+}
+
+/* ---------- tools row: Undo and Hint centred, the stuck offer pinned right (brief 3.2, 7.1) ----------
+   The row spans the screen and keeps its height, so the board never resizes when Next or the offer shows. */
+.esc-tools {
+  width: 100%;
+  flex-shrink: 0;
   display: grid;
-  place-items: center;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  min-height: calc(58px + var(--bw-raise));
+  padding-bottom: var(--bw-raise);
+  box-sizing: border-box;
 }
-.slide-ice span {
-  min-width: 34px; height: 34px; padding: 0 8px; border-radius: 12px; display: grid; place-items: center;
-  background: #e8f7ff; box-shadow: 0 2px 0 #7cc4ea; font-size: 22px; font-weight: 800; color: #1d5f8a;
-}
+.esc-tools__centre { display: flex; justify-content: center; gap: var(--bw-sp-8); }
+.esc-tools__end { justify-self: end; display: flex; }
+.esc-tools .esc-tool { width: 58px; height: 58px; border-radius: 18px; }
+/* Next puzzle and Play Level take the tools' place: green, 220px wide at least, the row's 58px tall */
+.esc-tools .esc-next { min-width: 220px; min-height: 58px; border-radius: var(--bw-r-md); }
 
-.slide-ghost {
-  position: absolute;
-  border: 3px dashed var(--cl);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 0.08);
-  animation: hint-pulse 0.9s ease-in-out infinite;
-  pointer-events: none;
-}
-
-.slide-help { margin: 0; min-height: 1.4em; text-align: center; }
-.slide-tools { display: flex; gap: 18px; padding-bottom: 6px; }
-
-@keyframes hint-pulse { 50% { filter: brightness(1.35) drop-shadow(0 0 10px #fff8); } }
-@keyframes nudge {
-  0%, 100% { translate: 0 0; }
-  30% { translate: -4px 0; }
-  60% { translate: 4px 0; }
+@media (prefers-reduced-motion: reduce) {
+  /* no slides: the spring back from a door and the walk out are instant, only the fade stays */
+  .esc-brick,
+  .esc-brick.is-exiting { transition: opacity 150ms ease-out; }
+  .esc-status__fill { transition: none; }
 }

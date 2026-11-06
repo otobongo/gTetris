@@ -1,10 +1,15 @@
 /* Pure answer checking for Letter Builder. The UI keeps these states in React and only renders them. */
+import { HINTS_PER_RUN } from '../../shared/progress';
+import { capRule, capStars } from '../stars';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 
 /* ---------- Stars ---------- */
 
-/** Slips = wrong taps + hints used. */
-export const STAR_RULE = '3 stars: 0 to 1 slips · 2 stars: 2 to 4 · 1 star: 5 or more. A hint counts as a slip.';
+/** The level card's star rule over the 4 solved puzzles (brief 5, 9.1). */
+export const LEVEL_RULE = '3 stars: 1 slip or none. 2 stars: 4 slips or fewer.';
+
+/** Slips are wrong taps. A hint is not a slip: it caps the level at 2 stars (the shared rule, games/stars.ts). */
+export const STAR_RULE = `${LEVEL_RULE} ${capRule({ hint: true })}`;
 
 export function starsForSlips(slips: number): number {
   if (slips <= 1) return 3;
@@ -12,7 +17,13 @@ export function starsForSlips(slips: number): number {
   return 1;
 }
 
-export const HINTS_PER_LEVEL = 3;
+/** Stars for a finished level: the slip rule, then the shared hint cap, so a hint costs only the third star. */
+export function lettersStars(slips: number, usedHint: boolean): number {
+  return capStars(starsForSlips(slips), { usedHint });
+}
+
+/** Hints per level, shared across its puzzles: a hint spent on a puzzle later swapped away stays spent (brief 3.3). */
+export const HINTS_PER_LEVEL = HINTS_PER_RUN;
 
 /* ---------- Fill (train, missing letters, spelling) ---------- */
 

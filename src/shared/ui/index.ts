@@ -1,0 +1,23 @@
+/**
+ * Shared UI. One component per file; values come from src/styles/tokens.css.
+ * New screens use Screen, TopBar, PressButton, IconButton, Panel, Pill and Brick.
+ * Four-puzzle levels use PuzzleDots (under the title), LevelCard (between levels) and the 'swap' icon.
+ * Stars, ResultCard and LevelGrid are the games' current pieces (legacy.tsx), kept until the games move off them.
+ */
+import './ui.css';
+
+export { Brick, type BrickProps } from './Brick';
+export { PressButton, type PressButtonProps, type PressSize, type PressVariant } from './PressButton';
+export { IconButton, type IconButtonProps } from './IconButton';
+export { TopBar, type TopBarProps } from './TopBar';
+export { Panel, type PanelProps } from './Panel';
+export { Pill, type PillProps } from './Pill';
+export { Screen, type ScreenProps } from './Screen';
+export { Icon, type IconName, type IconProps } from './Icon';
+export { SandTimer, SAND_CAPTION, sandFill, type SandTimerProps } from './SandTimer';
+export { useLayout, computeLayout, TABLET_INNER, TABLET_MIN_WIDTH, type Layout } from './layout';
+export { BRICK_COLORS, PALETTE, type BrickColor } from './palette';
+export { PuzzleDots, dotsLabel, type PuzzleDotsProps } from './PuzzleDots';
+export { LevelCard, LEVEL_CARD_DELAY_MS, type LevelCardAction, type LevelCardProps } from './LevelCard';
+export { cx } from './cx';
+export { LevelGrid, ResultCard, Stars } from './legacy';

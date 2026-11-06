@@ -1,14 +1,8 @@
 import { type Level, fromSpec } from './engine';
 import { LEVEL_DATA } from './levels.data';
+import { meta } from './meta';
 
-export const LEVELS: Level[] = LEVEL_DATA.map((d: (typeof LEVEL_DATA)[number], i: number) => fromSpec(d.spec, i + 1, d.par));
+export const LEVELS: Level[] = LEVEL_DATA.map((d, i) => ({ ...fromSpec(d.spec, i + 1, d.par), order: d.order }));
 
-/** Chapters shown on the level select, so kids can see the path ahead. */
-export const CHAPTERS = [
-  { title: 'Getting started', note: 'one idea at a time', from: 0, to: 8 },
-  { title: 'Think first', note: 'some bricks block others', from: 8, to: 13 },
-  { title: 'Icy doors', note: 'wait for the ice to melt', from: 13, to: 19 },
-  { title: 'Frozen bricks', note: 'plan the order', from: 19, to: 25 },
-  { title: 'Big bricks', note: 'tight squeeze', from: 25, to: 30 },
-  { title: 'Master', note: 'for real brick experts', from: 30, to: Infinity },
-];
+/** Chapters shown on the level select, as 0-based [from, to) ranges. The names live in meta.ts. */
+export const CHAPTERS = meta.chapters.map((c) => ({ title: c.title, note: c.note, from: c.start, to: c.start + c.count, more: Boolean(c.more) }));

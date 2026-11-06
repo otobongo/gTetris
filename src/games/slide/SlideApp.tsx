@@ -1,41 +1,35 @@
-import { go } from '../../shared/router';
-import { starsFor, totalStars, useProgress } from '../../shared/storage';
-import { LevelGrid, TopBar } from '../../shared/ui';
-import { CHAPTERS, LEVELS } from './levels';
-import SlideGame from './SlideGame';
+import { useEffect, useMemo } from 'react';
+import { replace } from '../../shared/router';
+import { gameOf, useActivePlayer } from '../../shared/progress';
+import { useProgress } from '../../shared/storage';
+import { currentLevel } from '../meta';
+import { meta } from './meta';
+import { GAME, routeFor } from './puzzles';
+import SlideGame, { EscapeFinished } from './SlideGame';
 import './slide.css';
 
-const unlocked = (i: number) => i === 0 || starsFor('slide', i - 1) > 0;
-
+/**
+ * Brick Escape (brief 2.1, 2.5, 7.4). `#/game/escape` opens the child's current level, or the finished state
+ * when every level has stars; `#/game/escape/<n>` plays only the current level, and any other level goes back
+ * to `#/game/escape`. Children never see a level grid: a grown-up picks levels in Settings.
+ */
 export default function SlideApp({ params }: { params: string[] }) {
-  useProgress(); // re-render when stars change
-  const n = Number(params[0]);
-  if (Number.isInteger(n) && n >= 1 && n <= LEVELS.length && unlocked(n - 1)) return <SlideGame index={n - 1} />;
-  if (params.length) go('/slide');
+  useProgress(); // the current level moves when a level is finished or a grown-up picks one
+  const player = useActivePlayer();
+  const path = params.join('/');
+  const playerId = player?.id;
+  const live = routeFor(params, currentLevel(meta, gameOf(player, GAME)));
+  // A level that opened keeps playing whatever the store says next: finishing it moves `current` on, and the
+  // level card must stay up until the child taps Play Level. Everything else follows the store.
+  const entered = useMemo(() => live, [path, playerId]);
+  const decision = entered.kind === 'play' ? entered : live;
+  const to = decision.kind === 'redirect' ? decision.to : null;
 
-  return (
-    <div className="screen">
-      <TopBar title="Brick Escape" subtitle={`⭐ ${totalStars('slide')} of ${LEVELS.length * 3}`} />
-      <p className="muted" style={{ margin: 0, textAlign: 'center' }}>
-        Slide every brick out through its own color door. Fewer moves earn more stars.
-      </p>
-      {CHAPTERS.filter((ch) => ch.from < LEVELS.length).map((ch) => {
-        const to = Math.min(ch.to, LEVELS.length);
-        return (
-          <section key={ch.title} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h2 className="section-title">
-              {ch.title} <small>{ch.note}</small>
-            </h2>
-            <LevelGrid
-              count={to - ch.from}
-              offset={ch.from}
-              starsOf={(i) => starsFor('slide', i)}
-              unlocked={unlocked}
-              onPick={(i) => go(`/slide/${i + 1}`)}
-            />
-          </section>
-        );
-      })}
-    </div>
-  );
+  useEffect(() => {
+    if (to) replace(to);
+  }, [to]);
+
+  if (decision.kind === 'play') return <SlideGame key={decision.index} index={decision.index} />;
+  if (decision.kind === 'finished') return <EscapeFinished />;
+  return null;
 }

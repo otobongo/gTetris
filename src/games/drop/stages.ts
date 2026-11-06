@@ -1,4 +1,6 @@
-import { starsFor } from '../../shared/storage';
+import { activePlayer, gameOf, progressStore } from '../../shared/progress';
+import { currentLevel, type GameMeta } from '../meta';
+import { capStars } from '../stars';
 import { PIECES, type PieceId } from './pieces';
 
 export interface Stage {
@@ -42,7 +44,7 @@ export const STAGES: Stage[] = [
   {
     name: 'Tee Time',
     cols: 10, rows: 18, pieces: ['square', 'long', 'tee', 'stick3', 'corner'], goalRows: 6, gravityMs: 800, lockDelayMs: 900,
-    tip: 'Not a good fit? Tap Hold to save a brick for later.',
+    tip: 'Not a good fit? Turn the brick or slide it to another spot.',
   },
   {
     name: 'Hooks and Boots',
@@ -102,12 +104,40 @@ export function starsEarned(stage: Stage, bricksUsed: number): number {
   return bricksUsed <= three ? 3 : bricksUsed <= two ? 2 : 1;
 }
 
+/**
+ * Stars for a cleared stage: the brick rule, then the shared cap (games/stars.ts). Running out of a
+ * counted clock caps the stage at 2 stars; it never costs more than that one star.
+ */
+export function stageStars(stage: Stage, bricksUsed: number, outOfTime: boolean): number {
+  return capStars(starsEarned(stage, bricksUsed), { outOfTime });
+}
+
 /** Bricks that appear for the first time in this stage (shown with a "New" tag). */
 export function newPieces(index: number): PieceId[] {
   const seen = new Set(STAGES.slice(0, index).flatMap((s) => s.pieces));
   return STAGES[index].pieces.filter((id) => !seen.has(id));
 }
 
-export function isUnlocked(index: number): boolean {
-  return index === 0 || starsFor('drop', index - 1) >= 1;
+/**
+ * Brick Drop stage groups for the Levels screen (Brick Drop calls levels "Stage"); meta.ts publishes
+ * this. Chapters follow the bricks: stages 1 to 3 use bricks of 1 to 3 squares; stage 4 brings in the
+ * first four-square bricks (Square, Long Stick); stage 10 brings in the first five-square brick (Flag).
+ * It lives here, next to STAGES, so currentStage can use it without an import cycle.
+ */
+export const dropMeta: GameMeta = {
+  levelCount: STAGES.length,
+  chapters: [
+    { title: 'Small bricks', note: '1 to 3 squares', start: 0, count: 3 },
+    { title: 'Four-square bricks', note: 'up to 4 squares', start: 3, count: 6 },
+    { title: 'Big bricks', note: 'up to 5 squares', start: 9, count: STAGES.length - 9 },
+  ],
+};
+
+/**
+ * The stage to open when the player taps Play: the shared rule (games/meta.ts currentLevel). Null once
+ * every stage has stars: `#/game/drop` then shows the finished state (brief 2.5).
+ */
+export function currentStage(): number | null {
+  const player = activePlayer(progressStore.getState());
+  return currentLevel(dropMeta, gameOf(player, 'drop'));
 }

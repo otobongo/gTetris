@@ -11,8 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } a[data-press] { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } a[data-press="tile"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #241a63 !important; } a[data-press="yellow"]:active { transform: translateY(3px); box-shadow: 0 2px 0 #d48a00 !important; } @media (prefers-reduced-motion: reduce) { a[data-press] { transition: none; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 22px 16px 0; display: flex; flex-direction: column; gap: 14px;">
 
 <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
 <a href="{{whoHref}}" aria-label="Switch player" style="width: 54px; height: 54px; flex-shrink: 0; border-radius: 16px; display: grid; place-items: center; text-decoration: none; color: #ffffff; font-size: 28px; font-weight: 800; text-shadow: 0 2px 0 rgba(0,0,0,0.25); {{avatar}}">M</a>
@@ -44,10 +44,10 @@
 </a>
 
 <h2 style="margin: 22px 0 10px; font-size: 20px; font-weight: 800; line-height: 1.1;">Games</h2>
-<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gameCols}}; grid-auto-rows: 1fr; gap: 10px;">
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: {{gamecols}}; grid-auto-rows: 1fr; gap: 10px;">
 <sc-for list="{{games}}" as="g" hint-placeholder-count="9">
 <li style="display: grid; min-width: 0;">
-<a href="{{g.href}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardgrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{g.href}}" aria-label="{{g.name}}" data-press="tile" style="text-decoration: none; color: #ffffff; display: grid; {{cardgrid}} column-gap: 10px; min-height: 64px; box-sizing: border-box; padding: 10px 12px; border-radius: 16px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <span style="grid-area: art; position: relative; width: 56px; height: 44px; align-self: center;" aria-hidden="true">
 <sc-for list="{{g.art}}" as="a" hint-placeholder-count="3">
 <span style="position: absolute; display: grid; place-items: center; font-weight: 800; color: #ffffff; {{a.style}}">{{a.t}}</span>
@@ -92,10 +92,10 @@ class Component extends DCLogic {
     var t = tablet ? 'Tablet' : '';
     var b = function (c, s) { return 'border-radius: 5px; ' + self.brick(c, s); };
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       // Phone: one row per game, pill beside the title. Tablet: two columns are only 277px wide,
       // so the art and pill sit on top and the title and subtitle get the full card width.
-      gameCols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
+      gamecols: tablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(1, minmax(0, 1fr))',
       cardgrid: tablet
         ? "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: 44px 6px auto auto; grid-template-areas: 'art . pill' '. . .' 'title title title' 'sub sub sub';"
         : "grid-template-columns: 56px minmax(0, 1fr) auto; grid-template-rows: auto auto; grid-template-areas: 'art title pill' 'art sub sub';",
@@ -104,11 +104,13 @@ class Component extends DCLogic {
       mixerHref: 'Mixer' + t + '.dc.html',
       grownHref: 'Grownups' + t + '.dc.html',
       avatar: this.brick('blue', 0),
-      // Pills are sample data. In the app every card opens that game's Levels screen; on the
-      // canvas only Brick Escape and Letter Builder have Levels boards, the rest open the game.
+      // Pills and puzzle counts are sample data (Maya: Escape Level 9 with 2 of 4 puzzles solved,
+      // Drop Stage 4 with 1, Letters Level 17 with 2 words built). Every card opens its game, which
+      // goes straight to the current level (brief 2.1); children never see a level grid.
       games: [
         {
-          title: 'Brick Escape', sub: 'Slide bricks out their doors', level: 'Level 9', href: 'Levels' + t + '.dc.html',
+          title: 'Brick Escape', sub: 'Slide bricks out their doors', level: 'Level 9', href: 'Escape' + t + '.dc.html',
+          name: 'Brick Escape. Slide bricks out their doors. Level 9, 2 of 4 puzzles solved.',
           art: [
             { t: '', style: this.at(0, 3, 36, 18, b('red', 9)) },
             { t: '', style: this.at(38, 3, 18, 36, b('yellow', 9)) },
@@ -118,6 +120,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Brick Drop', sub: 'Stack falling bricks into rows', level: 'Stage 4', href: 'Drop' + t + '.dc.html',
+          name: 'Brick Drop. Stack falling bricks into rows. Stage 4, 1 of 4 puzzles solved.',
           art: [
             { t: '', style: this.at(8, 26, 48, 16, b('purple', 16)) },
             { t: '', style: this.at(24, 8, 16, 16, b('purple', 16)) },
@@ -125,7 +128,8 @@ class Component extends DCLogic {
           ]
         },
         {
-          title: 'Letter Builder', sub: 'Alphabet, sounds and spelling', level: 'Level 17', href: 'LevelsLetters.dc.html',
+          title: 'Letter Builder', sub: 'Alphabet, sounds and spelling', level: 'Level 17', href: 'Letters' + t + '.dc.html',
+          name: 'Letter Builder. Alphabet, sounds and spelling. Level 17, 2 of 4 words built.',
           art: [
             { t: 'A', style: this.at(0, 9, 18, 26, b('orange', 0) + ' font-size: 15px;') },
             { t: 'B', style: this.at(19, 9, 18, 26, b('pink', 0) + ' font-size: 15px;') },
@@ -134,6 +138,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Color Mixer', sub: 'Mix two colors to make a new one', level: '3 of 6', href: 'Mixer' + t + '.dc.html',
+          name: 'Color Mixer. Mix two colors to make a new one. 3 of 6.',
           art: [
             { t: '', style: this.at(6, 7, 30, 30, 'border-radius: 50%; background: #ffc21a;') },
             { t: '', style: this.at(24, 7, 30, 30, 'border-radius: 50%; background: #2f8cff; mix-blend-mode: multiply;') }
@@ -141,6 +146,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Shape Sorter', sub: 'Match each shape to its hole', level: 'Level 2', href: 'Sorter' + t + '.dc.html',
+          name: 'Shape Sorter. Match each shape to its hole. Level 2.',
           art: [
             { t: '', style: this.at(0, 16, 22, 22, 'border-radius: 50%; background: #ff5fb4;') },
             { t: '', style: this.at(18, 4, 24, 22, 'clip-path: polygon(50% 0, 100% 100%, 0 100%); background: #ffc21a;') },
@@ -149,6 +155,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Pattern Train', sub: 'Finish the pattern on the train', level: 'Level 1', href: 'Pattern' + t + '.dc.html',
+          name: 'Pattern Train. Finish the pattern on the train. Level 1.',
           art: [
             { t: '', style: this.at(0, 14, 16, 16, 'border-radius: 50%; background: #f03a3a;') },
             { t: '', style: this.at(20, 14, 16, 16, 'border-radius: 3px; background: #2f8cff;') },
@@ -157,6 +164,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Number Line-up', sub: 'Put the number towers in order', level: 'Level 3', href: 'Numbers' + t + '.dc.html',
+          name: 'Number Line-up. Put the number towers in order. Level 3.',
           art: [
             { t: '1', style: this.at(0, 16, 18, 24, b('green', 0) + ' font-size: 15px;') },
             { t: '2', style: this.at(19, 10, 18, 30, b('yellow', 0) + ' font-size: 15px;') },
@@ -165,6 +173,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Picture Builder', sub: 'Look, then build the picture', level: 'Level 1', href: 'Builder' + t + '.dc.html',
+          name: 'Picture Builder. Look, then build the picture. Level 1.',
           art: [
             { t: '', style: this.at(14, 2, 13, 13, b('red', 13)) },
             { t: '', style: this.at(29, 2, 13, 13, b('red', 13)) },
@@ -176,6 +185,7 @@ class Component extends DCLogic {
         },
         {
           title: 'Brick Calculator', sub: 'Add and take away with bricks', level: 'Level 1', href: 'Math' + t + '.dc.html',
+          name: 'Brick Calculator. Add and take away with bricks. Level 1.',
           art: [
             { t: '2', style: this.at(0, 9, 17, 26, b('blue', 0) + ' font-size: 15px;') },
             { t: '+', style: this.at(17, 9, 22, 26, 'font-size: 20px; color: #c9c2ff;') },

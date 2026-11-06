@@ -3,10 +3,16 @@
  *
  * Board: rows x cols grid. Some cells may be void (not part of the tray), which lets levels have L shapes etc.
  * Blocks: polyomino bricks with a color and a top-left anchor (r, c). They slide one cell at a time and never overlap.
- * Gates: colored doors on the outer edge of the tray. A brick leaves through a gate of its own color when it
- *   touches the gate, its whole width fits inside the door, and nothing is in the way of sliding out.
- * Locks: an ice lock on a gate (or an ice-frozen brick) melts after N bricks have left the board.
+ * Gates: colored doors on the outer edge of the tray. A brick can leave through a gate of its own color when it
+ *   touches the gate, its whole width fits inside the door, and nothing is in the way of sliding out. In play it
+ *   leaves only when the child drags it on out through the door (drag.ts); touching the door is not enough.
+ * Locks: an icy door hides its color until it melts. It melts after N bricks have left the board (`lock`), or
+ *   once every brick of one color is out (`lockColor`, the color locks that open one at a time).
+ * Stones: grey tray squares that never move. Bricks can not slide over them.
+ * Frozen bricks are still supported here, but no shipped level uses them (too hard for young children).
  */
+
+import { capStars } from '../stars';
 
 export type Color = 'red' | 'yellow' | 'green' | 'blue' | 'purple' | 'orange' | 'pink' | 'teal' | 'white' | 'black';
 export type Side = 'top' | 'bottom' | 'left' | 'right';
@@ -31,6 +37,8 @@ export interface GateDef {
   color: Color;
   /** door is iced shut until this many bricks have exited */
   lock?: number;
+  /** door is iced shut until every brick of this color has exited */
+  lockColor?: Color;
 }
 
 export interface Level {
@@ -40,12 +48,20 @@ export interface Level {
   cols: number;
   /** void[r][c] === true means the cell is not part of the tray */
   void: boolean[][];
+  /** stone[r][c] === true means a grey stone sits on that tray square and nothing can go there */
+  stone?: boolean[][];
   blocks: BlockDef[];
   gates: GateDef[];
   /** fewest moves to solve, computed by the solver */
   par: number;
-  /** optional teaching tip shown at the start */
+  /** optional teaching tip, shown in the line under the board */
   tip?: string;
+  /** seconds on the level clock before the age factor (Grownups board: harder levels get more) */
+  base?: number;
+  /** advanced levels may put a door in the middle of an edge; every other door starts at a corner */
+  advanced?: boolean;
+  /** brick ids in the order of one best solution, used by the hint when a live search is too slow */
+  order?: number[];
 }
 
 /** Live game state. Block positions are stored separately so states are cheap to copy and hash. */
@@ -66,10 +82,18 @@ export function isPlayable(level: Level, r: number, c: number): boolean {
   return r >= 0 && c >= 0 && r < level.rows && c < level.cols && !level.void[r][c];
 }
 
-/** Occupancy grid: -1 void, 0 empty, id+1 for a block. */
+export function isStone(level: Level, r: number, c: number): boolean {
+  return Boolean(level.stone?.[r]?.[c]);
+}
+
+/** Occupancy grid: -1 void, -2 stone, 0 empty, id+1 for a block. */
 export function occupancy(level: Level, state: State): Int16Array {
   const g = new Int16Array(level.rows * level.cols);
-  for (let r = 0; r < level.rows; r++) for (let c = 0; c < level.cols; c++) if (level.void[r][c]) g[r * level.cols + c] = -1;
+  for (let r = 0; r < level.rows; r++)
+    for (let c = 0; c < level.cols; c++) {
+      if (level.void[r][c]) g[r * level.cols + c] = -1;
+      else if (isStone(level, r, c)) g[r * level.cols + c] = -2;
+    }
   level.blocks.forEach((b, i) => {
     const p = state.pos[i];
     if (!p) return;
@@ -94,8 +118,19 @@ export function isFrozen(level: Level, state: State, blockIdx: number): boolean 
   return (level.blocks[blockIdx].frozen ?? 0) > state.exited;
 }
 
-export function isLocked(gate: GateDef, state: State): boolean {
-  return (gate.lock ?? 0) > state.exited;
+/**
+ * Is the door still iced shut? Count locks melt after `lock` bricks are out. Color locks need the level
+ * to know which bricks are left; they melt once no brick of `lockColor` is on the board.
+ */
+export function isLocked(gate: GateDef, state: State, level?: Level): boolean {
+  if ((gate.lock ?? 0) > state.exited) return true;
+  if (gate.lockColor && level) return level.blocks.some((b, i) => b.color === gate.lockColor && state.pos[i] !== null);
+  return false;
+}
+
+/** Bricks still to leave before a count lock melts (0 when it is not a count lock or already open). */
+export function locksLeft(gate: GateDef, state: State): number {
+  return Math.max(0, (gate.lock ?? 0) - state.exited);
 }
 
 /** The row/col of the tray edge a gate sits on (the outermost playable line on that side). Cached per level. */
@@ -126,50 +161,44 @@ export function gateCells(level: Level, g: GateDef): Cell[] {
 }
 
 /**
- * Which gate (index) the block can leave through from anchor (r, c), or -1.
+ * Can the block leave through gate `gi` from anchor (r, c)?
  * Rules: same color, gate not iced, every block cell lies within the door span, at least one cell touches the
  * door, and each cell has a clear straight path to the door line (only empty cells or its own cells).
+ * This says the door is open to the brick from here; on the play screen the brick only leaves when the child
+ * drags it on out through the door (see drag.ts). Touching the door alone never takes it off the board.
  */
-export function exitGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number): number {
+export function fitsGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number, gi: number): boolean {
   const b = level.blocks[blockIdx];
-  for (let gi = 0; gi < level.gates.length; gi++) {
-    const g = level.gates[gi];
-    if (g.color !== b.color || isLocked(g, state)) continue;
-    const horizontal = g.side === 'left' || g.side === 'right';
-    const depth = gateDepth(level, g);
-    const [dr, dc] = DIRS[g.side];
-    let touches = false;
-    let ok = true;
-    for (const [cr, cc] of b.cells) {
-      const rr = r + cr;
-      const col = c + cc;
-      const across = horizontal ? rr : col;
-      if (across < g.at || across >= g.at + g.len) {
-        ok = false;
-        break;
-      }
-      const along = horizontal ? col : rr;
-      if (along === depth) touches = true;
-      // walk toward the door line
-      let wr = rr;
-      let wc = col;
-      while ((horizontal ? wc : wr) !== depth) {
-        wr += dr;
-        wc += dc;
-        if (!isPlayable(level, wr, wc)) {
-          ok = false;
-          break;
-        }
-        const v = occ[wr * level.cols + wc];
-        if (v !== 0 && v !== blockIdx + 1) {
-          ok = false;
-          break;
-        }
-      }
-      if (!ok) break;
+  const g = level.gates[gi];
+  if (g.color !== b.color || isLocked(g, state, level)) return false;
+  const horizontal = g.side === 'left' || g.side === 'right';
+  const depth = gateDepth(level, g);
+  const [dr, dc] = DIRS[g.side];
+  let touches = false;
+  for (const [cr, cc] of b.cells) {
+    const rr = r + cr;
+    const col = c + cc;
+    const across = horizontal ? rr : col;
+    if (across < g.at || across >= g.at + g.len) return false;
+    const along = horizontal ? col : rr;
+    if (along === depth) touches = true;
+    // walk toward the door line
+    let wr = rr;
+    let wc = col;
+    while ((horizontal ? wc : wr) !== depth) {
+      wr += dr;
+      wc += dc;
+      if (!isPlayable(level, wr, wc)) return false;
+      const v = occ[wr * level.cols + wc];
+      if (v !== 0 && v !== blockIdx + 1) return false;
     }
-    if (ok && touches) return gi;
   }
+  return touches;
+}
+
+/** Which gate (index) the block can leave through from anchor (r, c), or -1. The rules are in fitsGate. */
+export function exitGate(level: Level, occ: Int16Array, state: State, blockIdx: number, r: number, c: number): number {
+  for (let gi = 0; gi < level.gates.length; gi++) if (fitsGate(level, occ, state, blockIdx, r, c, gi)) return gi;
   return -1;
 }
 
@@ -182,7 +211,9 @@ export interface Reach {
 
 /**
  * Every anchor the block can slide to in one drag, holding other bricks still.
- * Positions where it could exit are terminal (in play it would leave the board there).
+ * Positions where it could exit are terminal: for the solver, a drag that reaches its open door carries on out
+ * through it, and that whole drag is one move. In play the child may also let go there (drag.ts); the brick
+ * then waits beside the door and taking it out later is one more drag.
  */
 export function reachable(level: Level, state: State, blockIdx: number, occ = occupancy(level, state)): Reach {
   const start = state.pos[blockIdx];
@@ -230,10 +261,12 @@ export function blockSize(b: BlockDef): { h: number; w: number } {
   };
 }
 
-/** Star rating: 3 at par, 2 within a small margin, else 1. Using a hint caps at 2. */
-export function starsFor(moves: number, par: number, usedHint: boolean): number {
-  const s = moves <= par ? 3 : moves <= par + Math.max(2, Math.ceil(par * 0.4)) ? 2 : 1;
-  return usedHint ? Math.min(2, s) : s;
+/**
+ * Star rating from the Escape board: 3 at par, 2 within 3 moves of it, else 1.
+ * Using a hint caps at 2, and so does running out of time on a counted clock: the shared rule in games/stars.ts.
+ */
+export function starsFor(moves: number, par: number, usedHint: boolean, outOfTime = false): number {
+  return capStars(moves <= par ? 3 : moves <= par + 3 ? 2 : 1, { usedHint, outOfTime });
 }
 
 /* ---------- Authoring helpers ---------- */
@@ -241,17 +274,21 @@ export function starsFor(moves: number, par: number, usedHint: boolean): number 
 export interface LevelSpec {
   name?: string;
   tip?: string;
-  /** '#' = void, '.' = empty, any letter = a brick cell (same letter = same brick) */
+  /** '#' = void, '*' = stone, '.' = empty, any letter = a brick cell (same letter = same brick) */
   map: string[];
   colors: Record<string, Color>;
   gates: GateDef[];
   frozen?: Record<string, number>;
+  base?: number;
+  advanced?: boolean;
 }
 
 export function fromSpec(spec: LevelSpec, id: number, par = 0): Level {
   const rows = spec.map.length;
   const cols = Math.max(...spec.map.map((l) => l.length));
   const voidGrid = spec.map.map((line) => Array.from({ length: cols }, (_, c) => (line[c] ?? '#') === '#'));
+  const hasStone = spec.map.some((line) => line.includes('*'));
+  const stone = hasStone ? spec.map.map((line) => Array.from({ length: cols }, (_, c) => line[c] === '*')) : undefined;
   const cellsBy = new Map<string, Cell[]>();
   spec.map.forEach((line, r) =>
     [...line].forEach((ch, c) => {
@@ -272,19 +309,32 @@ export function fromSpec(spec: LevelSpec, id: number, par = 0): Level {
       ...(spec.frozen?.[ch] ? { frozen: spec.frozen[ch] } : {}),
     };
   });
-  return { id, name: spec.name, tip: spec.tip, rows, cols, void: voidGrid, blocks, gates: spec.gates, par };
+  return {
+    id,
+    name: spec.name,
+    tip: spec.tip,
+    rows,
+    cols,
+    void: voidGrid,
+    ...(stone ? { stone } : {}),
+    blocks,
+    gates: spec.gates,
+    par,
+    ...(spec.base ? { base: spec.base } : {}),
+    ...(spec.advanced ? { advanced: true } : {}),
+  };
 }
 
 /** Structural checks used by tests and the generator. Returns a list of problems (empty = valid). */
 export function validate(level: Level): string[] {
   const errs: string[] = [];
-  const s = initialState(level);
   const occ = new Int16Array(level.rows * level.cols);
   level.blocks.forEach((b, i) => {
     for (const [dr, dc] of b.cells) {
       const r = b.r + dr;
       const c = b.c + dc;
       if (!isPlayable(level, r, c)) errs.push(`brick ${i} off tray`);
+      else if (isStone(level, r, c)) errs.push(`brick ${i} sits on a stone`);
       else if (occ[r * level.cols + c]) errs.push(`brick ${i} overlaps`);
       else occ[r * level.cols + c] = i + 1;
     }
@@ -298,6 +348,8 @@ export function validate(level: Level): string[] {
     }
     const depths = Array.from({ length: g.len }, (_, i) => gateDepth(level, { ...g, at: g.at + i, len: 1 }));
     if (new Set(depths).size !== 1) errs.push(`gate ${gi} spans an uneven edge`);
+    else if (gateCells(level, g).some(([r, c]) => isStone(level, r, c))) errs.push(`gate ${gi} opens onto a stone`);
+    if (g.lockColor && !level.blocks.some((b) => b.color === g.lockColor)) errs.push(`gate ${gi} waits for a color no brick has`);
   });
   // no two gates may share an edge cell on the same side
   const used = new Set<string>();
@@ -311,11 +363,29 @@ export function validate(level: Level): string[] {
   level.blocks.forEach((b, i) => {
     if (!level.gates.some((g) => g.color === b.color)) errs.push(`brick ${i} has no ${b.color} gate`);
   });
-  if (errs.length === 0) {
-    const full = occupancy(level, s);
-    level.blocks.forEach((b, i) => {
-      if (exitGate(level, full, s, i, b.r, b.c) >= 0) errs.push(`brick ${i} can exit without moving`);
-    });
-  }
+  // A brick may start right at its own open door (the fixed Level 1 does): pushing it toward the door is one move.
+  return errs;
+}
+
+/**
+ * The door rules the user set on the design canvas (design/escape-levels/README.md):
+ * - every door starts at a corner of the board, unless the level is advanced;
+ * - a door is exactly as long as the bricks that use it (the longest side they cross it with);
+ * - no frozen bricks.
+ * Returns a list of problems (empty = follows the rules).
+ */
+export function designProblems(level: Level): string[] {
+  const errs: string[] = [];
+  level.gates.forEach((g, gi) => {
+    const horizontal = g.side === 'left' || g.side === 'right';
+    const span = horizontal ? level.rows : level.cols;
+    if (!level.advanced && g.at !== 0 && g.at + g.len !== span) errs.push(`door ${gi} is not at a corner`);
+    const users = level.blocks.filter((b) => b.color === g.color);
+    const need = Math.max(0, ...users.map((b) => (horizontal ? blockSize(b).h : blockSize(b).w)));
+    if (g.len !== need) errs.push(`door ${gi} is ${g.len} long but its bricks need ${need}`);
+  });
+  level.blocks.forEach((b, i) => {
+    if (b.frozen) errs.push(`brick ${i} is frozen`);
+  });
   return errs;
 }

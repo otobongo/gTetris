@@ -9,35 +9,43 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
-<a href="{{hubHref}}" aria-label="{{backLabel}}" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Spell it</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Letter Builder · {{levelLabel}}</div>
-</div>
-<button onClick="{{speak}}" aria-label="Say the word" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
-</button>
-</div>
-
-<div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
-<span style="width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: {{kidColor}}; color: #ffffff; font-size: 18px; font-weight: 800;">{{kidInitial}}</span>
-<span style="flex-grow: 1; font-size: 16px; font-weight: 800; line-height: 1.1;">{{kidLine}}</span>
-<div style="display: flex; gap: 5px;" aria-label="Word {{roundNo}} of 3">
-<sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
-<span style="width: 22px; height: 10px; border-radius: 999px; background: {{d.fill}};"></span>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
 </sc-for>
 </div>
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speak}}" aria-label="{{speakLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+</div>
 </div>
 
-<button onClick="{{speak}}" aria-label="Picture of a {{word}}, tap to hear it" style="border: 0; cursor: pointer; margin-top: 10px; width: 230px; height: 190px; border-radius: 36px; display: grid; place-items: center; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 14px; box-sizing: border-box; border-radius: 18px; background: #30257a;">
+<span style="width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: {{kidcolor}}; color: #ffffff; font-size: 18px; font-weight: 800;">{{kidInitial}}</span>
+<span style="flex-grow: 1; font-size: 16px; font-weight: 800; line-height: 1.1;">{{kidLine}}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{sayWord}}" aria-label="Picture of a {{word}}, tap to hear it" style="border: 0; cursor: pointer; margin-top: 10px; width: 230px; height: 190px; border-radius: 36px; display: grid; place-items: center; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
 <sc-if value="{{isSun}}" hint-placeholder-val="{{ true }}">
 <svg width="150" height="150" viewBox="0 0 100 100" aria-hidden="true">
 <g stroke="#ffc21a" stroke-width="7" stroke-linecap="round"><path d="M50 6v12M50 82v12M6 50h12M82 50h12M19 19l8 8M73 73l8 8M81 19l-8 8M27 73l-8 8"></path></g>
@@ -62,6 +70,20 @@
 <path d="M10 30v40l40 18V48z" fill="#c4802f"></path>
 <path d="M90 30v40L50 88V48z" fill="#a8681f"></path>
 <path d="M30 21l40 18v14" fill="none" stroke="#f1eef7" stroke-width="6"></path>
+</svg>
+</sc-if>
+<sc-if value="{{isCat}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="140" viewBox="0 0 100 94" aria-hidden="true">
+<path d="M22 42L17 10l23 15z" fill="#ffab5e" stroke="#c4500a" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M78 42l5-32-23 15z" fill="#ffab5e" stroke="#c4500a" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M23 20l2 12 8-5z" fill="#ff9fd4"></path><path d="M77 20l-2 12-8-5z" fill="#ff9fd4"></path>
+<ellipse cx="50" cy="54" rx="34" ry="30" fill="#ffab5e" stroke="#c4500a" stroke-width="3"></ellipse>
+<path d="M43 26v8M50 25v10M57 26v8" fill="none" stroke="#ff7a1a" stroke-width="3.5" stroke-linecap="round"></path>
+<circle cx="37" cy="51" r="5" fill="#2e2e38"></circle><circle cx="63" cy="51" r="5" fill="#2e2e38"></circle>
+<circle cx="38.5" cy="49.5" r="1.6" fill="#ffffff"></circle><circle cx="64.5" cy="49.5" r="1.6" fill="#ffffff"></circle>
+<path d="M45 61h10l-5 5z" fill="#c72f84"></path>
+<path d="M50 66c-2 4-7 5-10 2M50 66c2 4 7 5 10 2" fill="none" stroke="#c4500a" stroke-width="2.5" stroke-linecap="round"></path>
+<path d="M30 63H13M30 68l-15 4M70 63h17M70 68l15 4" fill="none" stroke="#c4500a" stroke-width="2.2" stroke-linecap="round"></path>
 </svg>
 </sc-if>
 <sc-if value="{{isFish}}" hint-placeholder-val="{{ false }}">
@@ -92,6 +114,17 @@
 <path d="M10 47L50 13l40 34z" fill="#f03a3a" stroke="#b51f27" stroke-width="3" stroke-linejoin="round"></path>
 <rect x="27" y="56" width="13" height="13" rx="2" fill="#7cc0ff"></rect><rect x="60" y="56" width="13" height="13" rx="2" fill="#7cc0ff"></rect>
 <rect x="43" y="62" width="14" height="24" rx="3" fill="#c4802f"></rect>
+</svg>
+</sc-if>
+<sc-if value="{{isDuck}}" hint-placeholder-val="{{ false }}">
+<svg width="170" height="130" viewBox="0 0 120 90" aria-hidden="true">
+<path d="M98 52l14-14-1 22z" fill="#ffc21a" stroke="#d48a00" stroke-width="3" stroke-linejoin="round"></path>
+<ellipse cx="62" cy="58" rx="40" ry="22" fill="#ffc21a" stroke="#d48a00" stroke-width="3"></ellipse>
+<path d="M52 54c8 11 26 11 32 0-10 4-22 4-32 0z" fill="#ffe266" stroke="#d48a00" stroke-width="3" stroke-linejoin="round"></path>
+<circle cx="34" cy="30" r="17" fill="#ffc21a" stroke="#d48a00" stroke-width="3"></circle>
+<path d="M19 29c-8 0-13 3-13 5.5s5 4.5 14 3z" fill="#ff7a1a" stroke="#c4500a" stroke-width="3" stroke-linejoin="round"></path>
+<circle cx="32" cy="25" r="3.5" fill="#2e2e38"></circle><circle cx="33" cy="24" r="1.2" fill="#ffffff"></circle>
+<path d="M10 84q10-6 20 0t20 0 20 0 20 0 20 0" fill="none" stroke="#7cc0ff" stroke-width="4" stroke-linecap="round"></path>
 </svg>
 </sc-if>
 <sc-if value="{{isRocket}}" hint-placeholder-val="{{ false }}">
@@ -128,36 +161,96 @@
 <circle cx="50" cy="8" r="3.5" fill="#b51f27"></circle>
 </svg>
 </sc-if>
+<sc-if value="{{isPenguin}}" hint-placeholder-val="{{ false }}">
+<svg width="150" height="150" viewBox="0 0 100 100" aria-hidden="true">
+<path d="M33 88h13l-1 6H31zM54 88h13l2 6H55z" fill="#ff7a1a" stroke="#c4500a" stroke-width="2.5" stroke-linejoin="round"></path>
+<path d="M26 46c-11 9-14 21-12 30 7-3 11-10 13-18z" fill="#2e2e38" stroke="#17171d" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M74 46c11 9 14 21 12 30-7-3-11-10-13-18z" fill="#2e2e38" stroke="#17171d" stroke-width="3" stroke-linejoin="round"></path>
+<path d="M50 8c16 0 26 14 26 34v26c0 14-12 22-26 22S24 82 24 68V42C24 22 34 8 50 8z" fill="#2e2e38" stroke="#17171d" stroke-width="3"></path>
+<path d="M50 32c10 0 16 9 16 21v13c0 10-7 16-16 16s-16-6-16-16V53c0-12 6-21 16-21z" fill="#f1eef7"></path>
+<circle cx="42" cy="24" r="4.5" fill="#ffffff"></circle><circle cx="58" cy="24" r="4.5" fill="#ffffff"></circle>
+<circle cx="43" cy="24.5" r="2.4" fill="#2e2e38"></circle><circle cx="57" cy="24.5" r="2.4" fill="#2e2e38"></circle>
+<path d="M44 31h12l-6 7z" fill="#ffc21a" stroke="#d48a00" stroke-width="2" stroke-linejoin="round"></path>
+</svg>
+</sc-if>
 </button>
+</sc-if>
 
-<div style="display: flex; margin-top: 10px; {{slotRow}}">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; margin-top: 10px; {{slotrow}}">
 <sc-for list="{{slots}}" as="sl" hint-placeholder-count="3">
 <div style="display: grid; place-items: center; font-weight: 800; box-sizing: border-box; flex-shrink: 0; {{sl.style}}">{{sl.ch}}</div>
 </sc-for>
 </div>
+</sc-if>
 
-<p style="margin: 0; font-size: 17px; font-weight: 700; color: #c9c2ff; min-height: 24px; text-align: center;">{{help}}</p>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<div style="display: grid;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New word" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
+</button>
+</sc-if>
+</div>
+<p role="status" style="margin: 0; font-size: 17px; font-weight: 700; line-height: 1.2; color: #c9c2ff; min-height: 24px; text-align: center; text-wrap: balance;">{{help}}</p>
+<button onClick="{{hint}}" aria-label="Hint, {{hintsLeft}} left" aria-disabled="{{hintOff}}" style="position: relative; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #5a3500; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00; opacity: {{hintopacity}};">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
+<span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 8px; background: #d92f45; border: 2px solid #ffffff; color: #ffffff; font-size: 13px; line-height: 20px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums;">{{hintsLeft}}</span>
+</button>
+</div>
+</sc-if>
 
 <div style="flex-grow: 1;"></div>
 
 <div style="width: 100%; box-sizing: border-box; padding: 18px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
-<div style="display: flex; justify-content: center; flex-wrap: wrap; {{trayBox}}">
+<div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; {{traybox}}">
+<sc-if value="{{showTray}}" hint-placeholder-val="{{ true }}">
 <sc-for list="{{tray}}" as="t" hint-placeholder-count="3">
 <button onClick="{{t.tap}}" aria-label="Letter {{t.ch}}" style="position: relative; border: 0; cursor: pointer; font-family: inherit; padding: 0; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); transition: transform 0.12s, opacity 0.2s; {{t.style}}">
-<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studL}}"></span>
-<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studR}}"></span>
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studl}}"></span>
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{t.studr}}"></span>
 {{t.ch}}
 </button>
 </sc-for>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next word<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
 </div>
 </div>
 
-<sc-if value="{{roundDone}}" hint-placeholder-val="{{ false }}">
-<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.6); display: grid; place-items: center; padding: 16px;">
-<div style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
-<div style="font-size: 32px; font-weight: 800; line-height: 1.1;">{{doneTitle}}</div>
-<div style="font-size: 18px; font-weight: 700; color: #c9c2ff; margin: 8px 0 14px;">{{doneText}}</div>
-<button onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 12px 28px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}</button>
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="lb-card-title" aria-describedby="lb-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="lb-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsGap}}px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
+</div>
+<p id="lb-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
+</sc-if>
+<sc-if value="{{showCap}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Using a hint caps the level at 2 stars.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
 </div>
 </div>
 </sc-if>
@@ -165,39 +258,85 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = this.fresh(this.stageOf(props));
-  }
-  fresh(stage) {
-    return { stage: stage, round: 0, filled: 0, used: {}, wrong: null, slips: 0, roundDone: false };
+    this.state = this.fromLever();
   }
   stageOf(props) {
     var st = props && props.stage;
     return st === 'growing' || st === 'advanced' ? st : 'starter';
   }
+  // Spelling levels (Spell it, Levels 16 to 24) with four words each. Children and words are sample data;
+  // word lengths follow each child's age band. Stuck limits from brief 3.1: wrong taps, then seconds with no right tap.
   stages() {
     return {
       starter: {
-        level: 'Level 3', kid: 'Leo', initial: 'L', color: '#ffab5e', // age 4: no countdown, the sand only fills
-        words: ['SUN', 'BUS', 'BOX']
+        level: 16, kid: 'Leo', initial: 'L', color: '#ffab5e', wrongLimit: 3, secsLimit: 30, // ages 3 to 4
+        words: ['SUN', 'BUS', 'BOX', 'CAT']
       },
       growing: {
-        level: 'Level 17', kid: 'Nia', initial: 'N', color: '#14c8c0', // age 6: double time, can still finish after it runs out
-        words: ['FISH', 'FROG', 'HOUSE']
+        level: 17, kid: 'Nia', initial: 'N', color: '#14c8c0', wrongLimit: 3, secsLimit: 40, // ages 5 to 6
+        words: ['FISH', 'FROG', 'HOUSE', 'DUCK']
       },
       advanced: {
-        level: 'Level 32', kid: 'Maya', initial: 'M', color: '#2f8cff', // age 7: standard timer, longer words get more time
-        words: ['ROCKET', 'RAINBOW', 'UMBRELLA']
+        level: 24, kid: 'Maya', initial: 'M', color: '#2f8cff', wrongLimit: 4, secsLimit: 50, // ages 7 to 8; Level 24 is the last level
+        words: ['ROCKET', 'RAINBOW', 'UMBRELLA', 'PENGUIN']
       }
     };
   }
+  leverKey() {
+    var p = this.props || {};
+    return [this.stageOf(p), p.puzzle, p.moment].join('|');
+  }
+  // A fresh word: the run's word order, solved count and hints stay with the caller.
+  freshWord() { return { filled: 0, used: {}, wrong: null, wrongTaps: 0, idle: 0, offer: false, note: '', hintIdx: null }; }
+  fromLever() {
+    var p = this.props || {};
+    var stage = this.stageOf(p);
+    var S = this.stages()[stage];
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var s = Object.assign(this.freshWord(), { lever: this.leverKey(), stage: stage, level: S.level, puzzle: puzzle, moment: moment, order: [0, 1, 2, 3], shuffle: 0, slips: 1, hintsLeft: 3, usedHint: false });
+    var word = S.words[s.order[puzzle - 1]];
+    if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
+      s.filled = word.length;
+      word.split('').forEach(function (ch, i) { s.used[i] = true; });
+    }
+    if (moment === 'stuck') { s.moment = 'play'; s.filled = 1; s.wrongTaps = S.wrongLimit; s.slips = S.wrongLimit; s.offer = true; }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  componentDidMount() {
+    var self = this;
+    // The time signal: seconds with no right tap, counted only while the word is on screen (brief 3.1).
+    this.timer = setInterval(function () {
+      var s = self.st();
+      if (s.moment !== 'play') return;
+      var idle = s.idle + 1;
+      self.put({ idle: idle, offer: s.offer || idle === self.stages()[s.stage].secsLimit });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); }
   // One tile per letter of the word, shuffled the same way every time, never in spelling order.
-  shuffled(word) {
+  shuffled(word, extra) {
     var a = word.split('');
-    var seed = 7;
+    var seed = 7 + (extra || 0) * 13;
     for (var k = 0; k < word.length; k++) seed = (seed * 31 + word.charCodeAt(k)) % 2147483647;
     for (var i = a.length - 1; i > 0; i--) {
       seed = (seed * 16807) % 2147483647;
@@ -233,7 +372,7 @@ class Component extends DCLogic {
   colorOf(ch) {
     var map = {
       A: 'green', B: 'blue', C: 'yellow', D: 'yellow', E: 'pink', F: 'green', G: 'teal', H: 'blue', I: 'yellow',
-      K: 'blue', L: 'teal', M: 'pink', N: 'orange', O: 'red', R: 'orange', S: 'teal', T: 'green', U: 'purple',
+      K: 'blue', L: 'teal', M: 'pink', N: 'orange', O: 'red', P: 'purple', R: 'orange', S: 'teal', T: 'green', U: 'purple',
       W: 'teal', X: 'pink'
     };
     return map[ch] || 'blue';
@@ -260,31 +399,56 @@ class Component extends DCLogic {
   }
   renderVals() {
     var self = this;
-    var stage = this.stageOf(this.props);
-    var S = this.stages()[stage];
-    // A new stage starts again from word 1, without calling setState during render.
-    var s = this.state.stage === stage ? this.state : this.fresh(stage);
-    var last = S.words.length - 1;
-    var round = Math.min(Math.max(s.round, 0), last);
+    var s = this.st();
+    var S = this.stages()[s.stage];
     var tablet = this.props.device === 'tablet';
     var IW = tablet ? 596 : 390;
-    var word = S.words[round];
-    var trayLetters = this.shuffled(word);
+    var word = S.words[s.order[s.puzzle - 1]];
+    var trayLetters = this.shuffled(word, s.shuffle);
     var z = this.sizes(word.length, IW);
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
+    var playing = m === 'play';
+    var lastLevel = S.level === 24;
+    var helpText = solvedNow ? 'You built ' + word + '.'
+      : s.offer ? 'This word is tricky. Want a different one?'
+      : s.wrong !== null ? 'Not that one. Listen again: ' + word.toLowerCase() + '!'
+      : s.note ? s.note
+      : s.filled === 0 ? 'Tap the letters to build the word.' : 'What comes next?';
+
+    // Dots (brief 7.1, 8). Spelling levels count words built.
+    var built = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+
+    // Level card: slips over the 4 words (brief 5). A hint caps the level at 2 stars.
+    var base = s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
+    var starsWon = finished ? 3 : s.usedHint ? Math.min(2, base) : base;
+    var fact = s.slips === 0 ? '4 words, no slips.' : s.slips === 1 ? '4 words, 1 slip.' : '4 words, ' + s.slips + ' slips.';
+    var trayMinH = z.rows * z.th + (z.rows - 1) * z.rowGap;
+    var canHint = playing && s.hintsLeft > 0;
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: IW, IH: tablet ? 853 : 844,
-      hubHref: tablet ? 'HubTablet.dc.html' : 'LevelsLetters.dc.html',
-      backLabel: tablet ? 'Back to home' : 'Back to levels',
-      levelLabel: S.level,
-      kidLine: S.kid, kidInitial: S.initial, kidColor: S.color,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: IW, ih: tablet ? 853 : 844,
+      hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
+      title: finished ? 'Letter Builder' : 'Level ' + s.level,
+      showDots: !finished, dots: dots,
+      dotsLabel: built === 4 ? '4 of 4 built.' : 'Word ' + s.puzzle + ' of 4. ' + built + ' built.',
+      showPlayArea: !finished,
+      kidLine: S.kid, kidInitial: S.initial, kidcolor: S.color,
       word: word.toLowerCase(),
-      roundNo: round + 1,
-      isSun: word === 'SUN', isBus: word === 'BUS', isBox: word === 'BOX',
-      isFish: word === 'FISH', isFrog: word === 'FROG', isHouse: word === 'HOUSE',
-      isRocket: word === 'ROCKET', isRainbow: word === 'RAINBOW', isUmbrella: word === 'UMBRELLA',
-      dots: S.words.map(function (w, i) { return { fill: i < round || (i === round && s.roundDone) ? '#ffc21a' : i === round ? '#7cc0ff' : '#1a1246' }; }),
-      speak: function () { self.say(word.toLowerCase()); },
-      slotRow: 'gap: ' + z.sGap + 'px;',
+      isSun: word === 'SUN', isBus: word === 'BUS', isBox: word === 'BOX', isCat: word === 'CAT',
+      isFish: word === 'FISH', isFrog: word === 'FROG', isHouse: word === 'HOUSE', isDuck: word === 'DUCK',
+      isRocket: word === 'ROCKET', isRainbow: word === 'RAINBOW', isUmbrella: word === 'UMBRELLA', isPenguin: word === 'PENGUIN',
+      // Speech only after a tap. While the offer shows, the speaker reads the offer line (brief 10).
+      speakLabel: s.offer ? 'Read the help line aloud' : 'Say the word',
+      speak: function () { self.say(self.st().offer ? 'This word is tricky. Want a different one?' : word.toLowerCase()); },
+      sayWord: function () { self.say(word.toLowerCase()); },
+      slotrow: 'gap: ' + z.sGap + 'px;',
       slots: word.split('').map(function (ch, i) {
         var done = i < s.filled;
         var box = 'width: ' + z.sw + 'px; height: ' + z.sh + 'px; border-radius: ' + z.sRad + 'px; font-size: ' + z.sFont + 'px; ';
@@ -295,42 +459,82 @@ class Component extends DCLogic {
             : 'border: ' + z.sBorder + 'px dashed ' + (i === s.filled ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);')
         };
       }),
-      help: s.wrong !== null ? 'Not that one. Listen again: ' + word.toLowerCase() + '!' : s.filled === 0 ? 'Tap the letters to build the word.' : 'Great! What comes next?',
-      trayBox: 'width: ' + z.rowW + 'px; column-gap: ' + z.gap + 'px; row-gap: ' + z.rowGap + 'px;',
+      help: helpText,
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        // The current word moves to the end of the unsolved ones; the dots stay where they are (brief 3.3).
+        var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
+        self.put(Object.assign(self.freshWord(), { order: order, shuffle: cs.shuffle + 1, note: 'Here is a different word.' }));
+      },
+      hintsLeft: s.hintsLeft,
+      hintOff: canHint ? 'false' : 'true',
+      hintopacity: canHint ? 1 : 0.45,
+      hint: function () {
+        var cs = self.st();
+        if (cs.moment !== 'play' || cs.hintsLeft <= 0) return;
+        var target = word.charAt(cs.filled);
+        var idx = trayLetters.findIndex(function (ch, i) { return !cs.used[i] && ch === target; });
+        if (idx < 0) return;
+        self.put({ hintIdx: idx, hintsLeft: cs.hintsLeft - 1, usedHint: true });
+      },
+      traybox: 'width: ' + z.rowW + 'px; min-height: ' + trayMinH + 'px; column-gap: ' + z.gap + 'px; row-gap: ' + z.rowGap + 'px;',
+      showTray: !solvedNow,
       tray: trayLetters.map(function (ch, i) {
         var used = !!s.used[i];
         var p = self.pal()[self.colorOf(ch)];
         var stud = 'top: -' + (z.studH - 2) + 'px; width: ' + z.studW + 'px; height: ' + z.studH + 'px; background: ' + p[1] + ';';
         var box = 'width: ' + z.tw + 'px; height: ' + z.th + 'px; border-radius: ' + z.tRad + 'px; font-size: ' + z.tFont + 'px; ';
+        var lit = s.hintIdx === i && !used ? ' outline: 4px solid #ffc21a; outline-offset: 3px;' : '';
         return {
           ch: ch,
-          studL: stud + ' left: ' + z.studIn + 'px;',
-          studR: stud + ' right: ' + z.studIn + 'px;',
-          style: box + self.face(self.colorOf(ch)) + (used ? ' opacity: 0.2; transform: scale(0.85);' : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + (i % 2 ? 3 : -3) + 'deg);'),
+          studl: stud + ' left: ' + z.studIn + 'px;',
+          studr: stud + ' right: ' + z.studIn + 'px;',
+          style: box + self.face(self.colorOf(ch)) + lit + (used ? ' opacity: 0.2; transform: scale(0.85);' : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + (i % 2 ? 3 : -3) + 'deg);'),
           tap: function () {
-            if (used || s.roundDone) return;
-            if (ch === word.charAt(s.filled)) {
+            var cs = self.st();
+            if (used || cs.moment !== 'play') return;
+            if (ch === word.charAt(cs.filled)) {
               self.say(ch);
-              var u = Object.assign({}, s.used);
+              var u = Object.assign({}, cs.used);
               u[i] = true;
-              var filled = s.filled + 1;
+              var filled = cs.filled + 1;
               var done = filled === word.length;
-              self.setState({ stage: stage, round: round, filled: filled, used: u, wrong: null, slips: s.slips, roundDone: done });
-              if (done) setTimeout(function () { self.say(word.toLowerCase()); }, 700);
+              // A right tap is progress: it hides the offer and resets the time signal (brief 3.2).
+              var patch = { filled: filled, used: u, wrong: null, idle: 0, offer: false, note: '', hintIdx: null };
+              if (done) patch.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
+              self.put(patch);
+              if (done && cs.puzzle === 4) { clearTimeout(self.cardT); self.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
             } else {
-              self.setState({ stage: stage, round: round, filled: s.filled, used: s.used, wrong: i, slips: s.slips + 1, roundDone: false });
-              setTimeout(function () { self.setState({ wrong: null }); }, 400);
+              var wrongTaps = cs.wrongTaps + 1;
+              self.put({ wrong: i, slips: cs.slips + 1, wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= S.wrongLimit });
+              clearTimeout(self.wrongT);
+              self.wrongT = setTimeout(function () { self.put({ wrong: null }); }, 400);
             }
           }
         };
       }),
-      roundDone: s.roundDone,
-      doneTitle: round === last ? 'You built ' + S.words.length + ' words!' : 'You built ' + word + '!',
-      doneText: round === last ? (s.slips <= 1 ? '3 stars and a new sticker for your book.' : 'Great building! You found a new sticker.') : word.split('').join('-') + '... ' + word.toLowerCase() + '. Ready for the next one?',
-      nextLabel: round === last ? 'Play again' : 'Next word',
-      next: function () {
-        if (round === last) self.setState(self.fresh(stage));
-        else self.setState({ stage: stage, round: round + 1, filled: 0, used: {}, wrong: null, slips: s.slips, roundDone: false });
+      showNext: m === 'solved',
+      next: function () { var cs = self.st(); self.put(Object.assign(self.freshWord(), { puzzle: cs.puzzle + 1, moment: 'play' })); },
+      cardOpen: m === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
+      // Every level done (decision D6): one star and the game's total, never the last level's star row.
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '60 of 72 stars' : starsWon + ' of 3 stars',
+      starsGap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '60 of 72',
+      // The every-level totals are sample data.
+      cardFact: finished || lastLevel ? '24 levels, 60 of 72 stars.' : fact,
+      showRule: !finished && !lastLevel,
+      showCap: !finished && !lastLevel && s.usedHint,
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (s.level + 1),
+      playNext: function () {
+        var cs = self.st();
+        self.put(Object.assign(self.freshWord(), { level: cs.level + 1, puzzle: 1, moment: 'play', order: [0, 1, 2, 3], shuffle: cs.shuffle + 1, slips: 0, hintsLeft: 3, usedHint: false }));
       }
     };
   }

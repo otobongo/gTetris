@@ -1,0 +1,158 @@
+/* Brickwise design tokens, taken from the design canvas (design/canvas/*.dc.html) and the
+   brief (design/briefs/missing-screens.md, section 2). Components use these roles only;
+   add a value here first if a screen needs a new one.
+
+   The app has one theme on purpose: a dark toy-box ground that keeps the bricks vivid.
+   It is set once here, for every viewer, so there is no light/dark switch to keep in step. */
+
+:root {
+  color-scheme: dark;
+
+  /* ---------- Ground and surfaces ---------- */
+  --bw-ground-top: #33278a;
+  --bw-ground-bottom: #1a1246;
+  --bw-ground: radial-gradient(120% 80% at 50% 15%, var(--bw-ground-top), var(--bw-ground-bottom));
+  --bw-panel: #30257a;            /* flat: information */
+  --bw-well: #1d1550;             /* inset: fields, tracks, locked tiles */
+  --bw-well-shadow: inset 0 3px 6px rgb(0 0 0 / 0.35);
+  --bw-scrim: rgb(10 6 30 / 0.65);
+  --bw-dashed: #6d5fd0;           /* dashed "add" or empty slot, decoration only */
+
+  /* ---------- Raised (anything you can press) ---------- */
+  --bw-purple-top: #5444b8;
+  --bw-purple-bottom: #3a2d8f;
+  --bw-purple-edge: #241a63;
+  --bw-on-purple: #ffffff;
+
+  --bw-yellow-top: #ffe266;
+  --bw-yellow-bottom: #ffc21a;
+  --bw-yellow-edge: #d48a00;
+  --bw-on-yellow: #5a3500;
+
+  --bw-green-top: #5fe06e;
+  --bw-green-bottom: #1fb53c;
+  --bw-green-edge: #0f7a26;
+  --bw-on-green: #063510;         /* user decision 2026-11-03: dark label on every green button */
+
+  --bw-secondary: #4b3eaa;
+  --bw-secondary-top: #6b5bd0;
+
+  /* ---------- Text ---------- */
+  --bw-text: #ffffff;
+  --bw-text-2: #c9c2ff;
+  --bw-decor: #8e85d6;            /* decoration and locked icons on the well only, never text */
+  --bw-link: #ffe266;
+
+  /* ---------- Accent, state ---------- */
+  --bw-accent: #ffc21a;           /* selection, current, focus */
+  --bw-focus: 3px solid var(--bw-accent);
+  --bw-focus-offset: 2px;
+  --bw-ring: 0 0 0 4px var(--bw-accent);
+  --bw-star: #ffb21f;
+  --bw-star-edge: #c47900;
+  --bw-star-off: rgb(0 0 0 / 0.3);
+  --bw-error-text: #ff9fd4;
+  --bw-error-border: #ff4d5e;
+  --bw-danger: #d92f45;
+  --bw-danger-edge: #8f1f2e;
+  --bw-success: #1f9a44;
+
+  /* ---------- Brick palette: base / light / dark (pal() on the boards) ---------- */
+  --brick-red: #f03a3a;     --brick-red-light: #ff7a6e;    --brick-red-dark: #b51f27;
+  --brick-yellow: #ffc21a;  --brick-yellow-light: #ffe266; --brick-yellow-dark: #d48a00;
+  --brick-green: #1fb53c;   --brick-green-light: #5fe06e;  --brick-green-dark: #0f7a26;
+  --brick-blue: #2f8cff;    --brick-blue-light: #7cc0ff;   --brick-blue-dark: #1557c4;
+  --brick-purple: #9b4dff;  --brick-purple-light: #c79bff; --brick-purple-dark: #6624c9;
+  --brick-orange: #ff7a1a;  --brick-orange-light: #ffab5e; --brick-orange-dark: #c4500a;
+  --brick-pink: #ff5fb4;    --brick-pink-light: #ff9fd4;   --brick-pink-dark: #c72f84;
+  --brick-teal: #14c8c0;    --brick-teal-light: #6aeee4;   --brick-teal-dark: #0b8c87;
+  --brick-white: #f1eef7;   --brick-white-light: #ffffff;  --brick-white-dark: #b9b3c9;
+  --brick-black: #2e2e38;   --brick-black-light: #4d4d5c;  --brick-black-dark: #17171d;
+
+  /* ---------- Radius by role (brief section 2) ---------- */
+  --bw-r-sm: 12px;     /* chips, segmented items, stepper */
+  --bw-r-md: 16px;     /* buttons, icon buttons, level tiles, sticker slots */
+  --bw-r-lg: 20px;     /* panels, tappable cards, the big Play button */
+  --bw-r-xl: 26px;     /* overlay cards, album page */
+  --bw-r-pill: 999px;
+  --bw-r-brick: 5px;   /* small art bricks */
+
+  /* ---------- Spacing (values the boards use) ---------- */
+  --bw-sp-1: 4px;
+  --bw-sp-2: 6px;
+  --bw-sp-3: 8px;
+  --bw-sp-4: 10px;
+  --bw-sp-5: 12px;
+  --bw-sp-6: 14px;
+  --bw-sp-7: 16px;
+  --bw-sp-8: 18px;
+  --bw-sp-9: 20px;
+  --bw-sp-10: 24px;
+  --bw-sp-11: 28px;
+  --bw-gutter: 16px;                    /* page side gutter on phone */
+  --bw-pad-standard: 20px 16px 18px;    /* game and Settings screens */
+  --bw-pad-roomy: 24px 20px 22px;       /* Signup and Sign in */
+  --bw-pad-home: 22px 16px 0;           /* Home: the list scrolls to the bottom edge */
+  --bw-target: 44px;                    /* smallest hit area */
+  --bw-target-kid: 54px;                /* kid controls: top bar buttons, tiles, slots */
+
+  /* ---------- Type ramp (size / weight / line height) ---------- */
+  --bw-font: 'Baloo 2', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --bw-fs-wordmark: 34px;  --bw-fw-wordmark: 800; --bw-lh-wordmark: 1;
+  --bw-fs-logo: 40px;      /* Who's playing wordmark */
+  --bw-fs-display: 32px;   --bw-fw-display: 800;  --bw-lh-display: 1.1;
+  --bw-fs-screen: 26px;    --bw-lh-screen: 1.1;   /* screen heading */
+  --bw-fs-title: 24px;     --bw-lh-title: 1.1;    /* top bar title, big Play */
+  --bw-fs-sub: 15px;       --bw-fw-sub: 700;      /* top bar sub, secondary lines */
+  --bw-fs-section: 20px;   --bw-lh-section: 1.15; /* section heading */
+  --bw-fs-card: 19px;      /* game card title */
+  --bw-fs-panel: 18px;     --bw-lh-panel: 1.15;   /* panel heading */
+  --bw-fs-body: 16px;      --bw-lh-body: 1.35;    --bw-lh-prose: 1.5;
+  --bw-fs-label: 14px;     /* field labels, notes, pills */
+  --bw-fs-helper: 13px;    /* nothing smaller on new screens */
+  --bw-fs-tile: 22px;      /* level numerals, counters */
+  --bw-fs-btn-lg: 20px;
+  --bw-fs-btn-md: 17px;
+  --bw-fs-btn-sm: 15px;
+
+  /* ---------- Elevation ---------- */
+  --bw-raise: 5px;                      /* resting offset of a raised element */
+  --bw-raise-big: 6px;                  /* big Play button, player cards */
+  --bw-raise-pressed: 2px;
+  --bw-press-shift: 3px;
+  --bw-brick-face: inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -3px 0 rgb(0 0 0 / 0.22);
+  --bw-card-shadow: 0 8px 0 var(--bw-purple-edge);
+
+  /* ---------- Motion ---------- */
+  --bw-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --bw-fast: 100ms;
+  --bw-base: 200ms;
+  --bw-slow: 350ms;
+
+  /* ---------- Layers ---------- */
+  --bw-z-bar: 10;
+  --bw-z-overlay: 50;
+  --bw-z-toast: 60;
+
+  /* ---------- Layout ---------- */
+  --bw-phone-max: 430px;
+  --bw-tablet-inner-w: 596px;
+  --bw-tablet-inner-h: 853px;
+}
+
+/* Raised colour sets, shared by press buttons, icon buttons and tiles. */
+[data-tone='purple'] { --tone-top: var(--bw-purple-top); --tone-bottom: var(--bw-purple-bottom); --tone-edge: var(--bw-purple-edge); --tone-ink: var(--bw-on-purple); }
+[data-tone='yellow'] { --tone-top: var(--bw-yellow-top); --tone-bottom: var(--bw-yellow-bottom); --tone-edge: var(--bw-yellow-edge); --tone-ink: var(--bw-on-yellow); }
+[data-tone='green']  { --tone-top: var(--bw-green-top);  --tone-bottom: var(--bw-green-bottom);  --tone-edge: var(--bw-green-edge);  --tone-ink: var(--bw-on-green); }
+
+/* Brick colour sets for the Brick component (base / light / dark). */
+[data-brick='red']    { --c: var(--brick-red);    --cl: var(--brick-red-light);    --cd: var(--brick-red-dark); }
+[data-brick='yellow'] { --c: var(--brick-yellow); --cl: var(--brick-yellow-light); --cd: var(--brick-yellow-dark); }
+[data-brick='green']  { --c: var(--brick-green);  --cl: var(--brick-green-light);  --cd: var(--brick-green-dark); }
+[data-brick='blue']   { --c: var(--brick-blue);   --cl: var(--brick-blue-light);   --cd: var(--brick-blue-dark); }
+[data-brick='purple'] { --c: var(--brick-purple); --cl: var(--brick-purple-light); --cd: var(--brick-purple-dark); }
+[data-brick='orange'] { --c: var(--brick-orange); --cl: var(--brick-orange-light); --cd: var(--brick-orange-dark); }
+[data-brick='pink']   { --c: var(--brick-pink);   --cl: var(--brick-pink-light);   --cd: var(--brick-pink-dark); }
+[data-brick='teal']   { --c: var(--brick-teal);   --cl: var(--brick-teal-light);   --cd: var(--brick-teal-dark); }
+[data-brick='white']  { --c: var(--brick-white);  --cl: var(--brick-white-light);  --cd: var(--brick-white-dark); }
+[data-brick='black']  { --c: var(--brick-black);  --cl: var(--brick-black-light);  --cd: var(--brick-black-dark); }

@@ -1,83 +1,193 @@
-import { useEffect, useLayoutEffect, useReducer, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { go } from '../../shared/router';
-import { sfx } from '../../shared/sound';
-import { getProgress, recordBest, recordStars } from '../../shared/storage';
-import { Icon, IconButton, ResultCard, Stars, TopBar } from '../../shared/ui';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ComponentProps, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import {
-  PREVIEW,
-  activeCells,
-  ghostY,
-  hardDrop,
-  hold,
-  move,
-  newGame,
-  rotate,
-  softDrop,
-  step,
-  type GameEvent,
-  type GameState,
-} from './engine';
+  activePlayer,
+  freshRun,
+  progressStore,
+  runOf,
+  totalStars,
+  useActivePlayer,
+  type AgeBand,
+  type LevelRun,
+  type PuzzleOutcome,
+  type TimerMode,
+} from '../../shared/progress';
+import { go, toHref } from '../../shared/router';
+import { sfx } from '../../shared/sound';
+import { Brick, Icon, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, TopBar, type IconName } from '../../shared/ui';
+import { breakBefore } from '../../screens/logic/session';
+import { STUCK, STUCK_START, puzzleOnScreen, stuckStep, type StuckState } from '../run';
+import { PAD, REPEAT, dragMoves, dragStep, gestureAxis, keyAction, keyCommand, releaseAction, type Action } from './controls';
+import { activeCells, ghostY, type GameEvent, type GameState } from './engine';
 import { MiniPiece } from './MiniPiece';
 import { PIECES } from './pieces';
-import { STAGES, newPieces, starRule, starsEarned } from './stages';
+import {
+  RUN_INIT,
+  STUCK_LINE,
+  gameDoneCard,
+  introLines,
+  newRound,
+  overLine,
+  pressRound,
+  puzzleGoalRows,
+  puzzleResult,
+  readyLines,
+  retryRound,
+  runRules,
+  solvedLine,
+  stageCard,
+  tickRound,
+  type Phase,
+  type Round,
+} from './puzzles';
+import { Sheet } from './Sheet';
+import { STAGES } from './stages';
+import { clearMessage, formatClock, ranOut, timerPlan, timerState } from './timer';
 
-type Action = 'left' | 'right' | 'down' | 'rotate' | 'rotateBack' | 'drop' | 'hold';
-type Phase = 'intro' | 'playing' | 'paused' | 'won' | 'over';
-
-/** Hold-to-repeat timings (ms). Gentle on purpose so small fingers don't overshoot. */
-const REPEAT: Partial<Record<Action, { delay: number; every: number }>> = {
-  left: { delay: 200, every: 75 },
-  right: { delay: 200, every: 75 },
-  down: { delay: 120, every: 45 },
-};
-
-const KEYS: Record<string, Action> = {
-  ArrowLeft: 'left',
-  ArrowRight: 'right',
-  ArrowDown: 'down',
-  ArrowUp: 'rotate',
-  x: 'rotate',
-  X: 'rotate',
-  z: 'rotateBack',
-  Z: 'rotateBack',
-  ' ': 'drop',
-  c: 'hold',
-  C: 'hold',
-  Shift: 'hold',
-};
-
+const GAME = 'drop';
 const WELL_PAD = 6;
-const FIELD_GAP = 10;
+/** Room around the board for its 4px ring, plus the area's own 1px. */
+const RING_ROOM = 10;
+const MAX_CELL = 42;
+const HOME = toHref('/');
+
+/**
+ * The level card's Play Stage button opens the next stage with its first brick waiting and no intro
+ * sheet (brief 2.1 step 6). The intro still opens whenever a stage is entered from Home.
+ */
+let startedFromCard: number | null = null;
+
+/** The hourglass of the timer row (canvas glyph, stroke 2.6). */
+function Hourglass() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9" />
+    </svg>
+  );
+}
+
+/** Size the board's cells from the space left between the tiles and the controls. */
+export function useCellSize(areaRef: RefObject<HTMLDivElement | null>, cols: number, rows: number): number {
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = areaRef.current!;
+    const measure = () => setArea({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [areaRef]);
+  const room = WELL_PAD * 2 + RING_ROOM;
+  return Math.max(10, Math.min(MAX_CELL, Math.floor(Math.min((area.w - room) / cols, (area.h - room) / rows))));
+}
+
+/** The well and its grid, empty or with bricks in it. */
+export function Well({ cols, rows, cell, paused, children, ...board }: { cols: number; rows: number; cell: number; paused?: boolean } & Omit<ComponentProps<'div'>, 'className' | 'style'>) {
+  return (
+    <div
+      className={`drop-well${paused ? ' is-paused' : ''}`}
+      style={{ width: cols * cell + WELL_PAD * 2, height: rows * cell + WELL_PAD * 2, padding: WELL_PAD }}
+      {...board}
+    >
+      <div className="drop-grid" style={{ width: cols * cell, height: rows * cell, backgroundSize: `${cell}px ${cell}px` }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+type Finished = Extract<PuzzleOutcome, { kind: 'finished' }>;
+
+/**
+ * The age band and timer mode a puzzle started with. They hold until the next puzzle (brief 2.3), so a band
+ * changed in Settings or another tab never rewrites the clock, the stuck limits or the cap of the puzzle on screen.
+ */
+interface PuzzleAge {
+  band: AgeBand;
+  mode: TimerMode;
+}
+
+function ageNow(): PuzzleAge {
+  const p = activePlayer(progressStore.getState());
+  return { band: p?.ageBand ?? '7-8', mode: p?.timerMode ?? 'relaxed' };
+}
 
 export default function Play({ index }: { index: number }) {
   const stage = STAGES[index];
-  const rule = starRule(stage);
-  const fresh = () => newGame(stage, (Date.now() ^ Math.imul(index + 1, 2654435761)) >>> 0);
+  const goal = puzzleGoalRows(index);
+  const player = useActivePlayer();
+  const [age, setAge] = useState<PuzzleAge>(ageNow);
+  const plan = timerPlan({ goalRows: goal }, age.mode, age.band);
+  const planRef = useRef(plan);
+  planRef.current = plan;
+  const limitRef = useRef(STUCK.drop[age.band]);
+  limitRef.current = STUCK.drop[age.band];
+  const path = `/game/drop/${index + 1}`;
 
-  const gameRef = useRef<GameState | null>(null);
-  if (gameRef.current === null) gameRef.current = fresh();
+  // Entered from Home: the intro sheet first. From the level card: straight to the waiting brick.
+  const [fromCard] = useState(() => startedFromCard === index);
+  // The level's run: what the store holds (startRun saves it once mounted), or a fresh one.
+  const [run, setRun] = useState<LevelRun>(() => runOf(player, GAME, index) ?? freshRun(RUN_INIT, progressStore.now()));
+  const runRef = useRef(run);
+  runRef.current = run;
+
+  const roundRef = useRef<Round | null>(null);
+  if (roundRef.current === null) roundRef.current = newRound(index, puzzleOnScreen(run), fromCard ? 'ready' : 'intro');
   const [, redraw] = useReducer((n: number) => n + 1, 0);
-  const [phase, setPhaseState] = useState<Phase>('intro');
-  const phaseRef = useRef<Phase>('intro');
+  const [phase, setPhaseState] = useState<Phase>(roundRef.current.phase);
   const held = useRef(new Map<Action, number>());
   const lastBump = useRef(0);
   const endTimer = useRef(0);
-  const [result, setResult] = useState({ stars: 0, newBest: false });
+  const cardTimer = useRef(0);
+  const stuckRef = useRef<StuckState>(STUCK_START);
+  const [offer, setOffer] = useState(false);
+  const [swapped, setSwapped] = useState(false);
+  const [done, setDone] = useState<Finished | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardClosed, setCardClosed] = useState(false);
+  const [focusTo, setFocusTo] = useState<'' | 'board' | 'slot'>('');
+
+  // Seconds on this puzzle's clock, counted only while it is being played.
+  const [secs, setSecs] = useState(0);
+  // The word that pops up when rows clear.
+  const [flash, setFlash] = useState('');
+  const flashTimer = useRef(0);
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
 
   const setPhase = (p: Phase) => {
-    phaseRef.current = p;
+    roundRef.current = { ...roundRef.current!, phase: p };
     if (p !== 'playing') held.current.clear();
     setPhaseState(p);
   };
+
+  // Save the run once the screen is up (a new one, or one moved to a new set), so a solve, a swap and
+  // the dots all work from what the store holds.
+  useEffect(() => {
+    const id = progressStore.ensureActivePlayer();
+    const saved = progressStore.startRun(GAME, index, RUN_INIT, id);
+    if (startedFromCard === index) startedFromCard = null;
+    // from the level card the first brick is already waiting: the board takes focus, as after Next
+    if (roundRef.current!.phase === 'ready') setFocusTo('board');
+    setRun(saved);
+    const r = roundRef.current!;
+    if (r.puzzle !== puzzleOnScreen(saved) && (r.phase === 'intro' || r.phase === 'ready')) {
+      roundRef.current = newRound(index, puzzleOnScreen(saved), r.phase);
+      redraw();
+    }
+  }, [index]);
 
   function sounds(events: GameEvent[], s: GameState) {
     for (const e of events) {
       if (e === 'move') sfx.move();
       else if (e === 'rotate') sfx.tap();
-      else if (e === 'hold') sfx.good();
       else if (e === 'drop') sfx.bump();
-      else if (e === 'clear') sfx.line(s.clearing.length);
-      else if (e === 'win') sfx.win();
+      else if (e === 'clear') {
+        sfx.line(s.clearing.length);
+        setFlash(clearMessage(s.clearing.length));
+        window.clearTimeout(flashTimer.current);
+        flashTimer.current = window.setTimeout(() => setFlash(''), 900);
+      } else if (e === 'win') sfx.win();
       else if (e === 'over') sfx.lose();
       else if (e === 'bump') {
         const now = performance.now();
@@ -87,51 +197,58 @@ export default function Play({ index }: { index: number }) {
     }
   }
 
-  function finish(s: GameState, won: boolean) {
-    const key = `drop:${index}`;
-    const before = getProgress().best[key] ?? 0;
-    recordBest(key, s.score);
-    const stars = won ? starsEarned(stage, s.placed) : 0;
-    if (won) recordStars('drop', index, stars);
-    setResult({ stars, newBest: before > 0 && s.score > before });
-    phaseRef.current = won ? 'won' : 'over';
+  /** A puzzle solved: save it; the fourth finishes the stage and opens the level card after the last dot fills. */
+  function solved(r: Round) {
+    const outOfTime = ranOut(planRef.current, r.elapsedMs / 1000);
+    const result = puzzleResult(index, r.puzzle, r.game, outOfTime);
+    const outcome = progressStore.recordPuzzle(GAME, index, result, runRules(), progressStore.ensureActivePlayer());
+    setFlash('');
+    setPhase('solved');
+    if (outcome.kind === 'saved') {
+      setRun(outcome.run);
+      setFocusTo('slot');
+    } else if (outcome.kind === 'finished') {
+      setDone(outcome);
+      window.clearTimeout(cardTimer.current);
+      cardTimer.current = window.setTimeout(() => setCardOpen(true), LEVEL_CARD_DELAY_MS);
+    } else setFocusTo('slot');
+  }
+
+  /** The stack reached the top: one failed try for the stuck offer (3.1), then the sheet. */
+  function outOfRoom() {
+    stuckRef.current = stuckStep(stuckRef.current, { type: 'fail' }, limitRef.current);
+    roundRef.current = { ...roundRef.current!, phase: 'over' };
     held.current.clear();
     window.clearTimeout(endTimer.current);
-    endTimer.current = window.setTimeout(() => setPhase(won ? 'won' : 'over'), won ? 250 : 700);
+    endTimer.current = window.setTimeout(() => {
+      setOffer(stuckRef.current.offer);
+      setPhaseState('over');
+    }, 700);
   }
 
-  function apply(fn: (s: GameState) => GameState) {
-    const prev = gameRef.current!;
-    const next = fn(prev);
+  function commit(next: Round) {
+    const prev = roundRef.current!;
     if (next === prev) return;
-    gameRef.current = next;
-    if (next.events.length) sounds(next.events, next);
-    if (
-      next.board !== prev.board ||
-      next.active !== prev.active ||
-      next.queue !== prev.queue ||
-      next.hold !== prev.hold ||
-      next.holdUsed !== prev.holdUsed ||
-      next.status !== prev.status
-    )
-      redraw();
-    if (next.status !== prev.status && (next.status === 'won' || next.status === 'over')) finish(next, next.status === 'won');
-  }
-
-  function act(a: Action) {
-    switch (a) {
-      case 'left': return apply((s) => move(s, -1));
-      case 'right': return apply((s) => move(s, 1));
-      case 'down': return apply(softDrop);
-      case 'rotate': return apply((s) => rotate(s, 1));
-      case 'rotateBack': return apply((s) => rotate(s, -1));
-      case 'drop': return apply(hardDrop);
-      case 'hold': return apply(hold);
+    roundRef.current = next;
+    if (next.phase !== prev.phase) setPhaseState(next.phase);
+    const g = next.game;
+    const p = prev.game;
+    if (g === p) return;
+    if (g.events.length) sounds(g.events, g);
+    if (g.board !== p.board || g.active !== p.active || g.queue !== p.queue || g.status !== p.status || g.lines !== p.lines) redraw();
+    if (g.status !== p.status) {
+      if (g.status === 'won') solved(next);
+      else if (g.status === 'over') outOfRoom();
     }
   }
 
+  function act(a: Action) {
+    commit(pressRound(roundRef.current!, a));
+  }
+
   function press(a: Action) {
-    if (phaseRef.current !== 'playing') return;
+    const ph = roundRef.current!.phase;
+    if (ph !== 'playing' && ph !== 'ready') return;
     act(a);
     const r = REPEAT[a];
     if (!r) return;
@@ -145,16 +262,82 @@ export default function Play({ index }: { index: number }) {
   }
 
   function togglePause() {
-    if (phaseRef.current === 'playing') setPhase('paused');
-    else if (phaseRef.current === 'paused') setPhase('playing');
+    const ph = roundRef.current!.phase;
+    if (ph === 'playing') setPhase('paused');
+    else if (ph === 'paused') setPhase('playing');
   }
 
-  function restart() {
+  /**
+   * Put a puzzle on screen with its stack drawn and its first brick waiting (brief 4.2). A new puzzle takes the
+   * band played now; a retry of the same puzzle keeps its band and its clock (D1).
+   */
+  function startPuzzle(puzzle: number, after: { swapped: boolean; retry?: boolean }) {
     window.clearTimeout(endTimer.current);
-    gameRef.current = fresh();
-    setPhase('playing');
+    window.clearTimeout(flashTimer.current);
+    setFlash('');
+    setOffer(false);
+    setSwapped(after.swapped);
+    if (after.retry) {
+      roundRef.current = retryRound(roundRef.current!);
+    } else {
+      const a = ageNow();
+      setAge(a);
+      limitRef.current = STUCK.drop[a.band];
+      planRef.current = timerPlan({ goalRows: goal }, a.mode, a.band);
+      roundRef.current = newRound(index, puzzle, 'ready');
+    }
+    setSecs(Math.floor(roundRef.current.elapsedMs / 1000));
+    setPhaseState('ready');
+    held.current.clear();
+    setFocusTo('board');
     redraw();
   }
+
+  /** Next puzzle: the daily limit first (brief 2.4), then the next unsolved puzzle on the same screen. */
+  function nextPuzzle() {
+    if (breakBefore(path)) return;
+    stuckRef.current = stuckStep(stuckRef.current, { type: 'start' }, limitRef.current);
+    startPuzzle(puzzleOnScreen(runRef.current), { swapped: false });
+  }
+
+  /**
+   * Try again: the same puzzle from its first position, with its clock where it was (D1). Failed tries still
+   * count toward the offer. The daily limit is checked first, as at every puzzle boundary (2.4).
+   */
+  function tryAgain() {
+    if (breakBefore(path)) return;
+    startPuzzle(roundRef.current!.puzzle, { swapped: false, retry: true });
+  }
+
+  /** New puzzle: a free swap (3.3). The dots stay; the next spare in the queue comes up. Break first when the limit is used up. */
+  function newPuzzle() {
+    if (breakBefore(path)) return;
+    const id = progressStore.ensureActivePlayer();
+    let swappedRun = progressStore.swapPuzzle(GAME, index, id);
+    if (!swappedRun) {
+      // no stored run yet (storage off, or a first swap before startRun saved): save one, then swap
+      progressStore.startRun(GAME, index, RUN_INIT, id);
+      swappedRun = progressStore.swapPuzzle(GAME, index, id);
+    }
+    if (swappedRun) setRun(swappedRun);
+    stuckRef.current = stuckStep(stuckRef.current, { type: 'swap' }, limitRef.current);
+    startPuzzle(puzzleOnScreen(swappedRun ?? runRef.current), { swapped: true });
+  }
+
+  /** Play Stage N from the level card: the daily limit first, then the next stage at its waiting brick. */
+  function playStage(next: number) {
+    const path = `/game/drop/${next + 1}`;
+    if (breakBefore(path)) return;
+    startedFromCard = next;
+    go(path);
+  }
+
+  useEffect(() => {
+    if (!focusTo) return;
+    if (focusTo === 'board') boardRef.current?.focus();
+    else slotRef.current?.querySelector<HTMLElement>('button, a[href]')?.focus();
+    setFocusTo('');
+  }, [focusTo, phase, cardOpen]);
 
   // Game loop. Every function it calls reads state through refs, so the first-render closures stay valid.
   useEffect(() => {
@@ -163,14 +346,15 @@ export default function Play({ index }: { index: number }) {
     const loop = (t: number) => {
       const dt = Math.min(Math.max(t - last, 0), 100);
       last = t;
-      if (phaseRef.current === 'playing') {
+      if (roundRef.current!.phase === 'playing') {
         for (const [a, due] of held.current) {
           const every = REPEAT[a]!.every;
           let d = due;
           for (let n = 0; t >= d && n < 4; n++, d += every) act(a);
           held.current.set(a, t >= d ? t + every : d);
         }
-        apply((s) => step(s, dt));
+        commit(tickRound(roundRef.current!, dt));
+        setSecs(Math.floor(roundRef.current!.elapsedMs / 1000));
       }
       raf = requestAnimationFrame(loop);
     };
@@ -178,6 +362,8 @@ export default function Play({ index }: { index: number }) {
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(endTimer.current);
+      window.clearTimeout(flashTimer.current);
+      window.clearTimeout(cardTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -185,23 +371,24 @@ export default function Play({ index }: { index: number }) {
   // Keyboard
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+      const cmd = keyCommand(e);
+      const ph = roundRef.current!.phase;
+      if (cmd === 'pause') {
+        if (ph !== 'playing' && ph !== 'paused') return;
         e.preventDefault();
         if (!e.repeat) togglePause();
         return;
       }
-      const a = KEYS[e.key];
-      if (!a || phaseRef.current !== 'playing') return;
+      if (!cmd || (ph !== 'playing' && ph !== 'ready')) return;
       e.preventDefault();
-      if (!e.repeat) press(a);
+      if (!e.repeat) press(cmd);
     };
     const up = (e: KeyboardEvent) => {
-      const a = KEYS[e.key];
+      const a = keyAction(e.key);
       if (a) release(a);
     };
     const away = () => {
-      if (phaseRef.current === 'playing') setPhase('paused');
+      if (roundRef.current!.phase === 'playing') setPhase('paused');
     };
     const vis = () => document.hidden && away();
     window.addEventListener('keydown', down);
@@ -217,66 +404,51 @@ export default function Play({ index }: { index: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Size the board from the space that is left after the top bar and the buttons.
-  const areaRef = useRef<HTMLDivElement>(null);
-  const [area, setArea] = useState({ w: 0, h: 0 });
-  useLayoutEffect(() => {
-    const el = areaRef.current!;
-    const measure = () => setArea({ w: el.clientWidth, h: el.clientHeight });
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   const { cols, rows } = stage;
-  const wide = area.w >= 440;
-  const sideW = wide ? 118 : 74;
-  const cell = Math.max(
-    10,
-    Math.min(38, Math.floor(Math.min((area.w - sideW - FIELD_GAP - WELL_PAD * 2) / cols, (area.h - WELL_PAD * 2) / rows))),
-  );
-  const mini = Math.max(8, Math.min(Math.floor((sideW - 18) / 4), Math.round(cell * 0.62)));
+  const areaRef = useRef<HTMLDivElement>(null);
+  const cell = useCellSize(areaRef, cols, rows);
+  const ghostBorder = cell >= 28 ? 3 : 2;
+  const radius = cell >= 28 ? 5 : 4;
 
-  // Swipe and tap on the board: drag sideways to move, swipe down to drop, tap to turn.
+  // Swipe and tap on the board: drag sideways to move, swipe down to drop, tap to turn. A waiting brick starts on the first one.
   const touch = useRef<{ id: number; x0: number; y0: number; t0: number; sx: number; axis: '' | 'h' | 'v' } | null>(null);
+  const live = () => {
+    const ph = roundRef.current!.phase;
+    return ph === 'playing' || ph === 'ready';
+  };
   const onBoardDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (phaseRef.current !== 'playing') return;
+    if (!live()) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     touch.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), sx: e.clientX, axis: '' };
   };
   const onBoardMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const t = touch.current;
-    if (!t || t.id !== e.pointerId) return;
+    if (!t || t.id !== e.pointerId || !live()) return;
     const dx = e.clientX - t.x0;
     const dy = e.clientY - t.y0;
-    if (!t.axis && Math.hypot(dx, dy) > 12) t.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    if (!t.axis) t.axis = gestureAxis(dx, dy);
     if (t.axis !== 'h') return;
-    const stepPx = Math.max(cell, 18);
-    while (e.clientX - t.sx >= stepPx) {
-      act('right');
-      t.sx += stepPx;
-    }
-    while (e.clientX - t.sx <= -stepPx) {
-      act('left');
-      t.sx -= stepPx;
-    }
+    const drag = dragMoves(e.clientX, t.sx, dragStep(cell));
+    t.sx = drag.sx;
+    for (let i = 0; i < Math.abs(drag.moves); i++) act(drag.moves > 0 ? 'right' : 'left');
   };
   const onBoardUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     const t = touch.current;
     if (!t || t.id !== e.pointerId) return;
     touch.current = null;
-    if (phaseRef.current !== 'playing') return;
+    if (!live()) return;
     const dx = e.clientX - t.x0;
     const dy = e.clientY - t.y0;
     const ms = performance.now() - t.t0;
-    if (t.axis === 'v' && dy > Math.max(40, cell * 2) && dy > Math.abs(dx) * 1.5) act('drop');
-    else if (!t.axis && ms < 350) act('rotate');
+    const a = releaseAction(t.axis, dx, dy, ms, cell);
+    if (a) act(a);
   };
 
-  const g = gameRef.current;
+  const round = roundRef.current;
+  const g = round.game;
   const a = g.active;
-  const gy = a && g.status === 'playing' ? ghostY(g.board, a) : null;
+  const showBrick = phase === 'intro' || phase === 'ready' || phase === 'playing' || phase === 'paused';
+  const gy = a && showBrick && g.status === 'playing' ? ghostY(g.board, a) : null;
   const flashing = new Set(g.clearing);
   const pos = (x: number, y: number) => ({ transform: `translate(${x * cell}px, ${y * cell}px)` });
 
@@ -285,54 +457,125 @@ export default function Play({ index }: { index: number }) {
     row.forEach((c, x) => {
       if (c)
         bricks.push(
-          <span
-            key={`b${x},${y}`}
-            className={`brick brick--studs drop-cell${flashing.has(y) ? ' is-clearing' : ''}`}
-            data-color={c}
-            style={pos(x, y)}
-          />,
+          <Brick key={`b${x},${y}`} color={c} stud={cell - 2} radius={radius} className={`drop-cell${flashing.has(y) ? ' is-clearing' : ''}`} style={pos(x, y)} />,
         );
     }),
   );
-  if (a) {
+  if (a && showBrick) {
     const color = PIECES[a.id].color;
     const cells = activeCells(a);
     if (gy !== null && gy !== a.y)
       cells.forEach(([cx, cy]) =>
-        bricks.push(<span key={`g${cx},${cy}`} className="drop-ghost" data-color={color} style={pos(a.x + cx, gy + cy)} />),
+        bricks.push(
+          <span
+            key={`g${cx},${cy}`}
+            className="drop-ghost"
+            data-brick={color}
+            style={{ ...pos(a.x + cx, gy + cy), width: cell - 2, height: cell - 2, borderWidth: ghostBorder, borderRadius: radius }}
+          />,
+        ),
       );
     cells.forEach(([cx, cy]) =>
       bricks.push(
-        <span key={`a${cx},${cy}`} className="brick brick--studs drop-cell is-active" data-color={color} style={pos(a.x + cx, a.y + cy)} />,
+        <Brick key={`a${cx},${cy}`} color={color} stud={cell - 2} radius={radius} className="drop-cell is-active" style={pos(a.x + cx, a.y + cy)} />,
       ),
     );
   }
 
-  const isLast = index === STAGES.length - 1;
-  const fresh0 = newPieces(index);
+  const next = g.queue[0];
+  const dialogOpen = phase === 'intro' || phase === 'over' || cardOpen;
+  const paused = phase === 'paused';
+
+  // Dots (brief 7.1): right after a solve the dot just solved shows filled and stays wide.
+  const solvedCount = done ? done.results.length : run.solved.length;
+  const dotAt = phase === 'solved' ? solvedCount : undefined;
+
+  // The help line: the waiting brick, the result, or the words that pop up when rows clear.
+  const message: string[] = phase === 'ready' ? readyLines(index, swapped) : phase === 'solved' ? [solvedLine(g.placed)] : [];
+  const say = message.length ? message : flash ? [flash] : [];
+
+  // Timer row
+  const left = plan.kind === 'countdown' ? plan.seconds - secs : 0;
+  const tState = plan.kind === 'countdown' ? timerState(left, plan.seconds) : 'ok';
+  const clock = formatClock(left);
+
+  const card = done ? (done.next === null ? gameDoneCard(totalStars(activePlayer(progressStore.getState()), GAME)) : stageCard(index, done.results)) : null;
+  const playLabel = done && done.next !== null ? `Play Stage ${done.next + 1}` : '';
+
+  let slot: ReactNode;
+  if (phase === 'solved' && !done)
+    slot = (
+      <PressButton variant="green" size="lg" icon="play" iconEnd className="drop-next bw-appear" onClick={nextPuzzle}>
+        Next puzzle
+      </PressButton>
+    );
+  else if (done && cardClosed && playLabel)
+    slot = (
+      <PressButton variant="green" size="lg" icon="play" iconEnd className="drop-next bw-appear" onClick={() => playStage(done.next!)}>
+        {playLabel}
+      </PressButton>
+    );
+  else if (done) slot = null;
+  else
+    slot = (
+      <div className="drop-pad" role="group" aria-label="Controls">
+        {PAD.map((p) => (
+          <PadButton key={p.act} {...p} press={press} release={release} />
+        ))}
+      </div>
+    );
 
   return (
-    <div className="drop-play">
-      <div className="drop-play__inner">
-        <TopBar
-          title={`Stage ${index + 1}`}
-          subtitle={`${stage.name}${stage.speedy ? ' · speedy!' : ''}`}
-          back="/drop"
-          right={
-            <IconButton
-              icon={phase === 'paused' ? 'play' : 'pause'}
-              label={phase === 'paused' ? 'Keep playing' : 'Pause'}
-              onClick={togglePause}
-              disabled={phase !== 'playing' && phase !== 'paused'}
-            />
-          }
-        />
+    <div className="drop-root">
+      <Screen className="drop-frame">
+        <div className="drop-content" inert={dialogOpen}>
+          <TopBar
+            title={`Stage ${index + 1}`}
+            backLabel="Back to home"
+            below={<PuzzleDots solved={solvedCount} puzzle={dotAt} />}
+            action={
+              phase === 'ready' || phase === 'playing' || phase === 'paused' ? (
+                <IconButton icon={paused ? 'play' : 'pause'} label={paused ? 'Keep playing' : 'Pause'} onClick={togglePause} disabled={phase === 'ready'} />
+              ) : undefined
+            }
+          />
 
-        <div className="drop-area" ref={areaRef}>
-          <div className="drop-field" style={{ gap: FIELD_GAP }}>
-            <div
-              className="drop-well"
-              style={{ width: cols * cell + WELL_PAD * 2, height: rows * cell + WELL_PAD * 2, padding: WELL_PAD }}
+          {plan.kind === 'countdown' && (
+            <div className="drop-timer" data-state={tState}>
+              <Hourglass />
+              <span className="drop-timer__clock" role="timer" aria-label={`Time left ${clock}`}>
+                {clock}
+              </span>
+              <span className="drop-timer__track" aria-hidden="true">
+                <span style={{ width: `${Math.max(0, Math.min(100, (left / plan.seconds) * 100))}%` }} />
+              </span>
+            </div>
+          )}
+          {plan.kind === 'relaxed' && <SandTimer className="drop-sand" elapsed={secs} total={plan.seconds} />}
+
+          <div className="drop-tiles">
+            <div className="drop-tile">
+              <span className="drop-tile__label">Next</span>
+              <span className="drop-tile__next">{next && <MiniPiece id={next} boxW={76} boxH={40} />}</span>
+            </div>
+            <div className="drop-tile">
+              <span className="drop-tile__label">Rows</span>
+              <span className="drop-tile__value">
+                {Math.min(g.lines, goal)}
+                <small>/{goal}</small>
+              </span>
+            </div>
+          </div>
+
+          <div className="drop-area" ref={areaRef}>
+            <Well
+              cols={cols}
+              rows={rows}
+              cell={cell}
+              paused={paused}
+              ref={boardRef}
+              tabIndex={-1}
+              role="group"
               onPointerDown={onBoardDown}
               onPointerMove={onBoardMove}
               onPointerUp={onBoardUp}
@@ -340,221 +583,147 @@ export default function Play({ index }: { index: number }) {
               onContextMenu={(e) => e.preventDefault()}
               aria-label="Board. Tap to turn, drag sideways to move, swipe down to drop."
             >
-              <div
-                className="drop-grid"
-                style={{ width: cols * cell, height: rows * cell, ['--cell' as string]: `${cell}px`, backgroundSize: `${cell}px ${cell}px` }}
-              >
-                {bricks}
-                {g.clearing.map((y) => (
-                  <span key={`f${y}-${g.lines}`} className="drop-flash" style={{ top: y * cell, height: cell }} />
-                ))}
-              </div>
-            </div>
+              {bricks}
+              {g.clearing.map((y) => (
+                <span key={`f${y}-${g.lines}`} className="drop-flash" style={{ top: y * cell, height: cell }} />
+              ))}
+            </Well>
+          </div>
 
-            <aside className="drop-side" style={{ width: sideW }}>
-              <button
-                type="button"
-                tabIndex={-1}
-                className={`drop-box drop-box--hold${g.holdUsed ? ' is-used' : ''}`}
-                aria-label="Hold brick"
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  press('hold');
-                }}
-              >
-                <span className="drop-box__label">Hold</span>
-                <span className="drop-box__slot" style={{ minHeight: mini * 2 }}>
-                  <MiniPiece id={g.hold} size={mini} dim={g.holdUsed} />
-                </span>
-              </button>
-              <div className="drop-box">
-                <span className="drop-box__label">Next</span>
-                {g.queue.slice(0, PREVIEW).map((id, i) => (
-                  <span key={i} className={`drop-box__slot${i > 0 ? ' is-later' : ''}`} style={{ minHeight: mini * 2 }}>
-                    <MiniPiece id={id} size={mini} />
-                  </span>
-                ))}
-              </div>
-              <div className="drop-stat">
-                <span className="drop-stat__label">Rows</span>
-                <b className="drop-stat__value">
-                  {Math.min(g.lines, stage.goalRows)}
-                  <small>/{stage.goalRows}</small>
-                </b>
-                <span className="drop-meter" aria-hidden="true">
-                  <span style={{ width: `${(Math.min(g.lines, stage.goalRows) / stage.goalRows) * 100}%` }} />
-                </span>
-              </div>
-              <div className="drop-stat">
-                <span className="drop-stat__label">Bricks</span>
-                <b className="drop-stat__value">{g.placed}</b>
-              </div>
-            </aside>
+          <div className="drop-slot" ref={slotRef}>
+            {slot}
           </div>
         </div>
 
-        <div className="drop-pad" role="group" aria-label="Controls">
-          <PadButton act="hold" icon="hold" label="Hold" press={press} release={release} />
-          <PadButton act="rotate" icon="rotate" label="Turn" variant="go" press={press} release={release} />
-          <PadButton act="drop" icon="drop" label="Drop" variant="warm" press={press} release={release} />
-          <PadButton act="left" icon="left" label="Left" press={press} release={release} />
-          <PadButton act="down" icon="down" label="Down" press={press} release={release} />
-          <PadButton act="right" icon="right" label="Right" press={press} release={release} />
-        </div>
-        <p className="drop-keys">
-          Keys: <kbd>←</kbd> <kbd>→</kbd> move · <kbd>↑</kbd> turn · <kbd>↓</kbd> down · <kbd>Space</kbd> drop · <kbd>C</kbd> hold ·{' '}
-          <kbd>P</kbd> pause
+        <p className={`drop-say${message.length ? ' is-message' : ''}`} role="status">
+          {say.map((line) => (
+            <span key={line} className="drop-say__line">
+              {line}
+            </span>
+          ))}
         </p>
-      </div>
 
-      {phase === 'intro' && (
-        <ResultCard
-          title={stage.name}
-          message={
-            <span className="drop-intro">
-              <span className="drop-intro__goal">
-                Goal: clear <b>{stage.goalRows}</b> rows
-              </span>
-              <span className="drop-intro__pieces">
-                {stage.pieces.map((id) => (
-                  <span key={id} className={`drop-intro__piece${fresh0.includes(id) ? ' is-new' : ''}`}>
-                    <MiniPiece id={id} size={14} />
-                    {fresh0.includes(id) && <span className="drop-intro__tag">New: {PIECES[id].name}</span>}
-                  </span>
-                ))}
-              </span>
-              <span className="drop-intro__tip">{stage.tip}</span>
-              <span className="drop-intro__rule">
-                <Stars value={3} /> use {rule.three} bricks or fewer
-              </span>
-            </span>
-          }
-        >
-          <button
-            className="btn btn--go"
-            onClick={() => {
-              sfx.tap();
-              setPhase('playing');
-            }}
+        {phase === 'intro' && (
+          <Sheet
+            title={stage.name}
+            actions={
+              <PressButton variant="green" size="lg" block data-autofocus onClick={() => startPuzzle(round.puzzle, { swapped: false })}>
+                Start
+              </PressButton>
+            }
           >
-            Let's go!
-          </button>
-          <button className="btn" onClick={() => go('/drop')}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+            {introLines(index, plan.kind === 'countdown').map((line, i) => (
+              <p key={line} className={i === 0 ? 'drop-sheet__line' : 'drop-sheet__note'}>
+                {line}
+              </p>
+            ))}
+            <p className="drop-sheet__keys">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
+          </Sheet>
+        )}
 
-      {phase === 'paused' && (
-        <ResultCard title="Paused" message="Take a break. Your bricks will wait for you.">
-          <button className="btn btn--go" onClick={() => { sfx.tap(); setPhase('playing'); }}>
-            Keep playing
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); restart(); }}>
-            Start over
-          </button>
-          <button className="btn" onClick={() => go('/drop')}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+        {phase === 'over' && (
+          <Sheet
+            title="Out of room"
+            actions={
+              offer ? (
+                <>
+                  <PressButton variant="green" size="lg" block icon="swap" data-autofocus onClick={newPuzzle}>
+                    New puzzle
+                  </PressButton>
+                  <PressButton size="md" block className="drop-secondary" onClick={tryAgain}>
+                    Try again
+                  </PressButton>
+                  <a className="drop-sheet__link" href={HOME}>
+                    Back to games
+                  </a>
+                </>
+              ) : (
+                <>
+                  <PressButton variant="green" size="lg" block data-autofocus onClick={tryAgain}>
+                    Try again
+                  </PressButton>
+                  <PressButton size="md" block className="drop-secondary" href={HOME}>
+                    Back to games
+                  </PressButton>
+                </>
+              )
+            }
+          >
+            <p className="drop-sheet__line">{overLine(Math.min(g.lines, goal), goal)}</p>
+            {offer && <p className="drop-sheet__line">{STUCK_LINE}</p>}
+          </Sheet>
+        )}
 
-      {phase === 'won' && (
-        <ResultCard
-          title={isLast ? 'Master Builder!' : 'Stage clear!'}
-          stars={result.stars}
-          message={
-            <span className="drop-result">
-              <span>
-                You cleared {stage.goalRows} rows with <b>{g.placed}</b> bricks.
-              </span>
-              <span className="drop-result__rule">
-                3 stars: {rule.three} bricks or fewer. 2 stars: {rule.two} or fewer.
-              </span>
-              <span className="drop-result__score">
-                Score {g.score}
-                {result.newBest && <b className="drop-result__best"> New best!</b>}
-              </span>
-              {isLast && <span>You finished every stage. Amazing planning!</span>}
-            </span>
-          }
-        >
-          {!isLast && (
-            <button className="btn btn--go" onClick={() => { sfx.tap(); go(`/drop/${index + 2}`); }}>
-              Next stage
-            </button>
-          )}
-          <button className="btn" onClick={() => { sfx.tap(); restart(); }}>
-            Play again
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); go('/drop'); }}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
-
-      {phase === 'over' && (
-        <ResultCard
-          title="Nice try!"
-          message={
-            <span className="drop-result">
-              <span>
-                The bricks reached the top. You cleared <b>{Math.min(g.lines, stage.goalRows)}</b> of {stage.goalRows} rows.
-              </span>
-              <span className="drop-result__rule">Tip: {stage.tip}</span>
-            </span>
-          }
-        >
-          <button className="btn btn--go" onClick={() => { sfx.tap(); restart(); }}>
-            Try again
-          </button>
-          <button className="btn" onClick={() => { sfx.tap(); go('/drop'); }}>
-            Stages
-          </button>
-        </ResultCard>
-      )}
+        {cardOpen && done && card && (
+          <LevelCard
+            title={card.title}
+            stars={done.stars}
+            fact={card.fact}
+            rule={card.rule}
+            cap={card.cap}
+            primary={done.next === null ? { label: 'Back to games', href: HOME } : { label: playLabel, onClick: () => playStage(done.next!) }}
+            secondary={done.next === null ? undefined : { label: 'Back to games', href: HOME }}
+            onClose={() => {
+              if (done.next === null) {
+                go('/');
+                return;
+              }
+              // the controls slot then shows the same Play button, and focus goes there (brief 10)
+              setCardOpen(false);
+              setCardClosed(true);
+              setFocusTo('slot');
+            }}
+          />
+        )}
+      </Screen>
     </div>
   );
 }
 
+/** One control of the row: icon over label, 62px tall. Pressing and holding repeats; Enter works from the keyboard. */
 function PadButton({
   act,
   icon,
   label,
-  variant,
+  tone,
   press,
   release,
 }: {
   act: Action;
-  icon: string;
+  icon: IconName;
   label: string;
-  variant?: 'go' | 'warm';
+  tone: 'purple' | 'green';
   press: (a: Action) => void;
   release: (a: Action) => void;
 }) {
   const up = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.currentTarget.classList.remove('is-down');
+    e.currentTarget.classList.remove('is-pressed');
     release(act);
   };
   return (
     <button
       type="button"
-      tabIndex={-1}
-      className={`btn drop-pad__btn drop-pad__btn--${act}${variant ? ` btn--${variant}` : ''}`}
-      aria-label={label}
+      className="bw-press drop-pad__btn"
+      data-tone={tone}
       onPointerDown={(e) => {
         e.preventDefault();
         e.currentTarget.setPointerCapture?.(e.pointerId);
-        e.currentTarget.classList.add('is-down');
+        e.currentTarget.classList.add('is-pressed');
         press(act);
       }}
       onPointerUp={up}
       onPointerCancel={up}
       onLostPointerCapture={up}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' || e.repeat) return;
+        e.preventDefault();
+        press(act);
+        release(act);
+      }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <Icon name={icon} size={28} />
-      <span className="drop-pad__label">{label}</span>
+      <Icon name={icon} size={26} strokeWidth={3} />
+      {label}
     </button>
   );
 }

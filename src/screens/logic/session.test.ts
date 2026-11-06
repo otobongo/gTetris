@@ -1,0 +1,245 @@
+import { describe, expect, it, vi } from 'vitest';
+import { AVATAR_COLORS, type Player } from '../../shared/progress';
+import type { Route } from '../../shared/router';
+import { GROWN_UP_PASS_MS, backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
+
+const NOON = new Date(2026, 10, 4, 12, 0).getTime();
+
+function player(over: Partial<Player> = {}): Player {
+  return {
+    id: 'p1',
+    name: 'Maya',
+    ageBand: '7-8',
+    color: 'blue',
+    dailyLimit: 20,
+    timerMode: 'auto',
+    unnamed: false,
+    createdAt: 0,
+    updatedAt: 0,
+    games: {},
+    stickers: {},
+    today: { day: '2026-11-04', minutes: 0, extraMinutes: 0 },
+    ...over,
+  };
+}
+
+describe('Break: which screens it blocks', () => {
+  it('treats Home, Levels and the games as play, and nothing else', () => {
+    expect(isPlayRoute({ name: 'home' })).toBe(true);
+    expect(isPlayRoute({ name: 'levels', id: 'drop' })).toBe(true);
+    expect(isPlayRoute({ name: 'game', id: 'letters', level: null })).toBe(true);
+    expect(isPlayRoute({ name: 'game', id: 'letters', level: 4 })).toBe(true);
+    for (const name of ['players', 'stickers', 'break', 'settings', 'signin', 'signup', 'help', 'terms', 'privacy'] as const) {
+      expect(isPlayRoute({ name }), name).toBe(false);
+    }
+  });
+
+  it('breaks exactly when the minutes played reach the limit plus extra time', () => {
+    const at = (minutes: number, extraMinutes = 0) => shouldBreak({ name: 'home' }, player({ today: { day: '2026-11-04', minutes, extraMinutes } }), NOON);
+    expect(at(19)).toBe(false);
+    expect(at(20)).toBe(true);
+    expect(at(21)).toBe(true);
+    expect(at(29, 10)).toBe(false);
+    expect(at(30, 10)).toBe(true);
+  });
+
+  it('uses each player’s own limit', () => {
+    const today = { day: '2026-11-04', minutes: 45, extraMinutes: 0 };
+    expect(shouldBreak({ name: 'home' }, player({ dailyLimit: 30, today }), NOON)).toBe(true);
+    expect(shouldBreak({ name: 'home' }, player({ dailyLimit: 60, today }), NOON)).toBe(false);
+  });
+
+  it('does not carry yesterday’s extra time into today', () => {
+    const p = player({ today: { day: '2026-11-03', minutes: 0, extraMinutes: 60 } });
+    // a new day: the stored extra time belongs to the 3rd, so today starts at the plain limit
+    expect(shouldBreak({ name: 'home' }, p, NOON)).toBe(false);
+    expect(shouldBreak({ name: 'home' }, { ...p, today: { day: '2026-11-04', minutes: 20, extraMinutes: 0 } }, NOON)).toBe(true);
+  });
+});
+
+describe('Break: where play picks up again', () => {
+  it('starts at Home and remembers the path the limit stopped, with a leading slash', () => {
+    expect(getResumePath()).toBe('/');
+    setResumePath('/game/escape/4');
+    expect(getResumePath()).toBe('/game/escape/4');
+    setResumePath('game/drop/levels');
+    expect(getResumePath()).toBe('/game/drop/levels');
+  });
+});
+
+describe('grown-up pages: the check and the Back button', () => {
+  it('stays passed until it is reset', () => {
+    expect(grownUpGate.passed()).toBe(false);
+    grownUpGate.pass();
+    expect(grownUpGate.passed()).toBe(true);
+    grownUpGate.pass();
+    expect(grownUpGate.passed()).toBe(true);
+    grownUpGate.reset();
+    expect(grownUpGate.passed()).toBe(false);
+  });
+
+  it('falls back when nothing came before, and ignores a repeat of the same path', () => {
+    expect(backTarget(['/'], '/settings')).toBe('/settings');
+    notePath('/');
+    expect(backTarget(['/'], '/settings')).toBe('/settings'); // still on the first path
+    notePath('settings');
+    expect(backTarget(['/'], '/help')).toBe('/');
+    notePath('/settings');
+    expect(backTarget(['/'], '/help')).toBe('/'); // the same path again does not replace "before"
+  });
+
+  it('never sends Back to a path that is not allowed', () => {
+    notePath('/game/escape/3');
+    notePath('/settings');
+    expect(backTarget(['/help', '/signin'], '/')).toBe('/');
+  });
+});
+
+describe('a new player’s avatar colour', () => {
+  const withColors = (colors: readonly string[]) => colors.map((c, i) => player({ id: `p${i}`, color: c as Player['color'] }));
+
+  it('takes the first colour nobody has, in board order', () => {
+    expect(nextAvatarColor(withColors(['red', 'green']))).toBe('yellow');
+    expect(nextAvatarColor(withColors(['blue', 'blue']))).toBe('red');
+  });
+
+  it('cycles once all eight colours are taken', () => {
+    const eight = withColors(AVATAR_COLORS);
+    expect(nextAvatarColor(eight)).toBe(AVATAR_COLORS[0]);
+    expect(nextAvatarColor([...eight, player({ id: 'x', color: 'red' })])).toBe(AVATAR_COLORS[1]);
+  });
+});
+
+describe('grown-up check: it ends when the grown-up pages are left', () => {
+  const grownUpPages: Route[] = [{ name: 'settings' }, { name: 'signin' }, { name: 'signup' }, { name: 'help' }, { name: 'terms' }, { name: 'privacy' }];
+  const kidPages: Route[] = [
+    { name: 'home' },
+    { name: 'players' },
+    { name: 'break' },
+    { name: 'stickers' },
+    { name: 'levels', id: 'escape' },
+    { name: 'game', id: 'escape', level: null },
+    { name: 'game', id: 'drop', level: 3 },
+    { name: 'notFound', path: 'nowhere' },
+  ];
+
+  it('counts Settings, the account screens, Support and the legal pages as grown-up pages, and nothing else', () => {
+    for (const r of grownUpPages) expect(isGrownUpRoute(r), r.name).toBe(true);
+    for (const r of kidPages) expect(isGrownUpRoute(r), r.name).toBe(false);
+  });
+
+  it('stays passed while a grown-up moves between grown-up pages', () => {
+    grownUpGate.pass();
+    for (const r of grownUpPages) {
+      grownUpGate.follow(r);
+      expect(grownUpGate.passed(), r.name).toBe(true);
+    }
+    grownUpGate.reset();
+  });
+
+  it('ends on every screen a child can reach, so Settings asks again', () => {
+    for (const r of kidPages) {
+      grownUpGate.pass();
+      grownUpGate.follow(r);
+      expect(grownUpGate.passed(), r.name).toBe(false);
+    }
+  });
+
+  it('ends when Back from Settings lands on Home but Home turns straight into Break', () => {
+    // Home never draws in this case (App redirects to Break first), so Home's own reset never runs.
+    grownUpGate.pass();
+    grownUpGate.follow({ name: 'home' });
+    expect(grownUpGate.passed()).toBe(false);
+    grownUpGate.follow({ name: 'break' });
+    grownUpGate.follow({ name: 'players' });
+    grownUpGate.follow({ name: 'settings' });
+    expect(grownUpGate.passed()).toBe(false);
+  });
+
+  it('ends when the device Back button goes from Settings to Who’s playing', () => {
+    grownUpGate.pass();
+    grownUpGate.follow({ name: 'settings' });
+    grownUpGate.follow({ name: 'players' });
+    expect(grownUpGate.passed()).toBe(false);
+  });
+});
+
+describe('review additions: resume path and Back', () => {
+  it('resumes at Home when the stopped path is empty', () => {
+    setResumePath('');
+    expect(getResumePath()).toBe('/');
+  });
+
+  it('sends Back to the path just before, not one further back', () => {
+    notePath('/help');
+    notePath('/settings');
+    notePath('/signin');
+    expect(backTarget(['/help', '/settings'], '/')).toBe('/settings');
+  });
+
+  it('notes a path without a leading slash as the same path, so it does not count as a move', () => {
+    notePath('/players');
+    notePath('/help');
+    notePath('help');
+    expect(backTarget(['/players'], '/')).toBe('/players');
+  });
+});
+
+describe('the grown-up pass runs out 10 minutes after it was given', () => {
+  // The pass reads the store's clock, which is Date.now, so fake timers move it.
+  const START = new Date(2026, 10, 5, 9, 0).getTime();
+
+  it('holds for 10 minutes on the grown-up pages, then the check asks again', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      grownUpGate.follow({ name: 'help' });
+      vi.setSystemTime(START + GROWN_UP_PASS_MS - 1);
+      expect(grownUpGate.passed()).toBe(true);
+      vi.setSystemTime(START + GROWN_UP_PASS_MS);
+      expect(grownUpGate.passed()).toBe(false);
+      // Moving between grown-up pages does not bring it back.
+      grownUpGate.follow({ name: 'terms' });
+      grownUpGate.follow({ name: 'settings' });
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('a new pass starts a new 10 minutes', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      vi.setSystemTime(START + 9 * 60_000);
+      grownUpGate.pass();
+      vi.setSystemTime(START + 18 * 60_000);
+      expect(grownUpGate.passed()).toBe(true);
+      vi.setSystemTime(START + 19 * 60_000);
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('a clock set back before the pass does not stretch it', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(START);
+      grownUpGate.pass();
+      vi.setSystemTime(START - 60_000);
+      expect(grownUpGate.passed()).toBe(false);
+    } finally {
+      grownUpGate.reset();
+      vi.useRealTimers();
+    }
+  });
+
+  it('is 10 minutes', () => {
+    expect(GROWN_UP_PASS_MS).toBe(10 * 60_000);
+  });
+});
