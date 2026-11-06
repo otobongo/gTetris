@@ -7,6 +7,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
+import { GAMES, GAME_IDS } from '../../games/registry';
 import { escapeLevelStars } from '../../games/run';
 import { emptyState, progressStore, type Player, type PuzzleRules } from '../../shared/progress';
 import { grownUpGate, setResumePath, settingsReturn } from './session';
@@ -51,7 +52,7 @@ afterEach(() => {
 describe('Home', () => {
   it('links every card to the game, never to a level grid, and names the puzzle progress', () => {
     const html = decode(renderAt('#/'));
-    for (const id of ['escape', 'drop', 'letters', 'mixer']) expect(html).toContain(`href="#/game/${id}"`);
+    for (const id of GAME_IDS) expect(html, id).toContain(`href="#/game/${id}"`);
     expect(html).not.toContain('/levels');
     expect(html).toContain('aria-label="Brick Escape. Slide bricks out their doors. Level 9, 2 of 4 puzzles solved."');
     expect(html).toContain('>Level 9<');
@@ -106,6 +107,8 @@ describe('Settings', () => {
     grownUpGate.pass();
     const html = decode(renderAt('#/settings'));
     for (const id of ['escape', 'drop', 'letters']) expect(html).toContain(`href="#/settings/levels/${id}/${maya.id}"`);
+    for (const g of GAMES) expect(html.includes(`href="#/settings/levels/${g.id}/${maya.id}"`), g.id).toBe(g.playable);
+    expect(html).not.toContain(`href="#/settings/levels/math/`);
     expect(html).toContain('aria-label="Brick Escape for Maya: Level 9, 2 of 4 puzzles. Pick a level"');
     expect(html).toContain('Stage 1');
     expect(html).toContain("Reset Maya's progress");

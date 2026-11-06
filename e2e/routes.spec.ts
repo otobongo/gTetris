@@ -39,7 +39,7 @@ test('old paths, the old level grid and other level numbers all open the current
 
 test('the grown-up picker sends an unknown game or child back to Settings', async ({ page }) => {
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
-  for (const hash of ['#/settings/levels/escape/nobody', '#/settings/levels/mixer/maya', '#/settings/levels/chess/maya']) {
+  for (const hash of ['#/settings/levels/escape/nobody', '#/settings/levels/math/maya', '#/settings/levels/chess/maya']) {
     await page.goto(`/${hash}`);
     await expect(page, hash).toHaveURL(/#\/settings$/);
     // Settings itself still asks for the grown-up check first.

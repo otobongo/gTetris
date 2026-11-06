@@ -17,6 +17,9 @@
   --bw-well-shadow: inset 0 3px 6px rgb(0 0 0 / 0.35);
   --bw-scrim: rgb(10 6 30 / 0.65);
   --bw-dashed: #6d5fd0;           /* dashed "add" or empty slot, decoration only */
+  --bw-panel-top: #4a3ca8;        /* Shape Sorter holes panel, top of its gradient into --bw-panel */
+  --bw-bowl: #e9e4ff;             /* Color Mixer bowl, top of its gradient */
+  --bw-display: #121034;          /* Brick Calculator display */
 
   /* ---------- Raised (anything you can press) ---------- */
   --bw-purple-top: #5444b8;
@@ -33,6 +36,7 @@
   --bw-green-bottom: #1fb53c;
   --bw-green-edge: #0f7a26;
   --bw-on-green: #063510;         /* user decision 2026-11-03: dark label on every green button */
+  --bw-on-pink: #241a63;          /* label on pink keys: 5.4:1 on --brick-pink, 8.0:1 on --brick-pink-light */
 
   --bw-secondary: #4b3eaa;
   --bw-secondary-top: #6b5bd0;
@@ -131,6 +135,7 @@
 
   /* ---------- Layers ---------- */
   --bw-z-bar: 10;
+  --bw-z-drag: 20;                /* a dragged piece or tower, above its board */
   --bw-z-overlay: 50;
   --bw-z-toast: 60;
 
