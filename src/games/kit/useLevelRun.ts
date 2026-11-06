@@ -155,7 +155,8 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         dispatch({ type: 'solve', outcome });
       },
       swap() {
-        if (!playing()) return;
+        // New puzzle is the stuck offer's button: only while it shows, so a double tap swaps (and saves) once.
+        if (!offerShows(ref.current)) return;
         // The daily limit first, as at every puzzle boundary; the swap waits until after Break.
         if (brk(here)) return;
         const saved = hasPlayer() ? store.swapPuzzle(game.id, level, playerId()) : null;
