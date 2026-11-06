@@ -8,11 +8,12 @@
  *   pick stores the current level first, so the level it opens passes this rule;
  * - the level picker needs a playable game and a player that exists, else it goes to Settings;
  * - unknown paths and games go Home;
- * - a used-up daily limit then sends a play route to Break, with the resolved path to resume.
+ * - a used-up daily limit then sends a play route to Break, with the resolved path to resume;
+ * - Break itself, opened while the child still has time, goes Home.
  */
 import { currentLevel } from '../../games/meta';
 import { getGame } from '../../games/registry';
-import { activePlayer, findPlayer, gameOf, type Player, type ProgressState } from '../../shared/progress';
+import { activePlayer, findPlayer, gameOf, isBreakTime, type Player, type ProgressState } from '../../shared/progress';
 import { legacyRedirect, parseRoute, pathFor, splitPath, type Route } from '../../shared/router';
 import { shouldBreak } from './session';
 
@@ -62,6 +63,10 @@ export function planRoute(segments: string[], state: ProgressState, now: number)
   const asked = pathFor(parseRoute(segments));
   const route = settle(segments, state);
   const path = pathFor(route);
-  if (shouldBreak(route, activePlayer(state), now)) return { route, path, redirect: '/break' };
+  const player = activePlayer(state);
+  if (shouldBreak(route, player, now)) return { route, path, redirect: '/break' };
+  // Break opened by its address while the child still has time goes Home. With nobody playing it
+  // stays, and App sends it on to Who's playing.
+  if (route.name === 'break' && player && !isBreakTime(player, now)) return { route: { name: 'home' }, path: '/', redirect: '/' };
   return { route, path, redirect: path === asked ? null : path };
 }

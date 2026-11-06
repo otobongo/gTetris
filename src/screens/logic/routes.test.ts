@@ -195,4 +195,19 @@ describe('planRoute: Break', () => {
     store.addExtraMinutes(10);
     expect(plan('#/game/escape').redirect).toBe('/game/escape/1');
   });
+
+  it('sends #/break Home while the child still has time, so it never says 0 minutes played', () => {
+    const { store, plan } = setup();
+    expect(plan('#/break')).toMatchObject({ redirect: '/', route: { name: 'home' } });
+    store.addMinutesPlayed(29);
+    expect(plan('#/break').redirect).toBe('/');
+  });
+
+  it('keeps #/break open once the limit is used up, and when nobody is playing (App sends that to Who’s playing)', () => {
+    const { store, plan } = setup();
+    store.addMinutesPlayed(30);
+    expect(plan('#/break').redirect).toBeNull();
+    const nobody = createProgressStore({ storage: { getItem: () => null, setItem: () => {} }, now: () => NOON, events: null });
+    expect(planRoute(splitPath('#/break'), nobody.getState(), NOON).redirect).toBeNull();
+  });
 });

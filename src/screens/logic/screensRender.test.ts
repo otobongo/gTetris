@@ -128,6 +128,11 @@ describe('Settings', () => {
 });
 
 describe('Break', () => {
+  // Break draws only once today's limit is used up; with time left, #/break goes Home (routes.test.ts).
+  beforeEach(() => {
+    progressStore.addMinutesPlayed(maya.dailyLimit);
+  });
+
   it('names the level in progress when it stopped one', () => {
     setResumePath('/game/escape/9');
     expect(decode(renderAt('#/break'))).toContain('Level 9 is saved with 2 of 4 puzzles solved.');
