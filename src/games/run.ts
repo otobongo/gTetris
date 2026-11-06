@@ -8,7 +8,11 @@ import { capStars, levelCaps } from './stars';
 
 export { PUZZLES_PER_LEVEL, SOLVES_PER_LEVEL };
 
-export type RunGame = 'escape' | 'drop' | 'letters';
+/** The six games built on the shared kit (src/games/kit, six-games brief 3.1). Each counts slips for its stars. */
+export const SLIP_GAMES = ['mixer', 'sorter', 'numbers', 'pattern', 'math', 'builder'] as const;
+export type SlipGame = (typeof SLIP_GAMES)[number];
+
+export type RunGame = 'escape' | 'drop' | 'letters' | SlipGame;
 
 /* ---------- Puzzle sets (6.1): a stored run on another set starts again ---------- */
 
@@ -18,6 +22,17 @@ export const escapeSet = (levelId: string): string => `escape:${levelId}`;
 export const dropSet = (version = 1): string => `drop:${version}`;
 /** Letter Builder: words depend on the age band; raise `version` whenever the puzzle rules change. */
 export const lettersSet = (band: AgeBand, version = 1): string => `letters:${version}:${band}`;
+
+/*
+ * The six kit games (six-games brief 3.2, 6). Raise `version` whenever a game's puzzle rules change, so
+ * stored runs restart at puzzle 1. Number Line-up and Brick Calculator change their numbers by age band.
+ */
+export const mixerSet = (version = 1): string => `mixer:${version}`;
+export const sorterSet = (version = 1): string => `sorter:${version}`;
+export const patternSet = (version = 1): string => `pattern:${version}`;
+export const builderSet = (version = 1): string => `builder:${version}`;
+export const numbersSet = (band: AgeBand, version = 1): string => `numbers:${version}:${band}`;
+export const mathSet = (band: AgeBand, version = 1): string => `math:${version}:${band}`;
 
 /* ---------- Queue (3.3) ---------- */
 
@@ -65,6 +80,45 @@ export const STUCK: Readonly<Record<RunGame, Readonly<Record<AgeBand, StuckLimit
     '9-10': { count: 3, seconds: null },
   },
   letters: {
+    '3-4': { count: 3, seconds: 30 },
+    '5-6': { count: 3, seconds: 40 },
+    '7-8': { count: 4, seconds: 50 },
+    '9-10': { count: 4, seconds: 60 },
+  },
+  // The six kit games (six-games brief 3.3): the count signal is slips. Mixer, Sorter, Pattern and Builder
+  // copy Letter Builder's row; Number Line-up gets longer (one swap is two taps among six towers);
+  // Brick Calculator counts typed answers, so its count is lower and its seconds longer.
+  mixer: {
+    '3-4': { count: 3, seconds: 30 },
+    '5-6': { count: 3, seconds: 40 },
+    '7-8': { count: 4, seconds: 50 },
+    '9-10': { count: 4, seconds: 60 },
+  },
+  sorter: {
+    '3-4': { count: 3, seconds: 30 },
+    '5-6': { count: 3, seconds: 40 },
+    '7-8': { count: 4, seconds: 50 },
+    '9-10': { count: 4, seconds: 60 },
+  },
+  numbers: {
+    '3-4': { count: 3, seconds: 45 },
+    '5-6': { count: 3, seconds: 60 },
+    '7-8': { count: 4, seconds: 75 },
+    '9-10': { count: 4, seconds: 90 },
+  },
+  pattern: {
+    '3-4': { count: 3, seconds: 30 },
+    '5-6': { count: 3, seconds: 40 },
+    '7-8': { count: 4, seconds: 50 },
+    '9-10': { count: 4, seconds: 60 },
+  },
+  math: {
+    '3-4': { count: 2, seconds: 45 },
+    '5-6': { count: 2, seconds: 45 },
+    '7-8': { count: 3, seconds: 60 },
+    '9-10': { count: 3, seconds: 60 },
+  },
+  builder: {
     '3-4': { count: 3, seconds: 30 },
     '5-6': { count: 3, seconds: 40 },
     '7-8': { count: 4, seconds: 50 },
@@ -141,10 +195,19 @@ export function stuckStep(s: StuckState, e: StuckEvent, limit: StuckLimit): Stuc
 
 /* ---------- Stars over 4 puzzles (section 5) ---------- */
 
-/** The base thresholds: Escape on extra moves E, Letter Builder on slips S (3 stars at or under `three`, 2 at or under `two`). */
+/**
+ * The base thresholds: Escape on extra moves E, Letter Builder and the six kit games on slips S
+ * (3 stars at or under `three`, 2 at or under `two`; six-games brief 3.2).
+ */
 export const LEVEL_STAR_RULES = {
   escape: { three: 4, two: 12 },
   letters: { three: 1, two: 4 },
+  mixer: { three: 1, two: 4 },
+  sorter: { three: 1, two: 4 },
+  numbers: { three: 1, two: 4 },
+  pattern: { three: 1, two: 4 },
+  math: { three: 1, two: 4 },
+  builder: { three: 1, two: 4 },
 } as const;
 
 export interface LevelTotals {
@@ -196,10 +259,29 @@ export function lettersLevelStars(results: readonly PuzzleResult[]): number {
   return capStars(base(t.count, LEVEL_STAR_RULES.letters.three, LEVEL_STAR_RULES.letters.two), t);
 }
 
+/**
+ * The six kit games' star rule (six-games brief 3.2): Letter Builder's rule on slips, through capStars.
+ * Slips S <= 1 is 3 stars, S <= 4 is 2, more is 1; a hint (Number Line-up) caps at 2.
+ * slipLevelStars('mixer') is the function to pass as `stars` in recordPuzzle's rules.
+ */
+export function slipLevelStars(game: SlipGame): (results: readonly PuzzleResult[]) => number {
+  const rule = LEVEL_STAR_RULES[game];
+  return (results) => {
+    const t = levelTotals(results);
+    return capStars(base(t.count, rule.three, rule.two), t);
+  };
+}
+
 const LEVEL_STARS: Record<RunGame, (results: readonly PuzzleResult[]) => number> = {
   escape: escapeLevelStars,
   drop: dropLevelStars,
   letters: lettersLevelStars,
+  mixer: slipLevelStars('mixer'),
+  sorter: slipLevelStars('sorter'),
+  numbers: slipLevelStars('numbers'),
+  pattern: slipLevelStars('pattern'),
+  math: slipLevelStars('math'),
+  builder: slipLevelStars('builder'),
 };
 
 /** A game's level stars, 1 to 3, caps included. Pass it as `stars` in the store's recordPuzzle rules. */
