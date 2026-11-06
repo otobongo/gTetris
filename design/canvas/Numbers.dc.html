@@ -9,210 +9,523 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .num-tower[data-drag="false"] { transform: none !important; transition: opacity 150ms linear !important; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Number Line-up</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Level 3 of 15</div>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
+</sc-for>
 </div>
-<button onClick="{{shuffle}}" aria-label="Mix them up" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3c5 0 5 10 10 10h3"></path><path d="M4 17h3c2 0 3-1.5 4-3.5"></path><path d="M13 9.5c1-2 2-2.5 4-2.5h3"></path><path d="M18 4l3 3-3 3M18 14l3 3-3 3"></path></svg>
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speak}}" aria-label="{{speakLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
 </button>
+</sc-if>
+</div>
 </div>
 
-<div style="display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: #30257a;">
-<button onClick="{{modeUp}}" aria-pressed="{{isUp}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 14px; border-radius: 12px; {{upStyle}}">Smallest first</button>
-<button onClick="{{modeDown}}" aria-pressed="{{isDown}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 14px; border-radius: 12px; {{downStyle}}">Biggest first</button>
-</div>
-
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 18px; background: #30257a;">
 <span style="font-size: 14px; font-weight: 800; color: #c9c2ff;">GOAL</span>
-<div style="display: flex; align-items: flex-end; gap: 3px; height: 34px;" aria-hidden="true">
+<div style="display: flex; align-items: flex-end; gap: 3px; height: 34px; flex-shrink: 0;" aria-hidden="true">
 <sc-for list="{{goalBars}}" as="g" hint-placeholder-count="6">
 <span style="width: 14px; border-radius: 3px; background: {{g.color}}; height: {{g.h}}px;"></span>
 </sc-for>
 </div>
-<span style="font-size: 15px; font-weight: 800; line-height: 1.2; flex-grow: 1;">{{goalText}}</span>
+<span style="min-width: 0; flex-grow: 1; font-size: 15px; font-weight: 800; line-height: 1.2;">{{goalText}}</span>
 </div>
+</sc-if>
 
-<p style="margin: 0; min-height: 50px; font-size: 18px; font-weight: 800; line-height: 1.3; text-align: center; color: {{promptColor}};">{{prompt}}</p>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: #ffffff; text-align: center; text-wrap: balance;">{{help}}</p>
+<button onClick="{{hint}}" aria-label="Hint, {{hintsLeft}} left" aria-disabled="{{hintOff}}" style="grid-column: 3; grid-row: 1; position: relative; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #5a3500; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00; opacity: {{hintopacity}};">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
+<span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 8px; background: #d92f45; border: 2px solid #ffffff; color: #ffffff; font-size: 13px; line-height: 20px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums;">{{hintsLeft}}</span>
+</button>
+<div style="grid-column: 1; grid-row: 1; display: grid;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
+</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
 
 <div style="width: 100%; box-sizing: border-box; padding: 16px 8px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); flex-grow: 1; display: flex; flex-direction: column;">
 <div style="flex-grow: 1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; align-items: end;">
 <sc-for list="{{towers}}" as="t" hint-placeholder-count="6">
-<button data-slot="{{t.slot}}" onClick="{{t.tap}}" onPointerDown="{{t.down}}" onPointerMove="{{t.move}}" onPointerUp="{{t.up}}" onPointerCancel="{{t.cancel}}" aria-label="{{t.label}}" style="position: relative; border: 0; padding: 0; background: transparent; cursor: grab; touch-action: none; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; height: 100%; justify-content: flex-start; {{t.wrap}}">
-<span style="width: 48px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); flex-shrink: 0; {{t.face}} {{t.ring}}">{{t.n}}</span>
+<button class="num-tower" data-drag="{{t.dragging}}" data-slot="{{t.slot}}" onClick="{{t.tap}}" onPointerDown="{{t.down}}" onPointerMove="{{t.move}}" onPointerUp="{{t.up}}" onPointerCancel="{{t.cancel}}" aria-label="{{t.label}}" aria-pressed="{{t.on}}" aria-disabled="{{t.off}}" style="position: relative; border: 0; padding: 0; font-family: inherit; background: transparent; cursor: grab; touch-action: none; display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; height: 100%; min-height: 54px; justify-content: flex-start; {{t.wrap}}">
+<span style="display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; padding: 2px; border-radius: 14px; flex-shrink: 0; {{t.ring}}">
+<span style="width: 48px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; font-weight: 800; line-height: 1; flex-shrink: 0; font-variant-numeric: tabular-nums; {{t.face}}">{{t.n}}</span>
 <sc-for list="{{t.studs}}" as="b" hint-placeholder-count="3">
 <span style="width: 40px; height: 22px; border-radius: 6px; flex-shrink: 0; {{b.style}}"></span>
 </sc-for>
-<sc-if value="{{t.hand}}" hint-placeholder-val="{{ false }}">
-<svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink: 0; margin-bottom: 2px;"><path d="M12 21l-6-8h4V3h4v10h4z" fill="#ffe266" stroke="#d48a00" stroke-width="1.5" stroke-linejoin="round"></path></svg>
+</span>
+<sc-if value="{{t.arrow}}" hint-placeholder-val="{{ false }}">
+<svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style="flex-shrink: 0;"><path d="M12 21l-6-8h4V3h4v10h4z" fill="#ffe266" stroke="#d48a00" stroke-width="1.5" stroke-linejoin="round"></path></svg>
 </sc-if>
 </button>
 </sc-for>
 </div>
-<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 8px;">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; margin-top: 8px;">
 <sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
-<span style="height: 8px; border-radius: 999px; background: {{m.fill}};"></span>
+<span style="height: 8px; border-radius: 999px; {{m.style}}"></span>
 </sc-for>
 </div>
-<div style="margin-top: 6px; text-align: center; font-size: 13px; font-weight: 700; color: #c9c2ff;">A green line means that tower is in the right spot.</div>
 </div>
 
-<div style="width: 100%; display: flex; align-items: center; gap: 12px;">
-<button onClick="{{showMe}}" disabled="{{demo}}" style="border: 0; cursor: pointer; font-family: inherit; display: inline-flex; align-items: center; gap: 8px; color: #063510; font-size: 18px; font-weight: 800; padding: 12px 18px; border-radius: 18px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; white-space: nowrap; opacity: {{showOpacity}};">
-<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
-Show me how
-</button>
-<span style="font-size: 14px; font-weight: 700; color: #c9c2ff; line-height: 1.25;">Later levels: missing numbers (2, 4, _, 8) and counting by 5s and 10s.</span>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; height: 58px; flex-shrink: 0; display: flex; justify-content: center; align-items: center;">
+<sc-if value="{{showLegend}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; text-align: center; font-size: 13px; font-weight: 700; line-height: 1.35; color: #c9c2ff; text-wrap: balance;">A filled green line means that tower is in the right spot.</p>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
 </div>
+</sc-if>
+
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="num-card-title" aria-describedby="num-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="num-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
+</div>
+<p id="num-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
+</sc-if>
+<sc-if value="{{showCap}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Using a hint caps the level at 2 stars.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["up","down","big"],"default":"up"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","picked","hint","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { order: [4, 1, 6, 3, 5, 2], dir: 'up', picked: null, drag: null, swapFlash: null, demo: false, demoMsg: '', hl: null };
+    this.state = this.fromLever();
     this.justDragged = false;
   }
+  // Number colours (brief 7.5): base, light, dark from the brick palette.
   pal() {
     return {
-      1: ['#1fb53c', '#5fe06e', '#0f7a26'], 2: ['#ffc21a', '#ffe266', '#d48a00'], 3: ['#f03a3a', '#ff7a6e', '#b51f27'],
-      4: ['#2f8cff', '#7cc0ff', '#1557c4'], 5: ['#9b4dff', '#c79bff', '#6624c9'], 6: ['#ff7a1a', '#ffab5e', '#c4500a']
+      green: ['#1fb53c', '#5fe06e', '#0f7a26'], yellow: ['#ffc21a', '#ffe266', '#d48a00'], red: ['#f03a3a', '#ff7a6e', '#b51f27'],
+      blue: ['#2f8cff', '#7cc0ff', '#1557c4'], purple: ['#9b4dff', '#c79bff', '#6624c9'], orange: ['#ff7a1a', '#ffab5e', '#c4500a']
     };
   }
-  face(n, stud) {
-    var p = this.pal()[n];
+  colorOrder() { return ['green', 'yellow', 'red', 'blue', 'purple', 'orange']; }
+  // Numeral ink by face (brief 7.5 and 9.3). Blue moved to dark ink: white on the face gradient measures
+  // about 2.9:1 at the top of the numeral, under the 3:1 large text needs; --bw-purple-edge measures 4.5:1 on its base.
+  ink(color) {
+    return { yellow: '#5a3500', orange: '#5a3500', green: '#063510', blue: '#241a63' }[color] || '#ffffff';
+  }
+  face(color, stud) {
+    var p = this.pal()[color];
     var studs = stud ? 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ' : '';
     var size = stud ? '20px 22px, 20px 22px, 20px 22px, 100% 100%' : '100% 100%';
     return 'background: ' + studs + 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%); background-size: ' + size + '; background-position: 0 0; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
   }
-  sorted(order, dir) {
-    for (var i = 1; i < order.length; i++) if (dir === 'up' ? order[i] < order[i - 1] : order[i] > order[i - 1]) return false;
-    return true;
+  // Sample children for the bands: Maya (7 to 8) on the stairs levels, Theo (9 to 10) on bigger numbers,
+  // so the board shows three-digit numbers. Stuck limits from brief 3.3.
+  bandOf(lever) { return lever === 'big' ? '9-10' : '7-8'; }
+  limits(band) { return band === '9-10' ? { count: 4, secs: 90 } : { count: 4, secs: 75 }; }
+  // Level table (brief 4.3): direction and fewest swaps. Levels 9 to 12 use the band's numbers.
+  spec(level) {
+    var dir = level <= 4 ? 'up' : level <= 8 ? 'down' : level === 9 || level === 11 ? 'up' : 'down';
+    var swaps = level <= 8 ? [2, 3, 4, 5][(level - 1) % 4] : { 9: 3, 10: 4, 11: 5, 12: 5 }[level];
+    return { dir: dir, swaps: swaps, big: level >= 9 };
   }
-  swap(i, j) {
-    if (i === j) return;
-    var o = this.state.order.slice();
-    var t = o[i]; o[i] = o[j]; o[j] = t;
-    this.setState({ order: o, picked: null, drag: null, swapFlash: [i, j] });
-    var self = this;
-    setTimeout(function () { self.setState({ swapFlash: null }); }, 400);
-    if (this.sorted(o, this.state.dir)) {
-      try { var u = new SpeechSynthesisUtterance(o.join(', ')); u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
-    }
+  rng(seed) {
+    var x = seed % 2147483647 || 1;
+    return function () { x = (x * 16807) % 2147483647; return x / 2147483647; };
   }
-  componentWillUnmount() { (this.demoT || []).forEach(clearTimeout); }
-  /** Plays the puzzle by itself: find the tower that belongs in each spot and swap it there. */
-  showMe() {
-    var self = this;
-    var dir = this.state.dir;
-    var o = this.state.order.slice();
-    var steps = [];
-    for (var i = 0; i < o.length; i++) {
-      var best = i;
-      for (var j = i + 1; j < o.length; j++) if (dir === 'up' ? o[j] < o[best] : o[j] > o[best]) best = j;
-      if (best !== i) { steps.push([i, best, o[best]]); var t = o[i]; o[i] = o[best]; o[best] = t; }
+  cycles(p) {
+    var seen = [], c = 0;
+    for (var i = 0; i < p.length; i++) {
+      if (seen[i]) continue;
+      c++;
+      for (var j = i; !seen[j]; j = p[j]) seen[j] = true;
     }
-    var at = 0;
-    var T = [];
-    var spot = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
-    self.setState({ demo: true, picked: null, hl: null, demoMsg: dir === 'up' ? 'Watch: I look for the smallest tower first.' : 'Watch: I look for the biggest tower first.' });
-    at += 1600;
-    steps.forEach(function (st) {
-      T.push(setTimeout(function () { self.setState({ hl: [st[1]], demoMsg: st[2] + ' belongs in the ' + spot[st[0]] + ' spot.' }); }, at));
-      at += 1300;
-      T.push(setTimeout(function () { self.setState({ hl: [st[1], st[0]], demoMsg: 'Drag ' + st[2] + ' onto the ' + spot[st[0]] + ' tower to swap them.' }); }, at));
-      at += 1100;
-      T.push(setTimeout(function () { self.swap(st[0], st[1]); self.setState({ hl: [st[0]] }); }, at));
-      at += 900;
+    return c;
+  }
+  inversions(p) {
+    var n = 0;
+    for (var i = 0; i < p.length; i++) for (var j = i + 1; j < p.length; j++) if (p[i] > p[j]) n++;
+    return n;
+  }
+  perms() {
+    if (this.permCache) return this.permCache;
+    var out = [];
+    var go = function (pre, rest) {
+      if (!rest.length) { out.push(pre); return; }
+      rest.forEach(function (x, i) { go(pre.concat([x]), rest.slice(0, i).concat(rest.slice(i + 1))); });
+    };
+    go([], [0, 1, 2, 3, 4, 5]);
+    this.permCache = out;
+    return out;
+  }
+  // Six numbers for one puzzle of Levels 9 to 12, by band: 1 to 10, 1 to 20, 1 to 100, 1 to 999;
+  // Levels 11 and 12 count by steps at ages 7 to 10.
+  numbersFor(level, band, r) {
+    var top = { '3-4': 10, '5-6': 20, '7-8': 100, '9-10': 999 }[band];
+    var steps = band === '7-8' ? [5, 10] : band === '9-10' ? [5, 10, 100] : null;
+    if (level >= 11 && steps) {
+      var step = steps[Math.floor(r() * steps.length)];
+      var starts = Math.floor((top - 5 * step) / step);
+      var start = step * (1 + Math.floor(r() * starts));
+      return [0, 1, 2, 3, 4, 5].map(function (k) { return start + k * step; });
+    }
+    var pick = [];
+    while (pick.length < 6) {
+      var v = 1 + Math.floor(r() * top);
+      if (pick.indexOf(v) < 0) pick.push(v);
+    }
+    return pick.sort(function (a, b) { return a - b; });
+  }
+  // A level's 6 puzzles: each a row of towers { v, color, t } where t is the tower's right spot.
+  // Every puzzle needs exactly the level's fewest swaps (6 minus its cycles), and the inversion counts sit within 2.
+  puzzles(level, band) {
+    var self = this;
+    var S = this.spec(level);
+    var r = this.rng(level * 97 + (band === '9-10' ? 13 : 5));
+    var cands = this.perms().filter(function (p) { return self.cycles(p) === 6 - S.swaps; });
+    for (var i = cands.length - 1; i > 0; i--) { var j = Math.floor(r() * (i + 1)); var tmp = cands[i]; cands[i] = cands[j]; cands[j] = tmp; }
+    var invs = cands.map(function (p) { return self.inversions(p); }).sort(function (a, b) { return a - b; });
+    var mid = invs[Math.floor(invs.length / 2)];
+    var picked = cands.filter(function (p) { var v = self.inversions(p); return v >= mid - 1 && v <= mid + 1; }).slice(0, 6);
+    var used = {};
+    return picked.map(function (p, n) {
+      var nums = [1, 2, 3, 4, 5, 6];
+      if (S.big) {
+        // The 6 puzzles differ as number sets too.
+        for (var tries = 0; tries < 40; tries++) { nums = self.numbersFor(level, band, r); if (!used[nums.join(',')]) break; }
+        used[nums.join(',')] = true;
+      }
+      return p.map(function (t, pos) {
+        var v = S.dir === 'up' ? nums[t] : nums[5 - t];
+        // Stairs: each number keeps its colour. Bigger numbers: colours follow the seed, never the order.
+        var color = S.big ? self.colorOrder()[(pos + n) % 6] : self.colorOrder()[v - 1];
+        return { v: v, color: color, t: t, id: n + '-' + pos };
+      });
     });
-    T.push(setTimeout(function () { self.setState({ hl: null, demoMsg: 'Done! Each tower is one brick taller, like stairs.' }); }, at));
-    at += 2200;
-    T.push(setTimeout(function () { self.setState({ order: [5, 2, 4, 6, 1, 3], demo: false, demoMsg: '' }); }, at));
-    this.demoT = T;
+  }
+  levelOf(lever) { return lever === 'down' ? 7 : lever === 'big' ? 9 : 3; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.level, p.puzzle, p.moment].join('|');
+  }
+  freshPuzzle(row) { return { row: row.slice(), picked: null, drag: null, anim: null, hintStep: null, hintOnPuzzle: false, wrongTaps: 0, idle: 0, offer: false, note: '' }; }
+  // The hint: the tower that belongs in the first wrong spot, and the tower standing there.
+  hintStep(row) {
+    for (var i = 0; i < row.length; i++) {
+      if (row[i].t !== i) {
+        for (var j = 0; j < row.length; j++) if (row[j].t === i) return { to: i, from: j };
+      }
+    }
+    return null;
+  }
+  invOf(row) { return this.inversions(row.map(function (x) { return x.t; })); }
+  fromLever() {
+    var p = this.props || {};
+    var lever = ['up', 'down', 'big'].indexOf(p.level) >= 0 ? p.level : 'up';
+    var level = this.levelOf(lever);
+    var band = this.bandOf(lever);
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'picked', 'hint', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var order = [0, 1, 2, 3, 4, 5];
+    var row = this.puzzles(level, band)[order[puzzle - 1]];
+    var s = Object.assign(this.freshPuzzle(row), { lever: this.leverKey(), level: level, band: band, puzzle: puzzle, moment: 'play', order: order, slips: 1, hintsLeft: 3, capped: false });
+    if (moment === 'picked') s.picked = 0;
+    if (moment === 'hint') { s.hintStep = this.hintStep(s.row); s.hintsLeft = 2; s.hintOnPuzzle = true; }
+    if (moment === 'stuck') { s.wrongTaps = this.limits(band).count; s.slips = this.limits(band).count; s.offer = true; }
+    if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
+      s.row = row.slice().sort(function (a, b) { return a.t - b.t; });
+      s.moment = moment;
+    }
+    // The level-done sample used one hint on a solved puzzle, so the card shows the cap.
+    if (moment === 'levelDone') { s.hintsLeft = 2; s.capped = true; }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  componentDidMount() {
+    var self = this;
+    // The time signal: seconds with no forward swap, counted only while the puzzle is on screen (brief 3.3).
+    this.timer = setInterval(function () {
+      var s = self.st();
+      if (s.moment !== 'play') return;
+      var idle = s.idle + 1;
+      self.put({ idle: idle, offer: s.offer || idle === self.limits(s.band).secs });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.animT); clearTimeout(this.animEndT); }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  // Swap two towers. A swap that raises the inversion count is a slip; one that lowers it is progress.
+  swap(i, j, fromDrag) {
+    var self = this;
+    var cs = this.st();
+    if (i === j || cs.moment !== 'play') { this.put({ drag: null, picked: null }); return; }
+    var row = cs.row.slice();
+    var before = this.invOf(row);
+    var tmp = row[i]; row[i] = row[j]; row[j] = tmp;
+    var after = this.invOf(row);
+    var patch = { row: row, picked: null, drag: null, hintStep: null, note: '', anim: fromDrag ? null : { i: i, j: j, go: false } };
+    if (after < before) { patch.idle = 0; patch.offer = false; }
+    else {
+      var wrongTaps = cs.wrongTaps + 1;
+      patch.slips = cs.slips + 1;
+      patch.wrongTaps = wrongTaps;
+      patch.offer = cs.offer || wrongTaps >= this.limits(cs.band).count;
+    }
+    if (after === 0) {
+      // A swap that sorts the row solves at once and locks the towers.
+      patch.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
+      patch.offer = false;
+      patch.capped = cs.capped || cs.hintOnPuzzle;
+      if (cs.puzzle === 4) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+    }
+    this.put(patch);
+    if (patch.anim) {
+      // Both towers move to their new spots over --bw-base with --bw-ease.
+      clearTimeout(this.animT); clearTimeout(this.animEndT);
+      this.animT = setTimeout(function () { var a = self.st().anim; if (a) self.put({ anim: Object.assign({}, a, { go: true }) }); }, 20);
+      this.animEndT = setTimeout(function () { self.put({ anim: null }); }, 260);
+    }
   }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
     var Z = tablet ? 1.4 : 1;
-    var done = this.sorted(s.order, s.dir);
-    var target = s.order.slice().sort(function (a, b) { return s.dir === 'up' ? a - b : b - a; });
+    var IW = tablet ? 596 : 390;
+    var colW = (IW - 32 - 16 - 30) / 6 + 6;
+    var S = this.spec(s.level);
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
+    var playing = m === 'play';
+    var lastLevel = s.level === 12;
+    var row = s.row;
+    var target = row.slice().sort(function (a, b) { return a.t - b.t; });
+    var spots = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'];
+    var hs = s.hintStep;
+    var offerLine = 'This one is tricky. Want a different puzzle?';
+    var solvedLine = S.big ? 'In order: ' + target.map(function (x) { return x.v; }).join(', ') + '.'
+      : S.dir === 'up' ? 'Stairs going up: 1, 2, 3, 4, 5, 6.' : 'Stairs going down: 6, 5, 4, 3, 2, 1.';
+    var help = solvedNow ? solvedLine
+      : s.offer ? offerLine
+      : s.note ? s.note
+      : hs ? row[hs.from].v + ' belongs in the ' + spots[hs.to] + ' spot. Swap them.'
+      : s.picked !== null ? 'Now tap where it should go.'
+      : 'Drag or tap two towers to swap them.';
+    var goalText = S.big ? (S.dir === 'up' ? 'Line up the numbers, smallest first.' : 'Line up the numbers, biggest first.')
+      : S.dir === 'up' ? 'Line up 1 to 6, smallest first, so the towers make stairs going up.' : 'Line up 6 to 1, biggest first, so the stairs go down.';
+    var canHint = playing && s.hintsLeft > 0;
+    var dragging = s.drag && s.drag.moved ? s.drag.i : null;
+
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+    var base = s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
+    var starsWon = finished ? 3 : s.capped ? Math.min(2, base) : base;
+    var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: Z, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: Z, iw: IW, ih: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
-      isUp: s.dir === 'up', isDown: s.dir === 'down',
-      upStyle: s.dir === 'up' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      downStyle: s.dir === 'down' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      modeUp: function () { self.setState({ dir: 'up' }); },
-      modeDown: function () { self.setState({ dir: 'down' }); },
-      shuffle: function () { self.setState({ order: [3, 6, 1, 5, 2, 4], picked: null }); },
-      demo: s.demo,
-      showOpacity: s.demo ? 0.5 : 1,
-      showMe: function () { if (!self.state.demo) self.showMe(); },
-      goalBars: target.map(function (n) { return { h: 4 + n * 5, color: self.pal()[n][0] }; }),
-      goalText: s.dir === 'up' ? 'Line up 1 to 6, smallest first, so the towers make stairs going up.' : 'Line up 6 to 1, biggest first, so the stairs go down.',
-      prompt: s.demo ? s.demoMsg : s.order.join('') === '' ? '' : done ? 'Perfect! ' + s.order.join(', ') + '. Like stairs!' : s.picked !== null ? 'Now tap where it should go.' : 'Drag a tower onto another tower to swap them. Or tap two towers.',
-      promptColor: done ? '#ffe266' : '#ffffff',
-      marks: s.order.map(function (n, i) { return { fill: n === target[i] ? '#5fe06e' : '#4b3eaa' }; }),
-      towers: s.order.map(function (n, i) {
-        var isDrag = s.drag && s.drag.moved && s.drag.i === i;
-        var flash = s.swapFlash && s.swapFlash.indexOf(i) >= 0;
+      title: finished ? 'Number Line-up' : 'Level ' + s.level,
+      showDots: !finished, dots: dots,
+      dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
+      showPlayArea: !finished,
+      // Speech only after a tap: the goal and the help line; once solved, the solved line. While the offer shows, the offer line.
+      speakLabel: s.offer && playing ? 'Read the help line aloud' : 'Hear the help line',
+      speak: function () {
+        var cs = self.st();
+        if (cs.offer && cs.moment === 'play') { self.say(offerLine); return; }
+        self.say(solvedNow ? solvedLine : goalText + ' ' + help);
+      },
+      // The goal strip shows the order: each number's colour on the stairs, a stair shape without numbers for bigger numbers.
+      goalBars: target.map(function (x, i) {
+        var rank = S.dir === 'up' ? i + 1 : 6 - i;
+        return { h: 4 + rank * 5, color: S.big ? '#8e85d6' : self.pal()[x.color][0] };
+      }),
+      goalText: goalText,
+      help: help,
+      hintsLeft: s.hintsLeft,
+      hintOff: canHint ? 'false' : 'true',
+      hintopacity: canHint ? 1 : 0.45,
+      hint: function () {
+        var cs = self.st();
+        if (cs.moment !== 'play' || cs.hintsLeft <= 0) return;
+        // Spent at once; a hint clears a pick and stays until the next swap.
+        self.put({ hintStep: self.hintStep(cs.row), hintsLeft: cs.hintsLeft - 1, hintOnPuzzle: true, picked: null, note: '' });
+      },
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        if (cs.moment !== 'play') return;
+        // The current puzzle moves to the end of the queue; the dots stay where they are. Hints stay spent.
+        var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
+        var NR = self.puzzles(cs.level, cs.band)[order[cs.puzzle - 1]];
+        self.put(Object.assign(self.freshPuzzle(NR), { order: order, note: 'Here is a different puzzle.' }));
+      },
+      towers: finished ? [] : row.map(function (x, i) {
+        var right = x.t === i;
+        var isDrag = dragging === i;
+        var shift = 0;
+        if (s.anim && !s.anim.go) shift = i === s.anim.i ? (s.anim.j - s.anim.i) * colW : i === s.anim.j ? (s.anim.i - s.anim.j) * colW : 0;
         var wrap = isDrag
           ? 'z-index: 20; transition: none; transform: translate(' + (s.drag.dx / Z) + 'px, ' + (s.drag.dy / Z) + 'px) scale(1.06); cursor: grabbing;'
-          : 'transition: transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); transform: ' + (s.picked === i ? 'translateY(-10px)' : flash ? 'scale(1.08)' : 'none') + ';' + (done ? ' filter: drop-shadow(0 0 8px rgba(255,226,102,0.7));' : '');
+          : (s.anim && !s.anim.go ? 'transition: none; ' : 'transition: transform 200ms cubic-bezier(0.16,1,0.3,1); ')
+            + 'transform: ' + (shift ? 'translateX(' + shift + 'px)' : s.picked === i ? 'translateY(-10px)' : 'none') + ';'
+            + (solvedNow ? ' cursor: default;' : '');
         var studs = [];
-        for (var k = 0; k < n - 1; k++) studs.push({ style: self.face(n, true) });
-        var lit = s.hl && s.hl.indexOf(i) >= 0;
+        if (!S.big) for (var k = 0; k < x.v - 1; k++) studs.push({ style: self.face(x.color, true) });
+        var ink = self.ink(x.color);
+        var lit = hs && (hs.from === i || hs.to === i);
         return {
-          hand: !!(s.hl && s.hl[0] === i),
-          ring: lit ? 'outline: 4px solid #ffe266; outline-offset: 2px;' : '',
-          n: n, slot: String(i), label: 'Tower of ' + n, wrap: wrap,
-          face: self.face(n, false), studs: studs,
+          n: x.v, slot: String(i), on: s.picked === i ? 'true' : 'false', off: playing ? 'false' : 'true',
+          dragging: isDrag ? 'true' : 'false',
+          label: 'Tower of ' + x.v + ', spot ' + (i + 1) + ' of 6, ' + (right ? 'in the right spot' : 'not in the right spot'),
+          wrap: wrap,
+          ring: lit ? 'box-shadow: 0 0 0 4px #ffc21a;' : '',
+          arrow: !!(hs && hs.from === i),
+          face: self.face(x.color, false) + ' color: ' + ink + ';' + (ink === '#ffffff' ? ' text-shadow: 0 2px 0 rgba(0,0,0,0.3);' : ''),
+          studs: studs,
           down: function (e) {
-            if (self.state.demo) return;
+            // The next pointerdown clears the after-drag flag, so a real tap is never swallowed (brief 3.1).
+            self.justDragged = false;
+            if (self.st().moment !== 'play') return;
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-            self.setState({ drag: { i: i, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false } });
+            self.put({ drag: { i: i, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false } });
           },
           move: function (e) {
-            var d = self.state.drag;
+            var d = self.st().drag;
             if (!d || d.id !== e.pointerId) return;
             var dx = e.clientX - d.x0, dy = e.clientY - d.y0;
-            self.setState({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: d.moved || Math.abs(dx) + Math.abs(dy) > 8 }) });
+            self.put({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: d.moved || Math.abs(dx) + Math.abs(dy) > 8 }), anim: null });
           },
           up: function (e) {
-            var d = self.state.drag;
+            var d = self.st().drag;
             if (!d || d.id !== e.pointerId) return;
-            if (!d.moved) { self.setState({ drag: null }); return; }
+            if (!d.moved) { self.put({ drag: null }); return; }
             self.justDragged = true;
             var el = e.currentTarget;
             el.style.visibility = 'hidden';
             var hit = document.elementFromPoint(e.clientX, e.clientY);
             el.style.visibility = '';
             var slot = hit && hit.closest ? hit.closest('[data-slot]') : null;
-            if (slot) self.swap(i, Number(slot.getAttribute('data-slot')));
-            else self.setState({ drag: null });
+            // Released over empty space: the tower goes back.
+            if (slot) self.swap(i, Number(slot.getAttribute('data-slot')), true);
+            else self.put({ drag: null });
           },
-          cancel: function () { self.setState({ drag: null }); },
+          cancel: function () { self.put({ drag: null }); },
           tap: function () {
             if (self.justDragged) { self.justDragged = false; return; }
-            if (s.demo) return;
-            if (s.picked === null) self.setState({ picked: i });
-            else if (s.picked === i) self.setState({ picked: null });
-            else self.swap(s.picked, i);
+            var cs = self.st();
+            if (cs.moment !== 'play') return;
+            // A new tap cuts a swap animation short.
+            if (cs.picked === null) self.put({ picked: i, anim: null, note: '' });
+            else if (cs.picked === i) self.put({ picked: null, anim: null });
+            else self.swap(cs.picked, i);
           }
         };
-      })
+      }),
+      marks: (finished ? [0, 1, 2, 3, 4, 5].map(function () { return null; }) : row).map(function (x, i) {
+        var right = x && x.t === i;
+        return { style: right ? 'background: #5fe06e;' : 'background: #1d1550; box-shadow: inset 0 0 0 2px #8e85d6;' };
+      }),
+      showLegend: m !== 'solved',
+      showNext: m === 'solved',
+      next: function () {
+        var cs = self.st();
+        if (cs.moment !== 'solved') return;
+        var NR = self.puzzles(cs.level, cs.band)[cs.order[cs.puzzle]];
+        self.put(Object.assign(self.freshPuzzle(NR), { puzzle: cs.puzzle + 1, moment: 'play' }));
+      },
+      cardOpen: m === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '33 of 36 stars' : starsWon + ' of 3 stars',
+      starsgap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '33 of 36',
+      // The every-level totals are sample data.
+      cardFact: finished || lastLevel ? '12 levels, 33 of 36 stars.' : fact,
+      showRule: !finished && !lastLevel,
+      showCap: !finished && !lastLevel && s.capped,
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (s.level + 1),
+      playNext: function () {
+        var cs = self.st();
+        if (cs.moment !== 'levelDone' || cs.level >= 12) return;
+        var NR = self.puzzles(cs.level + 1, cs.band)[0];
+        self.put(Object.assign(self.freshPuzzle(NR), { level: cs.level + 1, puzzle: 1, moment: 'play', order: [0, 1, 2, 3, 4, 5], slips: 0, hintsLeft: 3, capped: false }));
+      }
     };
   }
 }
