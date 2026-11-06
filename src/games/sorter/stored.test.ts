@@ -5,10 +5,11 @@
  */
 import { describe, expect, it } from 'vitest';
 import { PUZZLES_PER_LEVEL, freshRun, gameOf, resolveRun, runOf, sanitize, type LevelRun, type PuzzleResult } from '../../shared/progress';
+import { sorterSet } from '../run';
 import { LEVEL_COUNT, SORTER_SEED, SORTER_SET_VERSION, puzzle } from './puzzles';
 
 const NOON = new Date(2026, 10, 6, 12, 0).getTime();
-const SET = `sorter:${SORTER_SET_VERSION}`;
+const SET = sorterSet(SORTER_SET_VERSION);
 const INIT = { set: SET, seed: SORTER_SEED };
 
 /** What a solved Sorter board stores: slips in `count`, no hint, never out of time (brief 6). */
@@ -27,6 +28,7 @@ const opensOn = (run: LevelRun | null, level: number) => puzzle(level, resolveRu
 describe('a stored Shape Sorter run', () => {
   it('uses set sorter:1 and seed 0', () => {
     expect(SET).toBe('sorter:1');
+    expect(SET).toBe(sorterSet());
     expect(SORTER_SEED).toBe(0);
   });
 

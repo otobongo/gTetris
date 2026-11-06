@@ -17,6 +17,7 @@ import {
   type SorterColor,
 } from './shapes';
 import type { Chapter } from '../meta';
+import { LEVEL_STAR_RULES, STUCK } from '../run';
 import { colorsFit } from '../kit/colorPairs';
 
 export const SORTER_TITLE = 'Shape Sorter';
@@ -26,20 +27,11 @@ export const SORTER_SEED = 0;
 
 /* ---------- Stuck and stars (brief 3.2, 3.3) ---------- */
 
-/**
- * Stuck limits for Shape Sorter, copied from the STUCK table in 3.3 for reference and cross-checks. The live
- * table is `STUCK.sorter` in src/games/run.ts (the kit agent owns it); a test can assert the two agree.
- * Count is wrong placements; seconds is time with no right placement.
- */
-export const SORTER_STUCK: Readonly<Record<AgeBand, { count: number; seconds: number }>> = {
-  '3-4': { count: 3, seconds: 30 },
-  '5-6': { count: 3, seconds: 40 },
-  '7-8': { count: 4, seconds: 50 },
-  '9-10': { count: 4, seconds: 60 },
-};
+/** Stuck limits for Shape Sorter: the `STUCK.sorter` row of src/games/run.ts, the one table (3.3). Count is slips; seconds is time with no right placement. */
+export const SORTER_STUCK = STUCK.sorter;
 
-/** The star rule on slips (3.2): 3 stars at 1 slip or none, 2 stars at 4 or fewer. No hint, no clock. */
-export const SORTER_STAR_RULE = { three: 1, two: 4 } as const;
+/** The star rule on slips (3.2): 3 stars at 1 slip or none, 2 stars at 4 or fewer. No hint, no clock. It is `LEVEL_STAR_RULES.sorter` of run.ts. */
+export const SORTER_STAR_RULE = LEVEL_STAR_RULES.sorter;
 
 /* ---------- Types ---------- */
 
