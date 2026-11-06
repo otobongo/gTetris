@@ -2,7 +2,7 @@
 
 Color Mixer, Shape Sorter, Number Line-up (batch 1); Pattern Train, Brick Calculator, Picture Builder (batch 2).
 
-Status: **draft, waiting for approval. Nothing gets built until it is approved.**
+Status: **approved by the user on 2026-11-06, with the recommended answer to every open question (11.1). Batch 1 may start.**
 Surface: the web app (`src/`) and its design canvas (`design/canvas/*.dc.html`), phone 390x844 and tablet 834x1194 (inner frame 596x853 at zoom 1.4). One brief, built in two batches of three games (your choice).
 
 **Guide pack** (load once, before starting, one pass, no review afterwards). No nativefit (web app).
@@ -847,6 +847,14 @@ The commit gate on every commit, never `--no-verify`. Before a PR is marked read
 5. **How many pictures Picture Builder needs.** 12 levels need 72 puzzle slots.
    - **A (Recommended):** 42 pictures; memory levels reuse the copy levels' pictures in a new order, so 39 new pictures to draw and review.
    - B: 72 different pictures (69 new); memory levels show pictures the child has not copied.
+
+### 11.1 Decisions (user, 2026-11-06)
+1. Free play: **A**. Every screen is a puzzle; Discover, the colour book and free typing go.
+2. Today's discovery: **A**. The card stays as the way into Color Mixer, "+1 sticker" goes, and the question becomes "Mix two colors to make a new one".
+3. Colour cue: **A**. Avoid confusable pairs, check in a colour-vision emulator, carry colour names in labels and speech. No marks on the bricks.
+4. Pattern Train lines: **A**. "Pattern complete." and "{Yellow triangle} comes next."
+5. Picture Builder: **A**. 42 pictures, 39 new to draw and review; memory levels reuse the copy levels' pictures.
+6. Brief approved; batch 1 starts.
 
 ## 12. Work plan
 
