@@ -95,6 +95,8 @@ export function makePuzzles(level: number, seed: number): Puzzle[] {
   const givenFirst = new Map<ResultId, PaintId>();
   const slotsFirst = new Map<ResultId, [PaintId, PaintId]>();
   const choicesFirst = new Map<ResultId, ResultId[]>();
+  // The 3 swatches the first twin showed; the second twin shows the same 3 in a new order (brief 4.1).
+  const choiceSetFirst = new Map<ResultId, ResultId[]>();
   const shelfFirst = new Map<ResultId, PaintId[]>();
 
   return order.map((result): Puzzle => {
@@ -114,7 +116,10 @@ export function makePuzzles(level: number, seed: number): Puzzle[] {
     const before = slotsFirst.get(result);
     const paints: [PaintId, PaintId] = before ? [before[1], before[0]] : rand() < 0.5 ? [pair[0], pair[1]] : [pair[1], pair[0]];
     slotsFirst.set(result, paints);
-    const set = def.choicePool && def.choicePool.length === GUESS_CHOICES ? [...def.choicePool] : [result, ...wrongChoices(def, result, paints, rand)];
+    const set =
+      choiceSetFirst.get(result) ??
+      (def.choicePool && def.choicePool.length === GUESS_CHOICES ? [...def.choicePool] : [result, ...wrongChoices(def, result, paints, rand)]);
+    choiceSetFirst.set(result, set);
     const choices = shuffleApart(set, choicesFirst.get(result), rand);
     choicesFirst.set(result, choices);
     return { form: 'guess', paints, choices, answer: result };
