@@ -465,6 +465,174 @@
    "w": 390,
    "x": 4178,
    "y": 8000
+  },
+  "MixerGuess.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: guess the mix (phone)",
+   "w": 390,
+   "x": 0,
+   "y": 12800
+  },
+  "MixerMake.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: make it, wrong pair (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 12800
+  },
+  "MixerSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: puzzle solved (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 12800
+  },
+  "MixerStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 12800
+  },
+  "MixerDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: level done (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 12800
+  },
+  "SorterColors.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: shape and color, wrong hole (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 12800
+  },
+  "SorterBig.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: eight pieces (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 12800
+  },
+  "SorterSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: puzzle solved (phone)",
+   "w": 390,
+   "x": 3290,
+   "y": 12800
+  },
+  "SorterStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 3760,
+   "y": 12800
+  },
+  "SorterDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: level done (phone)",
+   "w": 390,
+   "x": 4230,
+   "y": 12800
+  },
+  "NumbersBig.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: bigger numbers (phone)",
+   "w": 390,
+   "x": 4700,
+   "y": 12800
+  },
+  "NumbersHint.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: hint (phone)",
+   "w": 390,
+   "x": 5170,
+   "y": 12800
+  },
+  "NumbersSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: puzzle solved (phone)",
+   "w": 390,
+   "x": 5640,
+   "y": 12800
+  },
+  "NumbersStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 6110,
+   "y": 12800
+  },
+  "NumbersDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: level done (phone)",
+   "w": 390,
+   "x": 6580,
+   "y": 12800
+  },
+  "MixerDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Color Mixer: level done (tablet)",
+   "w": 834,
+   "x": 7050,
+   "y": 12800
+  },
+  "SorterDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Shape Sorter: level done (tablet)",
+   "w": 834,
+   "x": 7964,
+   "y": 12800
+  },
+  "NumbersDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Number Line-up: level done (tablet)",
+   "w": 834,
+   "x": 8878,
+   "y": 12800
+  },
+  "LevelsMixer.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Color Mixer (phone)",
+   "w": 390,
+   "x": 5562,
+   "y": 8000
+  },
+  "LevelsSorter.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Shape Sorter (phone)",
+   "w": 390,
+   "x": 6032,
+   "y": 8000
+  },
+  "LevelsNumbers.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Number Line-up (phone)",
+   "w": 390,
+   "x": 6502,
+   "y": 8000
   }
  },
  "createdOnFiles": {
@@ -510,7 +678,7 @@
   },
   "row5": {
    "kind": "title1",
-   "maxW": 5482,
+   "maxW": 6892,
    "text": "6. Settings, sign in, help and the level picker",
    "w": 240,
    "x": 0,
@@ -539,6 +707,14 @@
    "w": 240,
    "x": 0,
    "y": 10900
+  },
+  "row9": {
+   "kind": "title1",
+   "maxW": 9712,
+   "text": "9. Six games, batch 1: solved, stuck and level done",
+   "w": 240,
+   "x": 0,
+   "y": 12500
   }
  },
  "order": [
@@ -560,6 +736,9 @@
   "LevelsLetters.dc.html",
   "LevelsDrop.dc.html",
   "LevelsTablet.dc.html",
+  "LevelsMixer.dc.html",
+  "LevelsSorter.dc.html",
+  "LevelsNumbers.dc.html",
   "EscapeIce.dc.html",
   "EscapeWalls.dc.html",
   "EscapeMaster.dc.html",
@@ -599,7 +778,25 @@
   "LettersDone.dc.html",
   "EscapeDoneTablet.dc.html",
   "DropDoneTablet.dc.html",
-  "LettersDoneTablet.dc.html"
+  "LettersDoneTablet.dc.html",
+  "MixerGuess.dc.html",
+  "MixerMake.dc.html",
+  "MixerSolved.dc.html",
+  "MixerStuck.dc.html",
+  "MixerDone.dc.html",
+  "SorterColors.dc.html",
+  "SorterBig.dc.html",
+  "SorterSolved.dc.html",
+  "SorterStuck.dc.html",
+  "SorterDone.dc.html",
+  "NumbersBig.dc.html",
+  "NumbersHint.dc.html",
+  "NumbersSolved.dc.html",
+  "NumbersStuck.dc.html",
+  "NumbersDone.dc.html",
+  "MixerDoneTablet.dc.html",
+  "SorterDoneTablet.dc.html",
+  "NumbersDoneTablet.dc.html"
  ],
  "pages": [],
  "title": "Brickwise Design Direction"

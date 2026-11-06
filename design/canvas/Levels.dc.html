@@ -101,7 +101,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"state":{"editor":"enum","options":["default","picked","confirmReset","resetDone"],"default":"default"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters","mixer","sorter","numbers"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"state":{"editor":"enum","options":["default","picked","confirmReset","resetDone"],"default":"default"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -133,7 +133,7 @@ class Component extends DCLogic {
     };
   }
   activeKid() { return 'maya7'; }
-  // Chapters per game, from src (slide/meta.ts, drop/stages.ts, letters/levels.ts).
+  // Chapters per game, from src (slide/meta.ts, drop/stages.ts, letters/levels.ts) and the six-games brief 4.1 to 4.3.
   games() {
     return {
       escape: { title: 'Brick Escape', board: 'Escape', noun: 'Level', chapters: [
@@ -155,20 +155,38 @@ class Component extends DCLogic {
         { title: 'Big and small', note: 'match A with a', count: 4 },
         { title: 'First sounds', note: 'what does it start with?', count: 4 },
         { title: 'Spell it', note: 'build the word', count: 9 }
+      ] },
+      mixer: { title: 'Color Mixer', board: 'Mixer', noun: 'Level', chapters: [
+        { title: 'Mix two paints', note: 'red, yellow and blue', count: 3 },
+        { title: 'Make it lighter', note: 'add white', count: 3 },
+        { title: 'All six colors', note: 'every mix', count: 3 }
+      ] },
+      sorter: { title: 'Shape Sorter', board: 'Sorter', noun: 'Level', chapters: [
+        { title: 'Shapes', note: 'one color', count: 3 },
+        { title: 'Shape and color', note: 'both must match', count: 3 },
+        { title: 'Big boards', note: 'eight pieces', count: 3 }
+      ] },
+      numbers: { title: 'Number Line-up', board: 'Numbers', noun: 'Level', chapters: [
+        { title: 'Stairs', note: '1 to 6, up and down', count: 8 },
+        { title: 'Bigger numbers', note: 'read the numbers', count: 4 }
       ] }
     };
   }
   // Sample data. "midway" matches Home, Settings and Break for Maya: Escape Level 9 (8 done, 17 stars, 2 of 4
   // puzzles solved), Drop Stage 4 (3 done, 6 stars, 1 solved), Letters Level 17 (16 done, 19 stars, 2 words built).
+  // Color Mixer Level 2, Shape Sorter Level 2 and Number Line-up Level 3 (no puzzles solved yet) match Home and Settings.
   // Leo matches the Letters board (Level 16) and Settings; Nia and Theo match Break.
   midway(game, kid) {
     var byKid = {
-      leo4: { escape: { cur: 2, stars: 2, solved: 0 }, drop: { cur: 1, stars: 0, solved: 0 }, letters: { cur: 16, stars: 30, solved: 1 } },
+      leo4: { escape: { cur: 2, stars: 2, solved: 0 }, drop: { cur: 1, stars: 0, solved: 0 }, letters: { cur: 16, stars: 30, solved: 1 }, mixer: { cur: 1, stars: 0, solved: 0 }, sorter: { cur: 1, stars: 0, solved: 0 }, numbers: { cur: 1, stars: 0, solved: 0 } },
       nia6: { drop: { cur: 2, stars: 2, solved: 2 } },
       theo10: { escape: { cur: 23, stars: 50, solved: 3 } }
     };
     if (byKid[kid] && byKid[kid][game]) return byKid[kid][game];
-    return { escape: { cur: 9, stars: 17, solved: 2 }, drop: { cur: 4, stars: 6, solved: 1 }, letters: { cur: 17, stars: 19, solved: 2 } }[game];
+    return {
+      escape: { cur: 9, stars: 17, solved: 2 }, drop: { cur: 4, stars: 6, solved: 1 }, letters: { cur: 17, stars: 19, solved: 2 },
+      mixer: { cur: 2, stars: 3, solved: 0 }, sorter: { cur: 2, stars: 2, solved: 0 }, numbers: { cur: 3, stars: 5, solved: 0 }
+    }[game];
   }
   // Spread a star total over the finished levels: at least 1 each (that is what opens the next), at most 3.
   spread(done, total) {
