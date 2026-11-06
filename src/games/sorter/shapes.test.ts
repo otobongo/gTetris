@@ -2,10 +2,11 @@
  * Shape Sorter shapes and colours (six-games brief 4.2, 7.4, 8.3, 9.4): the eight shapes and their families, how
  * each is cut out, the board's six colours through the brick palette, and the avoid list.
  */
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { AVOID_PAIRS, clashes as colorsClash, colorsFit } from '../kit/colorPairs';
 import { BRICK_COLORS, PALETTE } from '../../shared/ui/palette';
 import {
-  AVOID_PAIRS,
   FAMILIES,
   SHAPES,
   SHAPE_BADGE,
@@ -15,11 +16,11 @@ import {
   SHAPE_STYLE,
   SORTER_COLORS,
   SQUARE_FAMILY,
-  colorsClash,
-  colorsFit,
   familyOf,
   type SorterColor,
 } from './shapes';
+import { LEVEL_COUNT, puzzle } from './puzzles';
+import { PUZZLES_PER_LEVEL } from '../../shared/progress';
 
 const sortSets = (sets: readonly (readonly string[])[]) => sets.map((s) => [...s].sort().join('|')).sort();
 
@@ -115,7 +116,26 @@ describe('colours (4.2, 7.4)', () => {
   });
 });
 
-describe('the avoid list (9.4)', () => {
+describe('the avoid list (9.4), read from the kit', () => {
+  const source = (file: string) => readFileSync(new URL(file, import.meta.url), 'utf8');
+
+  it('keeps no copy of the list in the sorter: the generator imports the kit list', () => {
+    for (const file of ['./shapes.ts', './puzzles.ts']) {
+      expect(source(file), file).not.toMatch(/AVOID_PAIRS\s*[:=]/);
+      expect(source(file), file).not.toMatch(/export (const|function) (colorsClash|colorsFit)\b/);
+    }
+    expect(source('./puzzles.ts')).toMatch(/from '\.\.\/kit\/colorPairs'/);
+  });
+
+  it('draws every generated colour board from colours the kit list lets meet', () => {
+    for (let level = 0; level < LEVEL_COUNT; level++) {
+      for (let n = 0; n < PUZZLES_PER_LEVEL; n++) {
+        const colors = new Set(puzzle(level, n).pieces.map((p) => p.color));
+        expect(colorsFit(colors), `level ${level + 1} board ${n + 1}`).toBe(true);
+      }
+    }
+  });
+
   const PAIRS: [SorterColor, SorterColor][] = [
     ['red', 'green'],
     ['blue', 'purple'],

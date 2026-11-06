@@ -13,11 +13,11 @@ import {
   SHAPE_LEVEL_COLOR,
   SORTER_COLORS,
   SQUARE_FAMILY,
-  colorsFit,
   type ShapeId,
   type SorterColor,
 } from './shapes';
 import type { Chapter } from '../meta';
+import { colorsFit } from '../kit/colorPairs';
 
 export const SORTER_TITLE = 'Shape Sorter';
 export const SORTER_SET_VERSION = 1;
