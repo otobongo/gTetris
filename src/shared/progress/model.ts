@@ -535,15 +535,31 @@ export function freshRun(init: RunInit, now: number): LevelRun {
   return run;
 }
 
+const isBand = (v: string): boolean => (AGE_BANDS as readonly string[]).includes(v);
+
+/**
+ * True when two set ids differ in their age band part alone ('numbers:1:5-6' and 'numbers:1:7-8'):
+ * the same game and version, both ending in an age band, and the bands differ. A different version
+ * part ('numbers:1:5-6' and 'numbers:2:5-6') is a new set, not a band move (six-games brief 6).
+ */
+export function isBandMove(from: string, to: string): boolean {
+  const a = from.lastIndexOf(':');
+  const b = to.lastIndexOf(':');
+  if (a <= 0 || b <= 0 || from.slice(0, a) !== to.slice(0, b)) return false;
+  const bandA = from.slice(a + 1);
+  const bandB = to.slice(b + 1);
+  return bandA !== bandB && isBand(bandA) && isBand(bandB);
+}
+
 /**
  * The run a level should continue from, given what is stored: the stored one when its set matches;
- * on a set change, the stored one moved to the new set and seed when `keepSolved` (Letter Builder's
- * band change), otherwise a fresh run.
+ * on a band change alone, the stored one moved to the new set and seed when `keepSolved` (Letter
+ * Builder, Number Line-up and Brick Calculator); otherwise, a raised version included, a fresh run.
  */
 export function resolveRun(stored: LevelRun | null, init: RunInit, now: number): LevelRun {
   if (!stored) return freshRun(init, now);
   if (stored.set === init.set) return stored;
-  if (init.keepSolved) return { ...stored, set: init.set, seed: isSeed(init.seed) ? init.seed : 0, updatedAt: now };
+  if (init.keepSolved && isBandMove(stored.set, init.set)) return { ...stored, set: init.set, seed: isSeed(init.seed) ? init.seed : 0, updatedAt: now };
   return freshRun(init, now);
 }
 

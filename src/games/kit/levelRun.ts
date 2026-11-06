@@ -18,6 +18,7 @@ import {
   type PuzzleResult,
   type RunInit,
 } from '../../shared/progress';
+import { isBandMove } from '../../shared/progress/model';
 import type { LevelCardProps } from '../../shared/ui/LevelCard';
 import type { GameMeta } from '../meta';
 import { STUCK, STUCK_START, levelStars, puzzleOnScreen, rotateQueue, stuckStep, type RunGame, type StuckLimit, type StuckState } from '../run';
@@ -33,7 +34,7 @@ export interface KitGame<P> {
   set: (band: AgeBand) => string;
   /** 'run': a new random seed per run, stored in it; 'fixed': 0. */
   seed: 'run' | 'fixed';
-  /** numbers and math: a band change keeps solved puzzles. */
+  /** numbers and math: a band change keeps solved puzzles (a raised version still restarts). */
   keepSolved?: boolean;
   /** numbers only: 3 per level through spendHint. */
   hints?: boolean;
@@ -201,11 +202,12 @@ export function runInit(cfg: LevelRunConfig, band: AgeBand, seed: number): RunIn
 
 /**
  * The seed a level opens with: 0 for fixed sets; for run-seeded games the stored run's seed when that
- * run continues (same set, or a keepSolved band move), otherwise a new one.
+ * run continues (same set, or a keepSolved band move), otherwise a new one (a raised version included).
  */
 export function openingSeed(cfg: LevelRunConfig, band: AgeBand, stored: LevelRun | null, newSeed: () => number = randomSeed): number {
   if (cfg.seed === 'fixed') return 0;
-  if (stored && (stored.set === cfg.set(band) || cfg.keepSolved)) return stored.seed;
+  const set = cfg.set(band);
+  if (stored && (stored.set === set || (cfg.keepSolved && isBandMove(stored.set, set)))) return stored.seed;
   return newSeed();
 }
 
