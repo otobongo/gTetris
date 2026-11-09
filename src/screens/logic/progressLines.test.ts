@@ -13,7 +13,7 @@ const NOON = new Date(2026, 10, 4, 12, 0).getTime();
 const escape = getGame('escape')!;
 const drop = getGame('drop')!;
 const letters = getGame('letters')!;
-const mixer = getGame('mixer')!;
+const math = getGame('math')!;
 
 const RULES: Record<string, PuzzleRules> = {
   escape: { set: 'escape:x', seed: 0, levelCount: 31, stars: escapeLevelStars },
@@ -89,7 +89,7 @@ describe('Home card names', () => {
     finish(drop, drop.meta!.levelCount);
     expect(homeCardName(drop, me())).toBe('Brick Drop. Stack falling bricks into rows. All done.');
     expect(homePill(drop.meta, me().games.drop, '7-8', 'Stage')).toBe('All done');
-    expect(homeCardName(mixer, me())).toBe('Color Mixer. Mix two colors to make a new one. Coming soon.');
+    expect(homeCardName(math, me())).toBe('Brick Calculator. Add and take away with bricks. Coming soon.');
   });
 
   it('work with no player at all', () => {
@@ -137,7 +137,7 @@ describe('Break, mid-level', () => {
     expect(breakSavedLine(escape, me())).toBeNull();
     finish(drop, 12);
     expect(breakSavedLine(drop, me())).toBeNull();
-    expect(breakSavedLine(mixer, me())).toBeNull();
+    expect(breakSavedLine(math, me())).toBeNull();
     expect(breakSavedLine(escape, null)).toBeNull();
   });
 });
@@ -243,7 +243,8 @@ describe('copy', () => {
     finish(escape, 8);
     solve(escape, 8, 2);
     const lines: string[] = [];
-    for (const g of [escape, drop, letters]) {
+    // Six-games brief 10.3: every playable game, the batch 1 kit games too.
+    for (const g of [escape, drop, letters, ...['mixer', 'sorter', 'numbers'].map((id) => getGame(id)!)]) {
       const c = pickerCopy(g, me(), false);
       lines.push(homeCardName(g, me()), settingsRowName(g, me()), c.sub, c.intro, c.status(null), c.status(3), c.status(20), c.button(2), c.toast(2), ...Object.values(c.reset));
     }

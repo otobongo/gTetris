@@ -109,9 +109,9 @@ describe('planRoute: Home cards open the current level', () => {
 
   it('shows Coming soon for a game that is not built, without a level', () => {
     const { plan } = setup();
-    expect(plan('#/game/mixer')).toMatchObject({ redirect: null, route: { name: 'game', id: 'mixer', level: null } });
-    expect(plan('#/game/mixer/3').redirect).toBe('/game/mixer');
-    expect(plan('#/game/mixer/levels').redirect).toBe('/game/mixer');
+    expect(plan('#/game/math')).toMatchObject({ redirect: null, route: { name: 'game', id: 'math', level: null } });
+    expect(plan('#/game/math/3').redirect).toBe('/game/math');
+    expect(plan('#/game/math/levels').redirect).toBe('/game/math');
   });
 });
 
@@ -149,7 +149,8 @@ describe('planRoute: old paths take one replace', () => {
 describe('planRoute: the level picker', () => {
   it('opens for a playable game and a child that exists', () => {
     const { maya, plan } = setup();
-    for (const g of ['escape', 'drop', 'letters']) {
+    // Six-games brief 10.3: the batch 1 games have pickers too.
+    for (const g of ['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers']) {
       expect(plan(`#/settings/levels/${g}/${maya.id}`)).toMatchObject({ redirect: null, route: { name: 'levelPicker', game: g, playerId: maya.id } });
     }
   });
@@ -157,7 +158,7 @@ describe('planRoute: the level picker', () => {
   it('sends an unknown game, a game not built or an unknown child to Settings', () => {
     const { maya, plan } = setup();
     expect(plan(`#/settings/levels/nope/${maya.id}`).redirect).toBe('/settings');
-    expect(plan(`#/settings/levels/mixer/${maya.id}`).redirect).toBe('/settings');
+    expect(plan(`#/settings/levels/math/${maya.id}`).redirect).toBe('/settings');
     expect(plan('#/settings/levels/escape/nobody').redirect).toBe('/settings');
   });
 

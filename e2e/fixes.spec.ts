@@ -326,13 +326,29 @@ test('Settings: a grown-up changes a child’s age band on the Age row', async (
 test('the finished state shows each game’s total stars, not the last level’s', async ({ page }) => {
   // Every level has 2 stars but the last, which has 3: the last level alone would say 3 of 3.
   const withLast3 = (count: number) => ({ ...starsUpTo(count - 1, 2), [count - 1]: 3 });
+  // Six-games brief 10.4: the batch 1 kit games, whose finished state is the kit's.
   await seed(page, [
-    { id: 'maya', name: 'Maya', ageBand: '5-6', games: { escape: { stars: withLast3(31) }, drop: { stars: withLast3(12) }, letters: { stars: withLast3(24) } } },
+    {
+      id: 'maya',
+      name: 'Maya',
+      ageBand: '5-6',
+      games: {
+        escape: { stars: withLast3(31) },
+        drop: { stars: withLast3(12) },
+        letters: { stars: withLast3(24) },
+        mixer: { stars: withLast3(9) },
+        sorter: { stars: withLast3(9) },
+        numbers: { stars: withLast3(12) },
+      },
+    },
   ]);
   for (const [game, total] of [
     ['Brick Escape', '63 of 93 stars'],
     ['Brick Drop', '25 of 36 stars'],
     ['Letter Builder', '49 of 72 stars'],
+    ['Color Mixer', '19 of 27 stars'],
+    ['Shape Sorter', '19 of 27 stars'],
+    ['Number Line-up', '25 of 36 stars'],
   ] as const) {
     await page.goto('/#/');
     await homeCard(page, game).click();

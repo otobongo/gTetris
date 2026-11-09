@@ -9,149 +9,490 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .mix-liquid { transition: background-color 350ms cubic-bezier(0.16,1,0.3,1); } .mix-choice { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .mix-liquid { transition: background-color 150ms linear; } .mix-choice { transform: none !important; transition: opacity 150ms linear; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Color Mixer</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Found {{found}} of 6</div>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
+</sc-for>
 </div>
-<button onClick="{{clear}}" aria-label="Empty the bowl" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speak}}" aria-label="{{speakLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
 </button>
+</sc-if>
+</div>
 </div>
 
-<div style="display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: #30257a;">
-<button onClick="{{modeFree}}" aria-pressed="{{isFree}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 16px; border-radius: 12px; {{freeStyle}}">Discover</button>
-<button onClick="{{modeGoal}}" aria-pressed="{{isGoal}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 16px; font-weight: 800; padding: 8px 16px; border-radius: 12px; {{goalStyle}}">Challenge</button>
-</div>
-
-<sc-if value="{{isGoal}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{showGoalChip}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 16px; background: #30257a;">
-<span style="font-size: 18px; font-weight: 800;">Can you make</span>
-<span style="width: 30px; height: 30px; border-radius: 50%; background: {{goal.hex}}; box-shadow: 0 0 0 3px #ffffff;"></span>
-<span style="font-size: 18px; font-weight: 800;">{{goal.name}}?</span>
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2;">Can you make</span>
+<span aria-hidden="true" style="width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: {{goalhex}}; box-shadow: 0 0 0 3px #ffffff;"></span>
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2;">{{goalName}}?</span>
+</div>
+</sc-if>
+<sc-if value="{{showQuestionChip}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 16px; background: #30257a;">
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2; min-height: 30px; display: flex; align-items: center;">{{question}}</span>
 </div>
 </sc-if>
 
 <div style="display: flex; align-items: center; gap: 12px;">
-<div style="width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; {{slotA}}">{{slotAText}}</div>
-<span style="font-size: 34px; font-weight: 800; color: #c9c2ff;">+</span>
-<div style="width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; {{slotB}}">{{slotBText}}</div>
+<button onClick="{{tapSlotA}}" aria-label="{{slotALabel}}" aria-disabled="{{slotAOff}}" style="border: 0; padding: 0; cursor: pointer; font-family: inherit; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; background: transparent; {{sa}}">{{slotAText}}</button>
+<span aria-hidden="true" style="font-size: 34px; font-weight: 800; color: #c9c2ff;">+</span>
+<button onClick="{{tapSlotB}}" aria-label="{{slotBLabel}}" aria-disabled="{{slotBOff}}" style="border: 0; padding: 0; cursor: pointer; font-family: inherit; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; box-sizing: border-box; background: transparent; {{sb}}">{{slotBText}}</button>
 </div>
 
-<div style="position: relative; width: 230px; height: 170px;">
+<div role="img" aria-label="{{bowlLabel}}" style="position: relative; width: 230px; height: 170px; flex-shrink: 0;">
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 120px; border-radius: 0 0 115px 115px; background: linear-gradient(180deg, #e9e4ff, #b9b3c9); box-shadow: 0 8px 0 #8e85d6;"></div>
-<div style="position: absolute; left: 14px; right: 14px; top: 40px; height: 40px; border-radius: 50%; transition: background 0.6s; background: {{bowlHex}}; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15);"></div>
+<div class="mix-liquid" style="position: absolute; left: 14px; right: 14px; top: 40px; height: 40px; border-radius: 50%; background-color: {{liquid}}; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15);"></div>
 <div style="position: absolute; left: 0; right: 0; top: 30px; height: 20px; border-radius: 50%; border: 6px solid #f1eef7; box-sizing: border-box;"></div>
 </div>
 
-<div style="text-align: center; min-height: 64px;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div aria-live="polite" style="width: 100%; text-align: center; min-height: 64px;">
 <div style="font-size: 28px; font-weight: 800; line-height: 1.1;">{{resultName}}</div>
-<div style="font-size: 16px; font-weight: 700; color: #c9c2ff;">{{resultText}}</div>
+<div style="font-size: 16px; font-weight: 700; line-height: 1.35; color: #c9c2ff; text-wrap: balance;">{{resultText}}</div>
 </div>
+</sc-if>
 
-<div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-<sc-for list="{{pots}}" as="p" hint-placeholder-count="4">
-<button onClick="{{p.tap}}" aria-label="{{p.name}} paint" style="border: 0; cursor: pointer; font-family: inherit; width: 70px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; color: #ffffff; padding: 0;">
-<span style="width: 64px; height: 64px; border-radius: 18px 18px 22px 22px; background: {{p.hex}}; box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), inset 0 4px 0 rgba(255,255,255,0.35), 0 5px 0 rgba(0,0,0,0.3);"></span>
-<span style="font-size: 15px; font-weight: 800;">{{p.name}}</span>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
+<div style="grid-column: 1; grid-row: 1; display: grid;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
-</sc-for>
+</sc-if>
 </div>
+</div>
+</sc-if>
 
 <div style="flex-grow: 1;"></div>
 
-<div style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 20px; background: #30257a;">
-<div style="font-size: 15px; font-weight: 800; color: #c9c2ff; margin-bottom: 8px;">My color book</div>
-<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px;">
-<sc-for list="{{book}}" as="b" hint-placeholder-count="6">
-<div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-<span style="width: 40px; height: 40px; border-radius: 50%; box-sizing: border-box; {{b.style}}"></span>
-<span style="font-size: 12px; font-weight: 800; color: #c9c2ff;">{{b.label}}</span>
-</div>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; height: 86px; display: flex; justify-content: center; align-items: center;">
+<sc-if value="{{showShelf}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 12px; justify-content: center;">
+<sc-for list="{{pots}}" as="p" hint-placeholder-count="3">
+<button onClick="{{p.tap}}" aria-label="{{p.name}} paint" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; font-family: inherit; width: 70px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; color: #ffffff; padding: 0;">
+<span style="width: 64px; height: 64px; border-radius: 18px 18px 22px 22px; background: {{p.hex}}; box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), inset 0 4px 0 rgba(255,255,255,0.35), 0 5px 0 rgba(0,0,0,0.3);"></span>
+<span style="font-size: 15px; font-weight: 800; line-height: 1.2;">{{p.name}}</span>
+</button>
 </sc-for>
 </div>
+</sc-if>
+<sc-if value="{{showSwatches}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; gap: 12px; justify-content: center;">
+<sc-for list="{{swatches}}" as="c" hint-placeholder-count="3">
+<button class="mix-choice" onClick="{{c.tap}}" aria-label="{{c.name}}" aria-disabled="{{c.off}}" style="border: 0; cursor: pointer; font-family: inherit; width: 70px; display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; color: #ffffff; padding: 0; {{c.style}}">
+<span style="width: 64px; height: 64px; border-radius: 18px 18px 22px 22px; background: {{c.hex}}; box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), inset 0 4px 0 rgba(255,255,255,0.35), 0 5px 0 rgba(0,0,0,0.3);"></span>
+<span style="font-size: 15px; font-weight: 800; line-height: 1.2;">{{c.name}}</span>
+</button>
+</sc-for>
 </div>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="mix-card-title" aria-describedby="mix-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="mix-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
+</div>
+<p id="mix-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"form":{"editor":"enum","options":["finish","guess","make"],"default":"finish"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { a: null, b: null, found: { orange: true }, mode: 'free', goalIdx: 0, cheer: false };
+    this.state = this.fromLever();
   }
+  // The board's 4 paints and 6 recipes, unchanged (brief 4.1 and 7.3). Every unordered pair of paints makes one color.
   paints() {
     return { red: { name: 'Red', hex: '#f03a3a' }, yellow: { name: 'Yellow', hex: '#ffc21a' }, blue: { name: 'Blue', hex: '#2f8cff' }, white: { name: 'White', hex: '#f6f3ff' } };
   }
-  mixes() {
+  results() {
     return {
-      'red+yellow': { id: 'orange', name: 'Orange', hex: '#ff8a1f', text: 'Red and yellow make orange, like a sunset.' },
-      'blue+yellow': { id: 'green', name: 'Green', hex: '#2fb84a', text: 'Blue and yellow make green, like grass and leaves.' },
-      'blue+red': { id: 'purple', name: 'Purple', hex: '#8f4ae0', text: 'Red and blue make purple, like grapes.' },
-      'red+white': { id: 'pink', name: 'Pink', hex: '#ff8fb0', text: 'White makes red lighter. Now it is pink!' },
-      'blue+white': { id: 'sky', name: 'Sky blue', hex: '#8cc8ff', text: 'White makes blue lighter, like the sky.' },
-      'white+yellow': { id: 'cream', name: 'Cream', hex: '#ffe9a6', text: 'White makes yellow soft, like butter.' }
+      orange: { name: 'Orange', low: 'orange', hex: '#ff8a1f', pair: ['red', 'yellow'], text: 'Red and yellow make orange, like a sunset.' },
+      green: { name: 'Green', low: 'green', hex: '#2fb84a', pair: ['blue', 'yellow'], text: 'Blue and yellow make green, like grass and leaves.' },
+      purple: { name: 'Purple', low: 'purple', hex: '#8f4ae0', pair: ['red', 'blue'], text: 'Red and blue make purple, like grapes.' },
+      pink: { name: 'Pink', low: 'pink', hex: '#ff8fb0', pair: ['red', 'white'], text: 'White makes red lighter. Now it is pink.' },
+      sky: { name: 'Sky blue', low: 'sky blue', hex: '#8cc8ff', pair: ['blue', 'white'], text: 'White makes blue lighter, like the sky.' },
+      cream: { name: 'Cream', low: 'cream', hex: '#ffe9a6', pair: ['yellow', 'white'], text: 'White makes yellow soft, like butter.' }
     };
   }
-  key(a, b) { return [a, b].sort().join('+'); }
+  recipe(a, b) {
+    var R = this.results();
+    var ids = Object.keys(R);
+    for (var i = 0; i < ids.length; i++) {
+      var p = R[ids[i]].pair;
+      if ((p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)) return ids[i];
+    }
+    return null;
+  }
+  // Sample child for the stuck limits: Maya, ages 7 to 8 (brief 3.3: 4 slips, then 50 s with no progress).
+  limits() { return { count: 4, secs: 50 }; }
+  // Levels 1 to 9 from the brief 4.1 table: form by level, pool and shelf by chapter.
+  levelSpec(level) {
+    var form = ['finish', 'guess', 'make'][(level - 1) % 3];
+    var ch = Math.floor((level - 1) / 3);
+    var pool = ch === 0 ? ['orange', 'green', 'purple'] : ch === 1 ? ['pink', 'sky', 'cream'] : ['green', 'pink', 'purple', 'cream', 'orange', 'sky'];
+    var shelf = ch === 0 ? ['red', 'yellow', 'blue'] : ['red', 'yellow', 'blue', 'white'];
+    return { form: form, ch: ch, pool: pool, shelf: shelf };
+  }
+  // A level's 6 puzzles in queue order. Pools of 3 hold each question twice; the twins never sit side by side.
+  puzzles(level) {
+    var self = this;
+    var R = this.results();
+    var L = this.levelSpec(level);
+    var make = function (r, i, pass) {
+      var pair = R[r].pair;
+      if (L.form === 'finish') {
+        var given = pair[(i + pass) % 2];
+        return { form: 'finish', goal: r, given: given, shelf: L.shelf.filter(function (k) { return k !== given; }) };
+      }
+      if (L.form === 'make') {
+        return { form: 'make', goal: r, shelf: pass ? L.shelf.slice().reverse() : L.shelf.slice() };
+      }
+      var pa = pass ? pair[1] : pair[0], pb = pass ? pair[0] : pair[1];
+      var wrong;
+      if (L.ch === 0) wrong = L.pool.filter(function (x) { return x !== r; });
+      else {
+        // Wrong choices share a paint with the pair when one exists.
+        var all = Object.keys(R).filter(function (x) { return x !== r; });
+        var wa = all.filter(function (x) { return R[x].pair.indexOf(pa) >= 0; })[0];
+        var wb = all.filter(function (x) { return x !== wa && R[x].pair.indexOf(pb) >= 0; })[0];
+        wrong = [wa, wb];
+      }
+      var choices = wrong.slice();
+      choices.splice((i + pass) % 3, 0, r);
+      return { form: 'guess', goal: r, pa: pa, pb: pb, choices: choices };
+    };
+    var out = [];
+    if (L.pool.length === 3) {
+      [0, 1].forEach(function (pass) { L.pool.forEach(function (r, i) { out.push(make(r, i, pass)); }); });
+    } else {
+      L.pool.forEach(function (r, i) { out.push(make(r, i, 0)); });
+    }
+    return out;
+  }
+  // The form lever picks a sample level: Finish on Level 4 (add white), Guess on Level 2, Make it on Level 9.
+  levelOf(form) { return form === 'guess' ? 2 : form === 'make' ? 9 : 4; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.form, p.puzzle, p.moment].join('|');
+  }
+  freshPuzzle(P) {
+    return {
+      a: P.form === 'finish' ? P.given : P.form === 'guess' ? P.pa : null,
+      b: P.form === 'guess' ? P.pb : null,
+      wrongShown: false, wrongIdx: null, wrongTaps: 0, seen: {}, idle: 0, offer: false, note: ''
+    };
+  }
+  // A wrong answer the lever states show: the given paint with a wrong pot, or a wrong pair, or the first wrong colour.
+  wrongMove(P) {
+    var self = this;
+    if (P.form === 'finish') {
+      var bad = P.shelf.filter(function (k) { return self.recipe(P.given, k) !== P.goal; })[0];
+      return { b: bad, key: bad };
+    }
+    if (P.form === 'make') {
+      var pair = this.results()[P.goal].pair;
+      var other = P.shelf.filter(function (k) { return k !== pair[0] && k !== pair[1]; })[0];
+      return { a: pair[0], b: other, key: [pair[0], other].sort().join('+') };
+    }
+    var idx = P.choices.findIndex(function (c) { return c !== P.goal; });
+    return { wrongIdx: idx, key: P.choices[idx] };
+  }
+  fromLever() {
+    var p = this.props || {};
+    var form = ['finish', 'guess', 'make'].indexOf(p.form) >= 0 ? p.form : 'finish';
+    var level = this.levelOf(form);
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'slip', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var order = [0, 1, 2, 3, 4, 5];
+    var P = this.puzzles(level)[order[puzzle - 1]];
+    var s = Object.assign(this.freshPuzzle(P), { lever: this.leverKey(), level: level, puzzle: puzzle, moment: 'play', order: order, slips: 1 });
+    if (moment === 'slip' || moment === 'stuck') {
+      var w = this.wrongMove(P);
+      if (w.a) s.a = w.a;
+      if (w.b) s.b = w.b;
+      s.seen = {};
+      s.seen[w.key] = true;
+      if (moment === 'slip') { s.wrongShown = true; s.wrongIdx = w.wrongIdx === undefined ? null : w.wrongIdx; s.wrongTaps = 1; s.slips = 1; }
+      else { s.wrongShown = P.form !== 'guess'; s.wrongTaps = this.limits().count; s.slips = this.limits().count; s.offer = true; }
+    }
+    if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
+      var pair = this.results()[P.goal].pair;
+      if (P.form === 'finish') s.b = pair[0] === P.given ? pair[1] : pair[0];
+      if (P.form === 'make') { s.a = pair[0]; s.b = pair[1]; }
+      s.moment = moment;
+    }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  componentDidMount() {
+    var self = this;
+    // The time signal: seconds with no progress, counted only while the puzzle is on screen (brief 3.3).
+    this.timer = setInterval(function () {
+      var s = self.st();
+      if (s.moment !== 'play') return;
+      var idle = s.idle + 1;
+      self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  // A wrong answer always feeds the stuck count; a key seen before on this puzzle adds no star slip (brief 3.1).
+  slipPatch(cs, key) {
+    var seen = Object.assign({}, cs.seen);
+    var fresh = !seen[key];
+    seen[key] = true;
+    var wrongTaps = cs.wrongTaps + 1;
+    return { seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count, note: '' };
+  }
+  solvePatch(cs) {
+    var self = this;
+    var last = cs.puzzle === 4;
+    if (last) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+    return { moment: last ? 'lastSolved' : 'solved', offer: false, wrongShown: false, wrongIdx: null, note: '' };
+  }
+  // Finish and Make it: what the two slots hold now.
+  evaluate(cs, P, a, b) {
+    var patch = { a: a, b: b, wrongShown: false };
+    if (!a || !b) return patch;
+    if (a === b) return patch;
+    var r = this.recipe(a, b);
+    if (r === P.goal) return Object.assign(patch, this.solvePatch(cs));
+    var key = P.form === 'finish' ? b : [a, b].sort().join('+');
+    return Object.assign(patch, this.slipPatch(cs, key), { wrongShown: true });
+  }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
-    var P = this.paints();
-    var M = this.mixes();
-    var goals = ['green', 'purple', 'pink'];
-    var goalId = goals[s.goalIdx % goals.length];
-    var goal = Object.keys(M).map(function (k) { return M[k]; }).filter(function (m) { return m.id === goalId; })[0];
-    var result = s.a && s.b ? (s.a === s.b ? { id: 'same', name: P[s.a].name, hex: P[s.a].hex, text: 'Same and same stays the same. Try two different paints!' } : M[this.key(s.a, s.b)]) : null;
-    var slot = function (c) { return c ? 'background: ' + P[c].hex + '; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.18);' : 'border: 3px dashed #5444b8; color: #8e85d6;'; };
-    var hit = s.mode === 'goal' && result && result.id === goalId;
+    var PA = this.paints();
+    var R = this.results();
+    var list = this.puzzles(s.level);
+    var P = list[s.order[s.puzzle - 1]];
+    var goal = R[P.goal];
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
+    var playing = m === 'play';
+    var lastLevel = s.level === 9;
+    var guess = P.form === 'guess';
+
+    // What the slots and the bowl show. In Guess the bowl stays empty until the right colour is tapped.
+    var a = finished ? null : s.a, b = finished ? null : s.b;
+    var mixId = a && b && a !== b ? this.recipe(a, b) : null;
+    var same = a && b && a === b;
+    var liquid = '#ffffff', bowl = 'empty';
+    if (guess) { if (solvedNow && !finished) { liquid = goal.hex; bowl = goal.low; } }
+    else if (mixId) { liquid = R[mixId].hex; bowl = R[mixId].low; }
+    else if (a || b) { var one = a || b; liquid = PA[one].hex; bowl = PA[one].name.toLowerCase(); }
+
+    var resultName, resultText = '';
+    if (guess) {
+      if (solvedNow) { resultName = goal.name; resultText = goal.text; } else resultName = 'Pick a color';
+    } else if (mixId) { resultName = R[mixId].name; resultText = R[mixId].text; }
+    else if (same) { resultName = PA[a].name; resultText = 'Same and same stays the same. Try two different paints.'; }
+    else resultName = a || b ? 'Pick one more paint' : 'Pick two paints';
+
+    var offerLine = 'This one is tricky. Want a different puzzle?';
+    var help = solvedNow ? (guess ? 'They make ' + goal.low + '.' : 'You made ' + goal.low + '.')
+      : s.offer ? offerLine
+      : s.note ? s.note
+      : s.wrongShown || s.wrongIdx !== null ? (P.form === 'finish' ? 'Not ' + goal.low + ' yet. Try another paint.' : P.form === 'make' ? 'Not ' + goal.low + ' yet. Try another pair.' : 'Not that one. Look at the two paints again.')
+      : P.form === 'finish' ? 'Tap the paint that makes ' + goal.low + '.' : P.form === 'make' ? 'Tap two paints to mix them.' : 'Tap the color they make.';
+    var question = guess ? 'What do ' + P.pa + ' and ' + P.pb + ' make?' : 'Can you make ' + goal.low + '?';
+
+    var slotStyle = function (c) {
+      return c ? 'background: ' + PA[c].hex + '; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.18);' : 'border: 3px dashed #5444b8; color: #c9c2ff;';
+    };
+    var givenA = P.form === 'finish' || guess, givenB = guess;
+    var slotLabel = function (n, c, given) { return 'Paint ' + n + ': ' + (c ? c + (given ? ', given' : '') : 'empty'); };
+
+    // Dots (four-puzzle brief section 8).
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+
+    // Level card: slips over the 4 puzzles (brief 3.2). Totals for the finished state are sample data.
+    var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
+    var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
-      found: Object.keys(s.found).length,
-      isFree: s.mode === 'free', isGoal: s.mode === 'goal',
-      freeStyle: s.mode === 'free' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      goalStyle: s.mode === 'goal' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      modeFree: function () { self.setState({ mode: 'free', a: null, b: null }); },
-      modeGoal: function () { self.setState({ mode: 'goal', a: null, b: null }); },
-      goal: goal,
-      slotA: slot(s.a), slotB: slot(s.b),
-      slotAText: s.a ? '' : 'paint 1', slotBText: s.b ? '' : 'paint 2',
-      bowlHex: result ? result.hex : s.a ? P[s.a].hex : '#ffffff',
-      resultName: hit ? 'You made ' + goal.name + '!' : result ? result.name : s.a ? 'Now pick one more' : 'Pick two paints',
-      resultText: result ? result.text : 'What new color will you discover?',
-      pots: Object.keys(P).map(function (k) {
+      title: finished ? 'Color Mixer' : 'Level ' + s.level,
+      showDots: !finished, dots: dots,
+      dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
+      showPlayArea: !finished,
+      // Speech only after a tap. The speaker reads the chip, and after a mix the result text; while the offer shows, the offer line.
+      speakLabel: s.offer && playing ? 'Read the help line aloud' : 'Hear the question',
+      speak: function () {
+        var cs = self.st();
+        if (cs.offer && cs.moment === 'play') { self.say(offerLine); return; }
+        self.say(question + (resultText ? ' ' + resultText : ''));
+      },
+      showGoalChip: !finished && !guess, showQuestionChip: !finished && guess,
+      goalhex: goal.hex, goalName: goal.low, question: question,
+      sa: slotStyle(a), sb: slotStyle(b),
+      slotAText: a ? '' : 'paint 1', slotBText: b ? '' : 'paint 2',
+      slotALabel: slotLabel(1, a, givenA), slotBLabel: slotLabel(2, b, givenB),
+      slotAOff: givenA || !a || !playing ? 'true' : 'false',
+      slotBOff: givenB || !b || !playing ? 'true' : 'false',
+      // A tap on a filled slot empties it; a given or empty slot does nothing.
+      tapSlotA: function () { var cs = self.st(); if (givenA || !cs.a || cs.moment !== 'play') return; self.put({ a: null, wrongShown: false }); },
+      tapSlotB: function () { var cs = self.st(); if (givenB || !cs.b || cs.moment !== 'play') return; self.put({ b: null, wrongShown: false }); },
+      liquid: liquid,
+      bowlLabel: 'Bowl: ' + bowl,
+      resultName: resultName, resultText: resultText,
+      help: help,
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        // The current puzzle moves to the end of the queue; the dots stay where they are.
+        var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
+        var NP = self.puzzles(cs.level)[order[cs.puzzle - 1]];
+        self.put(Object.assign(self.freshPuzzle(NP), { order: order, note: 'Here is a different puzzle.' }));
+      },
+      showShelf: playing && !guess,
+      pots: guess ? [] : P.shelf.map(function (k) {
+        var inSlot = (P.form === 'make' && s.a === k) || s.b === k;
         return {
-          name: P[k].name, hex: P[k].hex,
+          name: PA[k].name, hex: PA[k].hex, on: inSlot ? 'true' : 'false',
           tap: function () {
-            if (!s.a || (s.a && s.b)) { self.setState({ a: k, b: null }); return; }
-            var r = s.a === k ? null : M[self.key(s.a, k)];
-            var found = Object.assign({}, s.found);
-            if (r) found[r.id] = true;
-            var next = { b: k, found: found };
-            if (s.mode === 'goal' && r && r.id === goalId) {
-              setTimeout(function () { self.setState({ goalIdx: self.state.goalIdx + 1, a: null, b: null }); }, 2200);
+            var cs = self.st();
+            if (cs.moment !== 'play') return;
+            var CP = self.puzzles(cs.level)[cs.order[cs.puzzle - 1]];
+            var gp = self.results()[CP.goal].pair;
+            var progress = CP.form === 'make' && gp.indexOf(k) >= 0 ? { idle: 0, offer: false } : {};
+            if (CP.form === 'finish') {
+              if (cs.b === k) return;
+              self.put(Object.assign(progress, self.evaluate(cs, CP, cs.a, k)));
+              return;
             }
-            self.setState(next);
+            // Make it: fill the empty slot; a third tap starts a new pair with that paint.
+            if (cs.a && cs.b) { self.put(Object.assign(progress, { a: k, b: null, wrongShown: false })); return; }
+            var na = cs.a || k, nb = cs.a ? k : cs.b;
+            self.put(Object.assign(progress, self.evaluate(cs, CP, na, nb)));
           }
         };
       }),
-      clear: function () { self.setState({ a: null, b: null }); },
-      book: Object.keys(M).map(function (k) {
-        var m = M[k];
-        var got = !!s.found[m.id];
-        return { label: got ? m.name : '?', style: got ? 'background: ' + m.hex + '; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.15);' : 'border: 3px dashed #5444b8;' };
-      })
+      showSwatches: playing && guess,
+      swatches: guess ? P.choices.map(function (id, i) {
+        var dim = s.wrongIdx === i;
+        return {
+          name: R[id].name, hex: R[id].hex, off: playing ? 'false' : 'true',
+          style: dim ? 'opacity: 0.5; transform: translateX(-6px) rotate(-5deg);' : 'opacity: 1; transform: none;',
+          tap: function () {
+            var cs = self.st();
+            if (cs.moment !== 'play') return;
+            if (id === P.goal) { self.put(self.solvePatch(cs)); return; }
+            self.put(Object.assign(self.slipPatch(cs, id), { wrongIdx: i, wrongShown: true }));
+            clearTimeout(self.wrongT);
+            self.wrongT = setTimeout(function () { self.put({ wrongIdx: null }); }, 500);
+          }
+        };
+      }) : [],
+      showNext: m === 'solved',
+      next: function () {
+        var cs = self.st();
+        if (cs.moment !== 'solved') return;
+        var NP = self.puzzles(cs.level)[cs.order[cs.puzzle]];
+        self.put(Object.assign(self.freshPuzzle(NP), { puzzle: cs.puzzle + 1, moment: 'play' }));
+      },
+      cardOpen: m === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '24 of 27 stars' : starsWon + ' of 3 stars',
+      starsgap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '24 of 27',
+      cardFact: finished || lastLevel ? '9 levels, 24 of 27 stars.' : fact,
+      showRule: !finished && !lastLevel,
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (s.level + 1),
+      playNext: function () {
+        var cs = self.st();
+        if (cs.moment !== 'levelDone' || cs.level >= 9) return;
+        var NP = self.puzzles(cs.level + 1)[0];
+        self.put(Object.assign(self.freshPuzzle(NP), { level: cs.level + 1, puzzle: 1, moment: 'play', order: [0, 1, 2, 3, 4, 5], slips: 0 }));
+      }
     };
   }
 }

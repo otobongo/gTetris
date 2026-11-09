@@ -7,32 +7,32 @@
    "is_interactive": true,
    "title": "Picture Builder (phone)",
    "w": 390,
-   "x": 940,
-   "y": 6400
+   "x": 0,
+   "y": 12800
   },
   "BuilderTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Picture Builder (tablet)",
    "w": 834,
-   "x": 3238,
-   "y": 6400
+   "x": 470,
+   "y": 12800
   },
   "Drop.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Drop (phone)",
    "w": 390,
-   "x": 470,
-   "y": 1600
+   "x": 0,
+   "y": 3200
   },
   "DropTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Brick Drop (tablet)",
    "w": 834,
-   "x": 2324,
-   "y": 1600
+   "x": 2820,
+   "y": 3200
   },
   "Escape.dc.html": {
    "h": 844,
@@ -47,23 +47,23 @@
    "is_interactive": true,
    "title": "Escape: frozen doors (phone)",
    "w": 390,
-   "x": 0,
-   "y": 3200
+   "x": 470,
+   "y": 1600
   },
   "EscapeMaster.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Escape: master mix (phone)",
    "w": 390,
-   "x": 940,
-   "y": 3200
+   "x": 1410,
+   "y": 1600
   },
   "EscapeTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Brick Escape (tablet)",
    "w": 834,
-   "x": 1410,
+   "x": 4230,
    "y": 1600
   },
   "EscapeWalls.dc.html": {
@@ -71,8 +71,8 @@
    "is_interactive": true,
    "title": "Escape: stone blocks and shaped tray (phone)",
    "w": 390,
-   "x": 470,
-   "y": 3200
+   "x": 940,
+   "y": 1600
   },
   "Grownups.dc.html": {
    "h": 844,
@@ -80,22 +80,22 @@
    "title": "Settings (phone)",
    "w": 390,
    "x": 0,
-   "y": 8000
+   "y": 16000
   },
   "GrownupsTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Settings (tablet)",
    "w": 834,
-   "x": 470,
-   "y": 8000
+   "x": 1410,
+   "y": 16000
   },
   "Hub.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Home (phone)",
    "w": 390,
-   "x": 940,
+   "x": 1410,
    "y": 0
   },
   "HubTablet.dc.html": {
@@ -103,7 +103,7 @@
    "is_interactive": true,
    "title": "Home (tablet)",
    "w": 834,
-   "x": 3238,
+   "x": 4622,
    "y": 0
   },
   "Letters.dc.html": {
@@ -111,23 +111,23 @@
    "is_interactive": true,
    "title": "Letter Builder (phone)",
    "w": 390,
-   "x": 940,
-   "y": 1600
+   "x": 0,
+   "y": 4800
   },
   "LettersTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Letter Builder (tablet)",
    "w": 834,
-   "x": 3238,
-   "y": 1600
+   "x": 2350,
+   "y": 4800
   },
   "Main.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Who's playing (phone)",
    "w": 390,
-   "x": 470,
+   "x": 940,
    "y": 0
   },
   "MainTablet.dc.html": {
@@ -135,7 +135,7 @@
    "is_interactive": true,
    "title": "Who's playing (tablet)",
    "w": 834,
-   "x": 2324,
+   "x": 3708,
    "y": 0
   },
   "Math.dc.html": {
@@ -143,16 +143,16 @@
    "is_interactive": true,
    "title": "Brick Calculator (phone)",
    "w": 390,
-   "x": 470,
-   "y": 6400
+   "x": 0,
+   "y": 14400
   },
   "MathTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Brick Calculator (tablet)",
    "w": 834,
-   "x": 2324,
-   "y": 6400
+   "x": 470,
+   "y": 14400
   },
   "Mixer.dc.html": {
    "h": 844,
@@ -160,15 +160,15 @@
    "title": "Color Mixer (phone)",
    "w": 390,
    "x": 0,
-   "y": 4800
+   "y": 6400
   },
   "MixerTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Color Mixer (tablet)",
    "w": 834,
-   "x": 1410,
-   "y": 4800
+   "x": 3290,
+   "y": 6400
   },
   "Numbers.dc.html": {
    "h": 844,
@@ -176,31 +176,31 @@
    "title": "Number Line-up (phone)",
    "w": 390,
    "x": 0,
-   "y": 6400
+   "y": 11200
   },
   "NumbersTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Number Line-up (tablet)",
    "w": 834,
-   "x": 1410,
-   "y": 6400
+   "x": 3290,
+   "y": 11200
   },
   "Pattern.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Pattern Train (phone)",
    "w": 390,
-   "x": 940,
-   "y": 4800
+   "x": 0,
+   "y": 9600
   },
   "PatternTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Pattern Train (tablet)",
    "w": 834,
-   "x": 3238,
-   "y": 4800
+   "x": 470,
+   "y": 9600
   },
   "Signup.dc.html": {
    "h": 844,
@@ -215,7 +215,7 @@
    "is_interactive": true,
    "title": "Grown-up sign up (tablet)",
    "w": 834,
-   "x": 1410,
+   "x": 1880,
    "y": 0
   },
   "Sorter.dc.html": {
@@ -223,23 +223,23 @@
    "is_interactive": true,
    "title": "Shape Sorter (phone)",
    "w": 390,
-   "x": 470,
-   "y": 4800
+   "x": 0,
+   "y": 8000
   },
   "SorterTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Shape Sorter (tablet)",
    "w": 834,
-   "x": 2324,
-   "y": 4800
+   "x": 3290,
+   "y": 8000
   },
   "Signin.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Sign in (phone)",
    "w": 390,
-   "x": 4152,
+   "x": 470,
    "y": 0
   },
   "SigninTablet.dc.html": {
@@ -247,7 +247,7 @@
    "is_interactive": true,
    "title": "Sign in (tablet)",
    "w": 834,
-   "x": 4622,
+   "x": 2794,
    "y": 0
   },
   "Levels.dc.html": {
@@ -255,40 +255,40 @@
    "is_interactive": true,
    "title": "Level picker for grown-ups: Brick Escape (phone)",
    "w": 390,
-   "x": 3238,
-   "y": 8000
+   "x": 3760,
+   "y": 1600
   },
   "LevelsLetters.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Level picker for grown-ups: Letter Builder (phone)",
    "w": 390,
-   "x": 3708,
-   "y": 8000
+   "x": 1880,
+   "y": 4800
   },
   "LevelsTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Level picker for grown-ups (tablet)",
    "w": 834,
-   "x": 4648,
-   "y": 8000
+   "x": 6058,
+   "y": 1600
   },
   "Help.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Support (phone)",
    "w": 390,
-   "x": 1384,
-   "y": 8000
+   "x": 470,
+   "y": 16000
   },
   "HelpDoc.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Terms and Privacy (phone)",
    "w": 390,
-   "x": 1854,
-   "y": 8000
+   "x": 940,
+   "y": 16000
   },
   "HelpTablet.dc.html": {
    "h": 1194,
@@ -296,7 +296,7 @@
    "title": "Support (tablet)",
    "w": 834,
    "x": 2324,
-   "y": 8000
+   "y": 16000
   },
   "Stickers.dc.html": {
    "h": 844,
@@ -304,7 +304,7 @@
    "title": "Sticker book (phone)",
    "w": 390,
    "x": 0,
-   "y": 9600
+   "y": 17600
   },
   "StickersEmpty.dc.html": {
    "h": 844,
@@ -312,7 +312,7 @@
    "title": "Sticker book, empty (phone)",
    "w": 390,
    "x": 470,
-   "y": 9600
+   "y": 17600
   },
   "Break.dc.html": {
    "h": 844,
@@ -320,7 +320,7 @@
    "title": "Break time (phone)",
    "w": 390,
    "x": 940,
-   "y": 9600
+   "y": 17600
   },
   "BreakExtend.dc.html": {
    "h": 844,
@@ -328,7 +328,7 @@
    "title": "Break time, add time (phone)",
    "w": 390,
    "x": 1410,
-   "y": 9600
+   "y": 17600
   },
   "StickersTablet.dc.html": {
    "h": 1194,
@@ -336,7 +336,7 @@
    "title": "Sticker book (tablet)",
    "w": 834,
    "x": 1880,
-   "y": 9600
+   "y": 17600
   },
   "BreakTablet.dc.html": {
    "h": 1194,
@@ -344,127 +344,295 @@
    "title": "Break time (tablet)",
    "w": 834,
    "x": 2794,
-   "y": 9600
+   "y": 17600
   },
   "DropDone.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Drop: stage done (phone)",
    "w": 390,
-   "x": 3290,
-   "y": 11200
+   "x": 1880,
+   "y": 3200
   },
   "DropDoneTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Brick Drop: stage done (tablet)",
    "w": 834,
-   "x": 6084,
-   "y": 11200
+   "x": 3734,
+   "y": 3200
   },
   "DropReady.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Drop: first brick waiting (phone)",
    "w": 390,
-   "x": 1880,
-   "y": 11200
+   "x": 470,
+   "y": 3200
   },
   "DropSolved.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Drop: puzzle solved (phone)",
    "w": 390,
-   "x": 2350,
-   "y": 11200
+   "x": 940,
+   "y": 3200
   },
   "DropStuck.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Drop: stuck, new puzzle offer (phone)",
    "w": 390,
-   "x": 2820,
-   "y": 11200
+   "x": 1410,
+   "y": 3200
   },
   "EscapeDone.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Escape: level done (phone)",
    "w": 390,
-   "x": 940,
-   "y": 11200
+   "x": 2820,
+   "y": 1600
   },
   "EscapeDoneTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Brick Escape: level done (tablet)",
    "w": 834,
-   "x": 5170,
-   "y": 11200
+   "x": 5144,
+   "y": 1600
   },
   "EscapeGameDone.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Escape: every level done (phone)",
    "w": 390,
-   "x": 1410,
-   "y": 11200
+   "x": 3290,
+   "y": 1600
   },
   "EscapeSolved.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Escape: puzzle solved (phone)",
    "w": 390,
-   "x": 0,
-   "y": 11200
+   "x": 1880,
+   "y": 1600
   },
   "EscapeStuck.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Brick Escape: stuck, new puzzle offer (phone)",
    "w": 390,
-   "x": 470,
-   "y": 11200
+   "x": 2350,
+   "y": 1600
   },
   "LettersDone.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Letter Builder: level done (phone)",
    "w": 390,
-   "x": 4700,
-   "y": 11200
+   "x": 1410,
+   "y": 4800
   },
   "LettersDoneTablet.dc.html": {
    "h": 1194,
    "is_interactive": true,
    "title": "Letter Builder: level done (tablet)",
    "w": 834,
-   "x": 6998,
-   "y": 11200
+   "x": 3264,
+   "y": 4800
   },
   "LettersSolved.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Letter Builder: word built (phone)",
    "w": 390,
-   "x": 3760,
-   "y": 11200
+   "x": 470,
+   "y": 4800
   },
   "LettersStuck.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Letter Builder: stuck, new word offer (phone)",
    "w": 390,
-   "x": 4230,
-   "y": 11200
+   "x": 940,
+   "y": 4800
   },
   "LevelsDrop.dc.html": {
    "h": 844,
    "is_interactive": true,
    "title": "Level picker for grown-ups: Brick Drop (phone)",
    "w": 390,
-   "x": 4178,
+   "x": 2350,
+   "y": 3200
+  },
+  "MixerGuess.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: guess the mix (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 6400
+  },
+  "MixerMake.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: make it, wrong pair (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 6400
+  },
+  "MixerSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: puzzle solved (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 6400
+  },
+  "MixerStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 6400
+  },
+  "MixerDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Color Mixer: level done (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 6400
+  },
+  "SorterColors.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: shape and color, wrong hole (phone)",
+   "w": 390,
+   "x": 470,
    "y": 8000
+  },
+  "SorterBig.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: eight pieces (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 8000
+  },
+  "SorterSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: puzzle solved (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 8000
+  },
+  "SorterStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 8000
+  },
+  "SorterDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Shape Sorter: level done (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 8000
+  },
+  "NumbersBig.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: bigger numbers (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 11200
+  },
+  "NumbersHint.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: hint (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 11200
+  },
+  "NumbersSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: puzzle solved (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 11200
+  },
+  "NumbersStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 11200
+  },
+  "NumbersDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Number Line-up: level done (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 11200
+  },
+  "MixerDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Color Mixer: level done (tablet)",
+   "w": 834,
+   "x": 4204,
+   "y": 6400
+  },
+  "SorterDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Shape Sorter: level done (tablet)",
+   "w": 834,
+   "x": 4204,
+   "y": 8000
+  },
+  "NumbersDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Number Line-up: level done (tablet)",
+   "w": 834,
+   "x": 4204,
+   "y": 11200
+  },
+  "LevelsMixer.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Color Mixer (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 6400
+  },
+  "LevelsSorter.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Shape Sorter (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 8000
+  },
+  "LevelsNumbers.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Number Line-up (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 11200
   }
  },
  "createdOnFiles": {
@@ -479,127 +647,180 @@
   "row1": {
    "kind": "title1",
    "maxW": 5456,
-   "text": "1. Start: a grown-up signs up and adds children, each child picks their brick",
+   "text": "1. Start: sign up, sign in, who's playing and Home",
    "w": 240,
    "x": 0,
    "y": -300
   },
   "row2": {
    "kind": "title1",
-   "maxW": 4072,
-   "text": "2. Games with timers tuned to age and level",
+   "maxW": 6892,
+   "text": "2. Brick Escape",
    "w": 240,
    "x": 0,
    "y": 1300
   },
   "row3": {
    "kind": "title1",
-   "maxW": 4072,
-   "text": "4. Games: shapes and colors",
-   "w": 240,
-   "x": 0,
-   "y": 4500
-  },
-  "row4": {
-   "kind": "title1",
-   "maxW": 4072,
-   "text": "5. Games: numbers, math and building",
-   "w": 240,
-   "x": 0,
-   "y": 6100
-  },
-  "row5": {
-   "kind": "title1",
-   "maxW": 5482,
-   "text": "6. Settings, sign in, help and the level picker",
-   "w": 240,
-   "x": 0,
-   "y": 7700
-  },
-  "rowEsc": {
-   "kind": "title1",
-   "maxW": 1330,
-   "text": "3. Brick Escape explorations: colors and obstacles",
+   "maxW": 4568,
+   "text": "3. Brick Drop",
    "w": 240,
    "x": 0,
    "y": 2900
   },
+  "row4": {
+   "kind": "title1",
+   "maxW": 4098,
+   "text": "4. Letter Builder",
+   "w": 240,
+   "x": 0,
+   "y": 4500
+  },
+  "row5": {
+   "kind": "title1",
+   "maxW": 5038,
+   "text": "5. Color Mixer (batch 1, new)",
+   "w": 240,
+   "x": 0,
+   "y": 6100
+  },
+  "row6": {
+   "kind": "title1",
+   "maxW": 5038,
+   "text": "6. Shape Sorter (batch 1, new)",
+   "w": 240,
+   "x": 0,
+   "y": 7700
+  },
   "row7": {
    "kind": "title1",
-   "maxW": 3628,
-   "text": "7. Around the games: sticker book and break time",
+   "maxW": 1304,
+   "text": "7. Pattern Train (batch 2, not updated yet)",
    "w": 240,
    "x": 0,
    "y": 9300
   },
   "row8": {
    "kind": "title1",
-   "maxW": 7832,
-   "text": "8. Four-puzzle levels: solved, stuck and level done",
+   "maxW": 5038,
+   "text": "8. Number Line-up (batch 1, new)",
    "w": 240,
    "x": 0,
    "y": 10900
+  },
+  "row9": {
+   "kind": "title1",
+   "maxW": 1304,
+   "text": "9. Picture Builder (batch 2, not updated yet)",
+   "w": 240,
+   "x": 0,
+   "y": 12500
+  },
+  "row10": {
+   "kind": "title1",
+   "maxW": 1304,
+   "text": "10. Brick Calculator (batch 2, not updated yet)",
+   "w": 240,
+   "x": 0,
+   "y": 14100
+  },
+  "row11": {
+   "kind": "title1",
+   "maxW": 3158,
+   "text": "11. Settings and help",
+   "w": 240,
+   "x": 0,
+   "y": 15700
+  },
+  "row12": {
+   "kind": "title1",
+   "maxW": 3628,
+   "text": "12. Around the games: sticker book and break time",
+   "w": 240,
+   "x": 0,
+   "y": 17300
   }
  },
  "order": [
+  "Signup.dc.html",
+  "Signin.dc.html",
   "Main.dc.html",
   "Hub.dc.html",
-  "Signup.dc.html",
+  "SignupTablet.dc.html",
+  "SigninTablet.dc.html",
   "MainTablet.dc.html",
   "HubTablet.dc.html",
-  "SignupTablet.dc.html",
-  "Signin.dc.html",
-  "SigninTablet.dc.html",
   "Escape.dc.html",
-  "Drop.dc.html",
-  "Letters.dc.html",
-  "EscapeTablet.dc.html",
-  "DropTablet.dc.html",
-  "LettersTablet.dc.html",
-  "Levels.dc.html",
-  "LevelsLetters.dc.html",
-  "LevelsDrop.dc.html",
-  "LevelsTablet.dc.html",
   "EscapeIce.dc.html",
   "EscapeWalls.dc.html",
   "EscapeMaster.dc.html",
+  "EscapeSolved.dc.html",
+  "EscapeStuck.dc.html",
+  "EscapeDone.dc.html",
+  "EscapeGameDone.dc.html",
+  "Levels.dc.html",
+  "EscapeTablet.dc.html",
+  "EscapeDoneTablet.dc.html",
+  "LevelsTablet.dc.html",
+  "Drop.dc.html",
+  "DropReady.dc.html",
+  "DropSolved.dc.html",
+  "DropStuck.dc.html",
+  "DropDone.dc.html",
+  "LevelsDrop.dc.html",
+  "DropTablet.dc.html",
+  "DropDoneTablet.dc.html",
+  "Letters.dc.html",
+  "LettersSolved.dc.html",
+  "LettersStuck.dc.html",
+  "LettersDone.dc.html",
+  "LevelsLetters.dc.html",
+  "LettersTablet.dc.html",
+  "LettersDoneTablet.dc.html",
   "Mixer.dc.html",
-  "Sorter.dc.html",
-  "Pattern.dc.html",
+  "MixerGuess.dc.html",
+  "MixerMake.dc.html",
+  "MixerSolved.dc.html",
+  "MixerStuck.dc.html",
+  "MixerDone.dc.html",
+  "LevelsMixer.dc.html",
   "MixerTablet.dc.html",
+  "MixerDoneTablet.dc.html",
+  "Sorter.dc.html",
+  "SorterColors.dc.html",
+  "SorterBig.dc.html",
+  "SorterSolved.dc.html",
+  "SorterStuck.dc.html",
+  "SorterDone.dc.html",
+  "LevelsSorter.dc.html",
   "SorterTablet.dc.html",
+  "SorterDoneTablet.dc.html",
+  "Pattern.dc.html",
   "PatternTablet.dc.html",
   "Numbers.dc.html",
-  "Math.dc.html",
-  "Builder.dc.html",
+  "NumbersBig.dc.html",
+  "NumbersHint.dc.html",
+  "NumbersSolved.dc.html",
+  "NumbersStuck.dc.html",
+  "NumbersDone.dc.html",
+  "LevelsNumbers.dc.html",
   "NumbersTablet.dc.html",
-  "MathTablet.dc.html",
+  "NumbersDoneTablet.dc.html",
+  "Builder.dc.html",
   "BuilderTablet.dc.html",
+  "Math.dc.html",
+  "MathTablet.dc.html",
   "Grownups.dc.html",
-  "GrownupsTablet.dc.html",
   "Help.dc.html",
   "HelpDoc.dc.html",
+  "GrownupsTablet.dc.html",
   "HelpTablet.dc.html",
   "Stickers.dc.html",
   "StickersEmpty.dc.html",
   "Break.dc.html",
   "BreakExtend.dc.html",
   "StickersTablet.dc.html",
-  "BreakTablet.dc.html",
-  "EscapeSolved.dc.html",
-  "EscapeStuck.dc.html",
-  "EscapeDone.dc.html",
-  "EscapeGameDone.dc.html",
-  "DropReady.dc.html",
-  "DropSolved.dc.html",
-  "DropStuck.dc.html",
-  "DropDone.dc.html",
-  "LettersSolved.dc.html",
-  "LettersStuck.dc.html",
-  "LettersDone.dc.html",
-  "EscapeDoneTablet.dc.html",
-  "DropDoneTablet.dc.html",
-  "LettersDoneTablet.dc.html"
+  "BreakTablet.dc.html"
  ],
  "pages": [],
  "title": "Brickwise Design Direction"

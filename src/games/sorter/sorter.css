@@ -1,0 +1,198 @@
+/* Shape Sorter (six-games brief 4.2, 7.4), built from design/canvas/Sorter.dc.html. Prefix sort-.
+   Colours, type and motion are tokens from src/styles/tokens.css; board sizes are px, as slide.css and
+   letters.css keep theirs. The play frame, help row, controls slot and drag come from the kit (kit.css). */
+
+/* ---------- Frame ---------- */
+/* The tray well is the kit's controls slot: its height holds one or two rows of pieces plus the well's padding,
+   so Next puzzle replaces the tray without anything moving. */
+.sort { --bw-slot-min: 112px; }
+.sort--rows-2 { --bw-slot-min: 196px; }
+
+/* ---------- Shapes: one look for pieces, holes and ghosts ---------- */
+.sort-shape {
+  display: block;
+  flex-shrink: 0;
+  width: 58px;
+  height: 58px;
+  background: var(--sort-c);
+  box-shadow:
+    inset 0 -6px 0 rgb(0 0 0 / 0.2),
+    inset 0 4px 0 rgb(255 255 255 / 0.3);
+}
+.sort-shape[data-color='yellow'] { --sort-c: var(--brick-yellow); }
+.sort-shape[data-color='red'] { --sort-c: var(--brick-red); }
+.sort-shape[data-color='blue'] { --sort-c: var(--brick-blue); }
+.sort-shape[data-color='green'] { --sort-c: var(--brick-green); }
+.sort-shape[data-color='pink'] { --sort-c: var(--brick-pink); }
+.sort-shape[data-color='purple'] { --sort-c: var(--brick-purple); }
+
+/* ---------- Holes panel ---------- */
+.sort-holes {
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 18px;
+  border-radius: 30px;
+  background: linear-gradient(180deg, var(--bw-panel-top), var(--bw-panel));
+  box-shadow:
+    inset 0 0 0 4px var(--bw-purple-top),
+    0 8px 0 var(--bw-purple-edge);
+}
+.sort-holes__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  justify-items: center;
+}
+/* The finished state keeps the panel's size with nothing in it: two rows of holes. */
+.sort-holes.is-empty .sort-holes__grid { min-height: 198px; }
+
+.sort-hole {
+  box-sizing: border-box;
+  width: 92px;
+  height: 92px;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.12);
+  color: inherit;
+  cursor: pointer;
+  transition:
+    box-shadow var(--bw-base) var(--bw-ease),
+    background var(--bw-base) var(--bw-ease);
+}
+div.sort-hole { cursor: default; }
+.sort-hole:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+/* A hole is drawn in its own colour, sunk in so it still reads as empty. */
+.sort-hole .sort-shape { width: 70px; height: 70px; }
+.sort-shape.is-sunk {
+  box-shadow:
+    inset 0 10px 14px rgb(0 0 0 / 0.55),
+    inset 0 -2px 0 rgb(255 255 255 / 0.25);
+}
+.sort-hole.is-filled { box-shadow: 0 0 0 3px rgb(255 255 255 / 0.6); }
+/* Wrong: a red ring and a red wash on the hole; the shake alternates two names so it restarts on the same hole. */
+.sort-hole.is-wrong {
+  background: color-mix(in srgb, var(--bw-error-border) 35%, transparent);
+  box-shadow: 0 0 0 4px var(--bw-error-border);
+}
+.sort-hole.is-shake-a { animation: sort-shake-a 360ms linear; }
+.sort-hole.is-shake-b { animation: sort-shake-b 360ms linear; }
+@keyframes sort-shake-a {
+  0% { transform: translateX(-9px); }
+  17% { transform: translateX(9px); }
+  34% { transform: translateX(-6px); }
+  51% { transform: translateX(6px); }
+  68% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+@keyframes sort-shake-b {
+  0% { transform: translateX(-9px); }
+  17% { transform: translateX(9px); }
+  34% { transform: translateX(-6px); }
+  51% { transform: translateX(6px); }
+  68% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+/* ---------- Fact bar ---------- */
+.sort-fact {
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0;
+  min-height: 56px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-4);
+  border-radius: 18px;
+  background: var(--bw-panel);
+}
+.sort-fact__badge {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--bw-r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--bw-accent);
+  color: var(--bw-on-yellow);
+  font-size: var(--bw-fs-tile);
+  font-weight: 800;
+  line-height: 1;
+}
+.sort-fact__text {
+  min-width: 0;
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* ---------- Tray well (the kit's controls slot) ---------- */
+.sort-well,
+.sort-well.is-empty {
+  padding: 18px 10px;
+  border-radius: 28px;
+  background: var(--bw-well);
+  box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45);
+}
+/* The finished state: an empty well at the bottom, one row high. */
+.sort-well.is-empty {
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: auto;
+  min-height: 112px;
+}
+.sort-tray {
+  display: grid;
+  grid-template-columns: repeat(var(--sort-cols, 4), 64px);
+  justify-content: center;
+  gap: 8px;
+}
+/* Eight in a row on a tablet is 568px; the well holds 544px, so the gaps close up. */
+.sort-tray.is-tight { column-gap: 4px; }
+
+.sort-piece {
+  --bw-drag-rest: rotate(-8deg);
+  --bw-drag-lift: scale(1.18);
+  width: 64px;
+  height: 76px;
+  padding: 0;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: inherit;
+  cursor: grab;
+}
+.sort-piece.is-odd { --bw-drag-rest: rotate(8deg); }
+/* Picked: lifted, with a shadow under the shape. */
+.sort-piece[aria-pressed='true'] {
+  --bw-drag-rest: translateY(-12px) scale(1.12);
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.45));
+}
+.sort-piece[style*='--drag-x'] { filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.45)); }
+/* A placed piece leaves a faint ghost in its place (Letter Builder's .lb-ghost). */
+.sort-ghost {
+  width: 64px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  opacity: 0.2;
+  transform: scale(0.85);
+}
+
+/* ---------- Reduced motion (brief 9.1) ---------- */
+/* Shakes, tilts and lifts go; the ring on a wrong hole and a ring on the picked piece stay. */
+@media (prefers-reduced-motion: reduce) {
+  .sort-hole { transition: background 150ms linear, box-shadow 150ms linear; }
+  .sort-hole.is-shake-a,
+  .sort-hole.is-shake-b { animation: none; }
+  .sort-piece[aria-pressed='true'] {
+    border-radius: 18px;
+    box-shadow: var(--bw-ring);
+  }
+}

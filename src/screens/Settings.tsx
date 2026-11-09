@@ -317,6 +317,7 @@ function KidTimer({ kid }: { kid: Player }) {
         ]}
       />
       <p className="sc-sub sc-sub--small">{text}</p>
+      <p className="sc-sub sc-sub--small">Only Brick Escape and Brick Drop use this timer.</p>
       <div className="sc-times">
         {LEVEL_TIMES.map((l) => {
           const timed = kid.timerMode === 'auto' && f > 0;

@@ -1,0 +1,203 @@
+/* Color Mixer, built from design/canvas/Mixer.dc.html and its state boards (six-games brief 4.1, 7.3).
+   Everything is scoped under .mix-*. Colours, radii, spacing, type and motion come from
+   src/styles/tokens.css. Board sizes are px, as slide.css and letters.css keep theirs. The paint and
+   result colours are content: colors.ts hands each one to its element as --mix-paint. */
+
+.mix-screen {
+  /* The shelf and the Guess swatches are 86px tall with their names (brief 7.2: the slot keeps its height). */
+  --mix-pot-w: 70px;
+  --mix-swatch: 64px;
+}
+/* The controls slot is 86px tall; PlayScreen reads --bw-slot-min. */
+.mix-controls { --bw-slot-min: 86px; }
+
+/* ---------- Goal chip ---------- */
+.mix-chip {
+  flex-shrink: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bw-sp-4);
+  padding: var(--bw-sp-3) var(--bw-sp-7);
+  border-radius: var(--bw-r-md);
+  background: var(--bw-panel);
+}
+/* The chip's sentence for screen readers, kept off screen. */
+.mix-chip__said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.mix-chip__text {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  font-size: var(--bw-fs-panel);
+  font-weight: 800;
+  line-height: 1.2;
+}
+.mix-chip__dot {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--mix-paint);
+  box-shadow: 0 0 0 3px var(--bw-text);
+}
+
+/* ---------- Slots ---------- */
+.mix-slots {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-5);
+}
+.mix-plus {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--bw-text-2);
+}
+.mix-slot {
+  box-sizing: border-box;
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: var(--bw-text-2);
+  font: inherit;
+  font-size: var(--bw-fs-helper);
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color var(--bw-base) var(--bw-ease);
+}
+.mix-slot.is-empty { border: 3px dashed var(--bw-purple-top); }
+.mix-slot.is-filled {
+  background: var(--mix-paint);
+  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.18);
+}
+.mix-slot[aria-disabled='true'] { cursor: default; }
+.mix-slot:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* ---------- Bowl: 230 x 170 ---------- */
+.mix-bowl {
+  position: relative;
+  flex-shrink: 0;
+  width: 230px;
+  height: 170px;
+}
+.mix-bowl__body {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 120px;
+  border-radius: 0 0 115px 115px;
+  background: linear-gradient(180deg, var(--bw-bowl), var(--brick-white-dark));
+  box-shadow: 0 8px 0 var(--bw-decor);
+}
+.mix-bowl__liquid {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--mix-paint, var(--brick-white-light));
+  box-shadow: inset 0 -6px 0 rgb(0 0 0 / 0.15);
+  transition: background-color var(--bw-slow) var(--bw-ease);
+}
+.mix-bowl__rim {
+  position: absolute;
+  inset: 30px 0 auto 0;
+  height: 20px;
+  box-sizing: border-box;
+  border: 6px solid var(--brick-white);
+  border-radius: 50%;
+}
+/* A short phone: the bowl gives up some height before anything else moves. */
+@media (max-height: 740px) {
+  .mix-bowl { zoom: 0.8; }
+}
+
+/* ---------- Result block ---------- */
+.mix-result {
+  width: 100%;
+  min-height: 64px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.mix-result__name {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--bw-text);
+}
+.mix-result__text {
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: var(--bw-lh-body);
+  color: var(--bw-text-2);
+  text-wrap: balance;
+}
+
+/* ---------- Shelf and Guess swatches ---------- */
+.mix-shelf {
+  display: flex;
+  justify-content: center;
+  gap: var(--bw-sp-5);
+}
+.mix-pot {
+  box-sizing: border-box;
+  width: var(--mix-pot-w);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bw-r-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--bw-sp-1);
+  background: transparent;
+  color: var(--bw-text);
+  font: inherit;
+  cursor: pointer;
+}
+.mix-pot:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+.mix-swatch {
+  width: var(--mix-swatch);
+  height: var(--mix-swatch);
+  border-radius: 18px 18px 22px 22px;
+  background: var(--mix-paint);
+  /* White and Cream keep the inset shading, so they show on the dark ground. */
+  box-shadow:
+    inset 0 -8px 0 rgb(0 0 0 / 0.18),
+    inset 0 4px 0 rgb(255 255 255 / 0.35),
+    0 5px 0 rgb(0 0 0 / 0.3);
+  transition: transform var(--bw-fast) var(--bw-ease);
+}
+.mix-pot:active .mix-swatch { transform: translateY(3px); }
+.mix-pot__name {
+  font-size: var(--bw-fs-sub);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+/* ---------- Reduced motion (brief 9.1): changes crossfade over 150ms, nothing slides ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .mix-bowl__liquid { transition: background-color 150ms linear; }
+  .mix-slot { transition: none; }
+  .mix-pot:active .mix-swatch { transform: none; }
+  .mix-swatch { transition: none; }
+}

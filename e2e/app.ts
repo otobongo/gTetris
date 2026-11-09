@@ -1,10 +1,14 @@
 /**
  * Helpers the journeys share: a known starting state on this device, the grown-up check, reading what
  * the app saved, and solving a puzzle the way a child would (arrow keys on a Brick Escape brick, letter
- * keys in Letter Builder). Nothing here reaches into the app's code at run time: the page is driven
- * through its buttons, links and keys, and storage is only written before the app loads.
+ * keys in Letter Builder, paint taps in Color Mixer, shapes dragged or tapped into Shape Sorter's holes,
+ * towers swapped in Number Line-up). Nothing here reaches into the app's code at run time: the page is
+ * driven through its buttons, links and keys, and pointer drags for Shape Sorter and Number Line-up,
+ * and storage is only written before the app loads. The kit games' puzzles are read from the
+ * accessible names in six-games brief 9.2.
  */
 import { expect, type Locator, type Page } from '@playwright/test';
+import { PAINTS, RECIPES, RESULTS, mixOf, type PaintId, type ResultId } from '../src/games/mixer/colors';
 import { type Cell, type Level, type State, DIRS, canPlace, fromSpec, initialState, isSolved, occupancy, reachable, withMove } from '../src/games/slide/engine';
 import { keyStep } from '../src/games/slide/drag';
 import { PUZZLE_DATA } from '../src/games/slide/puzzles.data';
@@ -457,4 +461,191 @@ export async function lettersWrongTap(page: Page) {
   const wrong = [...answer].reverse().find((ch) => ch !== answer[0]);
   if (!wrong) throw new Error('No wrong letter to tap');
   await page.locator('.lb-tray').getByRole('button', { name: wrong, exact: true }).first().click();
+}
+
+/* ---------- Pointer drags (Shape Sorter, Number Line-up) ---------- */
+
+/** The middle of an element on screen, in viewport px (the tablet zoom is in the box already). */
+async function middle(el: Locator): Promise<{ x: number; y: number }> {
+  await el.scrollIntoViewIfNeeded();
+  const box = await el.boundingBox();
+  if (!box) throw new Error('Nothing on screen to drag');
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/**
+ * A real pointer drag, as a finger makes it: press on `from`, travel past the 8 px threshold, move over
+ * `to` (an element or a point) in steps, release there.
+ */
+export async function pointerDrag(page: Page, from: Locator, to: Locator | { x: number; y: number }) {
+  const a = await middle(from);
+  const b = 'x' in to ? to : await middle(to);
+  await page.mouse.move(a.x, a.y);
+  await page.mouse.down();
+  await page.mouse.move(a.x + 6, a.y + 6, { steps: 2 });
+  await page.mouse.move(b.x, b.y, { steps: 8 });
+  await page.mouse.up();
+}
+
+/* ---------- Color Mixer: reading the question and tapping the paints ---------- */
+
+const MIX_COLOR_BY_WORD = new Map<string, PaintId | ResultId>([
+  ...Object.values(PAINTS).map((c) => [c.name.toLowerCase(), c.id] as const),
+  ...Object.values(RESULTS).map((c) => [c.name.toLowerCase(), c.id] as const),
+]);
+function mixColor(word: string): PaintId | ResultId {
+  const id = MIX_COLOR_BY_WORD.get(word.trim().toLowerCase());
+  if (!id) throw new Error(`No Color Mixer colour named "${word}"`);
+  return id;
+}
+
+export type MixerOnScreen =
+  | { form: 'finish'; goal: ResultId; given: PaintId; right: PaintId; wrong: PaintId[] }
+  | { form: 'make'; goal: ResultId; pair: readonly [PaintId, PaintId]; shelf: PaintId[] }
+  | { form: 'guess'; paints: [PaintId, PaintId]; answer: ResultId; choices: string[] };
+
+export const mixerShelf = (page: Page): Locator => page.getByRole('group', { name: 'Paints' });
+export const mixerSwatches = (page: Page): Locator => page.getByRole('group', { name: 'Colors' });
+/** A pot on the shelf, by its name ("Red paint"). */
+export const mixerPot = (page: Page, paint: PaintId): Locator => mixerShelf(page).getByRole('button', { name: `${PAINTS[paint].name} paint`, exact: true });
+export const mixerSlot = (page: Page, n: 1 | 2): Locator => page.getByRole('button', { name: new RegExp(`^Paint ${n}: `) });
+export const mixerBowl = (page: Page): Locator => page.getByRole('img', { name: /^Bowl: / });
+
+/**
+ * The Mixer question on screen, read as a reader hears it: the chip, the slots ("Paint 1: red, given") and
+ * the shelf's pots ("Red paint") or the named swatches.
+ */
+export async function mixerOnScreen(page: Page): Promise<MixerOnScreen> {
+  await expect(page.locator('.mix-chip')).toBeVisible();
+  // The chip as a screen reader gets it: the aria-hidden drawing is skipped, its one sentence is read.
+  const chip = (
+    await page.locator('.mix-chip').evaluate((root) => {
+      const said = (n: Node): string =>
+        n.nodeType === Node.TEXT_NODE ? (n.nodeValue ?? '') : n instanceof Element && n.getAttribute('aria-hidden') === 'true' ? '' : [...n.childNodes].map(said).join('');
+      return said(root);
+    })
+  ).trim();
+  const slot1 = (await mixerSlot(page, 1).getAttribute('aria-label')) ?? '';
+  if (await mixerSwatches(page).count()) {
+    const slot2 = (await mixerSlot(page, 2).getAttribute('aria-label')) ?? '';
+    const given = (s: string) => mixColor(/^Paint \d: (.+), given$/.exec(s)![1]) as PaintId;
+    const paints: [PaintId, PaintId] = [given(slot1), given(slot2)];
+    const choices = await mixerSwatches(page).getByRole('button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+    return { form: 'guess', paints, answer: mixOf(paints[0], paints[1])!, choices };
+  }
+  const m = /^Can you make ?(.+)\?$/.exec(chip);
+  if (!m) throw new Error(`Not a Color Mixer goal: "${chip}"`);
+  const goal = mixColor(m[1]) as ResultId;
+  const pair = RECIPES.find((r) => r.result === goal)!.pair;
+  const shelf = (await mixerShelf(page).getByRole('button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''))).map(
+    (name) => mixColor(name.replace(/ paint$/, '')) as PaintId,
+  );
+  const given = /^Paint 1: (.+), given$/.exec(slot1);
+  if (given) {
+    const g = mixColor(given[1]) as PaintId;
+    const right = pair.find((p) => p !== g)!;
+    return { form: 'finish', goal, given: g, right, wrong: shelf.filter((p) => p !== right) };
+  }
+  return { form: 'make', goal, pair, shelf };
+}
+
+/** Solve the Mixer question on screen with the right taps: one pot (Finish), two pots (Make it) or one swatch (Guess). */
+export async function solveMixerPuzzle(page: Page) {
+  const p = await mixerOnScreen(page);
+  if (p.form === 'finish') await mixerPot(page, p.right).click();
+  else if (p.form === 'make') {
+    await mixerPot(page, p.pair[0]).click();
+    await mixerPot(page, p.pair[1]).click();
+  } else await mixerSwatches(page).getByRole('button', { name: RESULTS[p.answer].name, exact: true }).click();
+}
+
+/* ---------- Shape Sorter: dragging or tapping each shape into its hole ---------- */
+
+export const sorterTray = (page: Page): Locator => page.getByRole('group', { name: 'Shapes to place' });
+export const sorterHoles = (page: Page): Locator => page.getByRole('group', { name: 'Holes' });
+export const sorterPiece = (page: Page, name: string): Locator => sorterTray(page).getByRole('button', { name, exact: true });
+export const sorterHole = (page: Page, name: string): Locator => sorterHoles(page).getByRole('button', { name: `${name} hole`, exact: true });
+
+/** The pieces still in the tray, by name ("circle", "red circle"), in tray order. */
+export async function sorterPieces(page: Page): Promise<string[]> {
+  return sorterTray(page)
+    .getByRole('button')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+}
+
+/** Put every piece on screen in its own hole: dragged with the pointer, or tapped and then the hole tapped. */
+export async function sortShapes(page: Page, how: 'drag' | 'tap') {
+  await expect(sorterTray(page).getByRole('button').first()).toBeVisible();
+  for (let guard = 0; guard < 9; guard++) {
+    const names = await sorterPieces(page);
+    if (!names.length) return;
+    const name = names[0];
+    if (how === 'drag') await pointerDrag(page, sorterPiece(page, name), sorterHole(page, name));
+    else {
+      await sorterPiece(page, name).click();
+      await sorterHole(page, name).click();
+    }
+    await expect(page.getByRole('img', { name: `Filled ${name} hole`, exact: true })).toBeVisible();
+  }
+  throw new Error('The board did not empty');
+}
+
+/* ---------- Number Line-up: swapping towers ---------- */
+
+const TOWER_NAME = /^Tower of (\d+), spot (\d) of 6, (?:in|not in) the right spot$/;
+export const numbersTowers = (page: Page): Locator => page.getByRole('button', { name: /^Tower of / });
+/** The tower in a spot (0-based), by its name. */
+export const numbersTower = (page: Page, spot: number): Locator => page.getByRole('button', { name: new RegExp(`^Tower of \\d+, spot ${spot + 1} of 6,`) });
+
+/** The towers left to right, read from their names ("Tower of 4, spot 2 of 6, not in the right spot"). */
+export async function numbersRow(page: Page): Promise<number[]> {
+  await expect(numbersTowers(page)).toHaveCount(6);
+  const names = await numbersTowers(page).evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  return names.map((n) => {
+    const m = TOWER_NAME.exec(n);
+    if (!m) throw new Error(`Not a tower name: "${n}"`);
+    return Number(m[1]);
+  });
+}
+
+/** The level's order, from the goal strip's text. */
+export async function numbersDir(page: Page): Promise<'up' | 'down'> {
+  return /smallest first/.test((await page.locator('.num-goal__text').textContent()) ?? '') ? 'up' : 'down';
+}
+
+/** The next swap toward the goal: the tower that belongs in the first wrong spot, and that spot. Null once in order. */
+export async function numbersNextSwap(page: Page): Promise<[number, number] | null> {
+  const row = await numbersRow(page);
+  const dir = await numbersDir(page);
+  const goal = [...row].sort((a, b) => (dir === 'up' ? a - b : b - a));
+  const to = row.findIndex((v, i) => v !== goal[i]);
+  return to < 0 ? null : [row.indexOf(goal[to]), to];
+}
+
+/** Two neighbours already in the level's order: swapping them moves the row further from done (a slip). */
+export async function numbersBackwardSwap(page: Page): Promise<[number, number]> {
+  const row = await numbersRow(page);
+  const up = (await numbersDir(page)) === 'up';
+  for (let i = 0; i + 1 < row.length; i++) if (up ? row[i] < row[i + 1] : row[i] > row[i + 1]) return [i, i + 1];
+  throw new Error('No backward swap on this row');
+}
+
+/** Swap two towers by tapping one and then the other, and wait for the row to change. */
+export async function swapTowers(page: Page, a: number, b: number) {
+  const before = await numbersRow(page);
+  await numbersTower(page, a).click();
+  await numbersTower(page, b).click();
+  const after = [...before];
+  [after[a], after[b]] = [after[b], after[a]];
+  await expect.poll(() => numbersRow(page)).toEqual(after);
+}
+
+/** Put the row in the level's order by taps, one forward swap at a time (the fewest swaps). Returns the swaps made. */
+export async function solveNumbersPuzzle(page: Page): Promise<number> {
+  let swaps = 0;
+  for (let step = await numbersNextSwap(page); step; step = await numbersNextSwap(page)) {
+    await swapTowers(page, step[0], step[1]);
+    if (++swaps > 6) throw new Error('The row is not getting closer to done');
+  }
+  return swaps;
 }

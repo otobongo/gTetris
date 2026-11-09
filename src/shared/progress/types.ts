@@ -89,9 +89,11 @@ export interface RunInit {
   /** Letter Builder: hints a new run starts with (3). Leave out for games with no hint budget. */
   hintsLeft?: number;
   /**
-   * Letter Builder's age band change: when the stored set differs, keep the solved puzzles, the queue
-   * and the hints left, and take the new set and seed (the game re-fills the unsolved puzzles).
-   * Otherwise a set change starts the level again at puzzle 1.
+   * An age band change (Letter Builder, Number Line-up, Brick Calculator): when the stored set differs
+   * only in its band part ('numbers:1:5-6' to 'numbers:1:7-8', isBandMove), keep the solved puzzles,
+   * the queue and the hints left, and take the new set and seed (the game re-fills the unsolved puzzles).
+   * Any other set change, a raised version included ('numbers:1:5-6' to 'numbers:2:5-6'), starts the
+   * level again at puzzle 1.
    */
   keepSolved?: boolean;
 }

@@ -7,6 +7,7 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
+import { GAMES, GAME_IDS } from '../../games/registry';
 import { escapeLevelStars } from '../../games/run';
 import { emptyState, progressStore, type Player, type PuzzleRules } from '../../shared/progress';
 import { grownUpGate, setResumePath, settingsReturn } from './session';
@@ -51,10 +52,33 @@ afterEach(() => {
 describe('Home', () => {
   it('links every card to the game, never to a level grid, and names the puzzle progress', () => {
     const html = decode(renderAt('#/'));
-    for (const id of ['escape', 'drop', 'letters', 'mixer']) expect(html).toContain(`href="#/game/${id}"`);
+    for (const id of GAME_IDS) expect(html, id).toContain(`href="#/game/${id}"`);
     expect(html).not.toContain('/levels');
     expect(html).toContain('aria-label="Brick Escape. Slide bricks out their doors. Level 9, 2 of 4 puzzles solved."');
     expect(html).toContain('>Level 9<');
+  });
+
+  it('opens Color Mixer from Today’s discovery, which promises only what the level shows (six-games 11.1, decision 2)', () => {
+    const html = decode(renderAt('#/'));
+    const card = /<a class="sc-discovery" href="([^"]+)">([\s\S]*?)<\/a>/.exec(html);
+    expect(card?.[1]).toBe('#/game/mixer');
+    expect(card?.[2]).toContain("Today's discovery");
+    expect(card?.[2]).toContain('Mix two colors to make a new one');
+    expect(html).not.toContain('What do red and blue make?');
+    expect(html).not.toContain('+1 sticker');
+    expect(html).not.toContain('sc-discovery__reward');
+  });
+
+  it('names the batch 1 games by their level, with Coming soon gone from their cards (six-games 1)', () => {
+    const html = decode(renderAt('#/'));
+    for (const id of ['mixer', 'sorter', 'numbers']) {
+      const g = GAMES.find((x) => x.id === id)!;
+      expect(g.playable, id).toBe(true);
+      expect(html).toContain(`aria-label="${g.title}. ${g.sub}. Level 1."`);
+    }
+    expect(GAMES.find((x) => x.id === 'mixer')!.sub).toBe('Mix two colors to make a new one');
+    // The batch 2 games are still Coming soon.
+    expect(html).toContain('aria-label="Brick Calculator. Add and take away with bricks. Coming soon."');
   });
 });
 
@@ -105,10 +129,22 @@ describe('Settings', () => {
   it('lists one row per playable game, each opening the picker', () => {
     grownUpGate.pass();
     const html = decode(renderAt('#/settings'));
-    for (const id of ['escape', 'drop', 'letters']) expect(html).toContain(`href="#/settings/levels/${id}/${maya.id}"`);
+    // Six-games brief 10.3: six rows after batch 1, in Home order.
+    for (const id of ['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers']) expect(html).toContain(`href="#/settings/levels/${id}/${maya.id}"`);
+    for (const g of GAMES) expect(html.includes(`href="#/settings/levels/${g.id}/${maya.id}"`), g.id).toBe(g.playable);
+    const at = GAMES.filter((g) => g.playable).map((g) => html.indexOf(`href="#/settings/levels/${g.id}/${maya.id}"`));
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(html).not.toContain(`href="#/settings/levels/math/`);
     expect(html).toContain('aria-label="Brick Escape for Maya: Level 9, 2 of 4 puzzles. Pick a level"');
     expect(html).toContain('Stage 1');
     expect(html).toContain("Reset Maya's progress");
+  });
+
+  it('says the timer is only for the two timed games, since the kit games have no clock (six-games 3.4, 8.8)', () => {
+    grownUpGate.pass();
+    const html = decode(renderAt('#/settings'));
+    expect(html).toContain('<p class="sc-sub sc-sub--small">Only Brick Escape and Brick Drop use this timer.</p>');
+    expect(html.split('Only Brick Escape and Brick Drop use this timer.')).toHaveLength(2);
   });
 
   it('says what running out of time costs, as the star rules do (F5)', () => {

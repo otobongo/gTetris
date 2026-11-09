@@ -38,9 +38,8 @@
 </span>
 <span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1;">
 <span style="font-size: 14px; font-weight: 800; letter-spacing: 0.5px;">TODAY'S DISCOVERY</span>
-<span style="font-size: 19px; font-weight: 800;">What do red and blue make?</span>
+<span style="font-size: 19px; font-weight: 800;">Mix two colors to make a new one</span>
 </span>
-<span style="font-size: 14px; font-weight: 800; white-space: nowrap;">+1 sticker</span>
 </a>
 
 <h2 style="margin: 22px 0 10px; font-size: 20px; font-weight: 800; line-height: 1.1;">Games</h2>
@@ -105,8 +104,9 @@ class Component extends DCLogic {
       grownHref: 'Grownups' + t + '.dc.html',
       avatar: this.brick('blue', 0),
       // Pills and puzzle counts are sample data (Maya: Escape Level 9 with 2 of 4 puzzles solved,
-      // Drop Stage 4 with 1, Letters Level 17 with 2 words built). Every card opens its game, which
-      // goes straight to the current level (brief 2.1); children never see a level grid.
+      // Drop Stage 4 with 1, Letters Level 17 with 2 words built, Color Mixer Level 2, Shape Sorter Level 2 and
+      // Number Line-up Level 3 with none yet). Every card opens its game, which goes straight to the current
+      // level (brief 2.1); children never see a level grid. Today's discovery opens Color Mixer (six-games 11.1, 2A).
       games: [
         {
           title: 'Brick Escape', sub: 'Slide bricks out their doors', level: 'Level 9', href: 'Escape' + t + '.dc.html',
@@ -137,8 +137,8 @@ class Component extends DCLogic {
           ]
         },
         {
-          title: 'Color Mixer', sub: 'Mix two colors to make a new one', level: '3 of 6', href: 'Mixer' + t + '.dc.html',
-          name: 'Color Mixer. Mix two colors to make a new one. 3 of 6.',
+          title: 'Color Mixer', sub: 'Mix two colors to make a new one', level: 'Level 2', href: 'Mixer' + t + '.dc.html',
+          name: 'Color Mixer. Mix two colors to make a new one. Level 2.',
           art: [
             { t: '', style: this.at(6, 7, 30, 30, 'border-radius: 50%; background: #ffc21a;') },
             { t: '', style: this.at(24, 7, 30, 30, 'border-radius: 50%; background: #2f8cff; mix-blend-mode: multiply;') }

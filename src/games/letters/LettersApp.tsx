@@ -16,6 +16,7 @@ import {
   type PuzzleResult,
   type PuzzleRules,
 } from '../../shared/progress';
+import { isBandMove } from '../../shared/progress/model';
 import { go, replace, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { letterName, say } from '../../shared/speech';
@@ -113,6 +114,14 @@ function promptText(p: Prompt): { text: string; speech: string } {
 /** A fresh run seed: it fixes the level's runs, letters, pictures, word order and trays. */
 const newSeed = () => (Math.random() * 2 ** 31) | 0;
 
+/**
+ * The seed a level opens with. The stored seed stays while the set is the same or only the band moved
+ * (solved puzzles keep their place); a first run or a set version bump gets the fresh seed, as in the kit games.
+ */
+export function openSeed(stored: { set: string; seed: number } | null | undefined, set: string, fresh: number): number {
+  return stored && (stored.set === set || isBandMove(stored.set, set)) ? stored.seed : fresh;
+}
+
 /** Where the puzzle on screen stands. */
 type Moment = 'play' | 'solved' | 'levelDone';
 
@@ -127,7 +136,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   const [run, setRun] = useState<LevelRun>(() => {
     const stored = runOf(player, GAME, level);
     // keepSolved: a band change keeps the solved puzzles and refills the rest with the new band's words.
-    return resolveRun(stored, { set, seed: stored?.seed ?? newSeed(), hintsLeft: HINTS_PER_RUN, keepSolved: true }, progressStore.now());
+    return resolveRun(stored, { set, seed: openSeed(stored, set, newSeed()), hintsLeft: HINTS_PER_RUN, keepSolved: true }, progressStore.now());
   });
   // Words already built when the level opened or the band last changed, so the puzzles never repeat one after a band change.
   const [built, setBuilt] = useState(() => run.solved.map((r) => ({ puzzle: r.puzzle, word: r.word })));
