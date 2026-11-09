@@ -891,7 +891,7 @@ Your security rule asks for a full review on large-tier code, and the kit is lar
 
 ### 12.3 Batch 2
 1. **From batch 1's last commit (12.1), once batch 1's PR is marked ready and you give the go-ahead, in parallel:** B draws the 39 pictures into `pictures.ts` first; A2 builds the canvas (5.3), with `BuilderPictures` drawn from that file once B's first pass lands; P and C write their content modules; T2 first moves the "not built" example from `math` to a stub entry or an unknown game id (3.5), which passes before and after the registry change, then writes the content checks as each module lands.
-2. **Gate:** as batch 1, plus your approval of `BuilderPictures`. B changes any picture you reject before the gate closes, and A2 redraws the sheet from the changed file.
+2. **Gate:** as batch 1, plus your approval of `BuilderPictures`. **Outcome (2026-11-09):** you approved all 42 pictures as drawn and chose no design check on the batch 2 boards. B changes any picture you reject before the gate closes, and A2 redraws the sheet from the changed file.
 3. **Screens:** P, C and B build their games; F2 adds the registry and `App.tsx` lines and, in the same commit, the nine ids in `registry.test.ts:8`; T2 writes the game tests and journeys alongside, under the same commit rule as T1.
 
 | Agent | Owns | Size and model |
