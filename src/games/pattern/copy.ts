@@ -31,6 +31,13 @@ export const SPEAKER_NAME = 'Hear the pattern';
 /** What the speaker reads: "Red circle, blue square, red circle, blue square. What comes next?" */
 export const speech = (cars: readonly Car[]): string => `${capital(cars.map(carName).join(', '))}. What comes next?`;
 
+/**
+ * What the speaker reads once the puzzle is solved (the board's choice; the brief does not say): the whole train
+ * with the answer, then the solved line. "Red circle, blue square, red circle, blue square, red circle. Red circle comes next."
+ */
+export const speechSolved = (cars: readonly Car[], answer: Car): string =>
+  `${capital([...cars, answer].map(carName).join(', '))}. ${helpSolved(answer)}`;
+
 /* ---------- accessible names (brief 9.2) ---------- */
 
 /** The train, one image: "Train: red circle, blue square, red circle, blue square, empty car." The answer replaces "empty car" once solved. */

@@ -1,0 +1,200 @@
+/* Pattern Train, built from design/canvas/Pattern.dc.html and its state boards (six-games brief 4.4, 7.6).
+   Everything is scoped under .pat-*. Colours, radii, spacing, type and motion come from src/styles/tokens.css.
+   Board sizes are px, as slide.css and letters.css keep theirs. The play frame, help row, controls slot and
+   choice behaviour come from the kit (kit.css). */
+
+/* ---------- Prompt line ---------- */
+.pat-prompt {
+  flex-shrink: 0;
+  margin: 0;
+  font-size: var(--bw-fs-section);
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* ---------- Shapes: one look on the rail and on the choices ---------- */
+.pat-shape {
+  display: block;
+  flex-shrink: 0;
+  width: var(--pat-shape, 30px);
+  height: var(--pat-shape, 30px);
+  background: var(--pat-c);
+}
+.pat-shape[data-color='red'] { --pat-c: var(--brick-red); }
+.pat-shape[data-color='blue'] { --pat-c: var(--brick-blue); }
+.pat-shape[data-color='yellow'] { --pat-c: var(--brick-yellow); }
+.pat-shape[data-color='green'] { --pat-c: var(--brick-green); }
+.pat-shape[data-color='pink'] { --pat-c: var(--brick-pink); }
+.pat-shape[data-shape='circle'] { border-radius: 50%; }
+.pat-shape[data-shape='square'] { border-radius: 6px; }
+.pat-shape[data-shape='triangle'] { clip-path: polygon(50% 4%, 98% 94%, 2% 94%); }
+.pat-shape[data-shape='star'] { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+
+/* ---------- Train on its rail ---------- */
+/* The wrap clips the ghost as it leaves; 10px above the cars keeps the smoke stack and the lift of the arrival inside it. */
+.pat-rail-wrap {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding-top: var(--bw-sp-4);
+  overflow: hidden;
+}
+.pat-train {
+  zoom: 0.78;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: var(--bw-sp-1);
+}
+/* Locomotive 70x86. */
+.pat-loco {
+  position: relative;
+  flex-shrink: 0;
+  width: 70px;
+  height: 86px;
+}
+.pat-loco__stack {
+  position: absolute;
+  left: 6px;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px 6px 0 0;
+  background: var(--brick-black);
+}
+.pat-loco__body {
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 70px;
+  height: 50px;
+  border-radius: 12px 20px 8px 8px;
+  background: linear-gradient(180deg, var(--brick-red-light), var(--brick-red));
+  box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.2);
+}
+.pat-loco__window {
+  position: absolute;
+  right: 8px;
+  top: 26px;
+  width: 20px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--brick-blue-light);
+}
+.pat-wheel {
+  position: absolute;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--brick-black);
+}
+.pat-wheel--loco { width: 20px; height: 20px; }
+.pat-wheel--left { left: 6px; }
+.pat-wheel--right { right: 6px; }
+/* Car 56x86: a 56x46 white body, the shape 30x30 in it, two wheels. */
+.pat-car {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 86px;
+}
+.pat-car__body {
+  position: absolute;
+  left: 0;
+  top: 22px;
+  box-sizing: border-box;
+  width: 56px;
+  height: 46px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--brick-white);
+  box-shadow: inset 0 -5px 0 var(--brick-white-dark);
+}
+/* The empty car: a dashed accent outline over the accent at 8%. Once filled it keeps its body and gets the ring. */
+.pat-car__body.is-empty {
+  border: 3px dashed var(--bw-accent);
+  background: color-mix(in srgb, var(--bw-accent) 8%, transparent);
+  box-shadow: none;
+}
+.pat-car__body.is-answer { box-shadow: inset 0 -5px 0 var(--brick-white-dark), 0 0 0 3px var(--bw-accent); }
+/* Rail 6px, dashes of --bw-decor 18 on and 8 off. */
+.pat-rail {
+  height: 6px;
+  margin-top: var(--bw-sp-1);
+  border-radius: 3px;
+  background: repeating-linear-gradient(90deg, var(--bw-decor) 0 18px, transparent 18px 26px);
+}
+
+/* ---------- Train motion on Next (brief 7.6): the old train leaves over --bw-base, the new one fades in over 150ms ---------- */
+/* 350ms in all. Nothing here takes a tap: the ghost is skipped by the pointer and the choices are live from the first frame. */
+@keyframes pat-leave {
+  to { transform: translateX(110%); opacity: 0; }
+}
+@keyframes pat-arrive {
+  from { opacity: 0; }
+}
+.pat-ghost {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--bw-sp-4);
+  pointer-events: none;
+  animation: pat-leave var(--bw-base) var(--bw-ease) forwards;
+}
+.pat-train.is-arriving { animation: pat-arrive 150ms linear var(--bw-base) backwards; }
+
+/* ---------- Choice tray: the controls slot is the well, so Next puzzle sits in it when the choices go ---------- */
+/* 125px of content (label 18, gap 10, choices 92, 5 for their edge) plus the well's 18px above and below. */
+.pat-tray {
+  --bw-slot-min: 161px;
+  box-sizing: border-box;
+  padding: var(--bw-sp-8) var(--bw-sp-5);
+  border-radius: 28px;
+  background: var(--bw-well);
+  box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45);
+}
+.pat-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pat-tray__label {
+  margin-bottom: var(--bw-sp-4);
+  font-size: var(--bw-fs-sub);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--bw-text-2);
+}
+.pat-choices {
+  gap: var(--bw-sp-6);
+  padding-bottom: 5px;
+}
+/* A raised purple car, 92x92. The kit's right-pick ring keeps the edge through --bw-choice-shadow. */
+.bw-choice.pat-choice {
+  --bw-choice-shadow: 0 var(--bw-raise) 0 var(--bw-purple-edge);
+  --pat-shape: 46px;
+  width: 92px;
+  height: 92px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, var(--bw-purple-top), var(--bw-purple-bottom));
+}
+/* At rest and wrong the edge shows alone; the right pick's ring (kit.css) adds itself in front of it. */
+.bw-choice.pat-choice:not(.is-right) { box-shadow: var(--bw-choice-shadow); }
+.bw-choice.pat-choice:active:not([aria-disabled='true']) {
+  transform: translateY(var(--bw-press-shift));
+  box-shadow: 0 var(--bw-raise-pressed) 0 var(--bw-purple-edge);
+}
+
+/* ---------- Reduced motion (brief 9.1): the train just fades in; nothing slides, tilts or presses down ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pat-ghost { display: none; }
+  .pat-train.is-arriving { animation: pat-arrive 150ms linear backwards; }
+  .bw-choice.pat-choice:active:not([aria-disabled='true']) { transform: none; }
+}
