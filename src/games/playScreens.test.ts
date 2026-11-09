@@ -44,6 +44,9 @@ import {
   speechSolved as patSpeechSolved,
 } from './pattern/copy';
 import { predictNext, puzzle as patternPuzzle } from './pattern/puzzles';
+import MathApp from './math/MathApp';
+import { CAPTION_LINES, FULL_LINE, SLIP_LINE, START_LINE } from './math/copy';
+import { puzzle as mathPuzzle } from './math/puzzles';
 import SorterApp from './sorter/SorterApp';
 import { puzzle as sorterPuzzle, type SorterPiece } from './sorter/puzzles';
 import { SHAPE_BADGE, SHAPE_FACT } from './sorter/shapes';
@@ -2831,5 +2834,502 @@ describe('Pattern Train: the level’s end and the finished state', () => {
     openPatternAsIs();
     expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
     expect(storedRun('pattern', 0)).toMatchObject({ set: 'pattern:1', queue: [0, 1, 2, 3, 4, 5], solved: [] });
+  });
+});
+
+/* =====================================================================================================
+ * Brick Calculator
+ * ===================================================================================================== */
+
+/** Brief 8.6, word for word. */
+const CALC_START = 'Count the bricks. Type the answer, then press =.';
+const CALC_SLIP = 'Not quite. Count the bricks again.';
+const CALC_FULL = 'Press = to check, or C to clear.';
+
+const keypad = () => byRole('group', 'Keypad');
+/** A key by its name: a numeral, "Clear" or "Equals". */
+const calcKey = (name: string) => button(name, keypad());
+const calcAnswer = () => doc.body.querySelector('.calc-eq__answer')!;
+const calcCells = (kind: 'blue' | 'orange' | 'taken' | 'empty') =>
+  doc.body.querySelectorAll('.calc-cell').filter((c) => {
+    const taken = c.classList.contains('is-taken');
+    const empty = c.classList.contains('is-empty');
+    if (kind === 'taken') return taken;
+    if (kind === 'empty') return empty;
+    return !taken && !empty && c.getAttribute('data-brick') === kind;
+  }).length;
+
+/** The sum on screen, read from the equation's name ("3 plus 4 equals what?"). */
+function mathOnScreen() {
+  const eq = nameOf(byRole('img', / equals (what\?|\d+)$/));
+  const m = /^(\d+) (plus|take away) (\d+) equals what\?$/.exec(eq);
+  if (!m) throw new Error(`Not a sum waiting for its answer: ${eq}`);
+  const a = Number(m[1]);
+  const b = Number(m[3]);
+  const op = m[2] === 'plus' ? ('plus' as const) : ('minus' as const);
+  const words = `${a} ${m[2]} ${b}`;
+  return { eq, a, b, op, words, answer: op === 'plus' ? a + b : a - b };
+}
+
+/** Tap the digits of a number on the keypad. */
+const tapDigits = (n: number | string) => {
+  for (const d of String(n)) click(calcKey(d));
+};
+
+function solveMath() {
+  tapDigits(mathOnScreen().answer);
+  click(calcKey('Equals'));
+}
+
+/** A wrong answer that still fits two digits. */
+const wrongAnswer = (answer: number) => (answer >= 19 ? answer - 1 : answer + 1);
+
+function openMath(level = 0, band: AgeBand = '5-6') {
+  child(band);
+  starUpTo('math', level);
+  return mount(createElement(MathApp, { params: [String(level + 1)] }));
+}
+
+/** Put focus nowhere, as a child who taps the background or has just opened the page. */
+const blur = () => act(() => void (doc.focused = null));
+
+describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
+  it('opens with the sum, its bricks, the 12 keys and the start line, and says nothing (board: play)', () => {
+    openMath(0);
+    expect(byRole('heading', 'Level 1')).toBeTruthy();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    const p = mathOnScreen();
+    expect(p.op).toBe('plus');
+    // The equation is one image; its numbers and signs are drawing only. The answer place shows "?".
+    const eq = byRole('img', p.eq);
+    expect(eq.querySelectorAll('span').every((s) => s.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(eq.querySelectorAll('.calc-eq__sign').map((s) => s.textContent)).toEqual(['+', '=']);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
+    // The two ten-frames: a blue bricks then b orange ones, the rest empty, named for a reader.
+    const bricks = (n: number, c: string) => `${n} ${c} ${n === 1 ? 'brick' : 'bricks'}`;
+    expect(byRole('img', `${bricks(p.a, 'blue')} and ${bricks(p.b, 'orange')}`)).toBeTruthy();
+    expect([calcCells('blue'), calcCells('orange'), calcCells('taken'), calcCells('empty')]).toEqual([p.a, p.b, 0, 20 - p.a - p.b]);
+    expect(doc.body.querySelectorAll('.calc-caption__lines span').map((s) => s.textContent)).toEqual(['Each row holds 5.', 'Two rows make 10.']);
+    expect(CAPTION_LINES).toEqual(['Each row holds 5.', 'Two rows make 10.']);
+    expect(doc.body.querySelector('.calc-count')).toBeNull();
+    // 12 keys in the board's order; digits are named by their numeral, C and = by their words.
+    const keys = allByRole('button', undefined, keypad());
+    expect(keys.map(nameOf)).toEqual(['7', '8', '9', 'Clear', '4', '5', '6', 'Equals', '1', '2', '3', '0']);
+    expect(calcKey('Clear').textContent).toBe('C');
+    expect(calcKey('Equals').textContent).toBe('=');
+    expect(calcKey('7').hasAttribute('data-kit-first')).toBe(true);
+    expect(helpLine()).toBe(CALC_START);
+    expect(START_LINE).toBe(CALC_START);
+    expect(doc.body.querySelector('[role="status"]')!.className).toBe('bw-helprow__line bw-helprow__line--help');
+    expect(button('Hear the sum')).toBeTruthy();
+    // The generator's sum for the run's own seed and the child's band.
+    const run = storedRun('math', 0)!;
+    expect(run.set).toBe('math:1:5-6');
+    const want = mathPuzzle(0, run.queue[0], { seed: run.seed, band: '5-6' });
+    expect([p.a, p.b, p.answer]).toEqual([want.a, want.b, want.answer]);
+    expect(spoken).toEqual([]);
+    expect(sounds).toEqual([]);
+  });
+
+  it('a digit shows in white and is said; a third digit is ignored with its line, and C clears (board: typed)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    click(calcKey('1'));
+    expect(sounds).toEqual(['tap']);
+    expect(spoken).toEqual(['1']);
+    expect(calcAnswer().textContent).toBe('1');
+    expect(calcAnswer().getAttribute('data-look')).toBe('typed');
+    // The equation is still asking: nothing is sent until =.
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+    click(calcKey('5'));
+    expect(spoken).toEqual(['1', '15']);
+    expect(calcAnswer().textContent).toBe('15');
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('2'));
+    expect(calcAnswer().textContent).toBe('15');
+    expect(helpLine()).toBe(CALC_FULL);
+    expect(FULL_LINE).toBe(CALC_FULL);
+    expect(sounds).toEqual(['tap', 'tap']);
+    expect(spoken).toEqual(['1', '15']);
+    click(calcKey('Clear'));
+    expect(sounds).toEqual(['tap', 'tap', 'tap']);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
+    expect(helpLine()).toBe(CALC_START);
+    expect(spoken).toHaveLength(2);
+  });
+
+  it('= with nothing typed does nothing: no sound, no slip, however often', () => {
+    openMath(0);
+    for (let i = 0; i < 4; i++) click(calcKey('Equals'));
+    expect(sounds).toEqual([]);
+    expect(spoken).toEqual([]);
+    expect(helpLine()).toBe(CALC_START);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    solveMath();
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 0 });
+  });
+
+  it('a wrong answer slips, clears the entry, says nothing and never shows the answer (board: slip)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    tapDigits(wrong);
+    const said = spoken.length;
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('wrong');
+    expect(spoken).toHaveLength(said);
+    expect(helpLine()).toBe(CALC_SLIP);
+    expect(SLIP_LINE).toBe(CALC_SLIP);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+    expect(doc.body.querySelector('.calc-count')).toBeNull();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    // The slip line stays until the next digit or C.
+    click(calcKey('Equals'));
+    expect(helpLine()).toBe(CALC_SLIP);
+    tapDigits(p.answer);
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('Equals'));
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('a repeated wrong answer counts once for stars and every time for the offer, which comes at 2 for ages 5 to 6; a key press then hides it', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    const offer = button('New puzzle');
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(offer.parentElement!.className).toBe('bw-helprow__offer');
+    expect(doc.activeElement).not.toBe(offer);
+    expect(sounds.filter((s) => s === 'wrong')).toHaveLength(2);
+    // Any key press is progress (3.3): the offer goes, and the game's own line is back.
+    click(calcKey(String(p.answer)[0]));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('Clear'));
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('brings the offer at the third slip for ages 7 to 8', () => {
+    openMath(0, '7-8');
+    const p = mathOnScreen();
+    for (const w of [p.answer + 1, p.answer + 2]) {
+      tapDigits(w);
+      click(calcKey('Equals'));
+    }
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    tapDigits(p.answer + 3);
+    click(calcKey('Equals'));
+    expect(button('New puzzle')).toBeTruthy();
+  });
+
+  it('the right answer shows in yellow, is said, fills in the caption and the line, and Next takes the keypad’s place (board: solved)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    expect(sounds).toEqual([...String(p.answer)].map(() => 'tap').concat('win'));
+    const solvedLine = `${p.words} makes ${p.answer}.`;
+    expect(spoken.at(-1)).toBe(solvedLine);
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+    expect(calcAnswer().getAttribute('data-look')).toBe('solved');
+    expect(byRole('img', `${p.words} equals ${p.answer}`)).toBeTruthy();
+    expect(helpLine()).toBe(solvedLine);
+    expect(doc.body.querySelector('.calc-count')!.textContent).toBe(`Count them: ${p.answer}`);
+    // The caption keeps its two lines, so the panel does not grow.
+    expect(doc.body.querySelectorAll('.calc-caption__lines span')).toHaveLength(2);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    const next = button('Next puzzle');
+    expect(next.closest('.bw-play__slot')!.className).toContain('calc-controls');
+    expect(doc.activeElement).toBe(next);
+    expect(queryRole('group', 'Keypad')).toBeNull();
+    expect(click(doc.body.querySelector('.calc-key')!)).toBe(false);
+    const run = storedRun('math', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+  });
+
+  it('keys do nothing after the solve: a second = solves nothing again, digits and C change nothing', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    blur();
+    const heard = sounds.length;
+    for (const k of ['Enter', '1', 'Backspace', 'Escape']) press(k);
+    expect(sounds).toHaveLength(heard);
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    // Two = in the same frame also solve once.
+    roots.splice(0).forEach((unmount) => unmount());
+    progressStore.replace(emptyState());
+    sounds.length = 0;
+    openMath(0);
+    const q = mathOnScreen();
+    tapDigits(q.answer);
+    const eq = calcKey('Equals');
+    act(() => {
+      dispatch(eq, makeEvent('click', eq, { button: 0, detail: 1 }));
+      dispatch(eq, makeEvent('click', eq, { button: 0, detail: 2 }));
+    });
+    expect(sounds.filter((s) => s === 'win')).toHaveLength(1);
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+  });
+
+  it('counts "07" as 7: a leading zero still solves, and the display keeps what was typed until then', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    // Level 1 sums stay under 10, so a 0 in front still fits two digits.
+    expect(p.answer).toBeLessThan(10);
+    click(calcKey('0'));
+    click(calcKey(String(p.answer)));
+    expect(calcAnswer().textContent).toBe(`0${p.answer}`);
+    expect(spoken).toEqual(['0', String(p.answer)]);
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('win');
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+  });
+
+  it('plays from the physical keyboard: digits type, Backspace and Escape clear, Enter is =', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    expect(doc.activeElement).toBe(doc.body);
+    press('9');
+    press('9');
+    expect(calcAnswer().textContent).toBe('99');
+    expect(spoken).toEqual(['9', '99']);
+    press('Backspace');
+    expect(calcAnswer().textContent).toBe('?');
+    press('4');
+    press('Escape');
+    expect(calcAnswer().textContent).toBe('?');
+    // A chord or a held-down key is not a press of the keypad; nor is a letter.
+    press('5', { ctrlKey: true });
+    press('5', { metaKey: true });
+    press('5', { repeat: true });
+    press('a');
+    expect(calcAnswer().textContent).toBe('?');
+    press('Enter');
+    expect(sounds).toEqual(['tap', 'tap', 'tap', 'tap', 'tap']);
+    const wrong = wrongAnswer(p.answer);
+    for (const d of String(wrong)) press(d);
+    press('Enter');
+    expect(sounds.at(-1)).toBe('wrong');
+    expect(helpLine()).toBe(CALC_SLIP);
+    for (const d of String(p.answer)) press(d);
+    press('Enter');
+    expect(sounds.at(-1)).toBe('win');
+    expect(doc.activeElement).toBe(button('Next puzzle'));
+    // Enter on the focused Next button presses Next only (its own tap), and focus goes to the 7 key.
+    const heard = sounds.length;
+    press('Enter');
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(calcAnswer().textContent).toBe('?');
+    expect(sounds.slice(heard)).toEqual(['tap']);
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+    expect(doc.activeElement).toBe(calcKey('7'));
+  });
+
+  it('keys typed with focus on a keypad key go to the keypad once, not twice', () => {
+    openMath(0);
+    calcKey('3').focus();
+    press('2');
+    expect(calcAnswer().textContent).toBe('2');
+    expect(sounds).toEqual(['tap']);
+  });
+
+  it('keys do nothing while the level card is open, so Escape closes the card and clears nothing', () => {
+    openMath(0);
+    for (let n = 0; n < 4; n++) {
+      solveMath();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    const heard = sounds.length;
+    // Focus is on the card's Play Level 2; the keypad's keys reach nothing.
+    press('3');
+    press('Backspace');
+    expect(sounds).toHaveLength(heard);
+    expect(card()).toBe(dialog);
+    press('Escape');
+    expect(card()).toBeNull();
+    const play = button('Play Level 2');
+    expect(play.closest('.bw-play__slot')!.className).toContain('calc-controls');
+    expect(doc.activeElement).toBe(play);
+    expect(sounds).toHaveLength(heard);
+  });
+
+  it('the speaker reads the sum and asks how many; once solved it reads the solved sum', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    click(button('Hear the sum'));
+    expect(spoken).toEqual([`${p.words}. How many?`]);
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    const solvedLine = `${p.words} makes ${p.answer}.`;
+    click(button('Hear the sum'));
+    expect(spoken.at(-1)).toBe(solvedLine);
+    expect(spoken.filter((s) => s === solvedLine)).toHaveLength(2);
+  });
+
+  it('brings the offer after 45 s with no key press at ages 5 to 6, and any key press starts the time again', () => {
+    openMath(0);
+    wait(40 * TICK_MS);
+    click(calcKey('1'));
+    wait(44 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    // = with nothing typed is a key press too.
+    click(calcKey('Clear'));
+    click(calcKey('Equals'));
+    wait(44 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+    expect(helpLine()).toBe(OFFER_LINE);
+  });
+
+  it('a swap brings a different sum with a fresh entry and focus on the 7 key', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    for (let i = 0; i < 2; i++) {
+      tapDigits(wrongAnswer(p.answer));
+      click(calcKey('Equals'));
+    }
+    expect(button('New puzzle')).toBeTruthy();
+    // A digit hides the offer; one more slip brings it back, as a fresh event over the limit.
+    tapDigits(1);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    click(calcKey('Clear'));
+    tapDigits(wrongAnswer(p.answer));
+    click(calcKey('Equals'));
+    expect(button('New puzzle')).toBeTruthy();
+    const swappedFrom = storedRun('math', 0)!.queue[0];
+    click(button('New puzzle'));
+    expect(helpLine()).toBe(SWAPPED_LINE);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(doc.activeElement).toBe(calcKey('7'));
+    expect(storedRun('math', 0)!.queue.at(-1)).toBe(swappedFrom);
+    solveMath();
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 0 });
+  });
+});
+
+describe('Brick Calculator: taking away and mixed levels', () => {
+  it('Level 5 takes away: the minus sign, the last b blue bricks faded, and the take-away lines', () => {
+    openMath(4, '7-8');
+    const p = mathOnScreen();
+    expect(p.op).toBe('minus');
+    expect(p.answer).toBeGreaterThanOrEqual(1);
+    expect(doc.body.querySelectorAll('.calc-eq__sign').map((s) => s.textContent)).toEqual(['−', '=']);
+    expect(byRole('img', `${p.a} ${p.a === 1 ? 'blue brick' : 'blue bricks'}, ${p.b} taken away`)).toBeTruthy();
+    expect([calcCells('blue'), calcCells('taken'), calcCells('orange')]).toEqual([p.a - p.b, p.b, 0]);
+    // The taken bricks are the last b blue ones.
+    const cells = doc.body.querySelectorAll('.calc-cell');
+    expect(cells.slice(p.a - p.b, p.a).every((c) => c.classList.contains('is-taken'))).toBe(true);
+    click(button('Hear the sum'));
+    expect(spoken).toEqual([`${p.a} take away ${p.b}. How many?`]);
+    solveMath();
+    expect(helpLine()).toBe(`${p.a} take away ${p.b} makes ${p.answer}.`);
+  });
+
+  it('0 is a right answer on Level 9, and plus and minus take turns there', () => {
+    const band = '5-6';
+    let seed = 0;
+    while (mathPuzzle(8, 0, { seed, band }).answer !== 0) seed++;
+    child(band);
+    starUpTo('math', 8);
+    progressStore.startRun('math', 8, { set: 'math:1:5-6', seed, keepSolved: true });
+    mount(createElement(MathApp, { params: ['9'] }));
+    const p = mathOnScreen();
+    expect(p.answer).toBe(0);
+    click(calcKey('0'));
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('win');
+    expect(helpLine()).toBe(`${p.words} makes 0.`);
+    click(button('Next puzzle'));
+    // The next sum uses the other operation.
+    expect(mathOnScreen().op).not.toBe(p.op);
+  });
+
+  it('keeps the sum on screen when the age band changes mid-level, keeps the solved ones, and takes the new band’s numbers from the next puzzle', () => {
+    const maya = child('3-4');
+    mount(createElement(MathApp, { params: ['1'] }));
+    for (let n = 0; n < 2; n++) {
+      solveMath();
+      click(button('Next puzzle'));
+    }
+    expect(storedRun('math', 0)!.set).toBe('math:1:3-4');
+    const onScreen = mathOnScreen().eq;
+    act(() => progressStore.updatePlayer(maya.id, { ageBand: '9-10' }));
+    expect(mathOnScreen().eq).toBe(onScreen);
+    solveMath();
+    click(button('Next puzzle'));
+    const run = storedRun('math', 0)!;
+    expect(run.set).toBe('math:1:9-10');
+    expect(run.solved).toHaveLength(3);
+    expect(dots()).toBe('Puzzle 4 of 4. 3 solved.');
+    const want = mathPuzzle(0, run.queue[0], { seed: run.seed, band: '9-10' });
+    expect(mathOnScreen().answer).toBe(want.answer);
+  });
+});
+
+describe('Brick Calculator: the level’s end and the finished state', () => {
+  it('four solves open the level card with the slips, and Play Level 2 opens Level 2 (board: levelDone)', () => {
+    openMath(0);
+    for (let n = 0; n < 4; n++) {
+      if (n === 0) {
+        tapDigits(wrongAnswer(mathOnScreen().answer));
+        click(calcKey('Equals'));
+      }
+      solveMath();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(dots()).toBe('4 of 4 solved.');
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished Level 1', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('4 puzzles, 1 slip.');
+    expect(byRole('img', '3 of 3 stars', dialog)).toBeTruthy();
+    expect(storedStars('math', 0)).toBe(3);
+    click(button('Play Level 2', dialog));
+    expect(hash()).toBe('#/game/math/2');
+  });
+
+  it('shows "?" on the display and empty ten-frames behind the finished card (board: gameDone)', () => {
+    child();
+    starUpTo('math', 12, 2);
+    mount(createElement(MathApp, { params: [] }));
+    expect(byRole('heading', 'Brick Calculator')).toBeTruthy();
+    const dialog = card()!;
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 24 of 36 stars.');
+    const behind = doc.body.querySelector('.bw-play__body')!;
+    expect(isHidden(behind)).toBe(true);
+    expect(behind.querySelector('.calc-eq__answer')!.textContent).toBe('?');
+    expect(behind.querySelectorAll('.calc-eq__sign')).toHaveLength(0);
+    expect(behind.querySelectorAll('.calc-cell.is-empty')).toHaveLength(20);
+    expect(behind.querySelectorAll('.calc-count')).toHaveLength(0);
+    expect(behind.querySelectorAll('button')).toHaveLength(0);
+    // The keys do nothing here either.
+    press('4');
+    expect(sounds).toEqual([]);
+  });
+
+  it('opens Break at Next once the daily limit is used up, and the level waits at the solved puzzle', () => {
+    openMath(0);
+    solveMath();
+    act(() => progressStore.addMinutesPlayed(60));
+    click(button('Next puzzle'));
+    expect(hash()).toBe('#/break');
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
   });
 });
