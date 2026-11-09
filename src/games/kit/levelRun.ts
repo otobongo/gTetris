@@ -144,6 +144,11 @@ export interface LevelRunState {
   leaving: boolean;
 }
 
+/**
+ * `round` on solve, next and swap is the token the action was dispatched for: the state's `round` when
+ * the tap happened. An action whose round is no longer the one on screen is ignored, so a second swap,
+ * solve or Next sent for the same puzzle acts once (brief 10.1). Without it an action acts as before.
+ */
 export type LevelRunAction =
   /** A wrong answer. `key` names it (the pair, the hole, the car) so a repeat adds no star slip. */
   | { type: 'slip'; key?: string }
@@ -157,11 +162,11 @@ export type LevelRunAction =
   /** A hint spent: what spendHint answered (the hints left), or null to count down in memory. */
   | { type: 'hint'; left: number | null }
   /** The puzzle on screen is solved: what recordPuzzle answered for solveResult(state). */
-  | { type: 'solve'; outcome: PuzzleOutcome }
+  | { type: 'solve'; outcome: PuzzleOutcome; round?: number }
   /** Next puzzle, from 'solved'. `band` when the band changed since the puzzle started (bandInit). */
-  | { type: 'next'; band?: BandChange }
+  | { type: 'next'; band?: BandChange; round?: number }
   /** A different puzzle, from 'play': what swapPuzzle answered, or null to rotate in memory. */
-  | { type: 'swap'; run: LevelRun | null; band?: BandChange }
+  | { type: 'swap'; run: LevelRun | null; band?: BandChange; round?: number }
   /** The store's copy of the run once the level opened (startRun), when it differs from the one shown. */
   | { type: 'stored'; run: LevelRun }
   | { type: 'card'; to: 'open' | 'closed' }
@@ -338,7 +343,12 @@ function solved(s: LevelRunState, outcome: PuzzleOutcome): LevelRunState {
   return finish ? { ...base, phase: 'done', finish, card: 'waiting' } : { ...base, phase: 'solved' };
 }
 
+/** A solve, next or swap sent for a puzzle that is no longer on screen. */
+const stale = (s: LevelRunState, a: LevelRunAction): boolean =>
+  (a.type === 'solve' || a.type === 'next' || a.type === 'swap') && a.round !== undefined && a.round !== s.round;
+
 export function levelRunReducer(s: LevelRunState, a: LevelRunAction): LevelRunState {
+  if (stale(s, a)) return s;
   const playing = s.phase === 'play' && !s.leaving;
   switch (a.type) {
     case 'slip': {
