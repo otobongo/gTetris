@@ -6,11 +6,13 @@
  */
 import type { BrickColor } from '../../shared/ui/palette';
 
-/** Red with green, blue with purple, red with pink. Order inside a pair does not matter. */
+/** Red with green, blue with purple, red with pink, and blue with green (added in batch 2: the Pattern Train
+ * canvas check found it merges under tritanopia). Order inside a pair does not matter. */
 export const AVOID_PAIRS: readonly (readonly [BrickColor, BrickColor])[] = [
   ['red', 'green'],
   ['blue', 'purple'],
   ['red', 'pink'],
+  ['blue', 'green'],
 ];
 
 /** True when the two colours must not meet in one puzzle. */

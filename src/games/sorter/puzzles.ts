@@ -1,6 +1,6 @@
 /**
  * Shape Sorter content (brief 4.2): 9 levels x 6 boards = 54 puzzles on the four-puzzle level system.
- * Pure and fixed (set `sorter:1`, seed 0): `puzzle(level, n)` always gives the same board, so nothing is stored
+ * Pure and fixed (set `sorter:2`, seed 0): `puzzle(level, n)` always gives the same board, so nothing is stored
  * and a resumed level shows the same boards. No React and no DOM.
  *
  * Levels and puzzle numbers are 0-based, as in the progress store (`LevelRun.queue`, `PuzzleResult.puzzle`).
@@ -21,7 +21,7 @@ import { LEVEL_STAR_RULES, STUCK } from '../run';
 import { colorsFit } from '../kit/colorPairs';
 
 export const SORTER_TITLE = 'Shape Sorter';
-export const SORTER_SET_VERSION = 1;
+export const SORTER_SET_VERSION = 2;
 /** Sorter content is fixed: the run seed is always 0 (brief 6). */
 export const SORTER_SEED = 0;
 

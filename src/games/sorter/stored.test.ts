@@ -1,6 +1,6 @@
 /**
  * Shape Sorter runs in the progress store (six-games brief 6, 10.2 error paths): a stored run under the game id
- * `sorter` with set `sorter:1` and seed 0 resumes on the same boards, a corrupt one is dropped by sanitize so the
+ * `sorter` with set `sorter:2` and seed 0 resumes on the same boards, a corrupt one is dropped by sanitize so the
  * level restarts at puzzle 1, and a run from another set version restarts too.
  */
 import { describe, expect, it } from 'vitest';
@@ -26,9 +26,9 @@ const loadRun = (run: unknown, level = 4) => runOf(load({ [level]: run }), 'sort
 const opensOn = (run: LevelRun | null, level: number) => puzzle(level, resolveRun(run, INIT, NOON).queue[0]);
 
 describe('a stored Shape Sorter run', () => {
-  it('uses set sorter:1 and seed 0', () => {
-    expect(SET).toBe('sorter:1');
-    expect(SET).toBe(sorterSet());
+  it('uses set sorter:2 and seed 0', () => {
+    expect(SET).toBe('sorter:2');
+    expect(SET).toBe(sorterSet(2));
     expect(SORTER_SEED).toBe(0);
   });
 
@@ -92,7 +92,7 @@ describe('a corrupt stored run is dropped and the level restarts at puzzle 1 (10
 
 describe('a run from another set restarts at puzzle 1 (6, four-puzzle 6.2)', () => {
   it('restarts a run stored under an older or another set version', () => {
-    for (const set of ['sorter:0', 'sorter:2', 'mixer:1']) {
+    for (const set of ['sorter:0', 'sorter:1', 'sorter:3', 'mixer:1']) {
       const stored = loadRun(goodRun({ set }));
       expect(stored?.set).toBe(set);
       const run = resolveRun(stored, INIT, NOON);

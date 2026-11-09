@@ -367,10 +367,10 @@ describe('every board can be solved by the brief’s rules (4.2)', () => {
 
 /* ---------- Same input, same board ---------- */
 
-describe('same input, same board: set sorter:1, seed 0 (4.2, 6)', () => {
-  it('keeps the run seed at 0 and the set version at 1', () => {
+describe('same input, same board: set sorter:2, seed 0 (4.2, 6)', () => {
+  it('keeps the run seed at 0 and the set version at 2 (raised when blue with green joined the avoid list)', () => {
     expect(SORTER_SEED).toBe(0);
-    expect(SORTER_SET_VERSION).toBe(1);
+    expect(SORTER_SET_VERSION).toBe(2);
   });
 
   it('returns the same board for the same level and puzzle number', () => {
@@ -426,9 +426,10 @@ describe('same input, same board: set sorter:1, seed 0 (4.2, 6)', () => {
    * Stored runs keep only puzzle numbers, so a resumed level rebuilds its boards from code. If the boards change,
    * raise SORTER_SET_VERSION (brief 6, so stored runs restart at puzzle 1) and pin the new fingerprints under it.
    */
-  it('keeps the boards pinned to set version 1', () => {
+  it('keeps the boards pinned to their set version', () => {
     const PINS: Record<number, string[]> = {
       1: ['a0abeadc', 'df13917e', '138fcebc', '704b08ba', '62c7fd46', '3b3e80fc', '33e49d3a', '02a8d948', '02741932'],
+      2: ['a0abeadc', 'df13917e', '138fcebc', '986638b2', '773e7eea', '2be5184e', 'eb8ffee4', 'ced1477a', 'a80f76fe'],
     };
     const got = LEVELS.map((l) => fnv(makePuzzles(l).map(dump).join('\n')));
     expect(PINS[SORTER_SET_VERSION], `no pin for set version ${SORTER_SET_VERSION}`).toBeDefined();

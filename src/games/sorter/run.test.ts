@@ -11,9 +11,9 @@ const solved = (slips: readonly number[], usedHint = false): PuzzleResult[] =>
   slips.map((count, puzzle) => ({ puzzle, count, usedHint: usedHint && puzzle === 0, outOfTime: false }));
 
 describe('the set name (3.2, 6)', () => {
-  it('is sorter:1, the version the game stores under', () => {
+  it('is sorter:2, the version the game stores under', () => {
     expect(sorterSet()).toBe('sorter:1');
-    expect(sorterSet(SORTER_SET_VERSION)).toBe(sorterSet());
+    expect(sorterSet(SORTER_SET_VERSION)).toBe('sorter:2');
   });
 
   it('follows the version', () => {

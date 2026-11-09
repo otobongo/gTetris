@@ -770,6 +770,7 @@ Child-facing lines are short, calm and literal. The one exclamation stays "You f
 
 ### 9.4 Colour-only puzzles
 - Generated colour puzzles (Sorter Levels 4 to 9, Pattern Levels 2, 5 and 9) never pair red with green, blue with purple, or red with pink in one puzzle. Sorter Level 5's board set changes its green pieces to yellow for this.
+- **Outcome (2026-11-09):** A2's check found blue (`#2f8cff`) and green (`#1fb53c`) merge under tritanopia (OKLab distance 5.7, closer than red with pink at 9.4), so P's slot added blue with green to `colorPairs.ts`. Sorter's generated boards for Levels 4 to 9 changed with it, so `SORTER_SET_VERSION` went to 2 (stored Sorter runs restart at puzzle 1) and the Sorter board's sample sets swap blue for pink where they met green. Orange with pink (3.6) and green with orange (7.2) are close too, but no generated colour puzzle uses orange.
 - Before showing the canvas, agent A1 (A2 for Pattern) checks each colour board in Chrome DevTools' vision deficiency emulation (protanopia, deuteranopia, tritanopia) and reports any pair that merges. The avoid list lives in `src/games/kit/colorPairs.ts`, which the generators read; K writes it in batch 1, and in batch 2 agent P adds any new pair A2 reports (the only batch 2 edit to the kit, listed in P's files in 12.3).
 - Color Mixer and Picture Builder are about colour itself, so names carry it (open question 3).
 
