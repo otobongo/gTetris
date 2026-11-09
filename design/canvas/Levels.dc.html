@@ -101,7 +101,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters","mixer","sorter","numbers"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"state":{"editor":"enum","options":["default","picked","confirmReset","resetDone"],"default":"default"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"game":{"editor":"enum","options":["escape","drop","letters","mixer","sorter","pattern","numbers","builder","math"],"default":"escape"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"maya7"},"progress":{"editor":"enum","options":["new","midway","complete"],"default":"midway"},"state":{"editor":"enum","options":["default","picked","confirmReset","resetDone"],"default":"default"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -133,7 +133,7 @@ class Component extends DCLogic {
     };
   }
   activeKid() { return 'maya7'; }
-  // Chapters per game, from src (slide/meta.ts, drop/stages.ts, letters/levels.ts) and the six-games brief 4.1 to 4.3.
+  // Chapters per game, from src (slide/meta.ts, drop/stages.ts, letters/levels.ts) and the six-games brief 4.1 to 4.6.
   games() {
     return {
       escape: { title: 'Brick Escape', board: 'Escape', noun: 'Level', chapters: [
@@ -169,23 +169,39 @@ class Component extends DCLogic {
       numbers: { title: 'Number Line-up', board: 'Numbers', noun: 'Level', chapters: [
         { title: 'Stairs', note: '1 to 6, up and down', count: 8 },
         { title: 'Bigger numbers', note: 'read the numbers', count: 4 }
+      ] },
+      pattern: { title: 'Pattern Train', board: 'Pattern', noun: 'Level', chapters: [
+        { title: 'Two-car patterns', note: 'AB', count: 3 },
+        { title: 'Three-car patterns', note: 'ABC, AAB, ABB', count: 6 },
+        { title: 'Longer patterns', note: 'four cars', count: 3 }
+      ] },
+      builder: { title: 'Picture Builder', board: 'Builder', noun: 'Level', chapters: [
+        { title: 'Copy it', note: 'the picture stays', count: 5 },
+        { title: 'From memory', note: 'look, then build', count: 4 },
+        { title: 'Big pictures', note: '5 by 5', count: 3 }
+      ] },
+      math: { title: 'Brick Calculator', board: 'Math', noun: 'Level', chapters: [
+        { title: 'Adding', note: 'plus', count: 4 },
+        { title: 'Taking away', note: 'then plus and minus', count: 8 }
       ] }
     };
   }
   // Sample data. "midway" matches Home, Settings and Break for Maya: Escape Level 9 (8 done, 17 stars, 2 of 4
   // puzzles solved), Drop Stage 4 (3 done, 6 stars, 1 solved), Letters Level 17 (16 done, 19 stars, 2 words built).
   // Color Mixer Level 2, Shape Sorter Level 2 and Number Line-up Level 3 (no puzzles solved yet) match Home and Settings.
+  // Pattern Train, Picture Builder and Brick Calculator are at Level 1, as on Home.
   // Leo matches the Letters board (Level 16) and Settings; Nia and Theo match Break.
   midway(game, kid) {
     var byKid = {
-      leo4: { escape: { cur: 2, stars: 2, solved: 0 }, drop: { cur: 1, stars: 0, solved: 0 }, letters: { cur: 16, stars: 30, solved: 1 }, mixer: { cur: 1, stars: 0, solved: 0 }, sorter: { cur: 1, stars: 0, solved: 0 }, numbers: { cur: 1, stars: 0, solved: 0 } },
+      leo4: { escape: { cur: 2, stars: 2, solved: 0 }, drop: { cur: 1, stars: 0, solved: 0 }, letters: { cur: 16, stars: 30, solved: 1 }, mixer: { cur: 1, stars: 0, solved: 0 }, sorter: { cur: 1, stars: 0, solved: 0 }, numbers: { cur: 1, stars: 0, solved: 0 }, pattern: { cur: 1, stars: 0, solved: 0 }, builder: { cur: 1, stars: 0, solved: 0 }, math: { cur: 1, stars: 0, solved: 0 } },
       nia6: { drop: { cur: 2, stars: 2, solved: 2 } },
       theo10: { escape: { cur: 23, stars: 50, solved: 3 } }
     };
     if (byKid[kid] && byKid[kid][game]) return byKid[kid][game];
     return {
       escape: { cur: 9, stars: 17, solved: 2 }, drop: { cur: 4, stars: 6, solved: 1 }, letters: { cur: 17, stars: 19, solved: 2 },
-      mixer: { cur: 2, stars: 3, solved: 0 }, sorter: { cur: 2, stars: 2, solved: 0 }, numbers: { cur: 3, stars: 5, solved: 0 }
+      mixer: { cur: 2, stars: 3, solved: 0 }, sorter: { cur: 2, stars: 2, solved: 0 }, numbers: { cur: 3, stars: 5, solved: 0 },
+      pattern: { cur: 1, stars: 0, solved: 0 }, builder: { cur: 1, stars: 0, solved: 0 }, math: { cur: 1, stars: 0, solved: 0 }
     }[game];
   }
   // Spread a star total over the finished levels: at least 1 each (that is what opens the next), at most 3.
