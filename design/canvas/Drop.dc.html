@@ -133,7 +133,7 @@
 </sc-if>
 
 <sc-if value="{{isLevel}}" hint-placeholder-val="{{ false }}">
-<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsGap}}px; margin: 10px 0;">
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
 <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
 </sc-for>
@@ -450,7 +450,7 @@ class Component extends DCLogic {
       // Every stage done (decision D6): one star and the game's total, never the last stage's star row.
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '30 of 36 stars' : starsWon + ' of 3 stars',
-      starsGap: finished ? 6 : 4,
+      starsgap: finished ? 6 : 4,
       showTotal: finished,
       totalText: '30 of 36',
       // Score and the every-stage totals are sample data.
