@@ -10,7 +10,7 @@ export const GAME: KitGame<SorterPuzzle> = {
   id: 'sorter',
   meta,
   title: SORTER_TITLE,
-  // 'sorter:1'. The age band changes only the stuck limits, so the set is the same for every band.
+  // 'sorter:2'. The age band changes only the stuck limits, so the set is the same for every band.
   set: () => sorterSet(SORTER_SET_VERSION),
   // Sorter's boards are fixed: the run seed is always 0.
   seed: 'fixed',

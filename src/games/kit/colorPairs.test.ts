@@ -1,6 +1,7 @@
 /**
  * The colour avoid list (six-games brief 9.4, user decision 3 A): red with green, blue with purple and
- * red with pink never meet in one generated colour puzzle. The checks a generator and its tests use.
+ * red with pink never meet in one generated colour puzzle,
+ * and nor do blue with green, added in batch 2 after the Pattern Train canvas check (tritanopia). The checks a generator and its tests use.
  */
 import { describe, expect, it } from 'vitest';
 import { BRICK_COLORS, type BrickColor } from '../../shared/ui/palette';
@@ -9,9 +10,9 @@ import { AVOID_PAIRS, clashes, clashingPairs, colorsFit } from './colorPairs';
 const key = ([a, b]: readonly [BrickColor, BrickColor]) => [a, b].sort().join('+');
 
 describe('the avoid list', () => {
-  it('holds exactly the three pairs in the brief', () => {
-    expect(new Set(AVOID_PAIRS.map(key))).toEqual(new Set(['green+red', 'blue+purple', 'pink+red']));
-    expect(AVOID_PAIRS).toHaveLength(3);
+  it('holds exactly the three pairs in the brief plus blue with green from the batch 2 check', () => {
+    expect(new Set(AVOID_PAIRS.map(key))).toEqual(new Set(['green+red', 'blue+purple', 'pink+red', 'blue+green']));
+    expect(AVOID_PAIRS).toHaveLength(4);
   });
 
   it('only names real brick colours, and never a colour with itself', () => {
@@ -25,7 +26,7 @@ describe('the avoid list', () => {
 
 describe('clashes', () => {
   it('is true for each avoided pair, in either order', () => {
-    for (const [a, b] of [['red', 'green'], ['blue', 'purple'], ['red', 'pink']] as const) {
+    for (const [a, b] of [['red', 'green'], ['blue', 'purple'], ['red', 'pink'], ['blue', 'green']] as const) {
       expect(clashes(a, b), `${a} ${b}`).toBe(true);
       expect(clashes(b, a), `${b} ${a}`).toBe(true);
     }
@@ -43,7 +44,7 @@ describe('clashes', () => {
     for (const c of BRICK_COLORS) expect(clashes(c, c), c).toBe(false);
   });
 
-  it('is symmetric over every pair of brick colours and finds exactly three clashing pairs', () => {
+  it('is symmetric over every pair of brick colours and finds exactly four clashing pairs', () => {
     let found = 0;
     for (let i = 0; i < BRICK_COLORS.length; i++) {
       for (let j = i + 1; j < BRICK_COLORS.length; j++) {
@@ -52,7 +53,7 @@ describe('clashes', () => {
         if (clashes(a, b)) found++;
       }
     }
-    expect(found).toBe(3);
+    expect(found).toBe(4);
   });
 });
 
@@ -87,8 +88,8 @@ describe('colorsFit and clashingPairs', () => {
     expect(clashingPairs(['green', 'red', 'green', 'red'])).toEqual([['green', 'red']]);
   });
 
-  it('finds all three pairs when all five colours are in one set', () => {
-    expect(clashingPairs(['red', 'green', 'blue', 'purple', 'pink']).map(key).sort()).toEqual(['blue+purple', 'green+red', 'pink+red']);
+  it('finds all four pairs when all five colours are in one set', () => {
+    expect(clashingPairs(['red', 'green', 'blue', 'purple', 'pink']).map(key).sort()).toEqual(['blue+green', 'blue+purple', 'green+red', 'pink+red']);
   });
 
   it('takes any iterable, a Set or a generator as well as an array', () => {

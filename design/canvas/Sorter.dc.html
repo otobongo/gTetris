@@ -163,7 +163,7 @@ class Component extends DCLogic {
     return { yellow: '#ffc21a', red: '#f03a3a', blue: '#2f8cff', green: '#1fb53c', pink: '#ff5fb4', purple: '#9b4dff' };
   }
   // All 9 levels, 6 puzzles each (brief 4.2). Puzzle 1 of Levels 1 to 5 is the old board's set (Level 5's green pieces are yellow, 9.4).
-  // Levels 1 to 8 take at most one shape per family; colour sets avoid red with green, blue with purple and red with pink.
+  // Levels 1 to 8 take at most one shape per family; colour sets avoid red with green, blue with purple, red with pink and blue with green.
   levels() {
     var y = function (shapes) { return shapes.map(function (sh) { return [sh, 'yellow']; }); };
     var x2 = function (shapes, c1, c2) { return shapes.map(function (sh) { return [sh, c1]; }).concat(shapes.map(function (sh) { return [sh, c2]; })); };
@@ -181,18 +181,18 @@ class Component extends DCLogic {
         [['circle', 'red'], ['circle', 'blue'], ['triangle', 'yellow'], ['triangle', 'red'], ['star', 'blue'], ['star', 'yellow']],
         [['square', 'blue'], ['square', 'yellow'], ['hexagon', 'red'], ['hexagon', 'blue'], ['triangle', 'yellow'], ['triangle', 'red']],
         [['star', 'red'], ['star', 'yellow'], ['circle', 'blue'], ['circle', 'yellow'], ['pentagon', 'red'], ['pentagon', 'blue']],
-        [['rectangle', 'green'], ['rectangle', 'yellow'], ['circle', 'blue'], ['circle', 'green'], ['star', 'yellow'], ['star', 'blue']],
+        [['rectangle', 'green'], ['rectangle', 'yellow'], ['circle', 'pink'], ['circle', 'green'], ['star', 'yellow'], ['star', 'pink']],
         [['triangle', 'pink'], ['triangle', 'blue'], ['diamond', 'yellow'], ['diamond', 'pink'], ['hexagon', 'blue'], ['hexagon', 'yellow']],
         [['circle', 'purple'], ['circle', 'yellow'], ['square', 'green'], ['square', 'purple'], ['star', 'yellow'], ['star', 'green']]] },
       6: { colorMatters: true, puzzles: [
-        x3(['circle', 'triangle'], ['red', 'blue', 'yellow']), x3(['square', 'star'], ['green', 'blue', 'yellow']), x3(['hexagon', 'circle'], ['pink', 'yellow', 'blue']),
+        x3(['circle', 'triangle'], ['red', 'blue', 'yellow']), x3(['square', 'star'], ['green', 'pink', 'yellow']), x3(['hexagon', 'circle'], ['pink', 'yellow', 'blue']),
         x3(['triangle', 'rectangle'], ['purple', 'yellow', 'green']), x3(['star', 'pentagon'], ['red', 'yellow', 'blue']), x3(['diamond', 'circle'], ['pink', 'green', 'yellow'])] },
       7: { colorMatters: true, puzzles: [
         x2(['circle', 'square', 'triangle', 'star'], 'blue', 'yellow'), x2(['hexagon', 'rectangle', 'circle', 'star'], 'red', 'yellow'),
-        x2(['triangle', 'diamond', 'pentagon', 'circle'], 'green', 'blue'), x2(['star', 'square', 'hexagon', 'triangle'], 'pink', 'yellow'),
+        x2(['triangle', 'diamond', 'pentagon', 'circle'], 'green', 'pink'), x2(['star', 'square', 'hexagon', 'triangle'], 'pink', 'yellow'),
         x2(['circle', 'rectangle', 'pentagon', 'star'], 'purple', 'yellow'), x2(['triangle', 'diamond', 'hexagon', 'circle'], 'red', 'blue')] },
       8: { colorMatters: true, puzzles: [
-        x3(['circle', 'square', 'triangle'], ['red', 'blue', 'yellow'], 8), x3(['star', 'hexagon', 'circle'], ['green', 'blue', 'yellow'], 1),
+        x3(['circle', 'square', 'triangle'], ['red', 'blue', 'yellow'], 8), x3(['star', 'hexagon', 'circle'], ['green', 'pink', 'yellow'], 1),
         x3(['triangle', 'rectangle', 'pentagon'], ['pink', 'yellow', 'blue'], 3), x3(['circle', 'diamond', 'star'], ['purple', 'yellow', 'green'], 5),
         x3(['square', 'triangle', 'hexagon'], ['red', 'yellow', 'blue'], 7), x3(['pentagon', 'circle', 'star'], ['pink', 'green', 'yellow'], 0)] },
       9: { colorMatters: true, puzzles: [

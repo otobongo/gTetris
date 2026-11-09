@@ -140,9 +140,10 @@ describe('the avoid list (9.4), read from the kit', () => {
     ['red', 'green'],
     ['blue', 'purple'],
     ['red', 'pink'],
+    ['blue', 'green'],
   ];
 
-  it('lists exactly red with green, blue with purple and red with pink', () => {
+  it('lists exactly red with green, blue with purple, red with pink and blue with green', () => {
     expect(sortSets(AVOID_PAIRS)).toEqual(sortSets(PAIRS));
   });
 
@@ -166,7 +167,8 @@ describe('the avoid list (9.4), read from the kit', () => {
     expect(colorsFit([])).toBe(true);
     expect(colorsFit(['red'])).toBe(true);
     expect(colorsFit(['red', 'blue', 'yellow'])).toBe(true);
-    expect(colorsFit(['yellow', 'blue', 'green', 'pink'])).toBe(true);
+    expect(colorsFit(['yellow', 'green', 'pink', 'purple'])).toBe(true);
+    expect(colorsFit(['yellow', 'blue', 'green'])).toBe(false);
     expect(colorsFit(['red', 'blue', 'green'])).toBe(false);
     expect(colorsFit(['yellow', 'blue', 'purple'])).toBe(false);
     expect(colorsFit(['pink', 'yellow', 'red'])).toBe(false);

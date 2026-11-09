@@ -770,6 +770,7 @@ Child-facing lines are short, calm and literal. The one exclamation stays "You f
 
 ### 9.4 Colour-only puzzles
 - Generated colour puzzles (Sorter Levels 4 to 9, Pattern Levels 2, 5 and 9) never pair red with green, blue with purple, or red with pink in one puzzle. Sorter Level 5's board set changes its green pieces to yellow for this.
+- **Outcome (2026-11-09):** A2's check found blue (`#2f8cff`) and green (`#1fb53c`) merge under tritanopia (OKLab distance 5.7, closer than red with pink at 9.4), so P's slot added blue with green to `colorPairs.ts`. Sorter's generated boards for Levels 4 to 9 changed with it, so `SORTER_SET_VERSION` went to 2 (stored Sorter runs restart at puzzle 1) and the Sorter board's sample sets swap blue for pink where they met green. Orange with pink (3.6) and green with orange (7.2) are close too, but no generated colour puzzle uses orange.
 - Before showing the canvas, agent A1 (A2 for Pattern) checks each colour board in Chrome DevTools' vision deficiency emulation (protanopia, deuteranopia, tritanopia) and reports any pair that merges. The avoid list lives in `src/games/kit/colorPairs.ts`, which the generators read; K writes it in batch 1, and in batch 2 agent P adds any new pair A2 reports (the only batch 2 edit to the kit, listed in P's files in 12.3).
 - Color Mixer and Picture Builder are about colour itself, so names carry it (open question 3).
 
@@ -890,7 +891,7 @@ Your security rule asks for a full review on large-tier code, and the kit is lar
 
 ### 12.3 Batch 2
 1. **From batch 1's last commit (12.1), once batch 1's PR is marked ready and you give the go-ahead, in parallel:** B draws the 39 pictures into `pictures.ts` first; A2 builds the canvas (5.3), with `BuilderPictures` drawn from that file once B's first pass lands; P and C write their content modules; T2 first moves the "not built" example from `math` to a stub entry or an unknown game id (3.5), which passes before and after the registry change, then writes the content checks as each module lands.
-2. **Gate:** as batch 1, plus your approval of `BuilderPictures`. B changes any picture you reject before the gate closes, and A2 redraws the sheet from the changed file.
+2. **Gate:** as batch 1, plus your approval of `BuilderPictures`. **Outcome (2026-11-09):** you approved all 42 pictures as drawn and chose no design check on the batch 2 boards. B changes any picture you reject before the gate closes, and A2 redraws the sheet from the changed file.
 3. **Screens:** P, C and B build their games; F2 adds the registry and `App.tsx` lines and, in the same commit, the nine ids in `registry.test.ts:8`; T2 writes the game tests and journeys alongside, under the same commit rule as T1.
 
 | Agent | Owns | Size and model |

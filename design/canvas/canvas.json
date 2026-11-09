@@ -15,7 +15,7 @@
    "is_interactive": true,
    "title": "Picture Builder (tablet)",
    "w": 834,
-   "x": 470,
+   "x": 3290,
    "y": 12800
   },
   "Drop.dc.html": {
@@ -151,7 +151,7 @@
    "is_interactive": true,
    "title": "Brick Calculator (tablet)",
    "w": 834,
-   "x": 470,
+   "x": 3290,
    "y": 14400
   },
   "Mixer.dc.html": {
@@ -199,7 +199,7 @@
    "is_interactive": true,
    "title": "Pattern Train (tablet)",
    "w": 834,
-   "x": 470,
+   "x": 2820,
    "y": 9600
   },
   "Signup.dc.html": {
@@ -633,6 +633,174 @@
    "w": 390,
    "x": 2820,
    "y": 11200
+  },
+  "PatternLong.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Pattern Train: four-car pattern, five cars (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 9600
+  },
+  "PatternSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Pattern Train: puzzle solved (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 9600
+  },
+  "PatternStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Pattern Train: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 9600
+  },
+  "PatternDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Pattern Train: level done (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 9600
+  },
+  "LevelsPattern.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Pattern Train (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 9600
+  },
+  "PatternDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Pattern Train: level done (tablet)",
+   "w": 834,
+   "x": 3734,
+   "y": 9600
+  },
+  "BuilderMemory.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder: from memory, picture hidden (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 12800
+  },
+  "BuilderBig.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder: big pictures, 5 by 5 (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 12800
+  },
+  "BuilderSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder: puzzle solved (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 12800
+  },
+  "BuilderStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 12800
+  },
+  "BuilderDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Picture Builder: level done (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 12800
+  },
+  "LevelsBuilder.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Picture Builder (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 12800
+  },
+  "BuilderDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Picture Builder: level done (tablet)",
+   "w": 834,
+   "x": 4204,
+   "y": 12800
+  },
+  "MathTake.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator: taking away, answer typed (phone)",
+   "w": 390,
+   "x": 470,
+   "y": 14400
+  },
+  "MathSlip.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator: wrong answer (phone)",
+   "w": 390,
+   "x": 940,
+   "y": 14400
+  },
+  "MathSolved.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator: puzzle solved (phone)",
+   "w": 390,
+   "x": 1410,
+   "y": 14400
+  },
+  "MathStuck.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator: stuck, new puzzle offer (phone)",
+   "w": 390,
+   "x": 1880,
+   "y": 14400
+  },
+  "MathDone.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Brick Calculator: level done (phone)",
+   "w": 390,
+   "x": 2350,
+   "y": 14400
+  },
+  "LevelsMath.dc.html": {
+   "h": 844,
+   "is_interactive": true,
+   "title": "Level picker for grown-ups: Brick Calculator (phone)",
+   "w": 390,
+   "x": 2820,
+   "y": 14400
+  },
+  "MathDoneTablet.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Brick Calculator: level done (tablet)",
+   "w": 834,
+   "x": 4204,
+   "y": 14400
+  },
+  "BuilderPictures.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Picture Builder: all 42 pictures, contact sheet",
+   "w": 834,
+   "x": 5118,
+   "y": 12800
   }
  },
  "createdOnFiles": {
@@ -694,8 +862,8 @@
   },
   "row7": {
    "kind": "title1",
-   "maxW": 1304,
-   "text": "7. Pattern Train (batch 2, not updated yet)",
+   "maxW": 4568,
+   "text": "7. Pattern Train (batch 2, new)",
    "w": 240,
    "x": 0,
    "y": 9300
@@ -710,16 +878,16 @@
   },
   "row9": {
    "kind": "title1",
-   "maxW": 1304,
-   "text": "9. Picture Builder (batch 2, not updated yet)",
+   "maxW": 5952,
+   "text": "9. Picture Builder (batch 2, new)",
    "w": 240,
    "x": 0,
    "y": 12500
   },
   "row10": {
    "kind": "title1",
-   "maxW": 1304,
-   "text": "10. Brick Calculator (batch 2, not updated yet)",
+   "maxW": 5038,
+   "text": "10. Brick Calculator (batch 2, new)",
    "w": 240,
    "x": 0,
    "y": 14100
@@ -796,7 +964,13 @@
   "SorterTablet.dc.html",
   "SorterDoneTablet.dc.html",
   "Pattern.dc.html",
+  "PatternLong.dc.html",
+  "PatternSolved.dc.html",
+  "PatternStuck.dc.html",
+  "PatternDone.dc.html",
+  "LevelsPattern.dc.html",
   "PatternTablet.dc.html",
+  "PatternDoneTablet.dc.html",
   "Numbers.dc.html",
   "NumbersBig.dc.html",
   "NumbersHint.dc.html",
@@ -807,9 +981,24 @@
   "NumbersTablet.dc.html",
   "NumbersDoneTablet.dc.html",
   "Builder.dc.html",
+  "BuilderMemory.dc.html",
+  "BuilderBig.dc.html",
+  "BuilderSolved.dc.html",
+  "BuilderStuck.dc.html",
+  "BuilderDone.dc.html",
+  "LevelsBuilder.dc.html",
   "BuilderTablet.dc.html",
+  "BuilderDoneTablet.dc.html",
+  "BuilderPictures.dc.html",
   "Math.dc.html",
+  "MathTake.dc.html",
+  "MathSlip.dc.html",
+  "MathSolved.dc.html",
+  "MathStuck.dc.html",
+  "MathDone.dc.html",
+  "LevelsMath.dc.html",
   "MathTablet.dc.html",
+  "MathDoneTablet.dc.html",
   "Grownups.dc.html",
   "Help.dc.html",
   "HelpDoc.dc.html",

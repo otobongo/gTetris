@@ -4,8 +4,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { dropLevelStars, escapeLevelStars, lettersLevelStars } from '../../games/run';
-import { getGame, type GameEntry } from '../../games/registry';
-import { createProgressStore, type KeyValueStorage, type Player, type PuzzleRules } from '../../shared/progress';
+import { getGame, type GameEntry, type GameId } from '../../games/registry';
+import { createProgressStore, emptyGame, type KeyValueStorage, type Player, type PuzzleRules } from '../../shared/progress';
 import { breakSavedLine, homeCardName, homePill, levelSpot, pickerCopy, planLevels, settingsRowName, settingsRowSub, tileLabel } from './levels';
 import { settingsReturn } from './session';
 
@@ -13,7 +13,20 @@ const NOON = new Date(2026, 10, 4, 12, 0).getTime();
 const escape = getGame('escape')!;
 const drop = getGame('drop')!;
 const letters = getGame('letters')!;
-const math = getGame('math')!;
+/**
+ * A game that is not built yet. A stub entry, not a registered game: once batch 2 lands every game in the
+ * registry is playable, and ComingSoon stays for the next one (six-games brief 3.5).
+ */
+const notBuilt: GameEntry = {
+  ...escape,
+  id: 'chess' as GameId,
+  title: 'Brick Chess',
+  sub: 'Move bricks to win',
+  playable: false,
+  meta: null,
+  route: '/game/chess',
+  playRoute: '/game/chess',
+};
 
 const RULES: Record<string, PuzzleRules> = {
   escape: { set: 'escape:x', seed: 0, levelCount: 31, stars: escapeLevelStars },
@@ -89,7 +102,9 @@ describe('Home card names', () => {
     finish(drop, drop.meta!.levelCount);
     expect(homeCardName(drop, me())).toBe('Brick Drop. Stack falling bricks into rows. All done.');
     expect(homePill(drop.meta, me().games.drop, '7-8', 'Stage')).toBe('All done');
-    expect(homeCardName(math, me())).toBe('Brick Calculator. Add and take away with bricks. Coming soon.');
+    expect(homeCardName(notBuilt, me())).toBe('Brick Chess. Move bricks to win. Coming soon.');
+    expect(homePill(notBuilt.meta, emptyGame(), '7-8', notBuilt.noun)).toBe('Coming soon');
+    expect(settingsRowSub(notBuilt, me())).toBe('Coming soon');
   });
 
   it('work with no player at all', () => {
@@ -137,7 +152,7 @@ describe('Break, mid-level', () => {
     expect(breakSavedLine(escape, me())).toBeNull();
     finish(drop, 12);
     expect(breakSavedLine(drop, me())).toBeNull();
-    expect(breakSavedLine(math, me())).toBeNull();
+    expect(breakSavedLine(notBuilt, me())).toBeNull();
     expect(breakSavedLine(escape, null)).toBeNull();
   });
 });

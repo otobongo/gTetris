@@ -1,0 +1,246 @@
+/* Picture Builder, built from design/canvas/Builder.dc.html and its state boards (six-games brief 4.6, 7.8).
+   Everything is scoped under .pb-*. Colours, radii, type and motion come from src/styles/tokens.css; board sizes
+   are px, as the other games' CSS files keep theirs (7). A brick's colours come from the [data-brick] sets in
+   tokens.css (--c, --cl, --cd), so no hex lives here. */
+
+/* The palette is two rows of 54 px with an 8 px gap: the controls slot is 116 px tall, Next centred in it. */
+.pb-controls { --bw-slot-min: 116px; }
+
+/* A brick face: the lit gradient and the top light and bottom shade of the board's brick(). */
+.pb-square[data-brick],
+.pb-model__cell[data-brick],
+.pb-swatch[data-brick] {
+  background: linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.35), inset 0 -4px 0 rgb(0 0 0 / 0.22);
+}
+
+/* ---------- Model row: the model panel on the left, the title line and match bar on the right ---------- */
+.pb-model-row {
+  width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-6);
+}
+.pb-model {
+  position: relative;
+  flex-shrink: 0;
+  padding: var(--bw-sp-3);
+  border-radius: 18px;
+  background: var(--bw-panel);
+}
+.pb-model__grid {
+  width: 128px;
+  display: grid;
+  grid-template-columns: repeat(var(--pb-n), minmax(0, 1fr));
+  gap: 2px;
+}
+.pb-model__cell {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.06);
+}
+
+/* Peek: the raised purple cover over the hidden picture. */
+.pb-peek {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bw-sp-1);
+  font-family: inherit;
+  font-size: var(--bw-fs-sub);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--bw-on-purple);
+  background: linear-gradient(180deg, var(--bw-purple-top), var(--bw-purple-bottom));
+  box-shadow: 0 var(--bw-raise) 0 var(--bw-purple-edge);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--bw-fast) var(--bw-ease),
+    box-shadow var(--bw-fast) var(--bw-ease);
+}
+.pb-peek:active {
+  transform: translateY(var(--bw-press-shift));
+  box-shadow: 0 var(--bw-raise-pressed) 0 var(--bw-purple-edge);
+}
+.pb-peek:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+.pb-goal {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-sp-2);
+}
+.pb-title {
+  margin: 0;
+  font-size: var(--bw-fs-tile);
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--bw-text);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+/* Match bar (copy levels only). */
+.pb-match {
+  height: 10px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-ground-bottom);
+  overflow: hidden;
+}
+.pb-match__fill {
+  height: 100%;
+  border-radius: var(--bw-r-pill);
+  background: var(--brick-green-light);
+  transition: width var(--bw-slow) var(--bw-ease);
+}
+.pb-match__text {
+  font-size: var(--bw-fs-label);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--brick-green-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Picture shown.": announced, never drawn. */
+.pb-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- The board: 334 px at every grid size, centred in the height left over ---------- */
+.pb-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: grid;
+  place-items: center;
+}
+.pb-board {
+  padding: var(--bw-sp-4);
+  border-radius: 24px;
+  background: var(--bw-well);
+  box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45), 0 0 0 4px var(--bw-purple-bottom);
+  /* A stroke paints, it never scrolls or selects. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: opacity var(--bw-base) var(--bw-ease);
+}
+/* Locked during the first look and each Peek: the board dims; the palette stays usable. */
+.pb-board.is-looking { opacity: 0.5; }
+.pb-grid {
+  width: 334px;
+  display: grid;
+  grid-template-columns: repeat(var(--pb-n), minmax(0, 1fr));
+  gap: 6px;
+}
+/* Squares: 107 px (3x3), 79 px (4x4), 62 px (5x5); the grid is as tall as it is wide. */
+.pb-square {
+  display: block;
+  box-sizing: border-box;
+  aspect-ratio: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.08);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--bw-fast) var(--bw-ease),
+    box-shadow var(--bw-fast) var(--bw-ease);
+}
+/* A filled square adds its one stud on top of the brick face. */
+.pb-square[data-brick] {
+  background:
+    radial-gradient(circle at 46% 42%, var(--cl) 0 19%, transparent 21%),
+    radial-gradient(circle at 50% 50%, var(--c) 0 25%, transparent 27%),
+    radial-gradient(circle at 54% 58%, rgb(0 0 0 / 0.28) 0 26%, transparent 28%),
+    linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+}
+.pb-square[aria-disabled='true'] { cursor: default; }
+.pb-square:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* ---------- Palette: rows of 4 then 3 ---------- */
+.pb-palette {
+  width: 240px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--bw-sp-3);
+}
+.pb-swatch {
+  position: relative;
+  width: var(--bw-target-kid);
+  height: var(--bw-target-kid);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bw-r-md);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--bw-fast) var(--bw-ease);
+}
+.pb-swatch--eraser {
+  background: var(--bw-panel);
+  color: var(--bw-text-2);
+}
+.pb-swatch[aria-pressed='true'] {
+  outline: 4px solid var(--bw-text);
+  outline-offset: 2px;
+  transform: translateY(-3px);
+}
+/* Keyboard focus on a colour that is not picked: the usual focus ring. */
+.pb-swatch:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+/* Keyboard focus on the picked colour: the white ring stays (under reduced motion it is all that marks the pick),
+   and the focus ring goes outside it, 8 to 11 px out, with a 2 px gap so the two rings read apart. */
+.pb-swatch[aria-pressed='true']:focus-visible { outline: 4px solid var(--bw-text); outline-offset: 2px; }
+.pb-swatch[aria-pressed='true']:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: -11px;
+  border: var(--bw-focus);
+  border-radius: calc(var(--bw-r-md) + 11px);
+  pointer-events: none;
+}
+
+/* ---------- A short phone: the model panel gives up height first, then the board, never under 54 px squares ---------- */
+@media (max-height: 820px) {
+  .pb-model { zoom: 0.8; }
+}
+@media (max-height: 780px) {
+  .pb-board { zoom: 0.88; }
+}
+
+/* ---------- Reduced motion (brief 9.1): lifts go, the bar jumps, changes crossfade over 150ms ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .pb-swatch,
+  .pb-swatch[aria-pressed='true'] { transform: none; transition: none; }
+  .pb-peek { transition: none; }
+  .pb-peek:active { transform: none; }
+  .pb-match__fill { transition: none; }
+  .pb-board { transition: opacity 150ms linear; }
+}

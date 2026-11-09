@@ -9,79 +9,132 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pb-square { transition: background 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .pb-board { transition: opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pb-swatch { transition: transform 100ms cubic-bezier(0.16,1,0.3,1); } .pb-fill { transition: width 350ms cubic-bezier(0.16,1,0.3,1); } .pb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pb-swatch { transform: none !important; transition: none; } .pb-fill { transition: none; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; position: relative;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Picture Builder</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Look, then build it</div>
-</div>
-<button onClick="{{clearAll}}" aria-label="Clear my board" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
-<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
-</button>
-</div>
-
-<div style="margin-top: 12px; display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: #30257a;">
-<button onClick="{{modeLook}}" aria-pressed="{{isLook}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 17px; font-weight: 800; padding: 10px 18px; border-radius: 12px; {{lookStyle}}">Copy it</button>
-<button onClick="{{modeMemory}}" aria-pressed="{{isMemory}}" style="border: 0; cursor: pointer; font-family: inherit; font-size: 17px; font-weight: 800; padding: 10px 18px; border-radius: 12px; {{memStyle}}">From memory</button>
-</div>
-
-<div style="margin-top: 20px; width: 100%; display: flex; align-items: center; gap: 14px;">
-<div style="flex-shrink: 0; padding: 8px; border-radius: 18px; background: #30257a; position: relative;">
-<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; width: 128px;">
-<sc-for list="{{model}}" as="m" hint-placeholder-count="16">
-<span style="height: 30px; border-radius: 6px; {{m.style}}"></span>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
 </sc-for>
 </div>
-<sc-if value="{{hidden}}" hint-placeholder-val="{{ false }}">
-<button onClick="{{peek}}" aria-label="Peek at the picture" style="position: absolute; inset: 0; border: 0; cursor: pointer; border-radius: 18px; font-family: inherit; color: #ffffff; font-size: 15px; font-weight: 800; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: linear-gradient(180deg, #5444b8, #3a2d8f);">
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speak}}" aria-label="{{speakLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+</div>
+</div>
+
+<div style="width: 100%; display: flex; align-items: center; gap: 14px;">
+<div style="flex-shrink: 0; padding: 8px; border-radius: 18px; background: #30257a; position: relative;">
+<div role="img" aria-label="{{modelLabel}}" style="display: grid; grid-template-columns: {{modelcols}}; gap: 2px; width: 128px;">
+<sc-for list="{{model}}" as="m" hint-placeholder-count="16">
+<span aria-hidden="true" style="aspect-ratio: 1 / 1; border-radius: 6px; {{m.style}}"></span>
+</sc-for>
+</div>
+<sc-if value="{{showPeek}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{peek}}" aria-label="Peek at the picture" style="position: absolute; inset: 0; border: 0; cursor: pointer; border-radius: 18px; font-family: inherit; color: #ffffff; font-size: 15px; font-weight: 800; line-height: 1.2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
 Peek
 </button>
 </sc-if>
 </div>
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1; min-width: 0;">
-<span style="font-size: 22px; font-weight: 800; line-height: 1.15;">{{title}}</span>
-<span style="font-size: 15px; font-weight: 700; color: #c9c2ff; line-height: 1.25;">{{help}}</span>
-<div style="height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
-<div style="height: 100%; border-radius: 999px; transition: width 0.3s; width: {{pct}}%; background: #5fe06e;"></div>
+<span style="font-size: 22px; font-weight: 800; line-height: 1.15; text-wrap: balance;">{{titleLine}}</span>
+<sc-if value="{{showMatch}}" hint-placeholder-val="{{ true }}">
+<div role="progressbar" aria-label="{{matchText}}" aria-valuemin="0" aria-valuemax="{{matchMax}}" aria-valuenow="{{matchNow}}" style="height: 10px; border-radius: 999px; background: #1a1246; overflow: hidden;">
+<div class="pb-fill" style="height: 100%; border-radius: 999px; width: {{pct}}%; background: #5fe06e;"></div>
 </div>
-<span style="font-size: 14px; font-weight: 800; color: #5fe06e;">{{matchText}}</span>
+<span aria-hidden="true" style="font-size: 14px; font-weight: 800; line-height: 1.2; color: #5fe06e; font-variant-numeric: tabular-nums;">{{matchText}}</span>
+</sc-if>
 </div>
+</sc-if>
+<span class="pb-sr" role="status">{{srNote}}</span>
 </div>
 
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
+<div style="grid-column: 1; grid-row: 1; display: grid;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
+</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
 <div style="flex: 1; min-height: 0; width: 100%; display: grid; place-items: center;">
-<div onPointerDown="{{paintDown}}" onPointerMove="{{paintMove}}" onPointerUp="{{paintUp}}" onPointerCancel="{{paintUp}}" style="padding: 10px; border-radius: 24px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45), 0 0 0 4px #3a2d8f; touch-action: none;">
-<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 334px;">
+<div class="pb-board" onPointerDown="{{paintDown}}" onPointerMove="{{paintMove}}" onPointerUp="{{paintUp}}" onPointerCancel="{{paintUp}}" onKeyDown="{{gridKey}}" style="padding: 10px; border-radius: 24px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45), 0 0 0 4px #3a2d8f; touch-action: none; opacity: {{boardop}};">
+<div role="group" aria-label="Board" style="display: grid; grid-template-columns: {{gridcols}}; gap: 6px; width: 334px;">
 <sc-for list="{{board}}" as="b" hint-placeholder-count="16">
-<button data-cell="{{b.i}}" aria-label="{{b.label}}" style="border: 0; padding: 0; cursor: pointer; height: 79px; border-radius: 14px; transition: background 0.12s, transform 0.12s; {{b.style}}"></button>
+<button class="pb-square" data-cell="{{b.i}}" tabindex="{{b.tab}}" onClick="{{b.key}}" aria-label="{{b.label}}" aria-disabled="{{b.off}}" style="border: 0; padding: 0; cursor: pointer; height: {{sq}}px; border-radius: 14px; {{b.style}}"></button>
 </sc-for>
 </div>
 </div>
 </div>
 
-<div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; height: 116px; display: flex; align-items: center; justify-content: center;">
+<sc-if value="{{showPalette}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="Colors" style="width: 240px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;">
 <sc-for list="{{palette}}" as="p" hint-placeholder-count="7">
-<button onClick="{{p.pick}}" aria-label="{{p.label}}" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; transition: transform 0.12s; {{p.style}}">
+<button class="pb-swatch" onClick="{{p.pick}}" aria-label="{{p.label}}" aria-pressed="{{p.on}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; {{p.style}}">
 <sc-if value="{{p.eraser}}" hint-placeholder-val="{{ false }}">
 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 21h10"></path><path d="M5 15l8-8 6 6-6 6H9z"></path></svg>
 </sc-if>
 </button>
 </sc-for>
 </div>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
+</div>
+</sc-if>
 
-<sc-if value="{{won}}" hint-placeholder-val="{{ false }}">
-<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.6); display: grid; place-items: center; padding: 16px;">
-<div style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63;">
-<div style="font-size: 32px; font-weight: 800; line-height: 1.1;">You built a {{name}}!</div>
-<div style="font-size: 17px; font-weight: 700; color: #c9c2ff; margin: 8px 0 14px;">{{winText}}</div>
-<button onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 20px; font-weight: 800; padding: 12px 28px; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next picture</button>
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="pb-card-title" aria-describedby="pb-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="pb-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
+</div>
+<p id="pb-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
 </div>
 </div>
 </sc-if>
@@ -89,110 +142,394 @@ Peek
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","4","8","11"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","look","hidden","peek","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { pic: 0, cells: this.empty(), color: 'red', mode: 'look', peeking: false, peeks: 0, won: false };
-    this.painting = false;
+    this.state = this.fromLever();
+    this.stroke = null;
   }
-  empty() { var a = []; for (var i = 0; i < 16; i++) a.push(null); return a; }
-  pictures() {
-    var R = 'red', Y = 'yellow', B = 'blue', G = 'green', O = 'orange', W = 'white', _ = null;
-    return [
-      { name: 'house', cells: [_, R, R, _, R, R, R, R, Y, Y, B, Y, Y, Y, B, Y] },
-      { name: 'tree', cells: [_, G, G, _, G, G, G, G, _, O, O, _, _, O, O, _] },
-      { name: 'boat', cells: [_, R, _, _, _, W, W, _, O, O, O, O, B, B, B, B] }
-    ];
-  }
-  pal() {
+  // Sample child: Maya, ages 7 to 8. Stuck at 4 slips or 50 s with no new right brick; first look 4 s, each Peek 2 s (brief 3.3, 4.6).
+  limits() { return { count: 4, secs: 50 }; }
+  look() { return { first: 4000, peek: 2000 }; }
+  // Sample pictures for the board, in the brick style of pictures.ts: r red, y yellow, g green, b blue, o orange, w white, '.' empty.
+  // The board's own house, tree and boat are kept as drawn. Sets A, D and G are copied from src/games/builder/pictures.ts,
+  // as the BuilderPictures contact sheet is; change them there first.
+  sets() {
     return {
-      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'], green: ['#1fb53c', '#5fe06e', '#0f7a26'],
-      blue: ['#2f8cff', '#7cc0ff', '#1557c4'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'], white: ['#f1eef7', '#ffffff', '#b9b3c9']
+      // Set A, 3x3, 2 colours, 5 to 7 bricks (Levels 1 and 6).
+      A: [
+        { name: 'mushroom', rows: ['rwr', 'rrr', '.w.'] },
+        { name: 'flower', rows: ['.r.', 'ryr', '.r.'] },
+        { name: 'apple', rows: ['.g.', 'rrr', 'rrr'] },
+        { name: 'tulip', rows: ['y.y', 'yyy', '.g.'] },
+        { name: 'carrot', rows: ['g.g', 'ooo', '.o.'] },
+        { name: 'sailboat', rows: ['.w.', 'ww.', 'ooo'] }
+      ],
+      // Set D, 4x4, 3 colours, 12 to 15 bricks (Levels 4 and 8): the board's house first.
+      D: [
+        { name: 'house', rows: ['.rr.', 'rrrr', 'yyby', 'yyby'] },
+        { name: 'car', rows: ['.bb.', 'rrrr', 'rrrr', 'w..w'] },
+        { name: 'bus', rows: ['yyyy', 'byby', 'yyyy', 'w..w'] },
+        { name: 'pumpkin', rows: ['.gg.', 'oooo', 'oyyo', 'oooo'] },
+        { name: 'castle', rows: ['y..y', 'ybby', 'yyyy', 'yrry'] },
+        { name: 'cupcake', rows: ['.rr.', 'wwww', 'yyyy', '.yy.'] }
+      ],
+      // Set G, 5x5, 4 colours, 15 to 20 bricks (Levels 11 and 12).
+      G: [
+        { name: 'rocket', rows: ['..r..', '.www.', '.wbw.', 'rwwwr', '.ooo.'] },
+        { name: 'truck', rows: ['yyy..', 'yyyrb', 'yyyrr', 'yyyrr', '.w..w'] },
+        { name: 'burger', rows: ['.ooo.', 'ggggg', 'rrrrr', 'yyyy.', '.ooo.'] },
+        { name: 'cat', rows: ['o...o', 'ooooo', 'ogogo', 'worow', '.ooo.'] },
+        { name: 'balloon', rows: ['.ryr.', 'ryryr', '.ryr.', '.w.w.', '.ooo.'] },
+        { name: 'lighthouse', rows: ['..y..', '.rrr.', '.www.', '.rrr.', 'bbbbb'] }
+      ],
+      // The board's tree and boat open Levels 3 and 5 (brief 4.6).
+      C1: { name: 'tree', rows: ['.gg.', 'gggg', '.oo.', '.oo.'] },
+      E1: { name: 'boat', rows: ['.r..', '.ww.', 'oooo', 'bbbb'] }
     };
   }
-  brick(color, stud) {
-    var p = this.pal()[color];
-    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
-    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
-    return 'background: ' + (stud ? studs : '') + base + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22);';
+  // Levels 1 to 12 from the 4.6 table: mode and grid. Levels without a sample set play the nearest sample set of the same grid.
+  levelSpec(level) {
+    var memory = [6, 7, 8, 9, 12].indexOf(level) >= 0;
+    var n = level <= 2 || level === 6 || level === 7 ? 3 : level >= 10 ? 5 : 4;
+    return { memory: memory, n: n };
+  }
+  pictures(level) {
+    var S = this.sets();
+    var L = this.levelSpec(level);
+    var base = L.n === 3 ? S.A : L.n === 5 ? S.G : S.D;
+    var list = base.slice();
+    if (level === 3) list[0] = S.C1;
+    if (level === 5) list[0] = S.E1;
+    // Memory levels show their copy level's pictures in a new order: puzzle n shows picture (n + 3) mod 6.
+    if (L.memory) return [0, 1, 2, 3, 4, 5].map(function (i) { return list[(i + 3) % 6]; });
+    return list;
+  }
+  cellsOf(pic) {
+    var map = { r: 'red', y: 'yellow', g: 'green', b: 'blue', o: 'orange', w: 'white' };
+    return pic.rows.join('').split('').map(function (ch) { return map[ch] || null; });
+  }
+  levelOf(p) { return ['1', '4', '8', '11'].indexOf(p.level) >= 0 ? parseInt(p.level, 10) : 4; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.level, p.puzzle, p.moment].join('|');
+  }
+  empty(n) { var a = []; for (var i = 0; i < n * n; i++) a.push(null); return a; }
+  freshPuzzle(level) {
+    var L = this.levelSpec(level);
+    return { cells: this.empty(L.n), view: L.memory ? 'look' : 'copy', wrongTaps: 0, seen: {}, idle: 0, offer: false, note: '', srNote: '', focus: 0 };
+  }
+  // Sample progress for the lever states: the top rows built right (one row on 3x3, two rows on 4x4 and 5x5).
+  partial(target, n) {
+    var rows = n === 3 ? 1 : 2;
+    return target.map(function (c, i) { return i < rows * n ? c : null; });
+  }
+  wrongAt(target, cells, skip) {
+    // The next squares that should hold a brick get a colour that is not theirs.
+    var out = cells.slice(), done = 0;
+    for (var i = 0; i < target.length && done <= skip; i++) {
+      if (target[i] && !cells[i]) {
+        if (done === skip) out[i] = target[i] === 'blue' ? 'red' : 'blue';
+        done++;
+      }
+    }
+    return out;
+  }
+  fromLever() {
+    var p = this.props || {};
+    var level = this.levelOf(p);
+    var L = this.levelSpec(level);
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'look', 'hidden', 'peek', 'wrong', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    // Look, hidden and peek belong to memory levels; on a copy level the picture always shows, so they render as play.
+    if (!L.memory && (moment === 'look' || moment === 'hidden' || moment === 'peek')) moment = 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var order = [0, 1, 2, 3, 4, 5];
+    var target = this.cellsOf(this.pictures(level)[order[puzzle - 1]]);
+    var s = Object.assign(this.freshPuzzle(level), { lever: this.leverKey(), level: level, puzzle: puzzle, moment: 'play', order: order, color: 'red', slips: 1 });
+    s.view = L.memory ? (moment === 'look' ? 'look' : moment === 'peek' ? 'peek' : 'hidden') : 'copy';
+    if (moment === 'play' || moment === 'peek') s.cells = this.partial(target, L.n);
+    if (moment === 'wrong') {
+      s.cells = this.wrongAt(target, this.partial(target, L.n), 0);
+      s.wrongTaps = 1; s.slips = 2; s.seen['w'] = true;
+    }
+    if (moment === 'stuck') {
+      s.cells = this.wrongAt(target, this.wrongAt(target, this.partial(target, L.n), 0), 1);
+      s.wrongTaps = this.limits().count; s.slips = this.limits().count; s.offer = true;
+    }
+    if (moment === 'solved' || moment === 'levelDone') { s.cells = target.slice(); s.moment = moment; s.view = L.memory ? 'shown' : 'copy'; }
+    if (moment === 'gameDone') { s.moment = moment; s.cells = this.empty(L.n); }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  componentDidMount() {
+    var self = this;
+    // The time signal: seconds with no new right brick, counted only while the puzzle is on screen and the picture
+    // is not showing in a memory level (the game holds it during the first look and each Peek, brief 4.6).
+    this.timer = setInterval(function () {
+      var s = self.st();
+      if (s.moment !== 'play' || s.view === 'look' || s.view === 'peek') return;
+      var idle = s.idle + 1;
+      self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
+    }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.lookT); }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  // A new memory puzzle starts with its own first look; a Peek shows the picture again for a moment.
+  showFor(view, ms) {
+    var self = this;
+    clearTimeout(this.lookT);
+    this.lookT = setTimeout(function () {
+      var cs = self.st();
+      if (cs.view === view) self.put({ view: 'hidden', srNote: '' });
+    }, ms);
+  }
+  locked(s) { return s.moment !== 'play' || s.view === 'look' || s.view === 'peek'; }
+  target(s) { return this.cellsOf(this.pictures(s.level)[s.order[s.puzzle - 1]]); }
+  // Paint one square with the picked colour. A stroke (pointer down to up, or one key press) makes at most one slip.
+  paintCell(i) {
+    var cs = this.st();
+    if (this.locked(cs)) return;
+    var target = this.target(cs);
+    var c = cs.color === 'eraser' ? null : cs.color;
+    if (cs.cells[i] === c) return;
+    var cells = cs.cells.slice();
+    cells[i] = c;
+    var patch = { cells: cells, note: '' };
+    if (c && c === target[i]) { patch.idle = 0; patch.offer = false; }
+    if (c && c !== target[i]) {
+      var key = i + ':' + c;
+      var st = this.stroke || (this.stroke = { slipped: false, fresh: false });
+      var seen = Object.assign({}, cs.seen);
+      var isNew = !seen[key];
+      seen[key] = true;
+      patch.seen = seen;
+      if (!st.slipped) {
+        st.slipped = true;
+        var wrongTaps = cs.wrongTaps + 1;
+        patch.wrongTaps = wrongTaps;
+        patch.offer = cs.offer || wrongTaps >= this.limits().count;
+      }
+      if (isNew && !st.fresh) { st.fresh = true; patch.slips = cs.slips + 1; }
+    }
+    var won = cells.every(function (v, k) { return v === target[k]; });
+    if (won) {
+      var self = this;
+      var last = cs.puzzle === 4;
+      if (last) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+      patch.moment = last ? 'lastSolved' : 'solved';
+      patch.offer = false;
+      patch.view = this.levelSpec(cs.level).memory ? 'shown' : 'copy';
+    }
+    this.put(patch);
   }
   paintAt(x, y) {
     var hit = document.elementFromPoint(x, y);
     var cell = hit && hit.closest ? hit.closest('[data-cell]') : null;
     if (!cell) return;
-    var i = Number(cell.getAttribute('data-cell'));
-    var s = this.state;
-    var c = s.color === 'eraser' ? null : s.color;
-    if (s.cells[i] === c) return;
-    var cells = s.cells.slice();
-    cells[i] = c;
-    var target = this.pictures()[s.pic].cells;
-    var won = cells.every(function (v, k) { return v === target[k]; });
-    this.setState({ cells: cells, won: won });
+    this.paintCell(Number(cell.getAttribute('data-cell')));
   }
-  componentWillUnmount() { clearTimeout(this.peekT); }
+  brick(color, stud) {
+    var p = {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'], green: ['#1fb53c', '#5fe06e', '#0f7a26'],
+      blue: ['#2f8cff', '#7cc0ff', '#1557c4'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'], white: ['#f1eef7', '#ffffff', '#b9b3c9']
+    }[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    return 'background: ' + (stud ? studs : '') + base + '; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22);';
+  }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
-    var pic = this.pictures()[s.pic];
-    var matches = s.cells.filter(function (v, k) { return v === pic.cells[k]; }).length;
-    var hidden = s.mode === 'memory' && !s.peeking;
-    var wrongCount = s.cells.filter(function (v, k) { return v !== null && v !== pic.cells[k]; }).length;
+    var L = this.levelSpec(s.level);
+    var n = L.n;
+    var pic = this.pictures(s.level)[s.order[s.puzzle - 1]];
+    var target = this.cellsOf(pic);
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
+    var playing = m === 'play';
+    var lastLevel = s.level === 12;
+    var hidden = L.memory && s.view === 'hidden';
+    var looking = L.memory && (s.view === 'look' || s.view === 'peek');
+    var locked = this.locked(s);
+    var cap = function (t) { return t.charAt(0).toUpperCase() + t.slice(1); };
+
+    var bricks = target.filter(function (c) { return c; }).length;
+    var right = s.cells.filter(function (c, k) { return c && c === target[k]; }).length;
+    var wrong = s.cells.filter(function (c, k) { return c && c !== target[k]; }).length;
+
+    var offerLine = 'This one is tricky. Want a different puzzle?';
+    var titleLine = !L.memory ? 'Build the ' + pic.name + '.' : looking ? 'Look closely.' : 'Build it from memory.';
+    var help = solvedNow ? 'You built the ' + pic.name + (L.memory ? ' from memory.' : '.')
+      : s.offer ? offerLine
+      : s.note ? s.note
+      : looking ? 'Remember the colors and where they go.'
+      : hidden ? 'Tap Peek if you need another look.'
+      : wrong === 1 ? 'One brick is not quite right.'
+      : wrong > 1 ? wrong + ' bricks are not quite right.'
+      : 'Pick a color, then tap or drag over the squares.';
+
+    var rowWords = [];
+    for (var r = 0; r < n; r++) rowWords.push('Row ' + (r + 1) + ': ' + target.slice(r * n, r * n + n).map(function (c) { return c || 'empty'; }).join(', ') + '.');
+
+    // Dots (four-puzzle brief section 8).
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+
+    // Level card: slips over the 4 puzzles (brief 3.2). Totals for the finished state are sample data.
+    var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
+    var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
+    var showModel = !finished && !hidden;
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
-      isLook: s.mode === 'look', isMemory: s.mode === 'memory',
-      lookStyle: s.mode === 'look' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      memStyle: s.mode === 'memory' ? 'background: #ffc21a; color: #5a3500;' : 'background: transparent; color: #c9c2ff;',
-      modeLook: function () { self.setState({ mode: 'look', peeking: false }); },
-      modeMemory: function () {
-        self.setState({ mode: 'memory', peeking: true, cells: self.empty(), peeks: 0 });
-        clearTimeout(self.peekT);
-        self.peekT = setTimeout(function () { self.setState({ peeking: false }); }, 4000);
+      title: finished ? 'Picture Builder' : 'Level ' + s.level,
+      showDots: !finished, dots: dots,
+      dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
+      showPlayArea: !finished,
+      // The speaker reads the title line and the help line; while the offer shows, the offer line.
+      speakLabel: s.offer && playing ? 'Read the help line aloud' : 'Hear the help line',
+      speak: function () {
+        var cs = self.st();
+        if (cs.offer && cs.moment === 'play') { self.say(offerLine); return; }
+        self.say(titleLine + ' ' + help);
       },
-      hidden: hidden,
+      // Model panel: bricks without studs. Hidden behind Peek in memory levels; empty in the finished state.
+      modelcols: 'repeat(' + n + ', minmax(0, 1fr))',
+      model: target.map(function (c) { return { style: showModel && c ? self.brick(c, false) : 'background: rgba(255,255,255,0.06);' }; }),
+      modelLabel: finished ? 'Empty picture.' : hidden ? 'Picture hidden. Tap Peek to look again.' : 'Picture of ' + (/^[aeiou]/.test(pic.name) ? 'an ' : 'a ') + pic.name + '. ' + rowWords.join(' '),
+      showPeek: hidden && playing,
       peek: function () {
-        self.setState({ peeking: true, peeks: s.peeks + 1 });
-        clearTimeout(self.peekT);
-        self.peekT = setTimeout(function () { self.setState({ peeking: false }); }, 2000);
+        var cs = self.st();
+        if (cs.moment !== 'play' || cs.view !== 'hidden') return;
+        // Peek is free, unlimited, never a slip and never stored; no time counts toward the offer while it shows.
+        self.put({ view: 'peek', srNote: 'Picture shown.' });
+        self.showFor('peek', self.look().peek);
       },
-      model: pic.cells.map(function (c) { return { style: c ? self.brick(c, false) : 'background: rgba(255,255,255,0.06);' }; }),
-      title: s.mode === 'memory' ? (s.peeking ? 'Look closely...' : 'Build it from memory!') : 'Build the ' + pic.name,
-      help: s.mode === 'memory'
-        ? (s.peeking ? 'Remember the colors and where they go.' : 'Tap Peek if you need another look.')
-        : wrongCount ? 'One brick is not quite right. Look again!' : 'Pick a color, then tap or drag over the squares.',
-      pct: Math.round((matches / 16) * 100),
-      matchText: matches + ' of 16 squares match',
+      titleLine: titleLine,
+      // The match bar and its count are for copy levels only, and count only the picture's bricks.
+      showMatch: !L.memory,
+      pct: bricks ? Math.round((right / bricks) * 100) : 0,
+      matchNow: String(right), matchMax: String(bricks),
+      matchText: right + ' of ' + bricks + ' bricks right',
+      srNote: s.srNote || '',
+      help: help,
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        if (cs.moment !== 'play') return;
+        // The current picture moves to the end of the queue; the dots stay where they are. A memory puzzle starts with its own first look.
+        var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
+        self.put(Object.assign(self.freshPuzzle(cs.level), { order: order, note: 'Here is a different puzzle.' }));
+        if (self.levelSpec(cs.level).memory) self.showFor('look', self.look().first);
+      },
+      // The board locks during the first look and each Peek, and after the solve.
+      boardop: looking ? 0.5 : 1,
+      gridcols: 'repeat(' + n + ', minmax(0, 1fr))',
+      sq: n === 3 ? 107 : n === 4 ? 79 : 62,
       board: s.cells.map(function (c, i) {
+        var row = Math.floor(i / n) + 1, col = (i % n) + 1;
         return {
           i: String(i),
-          label: 'Square ' + (i + 1) + (c ? ', ' + c : ', empty'),
-          style: c ? self.brick(c, true) : 'background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08);'
+          tab: i === s.focus ? '0' : '-1',
+          off: locked ? 'true' : 'false',
+          label: 'Row ' + row + ', column ' + col + ', ' + (c || 'empty'),
+          style: c ? self.brick(c, true) : 'background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08);',
+          // Enter or Space paints with the picked colour. A pointer click (detail 1 or more) was already painted on pointer down.
+          key: function (e) {
+            if (e && e.detail) return;
+            self.stroke = { slipped: false, fresh: false };
+            self.paintCell(i);
+            self.stroke = null;
+          }
         };
       }),
       paintDown: function (e) {
+        if (self.locked(self.st())) return;
         try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-        self.painting = true;
+        self.stroke = { slipped: false, fresh: false };
         self.paintAt(e.clientX, e.clientY);
       },
-      paintMove: function (e) { if (self.painting) self.paintAt(e.clientX, e.clientY); },
-      paintUp: function () { self.painting = false; },
+      paintMove: function (e) { if (self.stroke) self.paintAt(e.clientX, e.clientY); },
+      paintUp: function () { self.stroke = null; },
+      // One tab stop: arrow keys move between squares.
+      gridKey: function (e) {
+        var cur = e.target && e.target.getAttribute ? Number(e.target.getAttribute('data-cell')) : NaN;
+        if (isNaN(cur)) return;
+        var step = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: n, ArrowUp: -n }[e.key];
+        if (!step) return;
+        var to = cur + step;
+        if (to < 0 || to >= n * n || (Math.abs(step) === 1 && Math.floor(to / n) !== Math.floor(cur / n))) return;
+        e.preventDefault();
+        self.put({ focus: to });
+        setTimeout(function () { try { var t = document.querySelector('[data-cell="' + to + '"]'); if (t) t.focus(); } catch (err) {} }, 0);
+      },
+      // Palette: 54 px in two rows, red, yellow, green, blue / orange, white, eraser.
+      showPalette: !solvedNow,
       palette: ['red', 'yellow', 'green', 'blue', 'orange', 'white', 'eraser'].map(function (c) {
         var on = s.color === c;
         return {
-          label: c === 'eraser' ? 'Eraser' : c,
-          on: on, eraser: c === 'eraser',
-          style: (c === 'eraser' ? 'background: #30257a;' : self.brick(c, false)) + (on ? ' outline: 4px solid #ffffff; outline-offset: 2px; transform: translateY(-3px);' : ''),
-          pick: function () { self.setState({ color: c }); }
+          label: c === 'eraser' ? 'Eraser' : cap(c),
+          on: on ? 'true' : 'false', eraser: c === 'eraser',
+          style: (c === 'eraser' ? 'background: #30257a;' : self.brick(c, false)) + (on ? ' outline: 4px solid #ffffff; outline-offset: 2px; transform: translateY(-3px);' : ' transform: none;'),
+          pick: function () { self.put({ color: c }); }
         };
       }),
-      clearAll: function () { self.setState({ cells: self.empty(), won: false }); },
-      won: s.won,
-      name: pic.name,
-      winText: s.mode === 'memory' ? (s.peeks === 0 ? 'From memory with no peeks. Amazing!' : 'From memory with ' + s.peeks + ' peek' + (s.peeks === 1 ? '' : 's') + '. Great remembering!') : 'Every brick in the right spot. Try it from memory next!',
-      next: function () { self.setState({ pic: (s.pic + 1) % 3, cells: self.empty(), won: false }); if (s.mode === 'memory') { self.setState({ peeking: true, peeks: 0 }); clearTimeout(self.peekT); self.peekT = setTimeout(function () { self.setState({ peeking: false }); }, 4000); } }
+      showNext: m === 'solved',
+      next: function () {
+        var cs = self.st();
+        if (cs.moment !== 'solved') return;
+        self.put(Object.assign(self.freshPuzzle(cs.level), { puzzle: cs.puzzle + 1, moment: 'play' }));
+        if (self.levelSpec(cs.level).memory) self.showFor('look', self.look().first);
+      },
+      cardOpen: m === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '34 of 36 stars' : starsWon + ' of 3 stars',
+      starsgap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '34 of 36',
+      cardFact: finished || lastLevel ? '12 levels, 34 of 36 stars.' : fact,
+      showRule: !finished && !lastLevel,
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (s.level + 1),
+      playNext: function () {
+        var cs = self.st();
+        if (cs.moment !== 'levelDone' || cs.level >= 12) return;
+        var nl = cs.level + 1;
+        self.put(Object.assign(self.freshPuzzle(nl), { level: nl, puzzle: 1, moment: 'play', order: [0, 1, 2, 3, 4, 5], slips: 0 }));
+        if (self.levelSpec(nl).memory) self.showFor('look', self.look().first);
+      }
     };
   }
 }
