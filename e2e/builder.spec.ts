@@ -16,6 +16,8 @@ import {
   builderStroke,
   builderSwatch,
   buildPicture,
+  BUILDER_COLORS,
+  type BuilderPicture,
   dots,
   homeCard,
   levelCard,
@@ -34,7 +36,8 @@ const peek = (page: Page) => page.getByRole('button', { name: 'Peek at the pictu
 
 /**
  * Build the picture on screen, then tap Next puzzle unless it was the fourth; focus lands on the top-left square.
- * Where focus is right after the solve is checked in the first journey, for a last brick laid by a stroke.
+ * Focus is on Next puzzle right after every solve (brief 9.1), whether the last right brick was laid by a stroke
+ * or by a tap: the tap's own mousedown must not pull focus back onto the square it pressed.
  */
 async function buildAndGoOn(page: Page, solvedBefore: number, how: 'drag' | 'tap') {
   const picture = await builderPicture(page);
@@ -43,10 +46,78 @@ async function buildAndGoOn(page: Page, solvedBefore: number, how: 'drag' | 'tap
   if (solvedBefore + 1 >= 4) return;
   await expect(dots(page)).toHaveAttribute('aria-label', `Puzzle ${solvedBefore + 1} of 4. ${solvedBefore + 1} solved.`);
   const next = page.getByRole('button', { name: 'Next puzzle' });
+  await expect(next).toBeFocused();
   await next.click();
   await expect(dots(page)).toHaveAttribute('aria-label', `Puzzle ${solvedBefore + 2} of 4. ${solvedBefore + 1} solved.`);
   await expect(builderSquare(page, picture.size, 0)).toBeFocused();
 }
+
+/** The board's one tab stop. */
+const tabStop = (page: Page) => builderBoard(page).locator('[tabindex="0"]');
+
+/** Move the board's tab stop from one square to another with the arrow keys. */
+async function arrowTo(page: Page, size: number, from: number, to: number) {
+  const rows = Math.floor(to / size) - Math.floor(from / size);
+  const cols = (to % size) - (from % size);
+  for (let k = 0; k < Math.abs(rows); k++) await page.keyboard.press(rows > 0 ? 'ArrowDown' : 'ArrowUp');
+  for (let k = 0; k < Math.abs(cols); k++) await page.keyboard.press(cols > 0 ? 'ArrowRight' : 'ArrowLeft');
+}
+
+/** Build the picture by keyboard only: Tab to a colour and press Space, Shift+Tab back to the board, arrows, then Enter. */
+async function buildByKeys(page: Page, picture: BuilderPicture) {
+  const { size, cells } = picture;
+  let at = 0;
+  await expect(tabStop(page)).toBeFocused();
+  for (const color of BUILDER_COLORS) {
+    if (!cells.includes(color)) continue;
+    const steps = BUILDER_COLORS.indexOf(color) + 1;
+    for (let k = 0; k < steps; k++) await page.keyboard.press('Tab');
+    await expect(builderSwatch(page, color)).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(builderSwatch(page, color)).toHaveAttribute('aria-pressed', 'true');
+    for (let k = 0; k < steps; k++) await page.keyboard.press('Shift+Tab');
+    await expect(builderSquare(page, size, at)).toBeFocused();
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i] !== color) continue;
+      await arrowTo(page, size, at, i);
+      at = i;
+      await expect(builderSquare(page, size, i)).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(builderSquare(page, size, i)).toHaveAccessibleName(new RegExp(`, ${color}$`));
+    }
+  }
+}
+
+test('focus after a solve: Enter on the last square and a finger tap on it both leave focus on Next puzzle', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/');
+  await homeCard(page, 'Picture Builder').click();
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+
+  // Puzzle 1 by keyboard: the board is one tab stop, the arrows move it, Enter paints, and the solve moves focus.
+  const first = await builderPicture(page);
+  await builderSquare(page, first.size, 0).focus();
+  await buildByKeys(page, first);
+  await expect(help(page)).toHaveText(`You built the ${first.name}.`);
+  const next = page.getByRole('button', { name: 'Next puzzle' });
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+  await expect(builderSquare(page, 3, 0)).toBeFocused();
+
+  // Puzzle 2 by finger: every brick but the last tapped in, then a real touch tap lays the last one.
+  const second = await builderPicture(page);
+  const last = second.cells.map((c, i) => (c === null ? -1 : i)).reduce((a, b) => Math.max(a, b));
+  await buildPicture(page, { ...second, cells: second.cells.map((c, i) => (i === last ? null : c)) }, 'tap');
+  await builderSwatch(page, second.cells[last]!).click();
+  const middle = await builderSquareMiddle(page, second.size, last);
+  await page.touchscreen.tap(middle.x, middle.y);
+  await expect(help(page)).toHaveText(`You built the ${second.name}.`);
+  await expect(next).toBeFocused();
+  // A later tap on the solved board leaves it there too.
+  await page.touchscreen.tap(middle.x, middle.y);
+  await expect(next).toBeFocused();
+});
 
 test('a new child builds Picture Builder Level 1 with taps and drags and goes straight into Level 2', async ({ page }) => {
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
@@ -177,6 +248,7 @@ test('a memory level: the look locks the board, Peek shows the picture, the bar 
   // Built from memory: the picture shows again once solved.
   await buildPicture(page, picture, 'drag');
   await expect(help(page)).toHaveText(`You built the ${picture.name} from memory.`);
+  await expect(page.getByRole('button', { name: 'Next puzzle' })).toBeFocused();
   await expect(builderModel(page)).toHaveAccessibleName(/^Picture of /);
   const run = await savedRun(page, 'builder', 5);
   expect(run.solved).toEqual([{ puzzle: 0, count: 1, usedHint: false, outOfTime: false }]);

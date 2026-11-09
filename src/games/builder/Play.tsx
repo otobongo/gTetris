@@ -200,6 +200,17 @@ export function Play({ level }: { level: number }) {
     if (end.slip) live.current.run.slip(end.slip);
   };
 
+  /**
+   * The mousedown a press sends after its pointer down (straight after it for a mouse, after the lift for a finger)
+   * would focus the pressed square. Once that press solved the puzzle, the kit has already put focus on Next puzzle
+   * (brief 9.1), so the browser's default is stopped and focus stays there. Before the solve, a press still focuses
+   * its square as usual, so the board's one tab stop and DOM focus stay together for Tab, arrows, Enter and Space.
+   */
+  const onMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button > 0) return;
+    if (current().board.solved || live.current.run.phase !== 'play') e.preventDefault();
+  };
+
   /** pointercancel, or the capture lost before pointer up: the stroke ends and never counts. */
   const onPointerLost = (e: PointerEvent<HTMLDivElement>) => {
     const s = stroke.current;
@@ -330,6 +341,7 @@ export function Play({ level }: { level: number }) {
       <div
         className={cx('pb-board', looking && 'is-looking')}
         onPointerDown={onPointerDown}
+        onMouseDown={onMouseDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerLost}
