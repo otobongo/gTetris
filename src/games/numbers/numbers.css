@@ -1,0 +1,192 @@
+/* Number Line-up (brief 4.3, 7.5, 9.3), drawn as the Numbers board: the goal strip, the tower well
+   with its right-spot marks, the towers and the legend in the footer slot. The play frame, the help
+   row, Next puzzle and the drag motion are the kit's (kit.css). Colours and motion are tokens;
+   sizes of the board's pieces are px, as the other games' CSS files keep theirs. */
+
+.num-screen {
+  /* the gap between tower columns; a swap's slide moves a tower whole columns (its width plus this gap) */
+  --num-gap: 6px;
+}
+
+/* ---------- Goal strip ---------- */
+.num-goal {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--bw-sp-5);
+  padding: 8px 14px;
+  border-radius: 18px;
+  background: var(--bw-panel);
+}
+.num-goal__label {
+  flex-shrink: 0;
+  font-size: var(--bw-fs-label);
+  font-weight: 800;
+  color: var(--bw-text-2);
+}
+.num-goal__bars {
+  flex-shrink: 0;
+  height: 34px;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+}
+/* 9 to 34 px: 4 + 5 per step of the order. Stairs bars take the number's colour (data-brick). */
+.num-goal__bar {
+  width: 14px;
+  height: calc(4px + var(--num-rank) * 5px);
+  border-radius: 3px;
+  background: var(--bw-decor);
+}
+.num-goal__bar[data-brick] { background: var(--c); }
+.num-goal__text {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: var(--bw-fs-sub);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--bw-text);
+  text-wrap: balance;
+}
+
+/* ---------- Tower well ---------- */
+.num-well {
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px 12px;
+  border-radius: 28px;
+  background: var(--bw-well);
+  box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45);
+}
+.num-well__towers {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--num-gap, 6px);
+  align-items: end;
+}
+.num-well__marks {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--num-gap, 6px);
+  margin-top: var(--bw-sp-3);
+}
+/* Filled green in the right spot; a ringed well where the tower is not yet right (colour is not the only signal). */
+.num-mark {
+  height: 8px;
+  border-radius: var(--bw-r-pill);
+  background: var(--bw-well);
+  box-shadow: inset 0 0 0 2px var(--bw-decor);
+}
+.num-mark.is-right {
+  background: var(--brick-green-light);
+  box-shadow: none;
+}
+
+/* ---------- Towers ---------- */
+/* The whole column is the button, so a one-brick tower is still a full-height target. The kit's
+   bw-drag class owns the transform: this file sets only its parts (rest, lift, the swap's jump). */
+:where(.num-tower) {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.num-tower {
+  height: 100%;
+  min-height: var(--bw-target-kid);
+  min-width: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--bw-sp-1);
+  border-radius: var(--bw-r-md);
+  cursor: grab;
+  --bw-drag-lift: scale(1.06);
+}
+.num-tower.is-picked { --bw-drag-rest: translateY(-10px); }
+/* A swap's first frame: the tower is drawn where it came from, with no transition; then it slides home over --bw-base. */
+.num-tower.is-jump {
+  --bw-drag-rest: translateX(calc(var(--num-shift, 0) * (100% + var(--num-gap, 6px))));
+  transition: none;
+}
+.num-tower[aria-disabled='true'] { cursor: default; }
+
+/* The stack: number face at the base, stud bricks above. The hint's ring goes round it. */
+.num-stack {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 14px;
+}
+.num-stack.is-lit { box-shadow: var(--bw-ring); }
+
+.num-face.bw-brick {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--bw-text);
+  text-shadow: 0 2px 0 rgb(0 0 0 / 0.3);
+}
+/* Three-digit numbers sit a little tighter so they keep clear of the 48 px face's rounded edges. */
+.num-tower[data-digits='3'] .num-face.bw-brick { letter-spacing: -0.02em; }
+/* Numeral ink by face (9.3 and the board): dark ink on the light faces, white with its shadow on red and purple. */
+.num-face[data-brick='yellow'],
+.num-face[data-brick='orange'] { color: var(--bw-on-yellow); text-shadow: none; }
+.num-face[data-brick='green'] { color: var(--bw-on-green); text-shadow: none; }
+.num-face[data-brick='blue'] { color: var(--bw-purple-edge); text-shadow: none; }
+
+/* The hint's arrow above the tower that belongs in the first wrong spot. */
+.num-arrow { flex-shrink: 0; }
+.num-arrow path {
+  fill: var(--brick-yellow-light);
+  stroke: var(--bw-yellow-edge);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+/* ---------- Footer slot: the legend during play ---------- */
+.num-legend {
+  margin: 0;
+  max-width: 36ch;
+  text-align: center;
+  font-size: var(--bw-fs-helper);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--bw-text-2);
+  text-wrap: balance;
+}
+
+/* ---------- Hint button: Letter Builder's, kept focusable when it cannot give a hint ---------- */
+.num-hint[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+.num-hint[aria-disabled='true']:active {
+  transform: none;
+  box-shadow: 0 var(--bw-raise) 0 var(--tone-edge);
+}
+
+/* ---------- Reduced motion (brief 9.1) ---------- */
+/* The kit drops the lift and the slide; a picked tower keeps a plain outline instead, and the two
+   swapped towers fade in where they land. */
+@keyframes num-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .num-tower.is-picked .num-stack { outline: 3px solid var(--bw-text); outline-offset: 2px; }
+  .num-tower.is-moved .num-stack { animation: num-fade 150ms linear; }
+}
