@@ -129,6 +129,21 @@ export function lookSeconds(band: AgeBand, kind: keyof LookTimes): number {
   return (LOOK_SECONDS[band] ?? LOOK_SECONDS['5-6'])[kind];
 }
 
+/** The two looks: the first look when a memory puzzle starts, and each Peek. */
+export type LookKind = keyof LookTimes;
+
+/** The look a puzzle opens with: a memory puzzle starts on its own first look; a copy puzzle has none. */
+export const firstLook = (mode: Mode): LookKind | null => (mode === 'memory' ? 'first' : null);
+
+/** How long a look lasts, in milliseconds, for the Play screen's timer. */
+export const lookMs = (band: AgeBand, kind: LookKind): number => lookSeconds(band, kind) * 1000;
+
+/** Peek is offered on a memory puzzle in play once its picture is hidden. It is free and unlimited. */
+export const canPeek = (mode: Mode, look: LookKind | null, playing: boolean): boolean => mode === 'memory' && look === null && playing;
+
+/** The model panel shows the picture on copy levels, during a look, and once the puzzle is solved. */
+export const pictureShows = (mode: Mode, look: LookKind | null, playing: boolean): boolean => mode === 'copy' || look !== null || !playing;
+
 /* ---------- Puzzles ---------- */
 
 export interface BuilderPuzzle {
