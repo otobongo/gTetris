@@ -256,3 +256,35 @@ export function bricksOf(p: Pair): Bricks {
 
 /** The sign as drawn in the equation: U+2212 for minus, as on the board (7.7). */
 export const signOf = (op: Op): string => (op === 'plus' ? '+' : '−');
+
+/* ---------- The two ten-frames, cell by cell (7.7) ---------- */
+
+/** What one cell of the two ten-frames shows: a blue or orange brick, a blue one taken away, or nothing. */
+export type FrameCell = 'blue' | 'orange' | 'taken' | 'empty';
+
+/** Cells in the two ten-frames: 2 frames of 10, rows of 5. */
+export const FRAME_CELLS = 20;
+/** Cells in one frame. */
+export const FRAME_SIZE = 10;
+
+/** The finished state's frames: every cell empty. */
+export const EMPTY_FRAMES: readonly FrameCell[] = Array.from({ length: FRAME_CELLS }, () => 'empty');
+
+/**
+ * The 20 cells for a sum, in reading order across both frames: plus fills `a` blue then `b` orange;
+ * minus fills `a` blue and fades the last `b` of them ('taken'). The rest are empty. Throws a
+ * RangeError when the bricks would not fit in 20 cells or a take away asks for more than it has.
+ */
+export function frameCells(p: Pair): FrameCell[] {
+  const { blue, orange, taken } = bricksOf(p);
+  if (!Number.isInteger(blue) || !Number.isInteger(orange) || !Number.isInteger(taken) || blue < 0 || orange < 0 || taken < 0) {
+    throw new RangeError(`Cannot draw ${p.a} ${p.op} ${p.b}`);
+  }
+  if (blue + orange > MAX_BRICKS || taken > blue) throw new RangeError(`${p.a} ${p.op} ${p.b} does not fit the ten-frames`);
+  return Array.from({ length: FRAME_CELLS }, (_, i): FrameCell => {
+    if (i < blue - taken) return 'blue';
+    if (i < blue) return 'taken';
+    if (i < blue + orange) return 'orange';
+    return 'empty';
+  });
+}
