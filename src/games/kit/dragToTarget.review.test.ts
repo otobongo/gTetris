@@ -87,6 +87,11 @@ describe('review: pointercancel', () => {
     expect(r.track.phase.kind).toBe('idle');
   });
 
+  it('mid-drag (a lost capture uses the same input), the click a later release sends is still ignored, as after any drag', () => {
+    const lost = drive([down('red', 0, 0), move(30, 0), cancel()]).track;
+    expect(drive([up(null), click()], lost).effects).toEqual([{ kind: 'none' }, { kind: 'swallow' }]);
+  });
+
   it('mid-drag it leaves no tap waiting: the next press and tap counts, a keyboard click too', () => {
     const lost = drive([down('red', 0, 0), move(30, 0), cancel()]).track;
     expect(drive([click(true)], lost).last).toEqual({ kind: 'click' });
