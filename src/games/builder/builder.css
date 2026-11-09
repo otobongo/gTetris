@@ -190,6 +190,7 @@
   gap: var(--bw-sp-3);
 }
 .pb-swatch {
+  position: relative;
   width: var(--bw-target-kid);
   height: var(--bw-target-kid);
   margin: 0;
@@ -212,8 +213,19 @@
   outline-offset: 2px;
   transform: translateY(-3px);
 }
-/* After the selected ring, so a keyboard child always sees where focus is; the lift still marks the pick. */
+/* Keyboard focus on a colour that is not picked: the usual focus ring. */
 .pb-swatch:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+/* Keyboard focus on the picked colour: the white ring stays (under reduced motion it is all that marks the pick),
+   and the focus ring goes outside it, 8 to 11 px out, with a 2 px gap so the two rings read apart. */
+.pb-swatch[aria-pressed='true']:focus-visible { outline: 4px solid var(--bw-text); outline-offset: 2px; }
+.pb-swatch[aria-pressed='true']:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: -11px;
+  border: var(--bw-focus);
+  border-radius: calc(var(--bw-r-md) + 11px);
+  pointer-events: none;
+}
 
 /* ---------- A short phone: the model panel gives up height first, then the board, never under 54 px squares ---------- */
 @media (max-height: 820px) {

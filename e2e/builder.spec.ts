@@ -119,6 +119,56 @@ test('focus after a solve: Enter on the last square and a finger tap on it both 
   await expect(next).toBeFocused();
 });
 
+test('reduced motion: the picked colour keeps its white ring under keyboard focus, with the focus ring outside it', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/');
+  await homeCard(page, 'Picture Builder').click();
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+  expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+
+  // Red is picked when the level opens. Tab onto yellow and back, so focus reaches red from the keyboard.
+  const red = builderSwatch(page, 'red');
+  await expect(red).toHaveAttribute('aria-pressed', 'true');
+  await builderSwatch(page, 'yellow').focus();
+  await page.keyboard.press('Shift+Tab');
+  await expect(red).toBeFocused();
+  expect(await red.evaluate((el) => el.matches(':focus-visible'))).toBe(true);
+
+  const rings = (el: Element) => {
+    const css = getComputedStyle(el);
+    const after = getComputedStyle(el, '::after');
+    return {
+      outline: `${css.outlineWidth} ${css.outlineStyle} ${css.outlineColor}`,
+      offset: css.outlineOffset,
+      transform: css.transform,
+      focus: `${after.borderTopWidth} ${after.borderTopStyle} ${after.borderTopColor}`,
+      focusInset: after.top,
+      focusContent: after.content,
+    };
+  };
+  // The selected ring (4 px white, 2 px out) stays; reduced motion has no lift, so it is all that marks the pick.
+  const focused = await red.evaluate(rings);
+  expect(focused.outline).toBe('4px solid rgb(255, 255, 255)');
+  expect(focused.offset).toBe('2px');
+  expect(focused.transform).toBe('none');
+  // The focus ring is drawn outside it: 3 px yellow, 11 px out, so a 2 px gap shows between the two.
+  expect(focused.focusContent).not.toBe('none');
+  expect(focused.focus).toBe('3px solid rgb(255, 194, 26)');
+  expect(focused.focusInset).toBe('-11px');
+
+  // A colour that is not picked shows the plain focus ring and no second one.
+  await page.keyboard.press('Tab');
+  const yellow = builderSwatch(page, 'yellow');
+  await expect(yellow).toBeFocused();
+  const plain = await yellow.evaluate(rings);
+  expect(plain.outline).toBe('3px solid rgb(255, 194, 26)');
+  expect(plain.focusContent).toBe('none');
+  // And red, picked but no longer focused, shows only its white ring.
+  const resting = await red.evaluate(rings);
+  expect(resting.outline).toBe('4px solid rgb(255, 255, 255)');
+  expect(resting.focusContent).toBe('none');
+});
+
 test('a new child builds Picture Builder Level 1 with taps and drags and goes straight into Level 2', async ({ page }) => {
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
   await page.goto('/');
