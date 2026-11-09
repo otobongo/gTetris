@@ -1,0 +1,148 @@
+/* The game kit's shared look (six-games brief 3.1, 7.2): the play frame, the help row, the controls
+   slot and its Next button, a row of answer choices and a draggable item. Built from the Mixer,
+   Sorter and Numbers boards. Colours, type and motion are tokens from src/styles/tokens.css; sizes of
+   controls are px, as the games' own CSS files keep theirs. Resets sit in :where() so a game's own
+   class wins without fighting specificity. */
+
+/* ---------- The play frame: top bar, the game's top, help row, body, controls slot ---------- */
+.bw-play { align-items: center; }
+/* The game's blocks above the help row sit in the frame's own column and gap. */
+.bw-play__top { display: contents; }
+/* Between the help row and the controls slot: it takes the height left over, content at its top. */
+.bw-play__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--bw-sp-6);
+}
+
+/* The controls slot. Next puzzle (or Play Level) is drawn over the game's controls, which stay in
+   place hidden and inert, so the slot keeps its height and the board above it never moves. */
+.bw-play__slot {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  min-height: var(--bw-slot-min, 58px);
+  display: grid;
+  place-items: center;
+}
+.bw-play__slot > * { grid-area: 1 / 1; }
+.bw-play__controls {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+.bw-play__slot:not([data-slot='controls']) > .bw-play__controls { visibility: hidden; }
+.bw-next.bw-press { min-width: 220px; min-height: 58px; }
+
+/* ---------- Help row (Letter Builder's, made shared) ---------- */
+.bw-helprow {
+  width: 100%;
+  flex-shrink: 0;
+  min-height: var(--bw-target-kid);
+  display: grid;
+  grid-template-columns: var(--bw-target-kid) minmax(0, 1fr) var(--bw-target-kid);
+  align-items: center;
+  gap: var(--bw-sp-4);
+}
+/* Markup order is line, hint, offer, so the offer is last to tab to; the grid draws the offer on the left. */
+.bw-helprow__line { grid-column: 2; grid-row: 1; }
+.bw-helprow__hint { grid-column: 3; grid-row: 1; display: grid; }
+.bw-helprow__offer { grid-column: 1; grid-row: 1; display: grid; }
+.bw-helprow__line {
+  margin: 0;
+  text-align: center;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+/* Prompt style (Sorter, Numbers): the line says what to do. 44 characters at most, 2 lines at 390px. */
+.bw-helprow__line--prompt {
+  font-size: var(--bw-fs-panel);
+  font-weight: 800;
+  line-height: 1.3;
+  color: var(--bw-text);
+}
+.bw-helprow__line--prompt.is-wrong { color: var(--bw-error-text); }
+/* Help style (Mixer, Pattern, Calculator, Builder): a quieter line under the puzzle. 54 characters at most. */
+.bw-helprow__line--help {
+  font-size: var(--bw-fs-body);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bw-text-2);
+}
+
+/* ---------- Choice row: 2 to 4 answer buttons, each game draws its tile inside ---------- */
+.bw-choices {
+  display: flex;
+  justify-content: center;
+  gap: var(--bw-sp-6);
+}
+:where(.bw-choice) {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--bw-r-md);
+}
+.bw-choice {
+  min-width: var(--bw-target-kid);
+  min-height: var(--bw-target-kid);
+  transition:
+    transform var(--bw-base) var(--bw-ease),
+    opacity var(--bw-base) var(--bw-ease),
+    box-shadow var(--bw-base) var(--bw-ease);
+}
+.bw-choice:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+/* Wrong: dims and tilts for CHOICE_WRONG_MS, then comes back over --bw-base. */
+.bw-choice.is-wrong { opacity: 0.5; transform: translateX(-6px) rotate(-5deg); }
+/* Right: the accent ring and a 6px lift. A game whose tile is the button keeps its edge through --bw-choice-shadow. */
+.bw-choice.is-right {
+  transform: translateY(-6px);
+  box-shadow: var(--bw-ring), var(--bw-choice-shadow, 0 0 0 0 transparent);
+}
+.bw-choice[aria-disabled='true'] { cursor: default; }
+
+/* ---------- Drag: an item that follows the pointer onto a target (useDragToTarget) ---------- */
+/* The hook writes --drag-x and --drag-y on the item while it moves and removes them on release.
+   The dragging rules key on that inline value, so they end in the same style change that clears the
+   offset: the miss then returns over --bw-base with --bw-ease, no overshoot. z-index waits out the
+   return, so the item stays above its neighbours on its way back.
+   A game sets the item's look at rest with --bw-drag-rest (Sorter's tilt, a picked piece's lift) and
+   while dragging with --bw-drag-lift (scale(1.18) Sorter, scale(1.06) Numbers). */
+.bw-drag {
+  position: relative;
+  /* a number, not auto, so the drop back from --bw-z-drag can wait out the return */
+  z-index: 0;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transform: translate(var(--drag-x, 0px), var(--drag-y, 0px)) var(--bw-drag-rest, scale(1));
+  transition:
+    transform var(--bw-base) var(--bw-ease),
+    z-index 0s linear var(--bw-base);
+}
+.bw-drag[style*='--drag-x'] {
+  z-index: var(--bw-z-drag);
+  cursor: grabbing;
+  transform: translate(var(--drag-x), var(--drag-y)) var(--bw-drag-lift, scale(1));
+  transition: none;
+}
+.bw-drag:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* ---------- Reduced motion (brief 9.1) ---------- */
+/* Shakes, tilts, lifts and slides go; dims, rings and lines stay, and changes crossfade over 150ms.
+   A dragged item still follows the finger (the child moves it), and a miss puts it back at once. */
+@media (prefers-reduced-motion: reduce) {
+  .bw-choice { transition: opacity 150ms linear; }
+  .bw-choice.is-wrong,
+  .bw-choice.is-right { transform: none; }
+  .bw-drag:not([style*='--drag-x']) { transform: none; transition: opacity 150ms linear; }
+  .bw-drag[style*='--drag-x'] { transform: translate(var(--drag-x), var(--drag-y)); }
+}
