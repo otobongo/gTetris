@@ -19,9 +19,11 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { activePlayer, emptyState, progressStore, runOf, type AgeBand, type LevelRun } from '../shared/progress';
 import { sfx } from '../shared/sound';
-import { LEVEL_CARD_DELAY_MS } from '../shared/ui/LevelCard';
+import { LEVEL_CARD_DELAY_MS, type LevelCardProps } from '../shared/ui/LevelCard';
 import { OFFER_LINE, READ_HELP_ALOUD, SWAPPED_LINE } from './kit/copy';
-import { CHOICE_WRONG_MS } from './kit/ChoiceRow';
+import { CHOICE_WRONG_MS, ChoiceRow } from './kit/ChoiceRow';
+import type { LevelRunApi } from './kit/levelRun';
+import { FIRST_CONTROL, PlayScreen } from './kit/PlayScreen';
 import { TICK_MS } from './kit/useLevelRun';
 import MixerApp from './mixer/MixerApp';
 import { RECIPES, RESULTS, SAME_TEXT, colorWord, mixOf, type PaintId, type ResultId } from './mixer/colors';
@@ -785,6 +787,286 @@ function openCard(): FakeElement {
   if (!d) throw new Error('No level card');
   return d;
 }
+
+/* =====================================================================================================
+ * The kit on a page: PlayScreen's focus rules and ChoiceRow's marks (10.1)
+ * ===================================================================================================== */
+
+function runApi(over: Partial<LevelRunApi<null>>, calls: string[]): LevelRunApi<null> {
+  return {
+    phase: 'play',
+    level: 2,
+    puzzleNo: 0,
+    puzzle: null,
+    band: '5-6',
+    dots: { solved: 1, at: 2 },
+    offer: false,
+    shared: null,
+    slip: () => void calls.push('slip'),
+    progress: () => void calls.push('progress'),
+    hold: () => void calls.push('hold'),
+    solve: () => void calls.push('solve'),
+    swap: () => void calls.push('swap'),
+    next: () => void calls.push('next'),
+    hint: null,
+    card: null,
+    round: 0,
+    finish: null,
+    slot: 'controls',
+    ...over,
+  };
+}
+
+/** A PlayScreen on the page, drawn again with each new run state, as useLevelRun would hand it over. */
+function playScreen(parts: { controls?: boolean; marked?: 'controls' | 'body' | null; body?: boolean } = {}) {
+  const { controls = true, marked = null, body = true } = parts;
+  const calls: string[] = [];
+  const container = doc.createElement('div');
+  doc.body.appendChild(container);
+  const root = createRoot(container as unknown as Element);
+  roots.push(() => act(() => root.unmount()));
+  const mark = (where: 'controls' | 'body') => (marked === where ? { [FIRST_CONTROL]: '' } : {});
+  const show = (over: Partial<LevelRunApi<null>> = {}, speaker = 'Can you make green?') =>
+    act(() =>
+      root.render(
+        createElement(PlayScreen<null>, {
+          run: runApi(over, calls),
+          speaker: { label: 'Hear the question', text: () => speaker },
+          line: 'Tap the paint that makes green.',
+          lineStyle: 'help',
+          top: createElement('div', { className: 'game-top' }, createElement('button', { type: 'button' }, 'Goal')),
+          children: body ? createElement('div', { className: 'game-body' }, createElement('button', { type: 'button', ...mark('body') }, 'Board')) : undefined,
+          controls: controls
+            ? createElement(
+                'div',
+                { className: 'game-controls' },
+                createElement('button', { type: 'button' }, 'Red paint'),
+                createElement('button', { type: 'button', ...mark('controls') }, 'Blue paint'),
+              )
+            : undefined,
+        }),
+      ),
+    );
+  return { show, calls };
+}
+
+const doneCard = (calls: string[]): LevelCardProps => ({
+  title: 'You finished Level 3',
+  stars: 3,
+  fact: '4 puzzles, no slips.',
+  primary: { label: 'Play Level 4', onClick: () => void calls.push('play') },
+  secondary: { label: 'Back to games', href: '#/' },
+  onClose: () => void calls.push('close'),
+});
+
+describe('PlayScreen focus rules on a page (brief 3.1, 9.1; four-puzzle 10)', () => {
+  it('moves focus to Next puzzle on a solve, and Next calls the level’s next()', () => {
+    const { show, calls } = playScreen();
+    show();
+    button('Red paint').focus();
+    show({ phase: 'solved', slot: 'next' });
+    const next = button('Next puzzle');
+    expect(doc.activeElement).toBe(next);
+    // The controls are out of reach behind Next: inert, so the focus fixup moved nothing onto them.
+    expect(queryRole('button', 'Red paint')).toBeNull();
+    click(next);
+    expect(calls).toEqual(['next']);
+  });
+
+  it('after Next, moves focus to the first control in the controls slot', () => {
+    const { show } = playScreen();
+    show();
+    show({ phase: 'solved', slot: 'next' });
+    show({ round: 1, dots: { solved: 2, at: 3 } });
+    expect(doc.activeElement).toBe(button('Red paint'));
+  });
+
+  it('after Next, prefers the control the game marked with FIRST_CONTROL, in the slot or in the body', () => {
+    const inSlot = playScreen({ marked: 'controls' });
+    inSlot.show();
+    inSlot.show({ phase: 'solved', slot: 'next' });
+    inSlot.show({ round: 1 });
+    expect(doc.activeElement).toBe(button('Blue paint'));
+    roots.splice(0).forEach((unmount) => unmount());
+
+    const inBody = playScreen({ marked: 'body' });
+    inBody.show();
+    inBody.show({ phase: 'solved', slot: 'next' });
+    inBody.show({ round: 1 });
+    expect(doc.activeElement).toBe(button('Board'));
+  });
+
+  it('with no controls of its own, after Next focus goes to the body’s first control, then the top’s', () => {
+    const noSlot = playScreen({ controls: false });
+    noSlot.show();
+    noSlot.show({ phase: 'solved', slot: 'next' });
+    noSlot.show({ round: 1 });
+    expect(doc.activeElement).toBe(button('Board'));
+    roots.splice(0).forEach((unmount) => unmount());
+
+    const onlyTop = playScreen({ controls: false, body: false });
+    onlyTop.show();
+    onlyTop.show({ phase: 'solved', slot: 'next' });
+    onlyTop.show({ round: 1 });
+    expect(doc.activeElement).toBe(button('Goal'));
+  });
+
+  it('never gives the offer focus by itself, and after a swap from it lands on the first control', () => {
+    const { show, calls } = playScreen();
+    show();
+    button('Blue paint').focus();
+    show({ offer: true, shared: 'offer' });
+    const offer = button('New puzzle');
+    expect(doc.activeElement).not.toBe(offer);
+    // The offer comes last in the help row, after the line and the hint cell.
+    expect(offer.parentElement!.className).toBe('bw-helprow__offer');
+    expect(offer.parentElement!.previousSibling).toBe(doc.body.querySelector('.bw-helprow__hint'));
+    click(offer);
+    expect(calls).toEqual(['swap']);
+    expect(doc.activeElement).toBe(offer);
+    show({ round: 1, shared: 'swapped' });
+    expect(doc.activeElement).toBe(button('Red paint'));
+    expect(helpLine()).toBe(SWAPPED_LINE);
+  });
+
+  it('leaves focus where it is after a swap when it was not lost (the speaker, say)', () => {
+    const { show } = playScreen();
+    show({ offer: true, shared: 'offer' });
+    const speaker = button(READ_HELP_ALOUD);
+    speaker.focus();
+    show({ round: 1, shared: 'swapped' });
+    expect(doc.activeElement).toBe(button('Hear the question'));
+  });
+
+  it('moves no focus when a new puzzle comes without a solve or an offer before it (a stored run that moved the puzzle)', () => {
+    const { show } = playScreen();
+    show();
+    const speaker = button('Hear the question');
+    speaker.focus();
+    show({ round: 1 });
+    expect(doc.activeElement).toBe(speaker);
+  });
+
+  it('shows nothing in the slot behind the card, and Play Level N with focus once the card is closed', () => {
+    const { show, calls } = playScreen();
+    show({ phase: 'solved', slot: 'next' });
+    const done = { phase: 'done' as const, dots: { solved: 4, at: 4 }, finish: { stars: 3, next: 3, results: [] } };
+    show({ ...done, slot: 'empty' });
+    expect(queryRole('button', 'Next puzzle')).toBeNull();
+    show({ ...done, slot: 'empty', card: doneCard(calls) });
+    const dialog = card()!;
+    // The card puts focus on its own primary button.
+    expect(doc.activeElement).toBe(button('Play Level 4', dialog));
+    press('Escape');
+    expect(calls).toEqual(['close']);
+    show({ ...done, slot: 'play' });
+    const play = button('Play Level 4');
+    expect(play.closest('.bw-play__slot')).not.toBeNull();
+    expect(doc.activeElement).toBe(play);
+    click(play);
+    expect(calls).toEqual(['close', 'next']);
+  });
+
+  it('puts Back to games in the slot with focus once the last level’s card is closed', () => {
+    const { show } = playScreen();
+    show({ phase: 'done', slot: 'empty', finish: { stars: 2, next: null, results: [] } });
+    show({ phase: 'done', slot: 'home', finish: { stars: 2, next: null, results: [] } });
+    const back = byRole('link', 'Back to games');
+    expect(back.getAttribute('href')).toBe('#/');
+    expect(doc.activeElement).toBe(back);
+  });
+
+  it('reads the game’s text when the speaker is tapped, the offer line while the offer shows, and nothing before a tap', () => {
+    const { show } = playScreen();
+    show({}, 'Can you make cream?');
+    expect(spoken).toEqual([]);
+    click(button('Hear the question'));
+    expect(spoken).toEqual(['Can you make cream?']);
+    show({ offer: true, shared: 'offer' }, 'Can you make cream?');
+    expect(spoken).toHaveLength(1);
+    click(button(READ_HELP_ALOUD));
+    expect(spoken).toEqual(['Can you make cream?', OFFER_LINE]);
+  });
+});
+
+describe('ChoiceRow on a page (brief 3.1, 7.2)', () => {
+  type Pick = { color: string; right: boolean };
+  function choiceRow(locked = false) {
+    const picks: Pick[] = [];
+    const container = doc.createElement('div');
+    doc.body.appendChild(container);
+    const root = createRoot(container as unknown as Element);
+    roots.push(() => act(() => root.unmount()));
+    const show = (isLocked: boolean) =>
+      act(() =>
+        root.render(
+          createElement(ChoiceRow<string>, {
+            items: ['Orange', 'Green', 'Purple'],
+            name: (c) => c,
+            isRight: (c) => c === 'Green',
+            onPick: (color, _i, right) => void picks.push({ color, right }),
+            locked: isLocked,
+            label: 'Colors',
+            children: (c, _i, state) => createElement('span', { 'data-state': state }, c),
+          }),
+        ),
+      );
+    show(locked);
+    const choice = (c: string) => button(c, byRole('group', 'Colors'));
+    const state = (c: string) => choice(c).querySelector('span')!.getAttribute('data-state');
+    return { picks, show, choice, state };
+  }
+
+  it('dims a wrong choice for 500 ms, then brings it back; a second wrong one moves the mark and starts the 500 ms again', () => {
+    const { picks, choice, state } = choiceRow();
+    click(choice('Orange'));
+    expect(picks).toEqual([{ color: 'Orange', right: false }]);
+    expect(choice('Orange').className).toBe('bw-choice is-wrong');
+    expect(state('Orange')).toBe('wrong');
+    wait(300);
+    click(choice('Purple'));
+    expect(choice('Orange').className).toBe('bw-choice');
+    expect(state('Purple')).toBe('wrong');
+    wait(CHOICE_WRONG_MS - 1);
+    expect(state('Purple')).toBe('wrong');
+    wait(1);
+    expect(state('Purple')).toBe('idle');
+    // A wrong choice can be tapped again: every tap reaches the game, which decides what counts.
+    click(choice('Purple'));
+    expect(picks.map((p) => p.color)).toEqual(['Orange', 'Purple', 'Purple']);
+  });
+
+  it('rings the right choice, takes no more taps from then on and marks the row aria-disabled, before the game locks it', () => {
+    const { picks, choice, state, show } = choiceRow();
+    click(choice('Orange'));
+    act(() => {
+      dispatch(choice('Green'), makeEvent('click', choice('Green'), { button: 0, detail: 1 }));
+      dispatch(choice('Green'), makeEvent('click', choice('Green'), { button: 0, detail: 1 }));
+    });
+    expect(picks).toEqual([
+      { color: 'Orange', right: false },
+      { color: 'Green', right: true },
+    ]);
+    expect(state('Green')).toBe('right');
+    expect(choice('Green').className).toBe('bw-choice is-right');
+    // The wrong mark goes at once.
+    expect(state('Orange')).toBe('idle');
+    for (const c of ['Orange', 'Green', 'Purple']) expect(choice(c).getAttribute('aria-disabled')).toBe('true');
+    click(choice('Purple'));
+    expect(picks).toHaveLength(2);
+    show(true);
+    expect(state('Green')).toBe('right');
+  });
+
+  it('takes no taps at all while locked, and shows no marks', () => {
+    const { picks, choice, state } = choiceRow(true);
+    click(choice('Orange'));
+    click(choice('Green'));
+    expect(picks).toEqual([]);
+    expect(state('Orange')).toBe('idle');
+    expect(state('Green')).toBe('idle');
+  });
+});
 
 /* =====================================================================================================
  * Color Mixer
