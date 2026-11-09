@@ -2,13 +2,16 @@
  * Helpers the journeys share: a known starting state on this device, the grown-up check, reading what
  * the app saved, and solving a puzzle the way a child would (arrow keys on a Brick Escape brick, letter
  * keys in Letter Builder, paint taps in Color Mixer, shapes dragged or tapped into Shape Sorter's holes,
- * towers swapped in Number Line-up). Nothing here reaches into the app's code at run time: the page is
- * driven through its buttons, links and keys, and pointer drags for Shape Sorter and Number Line-up,
- * and storage is only written before the app loads. The kit games' puzzles are read from the
- * accessible names in six-games brief 9.2.
+ * towers swapped in Number Line-up, a car tapped in Pattern Train, the answer typed in Brick Calculator,
+ * bricks tapped and dragged onto Picture Builder's board). Nothing here reaches into the app's code at run
+ * time: the page is driven through its buttons, links and keys, and pointer drags for Shape Sorter, Number
+ * Line-up and Picture Builder, and storage is only written before the app loads. The kit games' puzzles
+ * are read from the accessible names in six-games brief 9.2.
  */
 import { expect, type Locator, type Page } from '@playwright/test';
 import { PAINTS, RECIPES, RESULTS, mixOf, type PaintId, type ResultId } from '../src/games/mixer/colors';
+import { carName, type Car } from '../src/games/pattern/cars';
+import { predictNext } from '../src/games/pattern/puzzles';
 import { type Cell, type Level, type State, DIRS, canPlace, fromSpec, initialState, isSolved, occupancy, reachable, withMove } from '../src/games/slide/engine';
 import { keyStep } from '../src/games/slide/drag';
 import { PUZZLE_DATA } from '../src/games/slide/puzzles.data';
@@ -648,4 +651,204 @@ export async function solveNumbersPuzzle(page: Page): Promise<number> {
     if (++swaps > 6) throw new Error('The row is not getting closer to done');
   }
   return swaps;
+}
+
+/* ---------- Speech: what the app asks the browser's voice to say ---------- */
+
+/** Record what the app asks the browser's voice to say, instead of saying it. Call before the first goto. */
+export async function recordSpeech(page: Page): Promise<() => Promise<string[]>> {
+  await page.addInitScript(() => {
+    const spoken: string[] = [];
+    (window as unknown as { __spoken: string[] }).__spoken = spoken;
+    const voice = { speak: (u: { text: string }) => spoken.push(u.text), cancel: () => {}, getVoices: () => [], addEventListener: () => {} };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => voice });
+  });
+  return () => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.slice());
+}
+
+/* ---------- Pattern Train: reading the train and tapping the next car ---------- */
+
+export const PATTERN_TRAY = 'Which car comes next?';
+export const patternTray = (page: Page): Locator => page.getByRole('group', { name: PATTERN_TRAY });
+/** The train on screen, the one image ("Train: red circle, ..., empty car."). The leaving ghost is hidden from readers. */
+export const patternTrain = (page: Page): Locator => page.getByRole('img', { name: /^Train: / });
+export const patternCar = (page: Page, name: string): Locator => patternTray(page).getByRole('button', { name, exact: true });
+
+export interface PatternOnScreen {
+  /** The train's name as a reader hears it. */
+  train: string;
+  /** The shown cars, by name ("red circle"). */
+  cars: string[];
+  /** The tray's cars, by name, in tray order. */
+  choices: string[];
+  /** The car that comes next. */
+  answer: string;
+  wrong: string[];
+}
+
+/** The puzzle on screen, read from the train's name and the tray's named cars; the answer is the car the cars' repeat puts next. */
+export async function patternOnScreen(page: Page): Promise<PatternOnScreen> {
+  const train = patternTrain(page);
+  await expect(train).toHaveAccessibleName(/, empty car\.$/);
+  await expect(patternTray(page).getByRole('button')).toHaveCount(3);
+  const name = (await train.getAttribute('aria-label')) ?? '';
+  const m = /^Train: (.+), empty car\.$/.exec(name);
+  if (!m) throw new Error(`Not a train waiting for a car: "${name}"`);
+  const cars = m[1].split(', ');
+  const asCar = (n: string): Car => {
+    const [color, shape] = n.split(' ');
+    return { color, shape } as Car;
+  };
+  const answer = carName(predictNext(cars.map(asCar)));
+  const choices = await patternTray(page)
+    .getByRole('button')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  if (!choices.includes(answer)) throw new Error(`The next car, ${answer}, is not in the tray: ${choices.join(', ')}`);
+  return { train: name, cars, choices, answer, wrong: choices.filter((c) => c !== answer) };
+}
+
+/** Tap the car that comes next. */
+export async function solvePatternPuzzle(page: Page) {
+  const p = await patternOnScreen(page);
+  await patternCar(page, p.answer).click();
+  await expect(patternTrain(page)).toHaveAccessibleName(`Train: ${[...p.cars, p.answer].join(', ')}.`);
+}
+
+/* ---------- Brick Calculator: reading the sum and typing the answer ---------- */
+
+export const mathKeypad = (page: Page): Locator => page.getByRole('group', { name: 'Keypad' });
+/** A keypad key by its name: a numeral, "Clear" or "Equals". */
+export const mathKey = (page: Page, name: string): Locator => mathKeypad(page).getByRole('button', { name, exact: true });
+
+export interface MathOnScreen {
+  a: number;
+  b: number;
+  op: 'plus' | 'minus';
+  /** "3 plus 4", "7 take away 3". */
+  words: string;
+  answer: number;
+}
+
+/** The sum on screen, from the equation's name ("3 plus 4 equals what?"). */
+export async function mathOnScreen(page: Page): Promise<MathOnScreen> {
+  const eq = page.getByRole('img', { name: / equals what\?$/ });
+  await expect(eq).toBeVisible();
+  const name = (await eq.getAttribute('aria-label')) ?? '';
+  const m = /^(\d+) (plus|take away) (\d+) equals what\?$/.exec(name);
+  if (!m) throw new Error(`Not a sum waiting for its answer: "${name}"`);
+  const a = Number(m[1]);
+  const b = Number(m[3]);
+  const op = m[2] === 'plus' ? 'plus' : 'minus';
+  return { a, b, op, words: `${a} ${m[2]} ${b}`, answer: op === 'plus' ? a + b : a - b };
+}
+
+/** Send an answer: its digits and = on the physical keyboard, or tapped on the keypad. */
+export async function sendMathAnswer(page: Page, answer: number, how: 'keys' | 'taps') {
+  for (const d of String(answer)) {
+    if (how === 'keys') await page.keyboard.press(d);
+    else await mathKey(page, d).click();
+  }
+  if (how === 'keys') await page.keyboard.press('Enter');
+  else await mathKey(page, 'Equals').click();
+}
+
+/** Count the bricks and send the right answer; wait for the solved sum. */
+export async function solveMathPuzzle(page: Page, how: 'keys' | 'taps' = 'taps') {
+  const p = await mathOnScreen(page);
+  await sendMathAnswer(page, p.answer, how);
+  await expect(page.getByRole('img', { name: `${p.words} equals ${p.answer}`, exact: true })).toBeVisible();
+}
+
+/* ---------- Picture Builder: reading the picture and laying the bricks ---------- */
+
+export type BuilderCell = 'red' | 'yellow' | 'green' | 'blue' | 'orange' | 'white' | null;
+export const BUILDER_COLORS = ['red', 'yellow', 'green', 'blue', 'orange', 'white'] as const;
+
+export const builderBoard = (page: Page): Locator => page.getByRole('group', { name: 'Board' });
+export const builderPalette = (page: Page): Locator => page.getByRole('group', { name: 'Colors' });
+/** A palette button: "Red" or "Eraser". */
+export const builderSwatch = (page: Page, paint: string): Locator =>
+  builderPalette(page).getByRole('button', { name: paint[0].toUpperCase() + paint.slice(1), exact: true });
+/** A board square by its 0-based index, named "Row r, column c, ...". */
+export const builderSquare = (page: Page, size: number, i: number): Locator =>
+  builderBoard(page).getByRole('button', { name: new RegExp(`^Row ${Math.floor(i / size) + 1}, column ${(i % size) + 1}, `) });
+export const builderModel = (page: Page): Locator => page.getByRole('img', { name: /^Picture / });
+
+export interface BuilderPicture {
+  name: string;
+  size: number;
+  /** Row by row: the colour each square must hold, or null for one that stays empty. */
+  cells: BuilderCell[];
+}
+
+/** The picture as a reader hears it while it shows: "Picture of a mushroom. Row 1: red, white, red. Row 2: ..." */
+export async function builderPicture(page: Page): Promise<BuilderPicture> {
+  const model = builderModel(page);
+  await expect(model).toHaveAccessibleName(/^Picture of /);
+  const label = (await model.getAttribute('aria-label')) ?? '';
+  const m = /^Picture of an? (.+?)\. (Row 1: .+)$/.exec(label);
+  if (!m) throw new Error(`The picture is not showing: "${label}"`);
+  const rows = m[2]
+    .split(/ ?Row \d+: /)
+    .filter(Boolean)
+    .map((r) => r.replace(/\.$/, '').split(', '));
+  return { name: m[1], size: rows.length, cells: rows.flat().map((c) => (c === 'empty' ? null : (c as BuilderCell))) };
+}
+
+/** What the board holds, read from the squares' names. */
+export async function builderBoardCells(page: Page): Promise<BuilderCell[]> {
+  const names = await builderBoard(page)
+    .getByRole('button')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') ?? ''));
+  return names.map((n) => {
+    const m = /, (\w+)$/.exec(n);
+    return !m || m[1] === 'empty' ? null : (m[1] as BuilderCell);
+  });
+}
+
+/** The middle of a square, in viewport px (the tablet zoom is in the box already). */
+export async function builderSquareMiddle(page: Page, size: number, i: number): Promise<{ x: number; y: number }> {
+  const box = await builderSquare(page, size, i).boundingBox();
+  if (!box) throw new Error(`Square ${i} is not on screen`);
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** A finger stroke over squares: down on the first, through the rest in steps, up on the last. Raw pointer input, so it also reaches a locked board. */
+export async function builderStroke(page: Page, size: number, squares: number[]) {
+  const first = await builderSquareMiddle(page, size, squares[0]);
+  await page.mouse.move(first.x, first.y);
+  await page.mouse.down();
+  for (const i of squares.slice(1)) {
+    const at = await builderSquareMiddle(page, size, i);
+    await page.mouse.move(at.x, at.y, { steps: 4 });
+  }
+  await page.mouse.up();
+}
+
+/**
+ * Build the picture on the board, one colour at a time: the colour is tapped in the palette, then each run of
+ * squares in a row that wants it is dragged over in one stroke (`drag`), or each square is tapped (`tap`).
+ */
+export async function buildPicture(page: Page, picture: BuilderPicture, how: 'drag' | 'tap' = 'drag') {
+  const { size, cells } = picture;
+  for (const color of BUILDER_COLORS) {
+    if (!cells.includes(color)) continue;
+    await builderSwatch(page, color).click();
+    await expect(builderSwatch(page, color)).toHaveAttribute('aria-pressed', 'true');
+    for (let row = 0; row < size; row++) {
+      let col = 0;
+      while (col < size) {
+        if (cells[row * size + col] !== color) {
+          col++;
+          continue;
+        }
+        let end = col;
+        while (end + 1 < size && cells[row * size + end + 1] === color) end++;
+        const run = Array.from({ length: end - col + 1 }, (_, k) => row * size + col + k);
+        if (how === 'drag' && run.length > 1) await builderStroke(page, size, [run[0], run[run.length - 1]]);
+        else for (const i of run) await builderSquare(page, size, i).click();
+        col = end + 1;
+      }
+    }
+  }
 }
