@@ -1,9 +1,9 @@
 /**
- * The kit games' Play screens on a page (six-games brief 3.1, 4.1 to 4.3, 7.2, 8, 9, 10.1, 10.2): every
- * state the Mixer, Sorter and Numbers boards draw, reached the way a child reaches it (taps, keys and
- * pointer drags on the real components, through React's own event system), with the slips that count
- * for stars and for the stuck offer, the offer and the swap, the sounds, speech only after a tap, the
- * accessible names from brief 9, and the kit's focus rules.
+ * The kit games' Play screens on a page (six-games brief 3.1, 4.1 to 4.6, 7.2, 8, 9, 10.1, 10.2): every
+ * state the Mixer, Sorter, Numbers, Pattern, Math and Builder boards draw, reached the way a child reaches
+ * it (taps, keys and pointer drags on the real components, through React's own event system), with the
+ * slips that count for stars and for the stuck offer, the offer and the swap, the sounds, speech only after
+ * a tap, the accessible names from brief 9, and the kit's focus rules.
  *
  * There is no browser here, so the page is a small stand-in DOM written below: elements, text, focus,
  * inert, a selector engine for the selectors the app uses, and event dispatch with capture and bubble.
@@ -3342,6 +3342,16 @@ describe('Brick Calculator: the level’s end and the finished state', () => {
     expect(hash()).toBe('#/break');
     expect(storedRun('math', 0)!.solved).toHaveLength(1);
   });
+
+  it('a stored run resumes on screen at its next unsolved sum, from its own seed', () => {
+    child();
+    progressStore.startRun('math', 0, { set: 'math:1:5-6', seed: 777, keepSolved: true });
+    progressStore.recordPuzzle('math', 0, { puzzle: 0, count: 0, usedHint: false, outOfTime: false }, { set: 'math:1:5-6', seed: 777, keepSolved: true, levelCount: 12, stars: () => 3 });
+    mount(createElement(MathApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    const want = mathPuzzle(0, 1, { seed: 777, band: '5-6' });
+    expect(mathOnScreen().eq).toBe(`${want.a} plus ${want.b} equals what?`);
+  });
 });
 
 /* =====================================================================================================
@@ -4001,5 +4011,21 @@ describe('Picture Builder: big pictures, the level’s end and the finished stat
     click(button('Next puzzle'));
     expect(hash()).toBe('#/break');
     expect(storedRun('builder', 0)!.solved).toHaveLength(1);
+  });
+
+  it('a stored run resumes on screen at its next unsolved picture, and a run of another set version starts over', () => {
+    child();
+    progressStore.startRun('builder', 0, { set: 'builder:1', seed: 0 });
+    progressStore.recordPuzzle('builder', 0, { puzzle: 0, count: 2, usedHint: false, outOfTime: false }, { set: 'builder:1', seed: 0, levelCount: 12, stars: () => 3 });
+    const first = mount(createElement(BuilderApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(builderPicture().name).toBe(builderPuzzle(0, 1).picture.name);
+    first.unmount();
+    progressStore.replace(emptyState());
+    child();
+    progressStore.startRun('builder', 0, { set: 'builder:0', seed: 0 });
+    mount(createElement(BuilderApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(storedRun('builder', 0)).toMatchObject({ set: 'builder:1', seed: 0, queue: [0, 1, 2, 3, 4, 5], solved: [] });
   });
 });
