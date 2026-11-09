@@ -31,6 +31,19 @@ import { puzzle as mixerPuzzle } from './mixer/puzzles';
 import NumbersApp from './numbers/NumbersApp';
 import { inversions, swapKind } from './numbers/order';
 import { puzzle as numbersPuzzle } from './numbers/puzzles';
+import PatternApp from './pattern/PatternApp';
+import { carName, type Car } from './pattern/cars';
+import {
+  HELP_START as PAT_HELP_START,
+  HELP_WRONG as PAT_HELP_WRONG,
+  PROMPT as PAT_PROMPT,
+  PROMPT_SOLVED as PAT_PROMPT_SOLVED,
+  TRAY_LABEL as PAT_TRAY,
+  helpSolved as patHelpSolved,
+  speech as patSpeech,
+  speechSolved as patSpeechSolved,
+} from './pattern/copy';
+import { predictNext, puzzle as patternPuzzle } from './pattern/puzzles';
 import SorterApp from './sorter/SorterApp';
 import { puzzle as sorterPuzzle, type SorterPiece } from './sorter/puzzles';
 import { SHAPE_BADGE, SHAPE_FACT } from './sorter/shapes';
@@ -305,7 +318,7 @@ class FakeDocument extends FakeNode {
   visibilityState: 'visible' | 'hidden' = 'visible';
   /** True while the test drives the page from the keyboard: `:focus-visible` matches the focused element then. */
   keyboard = false;
-  defaultView: unknown = null;
+  defaultView: EventStop | null = null;
 
   constructor() {
     super(null, DOCUMENT, '#document');
@@ -530,12 +543,22 @@ function makeEvent(type: string, target: FakeNode, init: Record<string, unknown>
   return ev;
 }
 
-/** Dispatch through the path: capture from the top down to the target, then bubble back up. */
+/** What can sit on an event's path: a node, or the window above the document. */
+interface EventStop {
+  listeners: Map<string, Listener[]>;
+}
+
+/**
+ * Dispatch through the path: capture from the top down to the target, then bubble back up. As in a browser,
+ * the path of a node in the page goes on past the document to its window (Brick Calculator's keys listen there).
+ */
 function dispatch(target: FakeNode, ev: FakeEvent): FakeEvent {
-  const path: FakeNode[] = [];
+  const path: EventStop[] = [];
   for (let n: FakeNode | null = target; n; n = n.parentNode) path.push(n);
-  const run = (node: FakeNode, capture: boolean | null, phase: number) => {
-    ev.currentTarget = node;
+  const top = path[path.length - 1];
+  if (top instanceof FakeDocument && top.defaultView) path.push(top.defaultView as EventStop);
+  const run = (node: EventStop, capture: boolean | null, phase: number) => {
+    ev.currentTarget = node as FakeNode;
     ev.eventPhase = phase;
     for (const l of [...(node.listeners.get(ev.type) ?? [])]) if (capture === null || l.capture === capture) l.fn(ev);
   };
@@ -557,8 +580,10 @@ const roots: (() => void)[] = [];
 
 function makeWindow(d: FakeDocument) {
   let hash = '#/';
-  const listeners = new Map<string, Set<() => void>>();
+  const listeners = new Map<string, Listener[]>();
+  const capture = (options?: boolean | { capture?: boolean }) => (typeof options === 'boolean' ? options : !!options?.capture);
   const win = {
+    listeners,
     document: d,
     event: undefined,
     innerWidth: 390,
@@ -584,8 +609,16 @@ function makeWindow(d: FakeDocument) {
       addEventListener: () => {},
     },
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
-    addEventListener: (type: string, fn: () => void) => void (listeners.get(type) ?? listeners.set(type, new Set()).get(type)!).add(fn),
-    removeEventListener: (type: string, fn: () => void) => void listeners.get(type)?.delete(fn),
+    // Events from the page reach these after the document (see dispatch).
+    addEventListener: (type: string, fn: (e: FakeEvent) => void, options?: boolean | { capture?: boolean }) => {
+      const list = listeners.get(type) ?? [];
+      if (!list.some((l) => l.fn === fn && l.capture === capture(options))) list.push({ fn, capture: capture(options) });
+      listeners.set(type, list);
+    },
+    removeEventListener: (type: string, fn: (e: FakeEvent) => void, options?: boolean | { capture?: boolean }) => {
+      const list = listeners.get(type);
+      if (list) listeners.set(type, list.filter((l) => l.fn !== fn || l.capture !== capture(options)));
+    },
     // Read the timers when called, so Vitest's fake ones are used.
     setTimeout: (fn: () => void, ms?: number) => setTimeout(fn, ms),
     clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
@@ -613,6 +646,7 @@ beforeEach(() => {
   vi.stubGlobal('window', makeWindow(doc));
   vi.stubGlobal('document', doc);
   vi.stubGlobal('HTMLElement', FakeElement);
+  vi.stubGlobal('Element', FakeElement);
   vi.stubGlobal('SpeechSynthesisUtterance', Utterance);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.useFakeTimers();
@@ -755,11 +789,11 @@ function drag(from: FakeElement, to: FakeElement | { x: number; y: number }, { c
 }
 
 /** A key on the focused element. Enter and Space on a button or link click it, as a browser does (detail 0). */
-function press(key: string) {
+function press(key: string, init: Record<string, unknown> = {}) {
   act(() => {
     doc.keyboard = true;
     const target = doc.activeElement;
-    const ev = dispatch(target, makeEvent('keydown', target, { key, code: key, keyCode: key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0 }));
+    const ev = dispatch(target, makeEvent('keydown', target, { key, code: key, keyCode: key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0, repeat: false, ...init }));
     const clickable = target.localName === 'button' || (target.localName === 'a' && target.hasAttribute('href'));
     if (!ev.defaultPrevented && clickable && (key === 'Enter' || key === ' ') && !isInert(target) && !target.hasAttribute('disabled')) {
       dispatch(target, makeEvent('click', target, { button: 0, detail: 0 }));
@@ -2377,5 +2411,425 @@ describe('Number Line-up: the finished state', () => {
     expect(behind.querySelectorAll('.num-mark')).toHaveLength(6);
     expect(behind.querySelectorAll('.num-mark.is-right')).toHaveLength(0);
     expect(byRole('heading', 'Number Line-up')).toBeTruthy();
+  });
+});
+
+/* =====================================================================================================
+ * Pattern Train
+ * ===================================================================================================== */
+
+/** "red circle" into its car. */
+function carFromName(name: string): Car {
+  const [color, shape] = name.split(' ');
+  return { color, shape } as Car;
+}
+
+/** The Pattern puzzle on screen, read as a reader hears it: the train's one image, then the named cars in the tray. */
+function patternOnScreen() {
+  const train = nameOf(byRole('img', /^Train: /));
+  const m = /^Train: (.+), empty car\.$/.exec(train);
+  if (!m) throw new Error(`Not a train waiting for a car: ${train}`);
+  const cars = m[1].split(', ').map(carFromName);
+  const choices = allByRole('button', undefined, byRole('group', PAT_TRAY)).map(nameOf);
+  const answer = carName(predictNext(cars));
+  return { train, cars, choices, answer, wrong: choices.filter((c) => c !== answer) };
+}
+
+const patChoice = (name: string) => button(name, byRole('group', PAT_TRAY));
+/** The tray's buttons, reachable or not (the tray goes inert behind Next puzzle). */
+const patButtons = () => doc.body.querySelectorAll('.pat-choice');
+const patButton = (name: string) => patButtons().find((b) => b.getAttribute('aria-label') === name)!;
+const patPrompt = () => doc.body.querySelector('.pat-prompt')!.textContent;
+const patGhost = () => doc.body.querySelector('.pat-ghost');
+
+function openPattern(level = 0, band: AgeBand = '5-6') {
+  child(band);
+  starUpTo('pattern', level);
+  return mount(createElement(PatternApp, { params: [String(level + 1)] }));
+}
+
+/** Level 1 for the child already set up. */
+const openPatternAsIs = () => mount(createElement(PatternApp, { params: ['1'] }));
+
+/** Tap the right car of the puzzle on screen. */
+function solvePattern() {
+  click(patChoice(patternOnScreen().answer));
+}
+
+describe('Pattern Train: play, wrong and solved (Level 1)', () => {
+  it('opens with the prompt, the train as one image, three named cars and nothing said (board: play)', () => {
+    openPattern(0);
+    expect(byRole('heading', 'Level 1')).toBeTruthy();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(patPrompt()).toBe(PAT_PROMPT);
+    const p = patternOnScreen();
+    // Level 1 shows 4 cars, then the empty one.
+    expect(p.cars).toHaveLength(4);
+    expect(p.train).toMatch(/^Train: [a-z]+ [a-z]+, [a-z]+ [a-z]+, [a-z]+ [a-z]+, [a-z]+ [a-z]+, empty car\.$/);
+    // The cars and the locomotive are drawing only: the train is one image.
+    const train = byRole('img', /^Train: /);
+    expect(train.querySelectorAll('.pat-car')).toHaveLength(5);
+    for (const part of train.querySelectorAll('.pat-car, .pat-loco')) expect(part.getAttribute('aria-hidden')).toBe('true');
+    expect(train.querySelectorAll('.pat-car__body.is-empty')).toHaveLength(1);
+    // Three different cars in the tray, named by car, exactly one of them next in the pattern.
+    expect(p.choices).toHaveLength(3);
+    expect(new Set(p.choices).size).toBe(3);
+    expect(p.choices.filter((c) => c === p.answer)).toHaveLength(1);
+    // The visible tray label says the same as the group's name, so a reader hears it once.
+    const label = doc.body.querySelector('.pat-tray__label')!;
+    expect(label.textContent).toBe(PAT_TRAY);
+    expect(label.getAttribute('aria-hidden')).toBe('true');
+    // What is on screen is the generator's puzzle for the run's own seed.
+    const run = storedRun('pattern', 0)!;
+    expect(run.set).toBe('pattern:1');
+    const want = patternPuzzle(0, run.queue[0], { seed: run.seed, band: '5-6' });
+    expect(p.cars.map(carName)).toEqual(want.cars.map(carName));
+    expect(p.choices).toEqual(want.options.map(carName));
+    expect(p.answer).toBe(carName(want.answer));
+    expect(helpLine()).toBe(PAT_HELP_START);
+    expect(doc.body.querySelector('[role="status"]')!.className).toBe('bw-helprow__line bw-helprow__line--help');
+    expect(button('Hear the pattern')).toBeTruthy();
+    expect(spoken).toEqual([]);
+    expect(sounds).toEqual([]);
+  });
+
+  it('a wrong car dims for 500 ms, the line says to try again and stays, and the train still waits (board: wrong)', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(patChoice(p.wrong[0]));
+    expect(sounds).toEqual(['wrong']);
+    expect(patChoice(p.wrong[0]).className).toContain('is-wrong');
+    expect(helpLine()).toBe(PAT_HELP_WRONG);
+    // A slip is not drawn as an error in the help style.
+    expect(doc.body.querySelector('[role="status"]')!.className).not.toContain('is-wrong');
+    wait(CHOICE_WRONG_MS - 1);
+    expect(patChoice(p.wrong[0]).className).toContain('is-wrong');
+    wait(1);
+    expect(patChoice(p.wrong[0]).className).not.toContain('is-wrong');
+    // The line stays for the rest of the puzzle, and the empty car still waits.
+    expect(helpLine()).toBe(PAT_HELP_WRONG);
+    expect(nameOf(byRole('img', /^Train: /))).toBe(p.train);
+    expect(spoken).toEqual([]);
+    // Wrong, then right: one slip on the puzzle.
+    click(patChoice(p.answer));
+    expect(sounds).toEqual(['wrong', 'win']);
+    expect(storedRun('pattern', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the right car fills the empty car with a ring, the lines say so, the tray locks and Next takes focus (board: solved)', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(patChoice(p.answer));
+    expect(sounds).toEqual(['win']);
+    expect(patPrompt()).toBe(PAT_PROMPT_SOLVED);
+    // The answer takes the empty car's place in the train's name and in the drawing.
+    const answer = carFromName(p.answer);
+    const train = byRole('img', `Train: ${[...p.cars.map(carName), p.answer].join(', ')}.`);
+    expect(train.querySelectorAll('.pat-car__body.is-empty')).toHaveLength(0);
+    const filled = train.querySelector('.pat-car__body.is-answer .pat-shape')!;
+    expect([filled.getAttribute('data-color'), filled.getAttribute('data-shape')]).toEqual([answer.color, answer.shape]);
+    expect(helpLine()).toBe(patHelpSolved(answer));
+    expect(helpLine()).toMatch(/^[A-Z][a-z]+ [a-z]+ comes next\.$/);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    // Next puzzle sits in the tray well, with focus; the cars stay in place behind it, out of reach.
+    const next = button('Next puzzle');
+    expect(next.closest('.bw-play__slot')!.className).toContain('pat-tray');
+    expect(doc.activeElement).toBe(next);
+    expect(queryRole('group', PAT_TRAY)).toBeNull();
+    expect(patButton(p.answer).className).toContain('is-right');
+    for (const b of patButtons()) {
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+      expect(isInert(b)).toBe(true);
+    }
+    expect(click(patButton(p.wrong[0]))).toBe(false);
+    // Even a click that reached a locked car would do nothing.
+    act(() => {
+      dispatch(patButton(p.wrong[0]), makeEvent('click', patButton(p.wrong[0]), { button: 0, detail: 1 }));
+    });
+    expect(sounds).toEqual(['win']);
+    const run = storedRun('pattern', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+    expect(spoken).toEqual([]);
+  });
+
+  it('a double tap on the right car solves once, and a double tap on Next moves on once', () => {
+    openPattern(0);
+    const right = patChoice(patternOnScreen().answer);
+    act(() => {
+      dispatch(right, makeEvent('click', right, { button: 0, detail: 1 }));
+      dispatch(right, makeEvent('click', right, { button: 0, detail: 2 }));
+    });
+    expect(sounds).toEqual(['win']);
+    expect(storedRun('pattern', 0)!.solved).toHaveLength(1);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    const next = button('Next puzzle');
+    const queue = storedRun('pattern', 0)!.queue.join();
+    act(() => {
+      dispatch(next, makeEvent('click', next, { button: 0, detail: 1 }));
+      dispatch(next, makeEvent('click', next, { button: 0, detail: 2 }));
+    });
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(storedRun('pattern', 0)!.queue.join()).toBe(queue);
+    expect(patternOnScreen().choices).toHaveLength(3);
+  });
+
+  it('on Next the old train slides out as a ghost while the new one arrives, and the new cars take taps at once', () => {
+    openPattern(0);
+    const first = patternOnScreen();
+    click(patChoice(first.wrong[0]));
+    click(patChoice(first.answer));
+    click(button('Next puzzle'));
+    // The old train, with its answer, leaves as a picture nobody can reach.
+    const ghost = patGhost()!;
+    expect(ghost).not.toBeNull();
+    expect(ghost.getAttribute('aria-hidden')).toBe('true');
+    expect(ghost.querySelectorAll('.pat-car__body.is-answer')).toHaveLength(1);
+    expect(ghost.querySelectorAll('.pat-car')).toHaveLength(first.cars.length + 1);
+    // The new train is the one image, arriving; the puzzle starts clean.
+    expect(byRole('img', /^Train: /).className).toBe('pat-train is-arriving');
+    expect(patPrompt()).toBe(PAT_PROMPT);
+    expect(helpLine()).toBe(PAT_HELP_START);
+    // Focus goes to the first car in the tray.
+    const second = patternOnScreen();
+    expect(doc.activeElement).toBe(allByRole('button', undefined, byRole('group', PAT_TRAY))[0]);
+    // The ghost leaves when its slide ends.
+    act(() => {
+      dispatch(ghost, makeEvent('animationend', ghost, { animationName: 'pat-leave' }));
+    });
+    expect(patGhost()).toBeNull();
+    // Taps never wait for the motion: the next train's right car solves straight after Next.
+    click(patChoice(second.answer));
+    click(button('Next puzzle'));
+    expect(patGhost()).not.toBeNull();
+    click(patChoice(patternOnScreen().answer));
+    expect(sounds.filter((s) => s === 'win')).toHaveLength(3);
+    // With no animationend (reduced motion draws no slide), the ghost goes after 260 ms at most.
+    wait(259);
+    expect(patGhost()).not.toBeNull();
+    wait(1);
+    expect(patGhost()).toBeNull();
+  });
+
+  it('a swap brings a different train with no motion and focus on the first car, and the swapped train’s slips do not count', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    const offer = () => queryRole('button', 'New puzzle');
+    for (let i = 0; i < 2; i++) click(patChoice(p.wrong[0]));
+    expect(offer()).toBeNull();
+    click(patChoice(p.wrong[0]));
+    // Three wrong taps at ages 3 to 4: the offer, in the help row's left cell, never with focus.
+    expect(sounds).toEqual(['wrong', 'wrong', 'wrong']);
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(offer()!.parentElement!.className).toBe('bw-helprow__offer');
+    expect(doc.activeElement).not.toBe(offer());
+    expect(nameOf(byRole('button', /^(Hear the pattern|Read the help line aloud)$/))).toBe(READ_HELP_ALOUD);
+    const swapped = storedRun('pattern', 0)!.queue[0];
+    click(offer()!);
+    expect(helpLine()).toBe(SWAPPED_LINE);
+    expect(offer()).toBeNull();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    // A swap has no train motion.
+    expect(patGhost()).toBeNull();
+    expect(byRole('img', /^Train: /).className).toBe('pat-train');
+    const q = patternOnScreen();
+    expect(`${q.train}|${q.choices.join()}`).not.toBe(`${p.train}|${p.choices.join()}`);
+    expect(doc.activeElement).toBe(allByRole('button', undefined, byRole('group', PAT_TRAY))[0]);
+    expect(storedRun('pattern', 0)!.queue.at(-1)).toBe(swapped);
+    // The new train starts clean: its solve records no slips.
+    click(patChoice(q.answer));
+    const run = storedRun('pattern', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+    expect(run.solved[0].puzzle).not.toBe(swapped);
+  });
+
+  it('counts a repeated wrong car once for stars and every time for the offer, which comes at 4 for ages 7 to 8 (board: stuck)', () => {
+    openPattern(0, '7-8');
+    const p = patternOnScreen();
+    const [a, b] = p.wrong;
+    for (const name of [a, b, a]) click(patChoice(name));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    click(patChoice(b));
+    // The board's stuck state: 4 wrong taps (the offer limit), 2 star slips.
+    expect(button('New puzzle')).toBeTruthy();
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(sounds).toEqual(['wrong', 'wrong', 'wrong', 'wrong']);
+    // A fifth wrong tap is a fresh event: the offer stays up.
+    click(patChoice(a));
+    expect(button('New puzzle')).toBeTruthy();
+    click(patChoice(p.answer));
+    expect(storedRun('pattern', 0)!.solved[0]).toMatchObject({ count: 2 });
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+  });
+
+  it('brings the offer after 30 s at ages 3 to 4; a wrong tap does not reset the time (nothing is progress before the answer)', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    wait(20 * TICK_MS);
+    click(patChoice(p.wrong[0]));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(9 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+    expect(spoken).toEqual([]);
+  });
+
+  it('the speaker reads the pattern and asks what comes next; once solved it reads the whole train and the solved line', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(button('Hear the pattern'));
+    expect(spoken).toEqual([patSpeech(p.cars)]);
+    // "Red circle, blue square, red circle, blue square. What comes next?"
+    expect(spoken[0]).toMatch(/^[A-Z][a-z]+ [a-z]+(, [a-z]+ [a-z]+){3}\. What comes next\?$/);
+    // A choice tap says nothing, right or wrong.
+    click(patChoice(p.wrong[0]));
+    click(patChoice(p.answer));
+    expect(spoken).toHaveLength(1);
+    click(button('Hear the pattern'));
+    expect(spoken[1]).toBe(patSpeechSolved(p.cars, carFromName(p.answer)));
+    expect(spoken[1].endsWith(` ${patHelpSolved(carFromName(p.answer))}`)).toBe(true);
+  });
+
+  it('with the offer up the speaker reads the offer line', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    for (let i = 0; i < 3; i++) click(patChoice(p.wrong[i % 2]));
+    click(button(READ_HELP_ALOUD));
+    expect(spoken).toEqual([OFFER_LINE]);
+  });
+});
+
+describe('Pattern Train: other levels', () => {
+  it('Level 5 changes only the colour: every car on the train and in the tray has the answer’s shape', () => {
+    openPattern(4, '9-10');
+    for (let n = 0; n < 4; n++) {
+      const p = patternOnScreen();
+      expect(p.cars).toHaveLength(5);
+      const shape = carFromName(p.answer).shape;
+      for (const c of [...p.choices, ...p.cars.map(carName)]) expect(carFromName(c).shape).toBe(shape);
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(storedStars('pattern', 4)).toBe(3);
+  });
+
+  it('Level 10 draws five cars and the empty one on the rail', () => {
+    openPattern(9);
+    const p = patternOnScreen();
+    expect(p.cars).toHaveLength(5);
+    expect(byRole('img', /^Train: /).querySelectorAll('.pat-car')).toHaveLength(6);
+  });
+});
+
+describe('Pattern Train: the level’s end and the finished state', () => {
+  it('four solves record the stars and open the card after 600 ms; Escape leaves Play Level 2 in the tray well (board: levelDone)', () => {
+    openPattern(0);
+    for (let n = 0; n < 4; n++) {
+      if (n === 1) click(patChoice(patternOnScreen().wrong[0]));
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(dots()).toBe('4 of 4 solved.');
+    expect(queryRole('button', 'Next puzzle')).toBeNull();
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished Level 1', dialog)).toBeTruthy();
+    expect(byRole('img', '3 of 3 stars', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('4 puzzles, 1 slip.');
+    expect(dialog.textContent).toContain('3 stars: 1 slip or none. 2 stars: 4 slips or fewer.');
+    expect(doc.activeElement).toBe(button('Play Level 2', dialog));
+    expect(storedStars('pattern', 0)).toBe(3);
+    press('Escape');
+    expect(card()).toBeNull();
+    const play = button('Play Level 2');
+    expect(play.closest('.bw-play__slot')!.className).toContain('pat-tray');
+    expect(doc.activeElement).toBe(play);
+    click(play);
+    expect(hash()).toBe('#/game/pattern/2');
+    expect(spoken).toEqual([]);
+  });
+
+  it('five star slips on a level give 1 star', () => {
+    openPattern(0, '9-10');
+    for (let n = 0; n < 4; n++) {
+      const p = patternOnScreen();
+      // Both wrong cars on the first two puzzles, one on the third: 5 star slips.
+      for (const w of n < 2 ? p.wrong : n === 2 ? [p.wrong[0]] : []) click(patChoice(w));
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    expect(dialog.textContent).toContain('4 puzzles, 5 slips.');
+    expect(byRole('img', '1 of 3 stars', dialog)).toBeTruthy();
+    expect(storedStars('pattern', 0)).toBe(1);
+  });
+
+  it('the last level ends on the finished card with the game’s star total and one way out', () => {
+    child('7-8');
+    starUpTo('pattern', 11, 2);
+    mount(createElement(PatternApp, { params: ['12'] }));
+    expect(byRole('heading', 'Level 12')).toBeTruthy();
+    for (let n = 0; n < 4; n++) {
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 25 of 36 stars.');
+    expect(allByRole('button', undefined, dialog)).toHaveLength(0);
+    expect(doc.activeElement).toBe(byRole('link', 'Back to games', dialog));
+  });
+
+  it('shows the locomotive on an empty rail behind the finished card on a later visit (board: gameDone)', () => {
+    child();
+    starUpTo('pattern', 12, 2);
+    mount(createElement(PatternApp, { params: [] }));
+    expect(byRole('heading', 'Pattern Train')).toBeTruthy();
+    expect(doc.body.querySelector('.bw-dots')).toBeNull();
+    const dialog = card()!;
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(byRole('img', '24 of 36 stars', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 24 of 36 stars.');
+    expect(dialog.textContent).toContain('A grown-up can pick a level to play again.');
+    expect(doc.activeElement).toBe(byRole('link', 'Back to games', dialog));
+    const behind = doc.body.querySelector('.bw-play__body')!;
+    expect(isHidden(behind)).toBe(true);
+    expect(behind.querySelectorAll('.pat-loco')).toHaveLength(1);
+    expect(behind.querySelectorAll('.pat-car')).toHaveLength(0);
+    expect(behind.querySelector('.pat-train')!.getAttribute('role')).toBeNull();
+    expect(behind.querySelectorAll('button')).toHaveLength(0);
+    expect(queryRole('status')).toBeNull();
+    press('Escape');
+    expect(hash()).toBe('#/');
+  });
+
+  it('opens Break at Next once the daily limit is used up, and the level waits at the solved puzzle', () => {
+    child();
+    openPatternAsIs();
+    solvePattern();
+    act(() => progressStore.addMinutesPlayed(60));
+    click(button('Next puzzle'));
+    expect(hash()).toBe('#/break');
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    expect(storedRun('pattern', 0)!.solved).toHaveLength(1);
+  });
+
+  it('a stored run resumes at its next unsolved puzzle with its own seed', () => {
+    child();
+    progressStore.startRun('pattern', 0, { set: 'pattern:1', seed: 4242 });
+    progressStore.recordPuzzle('pattern', 0, { puzzle: 0, count: 1, usedHint: false, outOfTime: false }, { set: 'pattern:1', seed: 4242, levelCount: 12, stars: () => 3 });
+    openPatternAsIs();
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    const want = patternPuzzle(0, 1, { seed: 4242, band: '5-6' });
+    const p = patternOnScreen();
+    expect(p.cars.map(carName)).toEqual(want.cars.map(carName));
+    expect(p.choices).toEqual(want.options.map(carName));
+  });
+
+  it('drops a run saved under another set version and starts the level at puzzle 1', () => {
+    child();
+    progressStore.startRun('pattern', 0, { set: 'pattern:0', seed: 7 });
+    openPatternAsIs();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(storedRun('pattern', 0)).toMatchObject({ set: 'pattern:1', queue: [0, 1, 2, 3, 4, 5], solved: [] });
   });
 });
