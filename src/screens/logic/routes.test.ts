@@ -149,7 +149,8 @@ describe('planRoute: old paths take one replace', () => {
 describe('planRoute: the level picker', () => {
   it('opens for a playable game and a child that exists', () => {
     const { maya, plan } = setup();
-    for (const g of ['escape', 'drop', 'letters']) {
+    // Six-games brief 10.3: the batch 1 games have pickers too.
+    for (const g of ['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers']) {
       expect(plan(`#/settings/levels/${g}/${maya.id}`)).toMatchObject({ redirect: null, route: { name: 'levelPicker', game: g, playerId: maya.id } });
     }
   });

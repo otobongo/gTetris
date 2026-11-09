@@ -243,7 +243,8 @@ describe('copy', () => {
     finish(escape, 8);
     solve(escape, 8, 2);
     const lines: string[] = [];
-    for (const g of [escape, drop, letters]) {
+    // Six-games brief 10.3: every playable game, the batch 1 kit games too.
+    for (const g of [escape, drop, letters, ...['mixer', 'sorter', 'numbers'].map((id) => getGame(id)!)]) {
       const c = pickerCopy(g, me(), false);
       lines.push(homeCardName(g, me()), settingsRowName(g, me()), c.sub, c.intro, c.status(null), c.status(3), c.status(20), c.button(2), c.toast(2), ...Object.values(c.reset));
     }

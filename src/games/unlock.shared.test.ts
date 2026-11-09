@@ -3,6 +3,10 @@
  * Builder all open a level by games/meta.ts isLevelOpen, and the Play button of Brick Drop picks its
  * stage by currentLevel (brief 2.6). The games are server-rendered here (no browser): a level that opens draws
  * its board, a locked one draws nothing and redirects to Levels.
+ *
+ * Six-games brief 10.3: the list holds every playable game's App, the kit games of batch 1 (Color Mixer,
+ * Shape Sorter, Number Line-up, through the kit's GameApp) and Letter Builder, which the type named but the
+ * list left out. All of them play only the child's current level.
  */
 import { createElement, type ComponentType } from 'react';
 import { renderToString } from 'react-dom/server';
@@ -12,15 +16,22 @@ import { planLevels } from '../screens/logic/levels';
 import { currentStage } from './drop/stages';
 import DropApp from './drop/DropApp';
 import LettersApp from './letters/LettersApp';
+import MixerApp from './mixer/MixerApp';
+import NumbersApp from './numbers/NumbersApp';
 import SlideApp from './slide/SlideApp';
+import SorterApp from './sorter/SorterApp';
 import { currentLevel, isLevelOpen, type GameMeta } from './meta';
 import { getGame } from './registry';
 
 type Setup = { stars?: Record<number, number>; unlock?: number };
 
-const GAMES: { id: 'escape' | 'drop' | 'letters'; App: ComponentType<{ params: string[] }> }[] = [
+const GAMES: { id: 'escape' | 'drop' | 'letters' | 'mixer' | 'sorter' | 'numbers'; App: ComponentType<{ params: string[] }> }[] = [
   { id: 'escape', App: SlideApp },
   { id: 'drop', App: DropApp },
+  { id: 'letters', App: LettersApp },
+  { id: 'mixer', App: MixerApp },
+  { id: 'sorter', App: SorterApp },
+  { id: 'numbers', App: NumbersApp },
 ];
 
 const SETUPS: Setup[] = [{}, { stars: { 0: 2 } }, { stars: { 0: 3, 1: 1, 2: 2 } }, { stars: { 5: 1 } }, { unlock: 4 }, { stars: { 0: 1 }, unlock: 7 }];
@@ -40,8 +51,9 @@ afterAll(() => progressStore.replace(emptyState()));
 /**
  * Games on four-puzzle levels play only the child's current level (brief 2.6, 7.4); any other level number
  * redirects. Updated for Brick Escape and Brick Drop: they used to open every level isLevelOpen opened.
+ * Letter Builder and the six-games kit games (batch 1) follow the same rule (six-games brief 10.3).
  */
-const CURRENT_ONLY = new Set<string>(['escape', 'drop']);
+const CURRENT_ONLY = new Set<string>(['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers']);
 
 describe('every game opens exactly the levels the shared rule opens', () => {
   for (const { id, App } of GAMES) {

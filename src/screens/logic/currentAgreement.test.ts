@@ -3,11 +3,12 @@
  * (a new child, a frontier child, a stored pick of a finished, an open and a locked level, an out-of-range
  * `current`, every level starred, and a finished game that gains a level), Home's pill and card name, the
  * Settings row, the picker's current tile and arrival line, Break's line and the `#/game/<id>` route all
- * name the same level as currentLevel, in all three games, with no puzzle solved and with one.
+ * name the same level as currentLevel, in every playable game (the three built first and the six-games
+ * brief's batch 1: Color Mixer, Shape Sorter, Number Line-up), with no puzzle solved and with one.
  */
 import { describe, expect, it } from 'vitest';
 import { currentLevel } from '../../games/meta';
-import { dropLevelStars, escapeLevelStars, lettersLevelStars } from '../../games/run';
+import { dropLevelStars, escapeLevelStars, lettersLevelStars, slipLevelStars } from '../../games/run';
 import { getGame, type GameEntry } from '../../games/registry';
 import { createProgressStore, type KeyValueStorage, type Player, type PuzzleRules } from '../../shared/progress';
 import { breakSavedLine, homeCardName, homePill, pickerCopy, planLevels, settingsRowSub, tileLabel } from './levels';
@@ -15,7 +16,16 @@ import { gamePath } from './routes';
 
 const NOON = new Date(2026, 10, 5, 12, 0).getTime();
 
-const STARS: Record<string, PuzzleRules['stars']> = { escape: escapeLevelStars, drop: dropLevelStars, letters: lettersLevelStars };
+const STARS: Record<string, PuzzleRules['stars']> = {
+  escape: escapeLevelStars,
+  drop: dropLevelStars,
+  letters: lettersLevelStars,
+  mixer: slipLevelStars('mixer'),
+  sorter: slipLevelStars('sorter'),
+  numbers: slipLevelStars('numbers'),
+};
+/** The games with a hint budget in their run: Letter Builder, and Number Line-up (six-games brief 6). */
+const HINTED = new Set(['letters', 'numbers']);
 
 /** The same game with one more level at the end of its last chapter (new Master levels, say). */
 function withOneMoreLevel(game: GameEntry): GameEntry {
@@ -76,7 +86,7 @@ function childIn(game: GameEntry, c: Case, solved: 0 | 1): { game: GameEntry; pl
   };
   const expected = c.build(setup, count);
   if (solved && expected !== null) {
-    const rules: PuzzleRules = { set: `${game.id}:t`, seed: 1, levelCount: count, stars: STARS[game.id], hintsLeft: game.id === 'letters' ? 3 : undefined };
+    const rules: PuzzleRules = { set: `${game.id}:t`, seed: 1, levelCount: count, stars: STARS[game.id], hintsLeft: HINTED.has(game.id) ? 3 : undefined };
     store.startRun(game.id, expected, rules);
     store.recordPuzzle(game.id, expected, { puzzle: 0, count: 1, par: 1, three: 9, two: 12, usedHint: false, outOfTime: false }, rules);
   }
@@ -85,7 +95,8 @@ function childIn(game: GameEntry, c: Case, solved: 0 | 1): { game: GameEntry; pl
   return { game: played, player, expected };
 }
 
-const GAMES = ['escape', 'drop', 'letters'].map((id) => getGame(id)!);
+// Six-games brief 10.3: batch 1 adds Color Mixer, Shape Sorter and Number Line-up to the three built games.
+const GAMES = ['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers'].map((id) => getGame(id)!);
 
 describe.each(GAMES)('$title: every screen names the one current level', (base) => {
   for (const c of CASES) {
