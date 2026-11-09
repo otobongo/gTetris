@@ -7,7 +7,8 @@ import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
-import { GAMES, GAME_IDS } from '../../games/registry';
+import { GAMES, GAME_IDS, getGame, type GameEntry, type GameId } from '../../games/registry';
+import ComingSoon from '../ComingSoon';
 import { escapeLevelStars } from '../../games/run';
 import { emptyState, progressStore, type Player, type PuzzleRules } from '../../shared/progress';
 import { grownUpGate, setResumePath, settingsReturn } from './session';
@@ -77,8 +78,8 @@ describe('Home', () => {
       expect(html).toContain(`aria-label="${g.title}. ${g.sub}. Level 1."`);
     }
     expect(GAMES.find((x) => x.id === 'mixer')!.sub).toBe('Mix two colors to make a new one');
-    // The batch 2 games are still Coming soon.
-    expect(html).toContain('aria-label="Brick Calculator. Add and take away with bricks. Coming soon."');
+    // Any registered game that is not built yet still says Coming soon (after batch 2 there is none; 3.5).
+    for (const g of GAMES.filter((x) => !x.playable)) expect(html, g.id).toContain(`aria-label="${g.title}. ${g.sub}. Coming soon."`);
   });
 });
 
@@ -134,7 +135,8 @@ describe('Settings', () => {
     for (const g of GAMES) expect(html.includes(`href="#/settings/levels/${g.id}/${maya.id}"`), g.id).toBe(g.playable);
     const at = GAMES.filter((g) => g.playable).map((g) => html.indexOf(`href="#/settings/levels/${g.id}/${maya.id}"`));
     expect(at).toEqual([...at].sort((a, b) => a - b));
-    expect(html).not.toContain(`href="#/settings/levels/math/`);
+    // No row for a game that is not built: exactly one picker link per playable game (six-games 3.5).
+    expect(html.match(/href="#\/settings\/levels\//g)).toHaveLength(GAMES.filter((g) => g.playable).length);
     expect(html).toContain('aria-label="Brick Escape for Maya: Level 9, 2 of 4 puzzles. Pick a level"');
     expect(html).toContain('Stage 1');
     expect(html).toContain("Reset Maya's progress");
@@ -160,6 +162,37 @@ describe('Settings', () => {
     expect(html).toContain('role="group" aria-label="Maya\'s age"');
     for (const band of ['3 to 4', '5 to 6', '7 to 8', '9 to 10']) expect(html).toContain(`aria-label="Ages ${band}"`);
     expect(html).toContain('A new age applies from the next puzzle. Solved puzzles stay solved.');
+  });
+});
+
+describe('Coming soon (six-games 3.5)', () => {
+  /** A game that is not built yet. A stub entry: after batch 2 every registered game is playable, and the screen stays for the next one. */
+  const stub: GameEntry = {
+    ...getGame('escape')!,
+    id: 'chess' as GameId,
+    title: 'Brick Chess',
+    sub: 'Move bricks to win',
+    playable: false,
+    meta: null,
+    route: '/game/chess',
+    playRoute: '/game/chess',
+  };
+  const render = () => decode(renderToString(createElement(ComingSoon, { game: stub })));
+
+  it('shows the game’s title with Coming soon under it, its sub and a calm line', () => {
+    const html = render();
+    expect(html).toContain('<h1>Brick Chess</h1><p>Coming soon</p>');
+    expect(html).toContain('>Move bricks to win</h2>');
+    expect(html).toContain('This game is still being built. Pick another one for today.');
+  });
+
+  it('gives a back button Home and one way back to the games, and nothing to play', () => {
+    const html = render();
+    expect(html.match(/href="[^"]*"/g)).toEqual(['href="#/"', 'href="#/"']);
+    expect(html).toContain('aria-label="Back to home"');
+    expect(html).toContain('>Back to games<');
+    expect(html).not.toContain('<button');
+    expect(html).not.toMatch(/Level \d/);
   });
 });
 

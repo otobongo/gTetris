@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { escapeLevelStars } from '../../games/run';
-import { getGame } from '../../games/registry';
+import { GAMES, getGame } from '../../games/registry';
 import { createProgressStore, type KeyValueStorage, type PuzzleRules } from '../../shared/progress';
 import { parseRoute, pathFor, splitPath } from '../../shared/router';
 import { gamePath, planRoute } from './routes';
@@ -107,11 +107,15 @@ describe('planRoute: Home cards open the current level', () => {
     expect(gamePath('letters', null)).toBe('/game/letters/1');
   });
 
-  it('shows Coming soon for a game that is not built, without a level', () => {
+  it('shows Coming soon for a registered game that is not built, without a level, and sends an unknown game Home', () => {
     const { plan } = setup();
-    expect(plan('#/game/math')).toMatchObject({ redirect: null, route: { name: 'game', id: 'math', level: null } });
-    expect(plan('#/game/math/3').redirect).toBe('/game/math');
-    expect(plan('#/game/math/levels').redirect).toBe('/game/math');
+    // Six-games brief 3.5: after batch 2 every registered game is playable, so the unknown id carries the check.
+    for (const g of GAMES.filter((x) => !x.playable)) {
+      expect(plan(`#/game/${g.id}`), g.id).toMatchObject({ redirect: null, route: { name: 'game', id: g.id, level: null } });
+      expect(plan(`#/game/${g.id}/3`).redirect, g.id).toBe(`/game/${g.id}`);
+      expect(plan(`#/game/${g.id}/levels`).redirect, g.id).toBe(`/game/${g.id}`);
+    }
+    for (const h of ['#/game/chess', '#/game/chess/3', '#/game/chess/levels']) expect(plan(h), h).toMatchObject({ redirect: '/', route: { name: 'home' } });
   });
 });
 
@@ -158,7 +162,9 @@ describe('planRoute: the level picker', () => {
   it('sends an unknown game, a game not built or an unknown child to Settings', () => {
     const { maya, plan } = setup();
     expect(plan(`#/settings/levels/nope/${maya.id}`).redirect).toBe('/settings');
-    expect(plan(`#/settings/levels/math/${maya.id}`).redirect).toBe('/settings');
+    // Six-games brief 3.5: a registered game that is not built, while one is left, and an unknown id.
+    for (const g of GAMES.filter((x) => !x.playable)) expect(plan(`#/settings/levels/${g.id}/${maya.id}`).redirect, g.id).toBe('/settings');
+    expect(plan(`#/settings/levels/chess/${maya.id}`).redirect).toBe('/settings');
     expect(plan('#/settings/levels/escape/nobody').redirect).toBe('/settings');
   });
 
