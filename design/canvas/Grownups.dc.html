@@ -205,7 +205,7 @@ Add a child
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">Progress</div>
 <div style="display: flex; flex-direction: column;">
-<sc-for list="{{gameRows}}" as="r" hint-placeholder-count="6">
+<sc-for list="{{gameRows}}" as="r" hint-placeholder-count="9">
 <sc-if value="{{r.divider}}" hint-placeholder-val="{{ false }}">
 <div aria-hidden="true" style="height: 2px; background: #1d1550;"></div>
 </sc-if>
@@ -273,8 +273,8 @@ class Component extends DCLogic {
       sound: { sounds: true, music: true, voice: true, alerts: false },
       kids: [
         // games: sample current level per game and puzzles solved in it (brief 2.6), matching Home, Break and the level picker.
-        { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35], games: { escape: [9, 2], drop: [4, 1], letters: [17, 2], mixer: [2, 0], sorter: [2, 0], numbers: [3, 0] } },
-        { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30], games: { escape: [2, 0], drop: [1, 0], letters: [16, 1], mixer: [1, 0], sorter: [1, 0], numbers: [1, 0] } }
+        { name: 'Maya', age: 7, color: '#2f8cff', mode: 'auto', limit: 30, stars: 42, skills: [72, 55, 80, 40, 35], games: { escape: [9, 2], drop: [4, 1], letters: [17, 2], mixer: [2, 0], sorter: [2, 0], pattern: [1, 0], numbers: [3, 0], builder: [1, 0], math: [1, 0] } },
+        { name: 'Leo', age: 4, color: '#ff7a1a', mode: 'relaxed', limit: 20, stars: 18, skills: [20, 10, 45, 60, 30], games: { escape: [2, 0], drop: [1, 0], letters: [16, 1], mixer: [1, 0], sorter: [1, 0], pattern: [1, 0], numbers: [1, 0], builder: [1, 0], math: [1, 0] } }
       ]
     };
   }
@@ -283,7 +283,7 @@ class Component extends DCLogic {
   bandLabel(age) { return age <= 4 ? '3 to 4' : age <= 6 ? '5 to 6' : age <= 8 ? '7 to 8' : '9 to 10'; }
   factor(age) { return age <= 4 ? 0 : age <= 6 ? 2 : age <= 8 ? 1.5 : 1; }
   fmt(sec) { var m = Math.floor(sec / 60), s = Math.round(sec % 60); return m + ':' + (s < 10 ? '0' : '') + s; }
-  freshGames() { return { escape: [1, 0], drop: [1, 0], letters: [1, 0], mixer: [1, 0], sorter: [1, 0], numbers: [1, 0] }; }
+  freshGames() { return { escape: [1, 0], drop: [1, 0], letters: [1, 0], mixer: [1, 0], sorter: [1, 0], pattern: [1, 0], numbers: [1, 0], builder: [1, 0], math: [1, 0] }; }
   // One row per playable game, in Home order (brief 7.3 and section 9; six-games brief 3.4). Letter Builder levels 16 to 24 are spelling levels, which count words.
   gameRows(k, tablet) {
     var g = k.games || this.freshGames();
@@ -293,7 +293,10 @@ class Component extends DCLogic {
       { key: 'letters', title: 'Letter Builder', noun: 'Level', href: 'LevelsLetters.dc.html' },
       { key: 'mixer', title: 'Color Mixer', noun: 'Level', href: 'LevelsMixer.dc.html' },
       { key: 'sorter', title: 'Shape Sorter', noun: 'Level', href: 'LevelsSorter.dc.html' },
-      { key: 'numbers', title: 'Number Line-up', noun: 'Level', href: 'LevelsNumbers.dc.html' }
+      { key: 'pattern', title: 'Pattern Train', noun: 'Level', href: 'LevelsPattern.dc.html' },
+      { key: 'numbers', title: 'Number Line-up', noun: 'Level', href: 'LevelsNumbers.dc.html' },
+      { key: 'builder', title: 'Picture Builder', noun: 'Level', href: 'LevelsBuilder.dc.html' },
+      { key: 'math', title: 'Brick Calculator', noun: 'Level', href: 'LevelsMath.dc.html' }
     ];
     return rows.map(function (r, i) {
       var cur = g[r.key][0], solved = g[r.key][1];
