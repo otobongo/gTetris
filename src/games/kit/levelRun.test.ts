@@ -941,3 +941,34 @@ describe('with the progress store', () => {
     expect(s.run.solved).toHaveLength(3);
   });
 });
+
+describe('swap, solve and Next carry the round they were dispatched for', () => {
+  it('a second swap dispatched for the same puzzle is ignored, so a double tap swaps once', () => {
+    const s0 = act(open(), ...slips(3));
+    const first = levelRunReducer(s0, { type: 'swap', run: null, round: s0.round });
+    expect(first.puzzleNo).toBe(1);
+    expect(levelRunReducer(first, { type: 'swap', run: null, round: s0.round })).toBe(first);
+  });
+
+  it('a solve dispatched for a puzzle that was swapped away is ignored', () => {
+    const s0 = open();
+    const swapped = act(s0, ...slips(3), SWAP_IN_MEMORY);
+    expect(levelRunReducer(swapped, { type: 'solve', outcome: IGNORED, round: s0.round })).toBe(swapped);
+  });
+
+  it('a Next dispatched for an earlier puzzle is ignored', () => {
+    const s0 = open();
+    const solvedTwice = act(s0, SOLVE_IN_MEMORY, NEXT, SOLVE_IN_MEMORY);
+    expect(solvedTwice.phase).toBe('solved');
+    expect(levelRunReducer(solvedTwice, { type: 'next', round: s0.round })).toBe(solvedTwice);
+  });
+
+  it('with the round on screen each acts as it does without one', () => {
+    const s0 = act(open(), ...slips(3));
+    expect(levelRunReducer(s0, { type: 'swap', run: null, round: s0.round })).toEqual(levelRunReducer(s0, SWAP_IN_MEMORY));
+    const p = open();
+    const solved = levelRunReducer(p, { type: 'solve', outcome: IGNORED, round: p.round });
+    expect(solved).toEqual(levelRunReducer(p, SOLVE_IN_MEMORY));
+    expect(levelRunReducer(solved, { type: 'next', round: solved.round })).toEqual(levelRunReducer(solved, NEXT));
+  });
+});

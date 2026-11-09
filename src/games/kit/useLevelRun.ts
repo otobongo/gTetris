@@ -152,22 +152,23 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         const rules: PuzzleRules = { ...runInit(s.cfg, s.band, s.run.seed), levelCount: s.cfg.levelCount, stars: (r) => levelStars(s.cfg.game, r) };
         const outcome = store.recordPuzzle(game.id, level, solveResult(s), rules, playerId());
         sfx.win();
-        dispatch({ type: 'solve', outcome });
+        dispatch({ type: 'solve', outcome, round: s.round });
       },
       swap() {
         // New puzzle is the stuck offer's button: only while it shows, so a double tap swaps (and saves) once.
-        if (!offerShows(ref.current)) return;
+        const s = ref.current;
+        if (!offerShows(s)) return;
         // The daily limit first, as at every puzzle boundary; the swap waits until after Break.
         if (brk(here)) return;
         const saved = hasPlayer() ? store.swapPuzzle(game.id, level, playerId()) : null;
-        dispatch({ type: 'swap', run: saved, band: bandChange() });
+        dispatch({ type: 'swap', run: saved, band: bandChange(), round: s.round });
       },
       next() {
         const s = ref.current;
         if (s.leaving) return;
         if (s.phase === 'solved') {
           if (brk(here)) return;
-          dispatch({ type: 'next', band: bandChange() });
+          dispatch({ type: 'next', band: bandChange(), round: s.round });
           return;
         }
         // Play Level N on the level card, or in the controls slot once the card is closed
