@@ -45,6 +45,8 @@ export default defineConfig({
     {
       name: 'tablet',
       use: { viewport: { width: 834, height: 1194 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+      // Journeys tagged @phone-only check rules, not layout, so they run once (six-games brief 10.4).
+      grepInvert: /@phone-only/,
     },
   ],
   webServer: {
