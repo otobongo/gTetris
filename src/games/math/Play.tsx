@@ -12,7 +12,7 @@ import { say } from '../../shared/speech';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
 import { FULL_LINE, SLIP_LINE, SPEAKER_NAME, START_LINE, solvedLine, spokenEntry, spokenSolved, spokenText } from './copy';
-import { START_STATE, entryValue, helpAfter, keyFromKeyboard, pressKey, type HelpKind, type KeyId, type KeypadState } from './entry';
+import { START_STATE, entryValue, helpAfter, keyboardKey, pressKey, type HelpKind, type KeyFocus, type KeyId, type KeypadState } from './entry';
 import { MATH } from './game';
 import { BricksPanel, Display, Keypad } from './parts';
 import { frameCells } from './puzzles';
@@ -26,6 +26,13 @@ interface Held {
 }
 
 const fresh = (round: number): Held => ({ round, keypad: START_STATE, help: 'start' });
+
+/** Where focus is when a key goes down: the keypad (`.calc-keys`), another button or link, or neither. */
+const focusOf = (target: EventTarget | null): KeyFocus => {
+  if (!(target instanceof Element)) return 'none';
+  if (target.closest('.calc-keys')) return 'keypad';
+  return target.closest('button, a') ? 'control' : 'none';
+};
 
 export function Play({ level }: { level: number }) {
   const run = useLevelRun(MATH, level);
@@ -71,17 +78,18 @@ export function Play({ level }: { level: number }) {
     }
   };
 
-  // The physical keyboard: digits, Enter for =, Backspace or Escape for C. The handler is registered
+  // The physical keyboard: digits, Enter for = (also with a keypad key focused), Backspace or Escape for C;
+  // Space still presses a focused key for tab users, since the browser keeps it. The handler is registered
   // once and reads the latest press and lock, so it never acts on an old puzzle.
   const live = useRef({ press, locked });
   live.current = { press, locked };
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.repeat) return;
-      const key = keyFromKeyboard(e);
+      // Enter on a keypad key is =; on another focused button or link it presses that control.
+      const key = keyboardKey(e, focusOf(e.target));
       if (key === null || live.current.locked) return;
-      // Enter on a focused button presses that button (Next puzzle, a key, New puzzle), not =.
-      if (key === 'equals' && e.target instanceof Element && e.target.closest('button, a')) return;
+      // preventDefault also stops Enter clicking the focused keypad key.
       e.preventDefault();
       live.current.press(key);
     };

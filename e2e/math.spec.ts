@@ -39,9 +39,8 @@ async function solveAndGoOn(page: Page, solvedBefore: number, how: 'keys' | 'tap
 }
 
 // The journey in brief 10.4 types every sum on the physical keyboard. After Next, focus is on the 7 key (9.1), and
-// Enter there presses 7 instead of acting as = (4.5, 9.2), so the later sums here are typed on the keypad. The
-// keyboard-only journey is reported with that problem and waits for the fix.
-test('a new child plays Brick Calculator Level 1, the first sum on the physical keyboard, and goes straight into Level 2', async ({ page }) => {
+// Enter there still acts as = (4.5, 9.2): it sends the typed answer and does not press the focused 7.
+test('a new child plays Brick Calculator Level 1 on the physical keyboard and goes straight into Level 2', async ({ page }) => {
   const spoken = await recordSpeech(page);
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
   await page.goto('/');
@@ -84,7 +83,7 @@ test('a new child plays Brick Calculator Level 1, the first sum on the physical 
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
   await expect(answerPlace(page)).toHaveText('?');
   await expect(mathKey(page, '7')).toBeFocused();
-  for (let n = 1; n < 4; n++) await solveAndGoOn(page, n, 'taps');
+  for (let n = 1; n < 4; n++) await solveAndGoOn(page, n, 'keys');
 
   const dialog = levelCard(page);
   await expect(dialog.getByRole('heading')).toHaveText('You finished Level 1');
@@ -152,4 +151,21 @@ test('a wrong answer slips and clears; Break opens at Next once the limit is use
   // The wrong answer on puzzle 1 counted as one slip.
   expect(run.solved[0].count).toBe(1);
   expect(run.solved[1].count).toBe(0);
+});
+
+test('after tapping keys on the keypad, Enter on the physical keyboard sends the answer, not the tapped key', { tag: '@phone-only' }, async ({ page }) => {
+  const spoken = await recordSpeech(page);
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/math/1');
+  const p = await mathOnScreen(page);
+  const digits = String(p.answer);
+  for (const d of digits) await mathKey(page, d).click();
+  // The last tapped key keeps focus; Enter there acts as =.
+  await expect(mathKey(page, digits[digits.length - 1])).toBeFocused();
+  await page.keyboard.press('Enter');
+  const solvedLine = `${p.words} makes ${p.answer}.`;
+  await expect(help(page)).toHaveText(solvedLine);
+  await expect(answerPlace(page)).toHaveText(digits);
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 1 solved.');
+  await expect.poll(spoken).toEqual([...[...digits].map((_, k) => String(Number(digits.slice(0, k + 1)))), solvedLine]);
 });

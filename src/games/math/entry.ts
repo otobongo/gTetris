@@ -89,6 +89,21 @@ export function keyFromKeyboard(e: { key: string; ctrlKey?: boolean; metaKey?: b
   return null;
 }
 
+/** Where keyboard focus is when a key goes down: on a keypad key, on another button or link, or neither. */
+export type KeyFocus = 'keypad' | 'control' | 'none';
+
+/**
+ * The keypad key a physical key presses, given where focus is (4.5, 9.1, 9.2), or null to leave the key
+ * to the browser. Enter is = on a focused keypad key too: focus goes to the 7 key after Next, and a
+ * tapped key keeps focus, so Enter there must send the answer and not press that key again. On any other
+ * button or link (Next puzzle, New puzzle, the speaker, Back to home) Enter presses that control.
+ */
+export function keyboardKey(e: Parameters<typeof keyFromKeyboard>[0], focus: KeyFocus): KeyId | null {
+  const key = keyFromKeyboard(e);
+  if (key === 'equals' && focus === 'control') return null;
+  return key;
+}
+
 /* ---------- What the screen draws from the layout and the presses ---------- */
 
 /** One key as the keypad grid places it: 0-based row and column, and how many it spans. */
