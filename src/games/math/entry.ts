@@ -88,3 +88,75 @@ export function keyFromKeyboard(e: { key: string; ctrlKey?: boolean; metaKey?: b
   if (e.key === 'Backspace' || e.key === 'Escape') return 'clear';
   return null;
 }
+
+/** Where keyboard focus is when a key goes down: on a keypad key, on another button or link, or neither. */
+export type KeyFocus = 'keypad' | 'control' | 'none';
+
+/**
+ * The keypad key a physical key presses, given where focus is (4.5, 9.1, 9.2), or null to leave the key
+ * to the browser. Enter is = on a focused keypad key too: focus goes to the 7 key after Next, and a
+ * tapped key keeps focus, so Enter there must send the answer and not press that key again. On any other
+ * button or link (Next puzzle, New puzzle, the speaker, Back to home) Enter presses that control.
+ */
+export function keyboardKey(e: Parameters<typeof keyFromKeyboard>[0], focus: KeyFocus): KeyId | null {
+  const key = keyFromKeyboard(e);
+  if (key === 'equals' && focus === 'control') return null;
+  return key;
+}
+
+/* ---------- What the screen draws from the layout and the presses ---------- */
+
+/** One key as the keypad grid places it: 0-based row and column, and how many it spans. */
+export interface KeyCell {
+  key: KeyId;
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+}
+
+/**
+ * The 12 keys with their grid cells, read from `KEY_ROWS`: equal neighbours in a row or a column are one
+ * key that spans them (0 spans three columns, = three rows).
+ */
+export function keyCells(rows: readonly (readonly KeyId[])[] = KEY_ROWS): KeyCell[] {
+  const used = rows.map((r) => r.map(() => false));
+  const cells: KeyCell[] = [];
+  rows.forEach((line, row) => {
+    line.forEach((key, col) => {
+      if (used[row][col]) return;
+      let colSpan = 1;
+      while (col + colSpan < line.length && line[col + colSpan] === key && !used[row][col + colSpan]) colSpan += 1;
+      let rowSpan = 1;
+      const same = (r: number) => r < rows.length && Array.from({ length: colSpan }, (_, k) => rows[r][col + k] === key && !used[r][col + k]).every(Boolean);
+      while (same(row + rowSpan)) rowSpan += 1;
+      for (let r = row; r < row + rowSpan; r += 1) for (let c = col; c < col + colSpan; c += 1) used[r][c] = true;
+      cells.push({ key, row, col, rowSpan, colSpan });
+    });
+  });
+  return cells;
+}
+
+/** The keypad as drawn: 12 keys. */
+export const KEY_CELLS: readonly KeyCell[] = keyCells();
+
+/** Which help line the screen shows while the puzzle is in play: the start line, the slip line or the third-digit line. */
+export type HelpKind = 'start' | 'slip' | 'full';
+
+/**
+ * The help line after a press. A slip or a third digit keeps its line until the child types a digit or
+ * presses C; = with nothing typed changes nothing; a press that was locked changes nothing.
+ */
+export function helpAfter(prev: HelpKind, event: KeyEvent): HelpKind {
+  switch (event) {
+    case 'digit':
+    case 'clear':
+      return 'start';
+    case 'wrong':
+      return 'slip';
+    case 'full':
+      return 'full';
+    default:
+      return prev;
+  }
+}

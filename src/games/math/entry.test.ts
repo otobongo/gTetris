@@ -13,6 +13,7 @@ import {
   entryValue,
   isKeyPress,
   keyFromKeyboard,
+  keyboardKey,
   pressKey,
   type KeyEvent,
   type KeyId,
@@ -253,6 +254,37 @@ describe('the physical keyboard (4.5, 9.2): digits, Enter for =, Backspace or Es
   it('plays a sum from the keyboard alone: 1, 5, Enter solves 15; Backspace clears', () => {
     const keys = ['1', '5', 'Backspace', '1', '5', 'Enter'].map((key) => keyFromKeyboard({ key })!);
     expect(events(press(keys, 15))).toEqual(['digit', 'digit', 'clear', 'digit', 'digit', 'right']);
+  });
+});
+
+describe('the physical keyboard and focus (4.5, 9.1, 9.2): Enter is = on the keypad, and presses any other control', () => {
+  it('sends the typed answer on Enter while a keypad key has focus (the 7 key after Next, or a tapped key)', () => {
+    expect(keyboardKey({ key: 'Enter' }, 'keypad')).toBe('equals');
+    const keys = ['5', 'Enter'].map((key) => keyboardKey({ key }, 'keypad')!);
+    expect(keys).toEqual([5, 'equals']);
+    expect(events(press(keys, 5))).toEqual(['digit', 'right']);
+  });
+
+  it('sends the answer on Enter when nothing in particular has focus', () => {
+    expect(keyboardKey({ key: 'Enter' }, 'none')).toBe('equals');
+  });
+
+  it('leaves Enter to a focused button or link outside the keypad (Next puzzle, New puzzle, the speaker, Back to home)', () => {
+    expect(keyboardKey({ key: 'Enter' }, 'control')).toBeNull();
+  });
+
+  it('presses digits and C wherever focus is', () => {
+    for (const focus of ['keypad', 'control', 'none'] as const) {
+      expect(keyboardKey({ key: '7' }, focus), focus).toBe(7);
+      expect(keyboardKey({ key: 'Backspace' }, focus), focus).toBe('clear');
+      expect(keyboardKey({ key: 'Escape' }, focus), focus).toBe('clear');
+    }
+  });
+
+  it('ignores other keys and chords wherever focus is, so Space and Tab stay the browser\'s', () => {
+    for (const focus of ['keypad', 'control', 'none'] as const)
+      for (const e of [{ key: ' ' }, { key: 'Tab' }, { key: 'a' }, { key: 'Enter', ctrlKey: true }, { key: '3', metaKey: true }])
+        expect(keyboardKey(e, focus), `${JSON.stringify(e)} ${focus}`).toBeNull();
   });
 });
 

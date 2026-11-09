@@ -1,9 +1,12 @@
 import { useEffect, useMemo, type ComponentType } from 'react';
 import { getGame, type GameId } from './games/registry';
+import BuilderApp from './games/builder/BuilderApp';
 import DropApp from './games/drop/DropApp';
 import LettersApp from './games/letters/LettersApp';
+import MathApp from './games/math/MathApp';
 import MixerApp from './games/mixer/MixerApp';
 import NumbersApp from './games/numbers/NumbersApp';
+import PatternApp from './games/pattern/PatternApp';
 import SorterApp from './games/sorter/SorterApp';
 import SlideApp from './games/slide/SlideApp';
 import { activePlayer, progressStore, useProgressState } from './shared/progress';
@@ -31,6 +34,9 @@ const GAME_SCREENS: Partial<Record<GameId, ComponentType<{ params: string[] }>>>
   letters: LettersApp,
   mixer: MixerApp,
   sorter: SorterApp,
+  pattern: PatternApp,
+  builder: BuilderApp,
+  math: MathApp,
   numbers: NumbersApp,
 };
 

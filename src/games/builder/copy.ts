@@ -4,7 +4,7 @@
    so no curly one is needed. */
 import { rowColOf, type Paint } from './board';
 import { rowsOf, cellsOf, type BuilderColor, type Picture } from './pictures';
-import { BUILDER_TITLE, type BuilderPuzzle } from './puzzles';
+import { BUILDER_TITLE, type BuilderPuzzle, type LookKind } from './puzzles';
 
 export const TITLE = BUILDER_TITLE;
 
@@ -25,6 +25,9 @@ export const PEEK_SHOWN = 'Picture shown.';
  * 'hidden' once it is behind Peek. Copy levels always show the picture and ignore this.
  */
 export type MemoryView = 'look' | 'hidden';
+
+/** The view a look gives: 'look' while one runs (the first look or a Peek), 'hidden' otherwise. */
+export const viewOf = (look: LookKind | null): MemoryView => (look === null ? 'hidden' : 'look');
 
 type Shown = Pick<BuilderPuzzle, 'mode' | 'picture'>;
 
@@ -66,6 +69,12 @@ export const matchText = (right: number, total: number): string => `${right} of 
 export const speechOf = (title: string, help: string): string => `${title} ${help}`;
 
 /* ---------- accessible names (brief 9.2) ---------- */
+
+/** The board's group name, as the Builder board names it. */
+export const BOARD_NAME = 'Board';
+
+/** The palette's group name, as the Builder board names it. */
+export const PALETTE_NAME = 'Colors';
 
 /** A palette button: "Red", or "Eraser". */
 export const paletteName = (paint: Paint): string => (paint === 'eraser' ? 'Eraser' : paint[0].toUpperCase() + paint.slice(1));

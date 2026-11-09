@@ -120,6 +120,20 @@ const paths = {
       <path d="M6 10v10h12V10" />
     </>
   ),
+  /** Picture Builder's Peek cover (six-games brief 3.6, 7.8), as drawn on the Builder board. */
+  eye: (
+    <>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  /** Picture Builder's eraser in the palette (six-games brief 3.6, 7.8), as drawn on the Builder board. */
+  eraser: (
+    <>
+      <path d="M7 21h10" />
+      <path d="M5 15l8-8 6 6-6 6H9z" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof paths;

@@ -9,7 +9,10 @@ import { meta as dropMeta } from './drop/meta';
 import { LEVELS as LETTERS_LEVELS } from './letters/levels';
 import { meta as lettersMeta } from './letters/meta';
 import { meta as mixerMeta } from './mixer/meta';
+import { meta as builderMeta } from './builder/meta';
+import { meta as mathMeta } from './math/meta';
 import { meta as numbersMeta } from './numbers/meta';
+import { meta as patternMeta } from './pattern/meta';
 import { meta as sorterMeta } from './sorter/meta';
 import { meta as escapeMeta } from './slide/meta';
 
@@ -114,7 +117,7 @@ export const GAMES: readonly GameEntry[] = [
     { kind: 'disc', color: 'red', x: 0, y: 14, w: 16, h: 16 },
     { kind: 'tile', color: 'blue', x: 20, y: 14, w: 16, h: 16, radius: 3 },
     { kind: 'disc', color: 'red', x: 40, y: 14, w: 16, h: 16 },
-  ], null),
+  ], patternMeta),
   entry('numbers', 'Number Line-up', 'Put the number towers in order', [
     brick('green', 0, 16, 18, 24, undefined, '1'),
     brick('yellow', 19, 10, 18, 30, undefined, '2'),
@@ -127,12 +130,12 @@ export const GAMES: readonly GameEntry[] = [
     brick('blue', 21, 16, 13, 13, 13),
     brick('yellow', 36, 16, 13, 13, 13),
     { kind: 'tile', color: 'yellow', x: 6, y: 30, w: 43, h: 12, radius: 4 },
-  ], null),
+  ], builderMeta),
   entry('math', 'Brick Calculator', 'Add and take away with bricks', [
     brick('blue', 0, 9, 17, 26, undefined, '2'),
     { kind: 'glyph', x: 17, y: 9, w: 22, h: 26, text: '+', fontSize: 20 },
     brick('orange', 39, 9, 17, 26, undefined, '3'),
-  ], null),
+  ], mathMeta),
 ];
 
 export function getGame(id: string): GameEntry | undefined {

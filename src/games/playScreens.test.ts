@@ -1,9 +1,9 @@
 /**
- * The kit games' Play screens on a page (six-games brief 3.1, 4.1 to 4.3, 7.2, 8, 9, 10.1, 10.2): every
- * state the Mixer, Sorter and Numbers boards draw, reached the way a child reaches it (taps, keys and
- * pointer drags on the real components, through React's own event system), with the slips that count
- * for stars and for the stuck offer, the offer and the swap, the sounds, speech only after a tap, the
- * accessible names from brief 9, and the kit's focus rules.
+ * The kit games' Play screens on a page (six-games brief 3.1, 4.1 to 4.6, 7.2, 8, 9, 10.1, 10.2): every
+ * state the Mixer, Sorter, Numbers, Pattern, Math and Builder boards draw, reached the way a child reaches
+ * it (taps, keys and pointer drags on the real components, through React's own event system), with the
+ * slips that count for stars and for the stuck offer, the offer and the swap, the sounds, speech only after
+ * a tap, the accessible names from brief 9, and the kit's focus rules.
  *
  * There is no browser here, so the page is a small stand-in DOM written below: elements, text, focus,
  * inert, a selector engine for the selectors the app uses, and event dispatch with capture and bubble.
@@ -31,6 +31,24 @@ import { puzzle as mixerPuzzle } from './mixer/puzzles';
 import NumbersApp from './numbers/NumbersApp';
 import { inversions, swapKind } from './numbers/order';
 import { puzzle as numbersPuzzle } from './numbers/puzzles';
+import PatternApp from './pattern/PatternApp';
+import { carName, type Car } from './pattern/cars';
+import {
+  HELP_START as PAT_HELP_START,
+  HELP_WRONG as PAT_HELP_WRONG,
+  PROMPT as PAT_PROMPT,
+  PROMPT_SOLVED as PAT_PROMPT_SOLVED,
+  TRAY_LABEL as PAT_TRAY,
+  helpSolved as patHelpSolved,
+  speech as patSpeech,
+  speechSolved as patSpeechSolved,
+} from './pattern/copy';
+import { predictNext, puzzle as patternPuzzle } from './pattern/puzzles';
+import BuilderApp from './builder/BuilderApp';
+import { puzzle as builderPuzzle } from './builder/puzzles';
+import MathApp from './math/MathApp';
+import { CAPTION_LINES, FULL_LINE, SLIP_LINE, START_LINE } from './math/copy';
+import { puzzle as mathPuzzle } from './math/puzzles';
 import SorterApp from './sorter/SorterApp';
 import { puzzle as sorterPuzzle, type SorterPiece } from './sorter/puzzles';
 import { SHAPE_BADGE, SHAPE_FACT } from './sorter/shapes';
@@ -305,7 +323,7 @@ class FakeDocument extends FakeNode {
   visibilityState: 'visible' | 'hidden' = 'visible';
   /** True while the test drives the page from the keyboard: `:focus-visible` matches the focused element then. */
   keyboard = false;
-  defaultView: unknown = null;
+  defaultView: EventStop | null = null;
 
   constructor() {
     super(null, DOCUMENT, '#document');
@@ -530,12 +548,22 @@ function makeEvent(type: string, target: FakeNode, init: Record<string, unknown>
   return ev;
 }
 
-/** Dispatch through the path: capture from the top down to the target, then bubble back up. */
+/** What can sit on an event's path: a node, or the window above the document. */
+interface EventStop {
+  listeners: Map<string, Listener[]>;
+}
+
+/**
+ * Dispatch through the path: capture from the top down to the target, then bubble back up. As in a browser,
+ * the path of a node in the page goes on past the document to its window (Brick Calculator's keys listen there).
+ */
 function dispatch(target: FakeNode, ev: FakeEvent): FakeEvent {
-  const path: FakeNode[] = [];
+  const path: EventStop[] = [];
   for (let n: FakeNode | null = target; n; n = n.parentNode) path.push(n);
-  const run = (node: FakeNode, capture: boolean | null, phase: number) => {
-    ev.currentTarget = node;
+  const top = path[path.length - 1];
+  if (top instanceof FakeDocument && top.defaultView) path.push(top.defaultView as EventStop);
+  const run = (node: EventStop, capture: boolean | null, phase: number) => {
+    ev.currentTarget = node as FakeNode;
     ev.eventPhase = phase;
     for (const l of [...(node.listeners.get(ev.type) ?? [])]) if (capture === null || l.capture === capture) l.fn(ev);
   };
@@ -557,8 +585,10 @@ const roots: (() => void)[] = [];
 
 function makeWindow(d: FakeDocument) {
   let hash = '#/';
-  const listeners = new Map<string, Set<() => void>>();
+  const listeners = new Map<string, Listener[]>();
+  const capture = (options?: boolean | { capture?: boolean }) => (typeof options === 'boolean' ? options : !!options?.capture);
   const win = {
+    listeners,
     document: d,
     event: undefined,
     innerWidth: 390,
@@ -584,8 +614,16 @@ function makeWindow(d: FakeDocument) {
       addEventListener: () => {},
     },
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
-    addEventListener: (type: string, fn: () => void) => void (listeners.get(type) ?? listeners.set(type, new Set()).get(type)!).add(fn),
-    removeEventListener: (type: string, fn: () => void) => void listeners.get(type)?.delete(fn),
+    // Events from the page reach these after the document (see dispatch).
+    addEventListener: (type: string, fn: (e: FakeEvent) => void, options?: boolean | { capture?: boolean }) => {
+      const list = listeners.get(type) ?? [];
+      if (!list.some((l) => l.fn === fn && l.capture === capture(options))) list.push({ fn, capture: capture(options) });
+      listeners.set(type, list);
+    },
+    removeEventListener: (type: string, fn: (e: FakeEvent) => void, options?: boolean | { capture?: boolean }) => {
+      const list = listeners.get(type);
+      if (list) listeners.set(type, list.filter((l) => l.fn !== fn || l.capture !== capture(options)));
+    },
     // Read the timers when called, so Vitest's fake ones are used.
     setTimeout: (fn: () => void, ms?: number) => setTimeout(fn, ms),
     clearTimeout: (id: ReturnType<typeof setTimeout>) => clearTimeout(id),
@@ -613,6 +651,7 @@ beforeEach(() => {
   vi.stubGlobal('window', makeWindow(doc));
   vi.stubGlobal('document', doc);
   vi.stubGlobal('HTMLElement', FakeElement);
+  vi.stubGlobal('Element', FakeElement);
   vi.stubGlobal('SpeechSynthesisUtterance', Utterance);
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.useFakeTimers();
@@ -658,6 +697,14 @@ function mount(node: ReactElement) {
 }
 
 const wait = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+/**
+ * The clock moved on in 100 ms steps, each its own act, so React draws and runs effects between timers (a
+ * look that ends, then the tick that starts after it), as it does in a browser. One long wait() fires every
+ * timer first and draws once at the end.
+ */
+function waitSteps(ms: number, step = 100) {
+  for (let left = ms; left > 0; left -= step) wait(Math.min(step, left));
+}
 const hash = () => (window as unknown as { location: { hash: string } }).location.hash;
 
 /* ---------- Reading the page the way assistive tech does ---------- */
@@ -755,11 +802,11 @@ function drag(from: FakeElement, to: FakeElement | { x: number; y: number }, { c
 }
 
 /** A key on the focused element. Enter and Space on a button or link click it, as a browser does (detail 0). */
-function press(key: string) {
+function press(key: string, init: Record<string, unknown> = {}) {
   act(() => {
     doc.keyboard = true;
     const target = doc.activeElement;
-    const ev = dispatch(target, makeEvent('keydown', target, { key, code: key, keyCode: key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0 }));
+    const ev = dispatch(target, makeEvent('keydown', target, { key, code: key, keyCode: key === 'Enter' ? 13 : key === 'Escape' ? 27 : 0, repeat: false, ...init }));
     const clickable = target.localName === 'button' || (target.localName === 'a' && target.hasAttribute('href'));
     if (!ev.defaultPrevented && clickable && (key === 'Enter' || key === ' ') && !isInert(target) && !target.hasAttribute('disabled')) {
       dispatch(target, makeEvent('click', target, { button: 0, detail: 0 }));
@@ -2377,5 +2424,1608 @@ describe('Number Line-up: the finished state', () => {
     expect(behind.querySelectorAll('.num-mark')).toHaveLength(6);
     expect(behind.querySelectorAll('.num-mark.is-right')).toHaveLength(0);
     expect(byRole('heading', 'Number Line-up')).toBeTruthy();
+  });
+});
+
+/* =====================================================================================================
+ * Pattern Train
+ * ===================================================================================================== */
+
+/** "red circle" into its car. */
+function carFromName(name: string): Car {
+  const [color, shape] = name.split(' ');
+  return { color, shape } as Car;
+}
+
+/** The Pattern puzzle on screen, read as a reader hears it: the train's one image, then the named cars in the tray. */
+function patternOnScreen() {
+  const train = nameOf(byRole('img', /^Train: /));
+  const m = /^Train: (.+), empty car\.$/.exec(train);
+  if (!m) throw new Error(`Not a train waiting for a car: ${train}`);
+  const cars = m[1].split(', ').map(carFromName);
+  const choices = allByRole('button', undefined, byRole('group', PAT_TRAY)).map(nameOf);
+  const answer = carName(predictNext(cars));
+  return { train, cars, choices, answer, wrong: choices.filter((c) => c !== answer) };
+}
+
+const patChoice = (name: string) => button(name, byRole('group', PAT_TRAY));
+/** The tray's buttons, reachable or not (the tray goes inert behind Next puzzle). */
+const patButtons = () => doc.body.querySelectorAll('.pat-choice');
+const patButton = (name: string) => patButtons().find((b) => b.getAttribute('aria-label') === name)!;
+const patPrompt = () => doc.body.querySelector('.pat-prompt')!.textContent;
+const patGhost = () => doc.body.querySelector('.pat-ghost');
+
+function openPattern(level = 0, band: AgeBand = '5-6') {
+  child(band);
+  starUpTo('pattern', level);
+  return mount(createElement(PatternApp, { params: [String(level + 1)] }));
+}
+
+/** Level 1 for the child already set up. */
+const openPatternAsIs = () => mount(createElement(PatternApp, { params: ['1'] }));
+
+/** Tap the right car of the puzzle on screen. */
+function solvePattern() {
+  click(patChoice(patternOnScreen().answer));
+}
+
+describe('Pattern Train: play, wrong and solved (Level 1)', () => {
+  it('opens with the prompt, the train as one image, three named cars and nothing said (board: play)', () => {
+    openPattern(0);
+    expect(byRole('heading', 'Level 1')).toBeTruthy();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(patPrompt()).toBe(PAT_PROMPT);
+    const p = patternOnScreen();
+    // Level 1 shows 4 cars, then the empty one.
+    expect(p.cars).toHaveLength(4);
+    expect(p.train).toMatch(/^Train: [a-z]+ [a-z]+, [a-z]+ [a-z]+, [a-z]+ [a-z]+, [a-z]+ [a-z]+, empty car\.$/);
+    // The cars and the locomotive are drawing only: the train is one image.
+    const train = byRole('img', /^Train: /);
+    expect(train.querySelectorAll('.pat-car')).toHaveLength(5);
+    for (const part of train.querySelectorAll('.pat-car, .pat-loco')) expect(part.getAttribute('aria-hidden')).toBe('true');
+    expect(train.querySelectorAll('.pat-car__body.is-empty')).toHaveLength(1);
+    // Three different cars in the tray, named by car, exactly one of them next in the pattern.
+    expect(p.choices).toHaveLength(3);
+    expect(new Set(p.choices).size).toBe(3);
+    expect(p.choices.filter((c) => c === p.answer)).toHaveLength(1);
+    // The visible tray label says the same as the group's name, so a reader hears it once.
+    const label = doc.body.querySelector('.pat-tray__label')!;
+    expect(label.textContent).toBe(PAT_TRAY);
+    expect(label.getAttribute('aria-hidden')).toBe('true');
+    // What is on screen is the generator's puzzle for the run's own seed.
+    const run = storedRun('pattern', 0)!;
+    expect(run.set).toBe('pattern:1');
+    const want = patternPuzzle(0, run.queue[0], { seed: run.seed, band: '5-6' });
+    expect(p.cars.map(carName)).toEqual(want.cars.map(carName));
+    expect(p.choices).toEqual(want.options.map(carName));
+    expect(p.answer).toBe(carName(want.answer));
+    expect(helpLine()).toBe(PAT_HELP_START);
+    expect(doc.body.querySelector('[role="status"]')!.className).toBe('bw-helprow__line bw-helprow__line--help');
+    expect(button('Hear the pattern')).toBeTruthy();
+    expect(spoken).toEqual([]);
+    expect(sounds).toEqual([]);
+  });
+
+  it('a wrong car dims for 500 ms, the line says to try again and stays, and the train still waits (board: wrong)', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(patChoice(p.wrong[0]));
+    expect(sounds).toEqual(['wrong']);
+    expect(patChoice(p.wrong[0]).className).toContain('is-wrong');
+    expect(helpLine()).toBe(PAT_HELP_WRONG);
+    // A slip is not drawn as an error in the help style.
+    expect(doc.body.querySelector('[role="status"]')!.className).not.toContain('is-wrong');
+    wait(CHOICE_WRONG_MS - 1);
+    expect(patChoice(p.wrong[0]).className).toContain('is-wrong');
+    wait(1);
+    expect(patChoice(p.wrong[0]).className).not.toContain('is-wrong');
+    // The line stays for the rest of the puzzle, and the empty car still waits.
+    expect(helpLine()).toBe(PAT_HELP_WRONG);
+    expect(nameOf(byRole('img', /^Train: /))).toBe(p.train);
+    expect(spoken).toEqual([]);
+    // Wrong, then right: one slip on the puzzle.
+    click(patChoice(p.answer));
+    expect(sounds).toEqual(['wrong', 'win']);
+    expect(storedRun('pattern', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the right car fills the empty car with a ring, the lines say so, the tray locks and Next takes focus (board: solved)', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(patChoice(p.answer));
+    expect(sounds).toEqual(['win']);
+    expect(patPrompt()).toBe(PAT_PROMPT_SOLVED);
+    // The answer takes the empty car's place in the train's name and in the drawing.
+    const answer = carFromName(p.answer);
+    const train = byRole('img', `Train: ${[...p.cars.map(carName), p.answer].join(', ')}.`);
+    expect(train.querySelectorAll('.pat-car__body.is-empty')).toHaveLength(0);
+    const filled = train.querySelector('.pat-car__body.is-answer .pat-shape')!;
+    expect([filled.getAttribute('data-color'), filled.getAttribute('data-shape')]).toEqual([answer.color, answer.shape]);
+    expect(helpLine()).toBe(patHelpSolved(answer));
+    expect(helpLine()).toMatch(/^[A-Z][a-z]+ [a-z]+ comes next\.$/);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    // Next puzzle sits in the tray well, with focus; the cars stay in place behind it, out of reach.
+    const next = button('Next puzzle');
+    expect(next.closest('.bw-play__slot')!.className).toContain('pat-tray');
+    expect(doc.activeElement).toBe(next);
+    expect(queryRole('group', PAT_TRAY)).toBeNull();
+    expect(patButton(p.answer).className).toContain('is-right');
+    for (const b of patButtons()) {
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+      expect(isInert(b)).toBe(true);
+    }
+    expect(click(patButton(p.wrong[0]))).toBe(false);
+    // Even a click that reached a locked car would do nothing.
+    act(() => {
+      dispatch(patButton(p.wrong[0]), makeEvent('click', patButton(p.wrong[0]), { button: 0, detail: 1 }));
+    });
+    expect(sounds).toEqual(['win']);
+    const run = storedRun('pattern', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+    expect(spoken).toEqual([]);
+  });
+
+  it('a double tap on the right car solves once, and a double tap on Next moves on once', () => {
+    openPattern(0);
+    const right = patChoice(patternOnScreen().answer);
+    act(() => {
+      dispatch(right, makeEvent('click', right, { button: 0, detail: 1 }));
+      dispatch(right, makeEvent('click', right, { button: 0, detail: 2 }));
+    });
+    expect(sounds).toEqual(['win']);
+    expect(storedRun('pattern', 0)!.solved).toHaveLength(1);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    const next = button('Next puzzle');
+    const queue = storedRun('pattern', 0)!.queue.join();
+    act(() => {
+      dispatch(next, makeEvent('click', next, { button: 0, detail: 1 }));
+      dispatch(next, makeEvent('click', next, { button: 0, detail: 2 }));
+    });
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(storedRun('pattern', 0)!.queue.join()).toBe(queue);
+    expect(patternOnScreen().choices).toHaveLength(3);
+  });
+
+  it('on Next the old train slides out as a ghost while the new one arrives, and the new cars take taps at once', () => {
+    openPattern(0);
+    const first = patternOnScreen();
+    click(patChoice(first.wrong[0]));
+    click(patChoice(first.answer));
+    click(button('Next puzzle'));
+    // The old train, with its answer, leaves as a picture nobody can reach.
+    const ghost = patGhost()!;
+    expect(ghost).not.toBeNull();
+    expect(ghost.getAttribute('aria-hidden')).toBe('true');
+    expect(ghost.querySelectorAll('.pat-car__body.is-answer')).toHaveLength(1);
+    expect(ghost.querySelectorAll('.pat-car')).toHaveLength(first.cars.length + 1);
+    // The new train is the one image, arriving; the puzzle starts clean.
+    expect(byRole('img', /^Train: /).className).toBe('pat-train is-arriving');
+    expect(patPrompt()).toBe(PAT_PROMPT);
+    expect(helpLine()).toBe(PAT_HELP_START);
+    // Focus goes to the first car in the tray.
+    const second = patternOnScreen();
+    expect(doc.activeElement).toBe(allByRole('button', undefined, byRole('group', PAT_TRAY))[0]);
+    // The ghost leaves when its slide ends.
+    act(() => {
+      dispatch(ghost, makeEvent('animationend', ghost, { animationName: 'pat-leave' }));
+    });
+    expect(patGhost()).toBeNull();
+    // Taps never wait for the motion: the next train's right car solves straight after Next.
+    click(patChoice(second.answer));
+    click(button('Next puzzle'));
+    expect(patGhost()).not.toBeNull();
+    click(patChoice(patternOnScreen().answer));
+    expect(sounds.filter((s) => s === 'win')).toHaveLength(3);
+    // With no animationend (reduced motion draws no slide), the ghost goes after 260 ms at most.
+    wait(259);
+    expect(patGhost()).not.toBeNull();
+    wait(1);
+    expect(patGhost()).toBeNull();
+  });
+
+  it('a swap brings a different train with no motion and focus on the first car, and the swapped train’s slips do not count', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    const offer = () => queryRole('button', 'New puzzle');
+    for (let i = 0; i < 2; i++) click(patChoice(p.wrong[0]));
+    expect(offer()).toBeNull();
+    click(patChoice(p.wrong[0]));
+    // Three wrong taps at ages 3 to 4: the offer, in the help row's left cell, never with focus.
+    expect(sounds).toEqual(['wrong', 'wrong', 'wrong']);
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(offer()!.parentElement!.className).toBe('bw-helprow__offer');
+    expect(doc.activeElement).not.toBe(offer());
+    expect(nameOf(byRole('button', /^(Hear the pattern|Read the help line aloud)$/))).toBe(READ_HELP_ALOUD);
+    const swapped = storedRun('pattern', 0)!.queue[0];
+    click(offer()!);
+    expect(helpLine()).toBe(SWAPPED_LINE);
+    expect(offer()).toBeNull();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    // A swap has no train motion.
+    expect(patGhost()).toBeNull();
+    expect(byRole('img', /^Train: /).className).toBe('pat-train');
+    const q = patternOnScreen();
+    expect(`${q.train}|${q.choices.join()}`).not.toBe(`${p.train}|${p.choices.join()}`);
+    expect(doc.activeElement).toBe(allByRole('button', undefined, byRole('group', PAT_TRAY))[0]);
+    expect(storedRun('pattern', 0)!.queue.at(-1)).toBe(swapped);
+    // The new train starts clean: its solve records no slips.
+    click(patChoice(q.answer));
+    const run = storedRun('pattern', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+    expect(run.solved[0].puzzle).not.toBe(swapped);
+  });
+
+  it('counts a repeated wrong car once for stars and every time for the offer, which comes at 4 for ages 7 to 8 (board: stuck)', () => {
+    openPattern(0, '7-8');
+    const p = patternOnScreen();
+    const [a, b] = p.wrong;
+    for (const name of [a, b, a]) click(patChoice(name));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    click(patChoice(b));
+    // The board's stuck state: 4 wrong taps (the offer limit), 2 star slips.
+    expect(button('New puzzle')).toBeTruthy();
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(sounds).toEqual(['wrong', 'wrong', 'wrong', 'wrong']);
+    // A fifth wrong tap is a fresh event: the offer stays up.
+    click(patChoice(a));
+    expect(button('New puzzle')).toBeTruthy();
+    click(patChoice(p.answer));
+    expect(storedRun('pattern', 0)!.solved[0]).toMatchObject({ count: 2 });
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+  });
+
+  it('brings the offer after 30 s at ages 3 to 4; a wrong tap does not reset the time (nothing is progress before the answer)', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    wait(20 * TICK_MS);
+    click(patChoice(p.wrong[0]));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(9 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+    expect(spoken).toEqual([]);
+  });
+
+  it('the speaker reads the pattern and asks what comes next; once solved it reads the whole train and the solved line', () => {
+    openPattern(0);
+    const p = patternOnScreen();
+    click(button('Hear the pattern'));
+    expect(spoken).toEqual([patSpeech(p.cars)]);
+    // "Red circle, blue square, red circle, blue square. What comes next?"
+    expect(spoken[0]).toMatch(/^[A-Z][a-z]+ [a-z]+(, [a-z]+ [a-z]+){3}\. What comes next\?$/);
+    // A choice tap says nothing, right or wrong.
+    click(patChoice(p.wrong[0]));
+    click(patChoice(p.answer));
+    expect(spoken).toHaveLength(1);
+    click(button('Hear the pattern'));
+    expect(spoken[1]).toBe(patSpeechSolved(p.cars, carFromName(p.answer)));
+    expect(spoken[1].endsWith(` ${patHelpSolved(carFromName(p.answer))}`)).toBe(true);
+  });
+
+  it('with the offer up the speaker reads the offer line', () => {
+    openPattern(0, '3-4');
+    const p = patternOnScreen();
+    for (let i = 0; i < 3; i++) click(patChoice(p.wrong[i % 2]));
+    click(button(READ_HELP_ALOUD));
+    expect(spoken).toEqual([OFFER_LINE]);
+  });
+});
+
+describe('Pattern Train: other levels', () => {
+  it('Level 5 changes only the colour: every car on the train and in the tray has the answer’s shape', () => {
+    openPattern(4, '9-10');
+    for (let n = 0; n < 4; n++) {
+      const p = patternOnScreen();
+      expect(p.cars).toHaveLength(5);
+      const shape = carFromName(p.answer).shape;
+      for (const c of [...p.choices, ...p.cars.map(carName)]) expect(carFromName(c).shape).toBe(shape);
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(storedStars('pattern', 4)).toBe(3);
+  });
+
+  it('Level 10 draws five cars and the empty one on the rail', () => {
+    openPattern(9);
+    const p = patternOnScreen();
+    expect(p.cars).toHaveLength(5);
+    expect(byRole('img', /^Train: /).querySelectorAll('.pat-car')).toHaveLength(6);
+  });
+});
+
+describe('Pattern Train: the level’s end and the finished state', () => {
+  it('four solves record the stars and open the card after 600 ms; Escape leaves Play Level 2 in the tray well (board: levelDone)', () => {
+    openPattern(0);
+    for (let n = 0; n < 4; n++) {
+      if (n === 1) click(patChoice(patternOnScreen().wrong[0]));
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(dots()).toBe('4 of 4 solved.');
+    expect(queryRole('button', 'Next puzzle')).toBeNull();
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished Level 1', dialog)).toBeTruthy();
+    expect(byRole('img', '3 of 3 stars', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('4 puzzles, 1 slip.');
+    expect(dialog.textContent).toContain('3 stars: 1 slip or none. 2 stars: 4 slips or fewer.');
+    expect(doc.activeElement).toBe(button('Play Level 2', dialog));
+    expect(storedStars('pattern', 0)).toBe(3);
+    press('Escape');
+    expect(card()).toBeNull();
+    const play = button('Play Level 2');
+    expect(play.closest('.bw-play__slot')!.className).toContain('pat-tray');
+    expect(doc.activeElement).toBe(play);
+    click(play);
+    expect(hash()).toBe('#/game/pattern/2');
+    expect(spoken).toEqual([]);
+  });
+
+  it('five star slips on a level give 1 star', () => {
+    openPattern(0, '9-10');
+    for (let n = 0; n < 4; n++) {
+      const p = patternOnScreen();
+      // Both wrong cars on the first two puzzles, one on the third: 5 star slips.
+      for (const w of n < 2 ? p.wrong : n === 2 ? [p.wrong[0]] : []) click(patChoice(w));
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    expect(dialog.textContent).toContain('4 puzzles, 5 slips.');
+    expect(byRole('img', '1 of 3 stars', dialog)).toBeTruthy();
+    expect(storedStars('pattern', 0)).toBe(1);
+  });
+
+  it('the last level ends on the finished card with the game’s star total and one way out', () => {
+    child('7-8');
+    starUpTo('pattern', 11, 2);
+    mount(createElement(PatternApp, { params: ['12'] }));
+    expect(byRole('heading', 'Level 12')).toBeTruthy();
+    for (let n = 0; n < 4; n++) {
+      solvePattern();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 25 of 36 stars.');
+    expect(allByRole('button', undefined, dialog)).toHaveLength(0);
+    expect(doc.activeElement).toBe(byRole('link', 'Back to games', dialog));
+  });
+
+  it('shows the locomotive on an empty rail behind the finished card on a later visit (board: gameDone)', () => {
+    child();
+    starUpTo('pattern', 12, 2);
+    mount(createElement(PatternApp, { params: [] }));
+    expect(byRole('heading', 'Pattern Train')).toBeTruthy();
+    expect(doc.body.querySelector('.bw-dots')).toBeNull();
+    const dialog = card()!;
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(byRole('img', '24 of 36 stars', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 24 of 36 stars.');
+    expect(dialog.textContent).toContain('A grown-up can pick a level to play again.');
+    expect(doc.activeElement).toBe(byRole('link', 'Back to games', dialog));
+    const behind = doc.body.querySelector('.bw-play__body')!;
+    expect(isHidden(behind)).toBe(true);
+    expect(behind.querySelectorAll('.pat-loco')).toHaveLength(1);
+    expect(behind.querySelectorAll('.pat-car')).toHaveLength(0);
+    expect(behind.querySelector('.pat-train')!.getAttribute('role')).toBeNull();
+    expect(behind.querySelectorAll('button')).toHaveLength(0);
+    expect(queryRole('status')).toBeNull();
+    press('Escape');
+    expect(hash()).toBe('#/');
+  });
+
+  it('opens Break at Next once the daily limit is used up, and the level waits at the solved puzzle', () => {
+    child();
+    openPatternAsIs();
+    solvePattern();
+    act(() => progressStore.addMinutesPlayed(60));
+    click(button('Next puzzle'));
+    expect(hash()).toBe('#/break');
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    expect(storedRun('pattern', 0)!.solved).toHaveLength(1);
+  });
+
+  it('a stored run resumes at its next unsolved puzzle with its own seed', () => {
+    child();
+    progressStore.startRun('pattern', 0, { set: 'pattern:1', seed: 4242 });
+    progressStore.recordPuzzle('pattern', 0, { puzzle: 0, count: 1, usedHint: false, outOfTime: false }, { set: 'pattern:1', seed: 4242, levelCount: 12, stars: () => 3 });
+    openPatternAsIs();
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    const want = patternPuzzle(0, 1, { seed: 4242, band: '5-6' });
+    const p = patternOnScreen();
+    expect(p.cars.map(carName)).toEqual(want.cars.map(carName));
+    expect(p.choices).toEqual(want.options.map(carName));
+  });
+
+  it('drops a run saved under another set version and starts the level at puzzle 1', () => {
+    child();
+    progressStore.startRun('pattern', 0, { set: 'pattern:0', seed: 7 });
+    openPatternAsIs();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(storedRun('pattern', 0)).toMatchObject({ set: 'pattern:1', queue: [0, 1, 2, 3, 4, 5], solved: [] });
+  });
+});
+
+/* =====================================================================================================
+ * Brick Calculator
+ * ===================================================================================================== */
+
+/** Brief 8.6, word for word. */
+const CALC_START = 'Count the bricks. Type the answer, then press =.';
+const CALC_SLIP = 'Not quite. Count the bricks again.';
+const CALC_FULL = 'Press = to check, or C to clear.';
+
+const keypad = () => byRole('group', 'Keypad');
+/** A key by its name: a numeral, "Clear" or "Equals". */
+const calcKey = (name: string) => button(name, keypad());
+const calcAnswer = () => doc.body.querySelector('.calc-eq__answer')!;
+const calcCells = (kind: 'blue' | 'orange' | 'taken' | 'empty') =>
+  doc.body.querySelectorAll('.calc-cell').filter((c) => {
+    const taken = c.classList.contains('is-taken');
+    const empty = c.classList.contains('is-empty');
+    if (kind === 'taken') return taken;
+    if (kind === 'empty') return empty;
+    return !taken && !empty && c.getAttribute('data-brick') === kind;
+  }).length;
+
+/** The sum on screen, read from the equation's name ("3 plus 4 equals what?"). */
+function mathOnScreen() {
+  const eq = nameOf(byRole('img', / equals (what\?|\d+)$/));
+  const m = /^(\d+) (plus|take away) (\d+) equals what\?$/.exec(eq);
+  if (!m) throw new Error(`Not a sum waiting for its answer: ${eq}`);
+  const a = Number(m[1]);
+  const b = Number(m[3]);
+  const op = m[2] === 'plus' ? ('plus' as const) : ('minus' as const);
+  const words = `${a} ${m[2]} ${b}`;
+  return { eq, a, b, op, words, answer: op === 'plus' ? a + b : a - b };
+}
+
+/** Tap the digits of a number on the keypad. */
+const tapDigits = (n: number | string) => {
+  for (const d of String(n)) click(calcKey(d));
+};
+
+function solveMath() {
+  tapDigits(mathOnScreen().answer);
+  click(calcKey('Equals'));
+}
+
+/** A wrong answer that still fits two digits. */
+const wrongAnswer = (answer: number) => (answer >= 19 ? answer - 1 : answer + 1);
+
+function openMath(level = 0, band: AgeBand = '5-6') {
+  child(band);
+  starUpTo('math', level);
+  return mount(createElement(MathApp, { params: [String(level + 1)] }));
+}
+
+/** Put focus nowhere, as a child who taps the background or has just opened the page. */
+const blur = () => act(() => void (doc.focused = null));
+
+describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
+  it('opens with the sum, its bricks, the 12 keys and the start line, and says nothing (board: play)', () => {
+    openMath(0);
+    expect(byRole('heading', 'Level 1')).toBeTruthy();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    const p = mathOnScreen();
+    expect(p.op).toBe('plus');
+    // The equation is one image; its numbers and signs are drawing only. The answer place shows "?".
+    const eq = byRole('img', p.eq);
+    expect(eq.querySelectorAll('span').every((s) => s.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(eq.querySelectorAll('.calc-eq__sign').map((s) => s.textContent)).toEqual(['+', '=']);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
+    // The two ten-frames: a blue bricks then b orange ones, the rest empty, named for a reader.
+    const bricks = (n: number, c: string) => `${n} ${c} ${n === 1 ? 'brick' : 'bricks'}`;
+    expect(byRole('img', `${bricks(p.a, 'blue')} and ${bricks(p.b, 'orange')}`)).toBeTruthy();
+    expect([calcCells('blue'), calcCells('orange'), calcCells('taken'), calcCells('empty')]).toEqual([p.a, p.b, 0, 20 - p.a - p.b]);
+    expect(doc.body.querySelectorAll('.calc-caption__lines span').map((s) => s.textContent)).toEqual(['Each row holds 5.', 'Two rows make 10.']);
+    expect(CAPTION_LINES).toEqual(['Each row holds 5.', 'Two rows make 10.']);
+    expect(doc.body.querySelector('.calc-count')).toBeNull();
+    // 12 keys in the board's order; digits are named by their numeral, C and = by their words.
+    const keys = allByRole('button', undefined, keypad());
+    expect(keys.map(nameOf)).toEqual(['7', '8', '9', 'Clear', '4', '5', '6', 'Equals', '1', '2', '3', '0']);
+    expect(calcKey('Clear').textContent).toBe('C');
+    expect(calcKey('Equals').textContent).toBe('=');
+    expect(calcKey('7').hasAttribute('data-kit-first')).toBe(true);
+    expect(helpLine()).toBe(CALC_START);
+    expect(START_LINE).toBe(CALC_START);
+    expect(doc.body.querySelector('[role="status"]')!.className).toBe('bw-helprow__line bw-helprow__line--help');
+    expect(button('Hear the sum')).toBeTruthy();
+    // The generator's sum for the run's own seed and the child's band.
+    const run = storedRun('math', 0)!;
+    expect(run.set).toBe('math:1:5-6');
+    const want = mathPuzzle(0, run.queue[0], { seed: run.seed, band: '5-6' });
+    expect([p.a, p.b, p.answer]).toEqual([want.a, want.b, want.answer]);
+    expect(spoken).toEqual([]);
+    expect(sounds).toEqual([]);
+  });
+
+  it('a digit shows in white and is said; a third digit is ignored with its line, and C clears (board: typed)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    click(calcKey('1'));
+    expect(sounds).toEqual(['tap']);
+    expect(spoken).toEqual(['1']);
+    expect(calcAnswer().textContent).toBe('1');
+    expect(calcAnswer().getAttribute('data-look')).toBe('typed');
+    // The equation is still asking: nothing is sent until =.
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+    click(calcKey('5'));
+    expect(spoken).toEqual(['1', '15']);
+    expect(calcAnswer().textContent).toBe('15');
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('2'));
+    expect(calcAnswer().textContent).toBe('15');
+    expect(helpLine()).toBe(CALC_FULL);
+    expect(FULL_LINE).toBe(CALC_FULL);
+    expect(sounds).toEqual(['tap', 'tap']);
+    expect(spoken).toEqual(['1', '15']);
+    click(calcKey('Clear'));
+    expect(sounds).toEqual(['tap', 'tap', 'tap']);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
+    expect(helpLine()).toBe(CALC_START);
+    expect(spoken).toHaveLength(2);
+  });
+
+  it('= with nothing typed does nothing: no sound, no slip, however often', () => {
+    openMath(0);
+    for (let i = 0; i < 4; i++) click(calcKey('Equals'));
+    expect(sounds).toEqual([]);
+    expect(spoken).toEqual([]);
+    expect(helpLine()).toBe(CALC_START);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    solveMath();
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 0 });
+  });
+
+  it('a wrong answer slips, clears the entry, says nothing and never shows the answer (board: slip)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    tapDigits(wrong);
+    const said = spoken.length;
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('wrong');
+    expect(spoken).toHaveLength(said);
+    expect(helpLine()).toBe(CALC_SLIP);
+    expect(SLIP_LINE).toBe(CALC_SLIP);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+    expect(doc.body.querySelector('.calc-count')).toBeNull();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    // The slip line stays until the next digit or C.
+    click(calcKey('Equals'));
+    expect(helpLine()).toBe(CALC_SLIP);
+    tapDigits(p.answer);
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('Equals'));
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('a repeated wrong answer counts once for stars and every time for the offer, which comes at 2 for ages 5 to 6; a key press then hides it', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    const offer = button('New puzzle');
+    expect(helpLine()).toBe(OFFER_LINE);
+    expect(offer.parentElement!.className).toBe('bw-helprow__offer');
+    expect(doc.activeElement).not.toBe(offer);
+    expect(sounds.filter((s) => s === 'wrong')).toHaveLength(2);
+    // Any key press is progress (3.3): the offer goes, and the game's own line is back.
+    click(calcKey(String(p.answer)[0]));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    expect(helpLine()).toBe(CALC_START);
+    click(calcKey('Clear'));
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('brings the offer at the third slip for ages 7 to 8', () => {
+    openMath(0, '7-8');
+    const p = mathOnScreen();
+    for (const w of [p.answer + 1, p.answer + 2]) {
+      tapDigits(w);
+      click(calcKey('Equals'));
+    }
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    tapDigits(p.answer + 3);
+    click(calcKey('Equals'));
+    expect(button('New puzzle')).toBeTruthy();
+  });
+
+  it('the right answer shows in yellow, is said, fills in the caption and the line, and Next takes the keypad’s place (board: solved)', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    expect(sounds).toEqual([...String(p.answer)].map(() => 'tap').concat('win'));
+    const solvedLine = `${p.words} makes ${p.answer}.`;
+    expect(spoken.at(-1)).toBe(solvedLine);
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+    expect(calcAnswer().getAttribute('data-look')).toBe('solved');
+    expect(byRole('img', `${p.words} equals ${p.answer}`)).toBeTruthy();
+    expect(helpLine()).toBe(solvedLine);
+    expect(doc.body.querySelector('.calc-count')!.textContent).toBe(`Count them: ${p.answer}`);
+    // The caption keeps its two lines, so the panel does not grow.
+    expect(doc.body.querySelectorAll('.calc-caption__lines span')).toHaveLength(2);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    const next = button('Next puzzle');
+    expect(next.closest('.bw-play__slot')!.className).toContain('calc-controls');
+    expect(doc.activeElement).toBe(next);
+    expect(queryRole('group', 'Keypad')).toBeNull();
+    expect(click(doc.body.querySelector('.calc-key')!)).toBe(false);
+    const run = storedRun('math', 0)!;
+    expect(run.solved).toEqual([{ puzzle: run.solved[0].puzzle, count: 0, usedHint: false, outOfTime: false }]);
+  });
+
+  it('keys do nothing after the solve: a second = solves nothing again, digits and C change nothing', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    blur();
+    const heard = sounds.length;
+    for (const k of ['Enter', '1', 'Backspace', 'Escape']) press(k);
+    expect(sounds).toHaveLength(heard);
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    // Two = in the same frame also solve once.
+    roots.splice(0).forEach((unmount) => unmount());
+    progressStore.replace(emptyState());
+    sounds.length = 0;
+    openMath(0);
+    const q = mathOnScreen();
+    tapDigits(q.answer);
+    const eq = calcKey('Equals');
+    act(() => {
+      dispatch(eq, makeEvent('click', eq, { button: 0, detail: 1 }));
+      dispatch(eq, makeEvent('click', eq, { button: 0, detail: 2 }));
+    });
+    expect(sounds.filter((s) => s === 'win')).toHaveLength(1);
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+  });
+
+  it('counts "07" as 7: a leading zero still solves, and the display keeps what was typed until then', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    // Level 1 sums stay under 10, so a 0 in front still fits two digits.
+    expect(p.answer).toBeLessThan(10);
+    click(calcKey('0'));
+    click(calcKey(String(p.answer)));
+    expect(calcAnswer().textContent).toBe(`0${p.answer}`);
+    expect(spoken).toEqual(['0', String(p.answer)]);
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('win');
+    expect(calcAnswer().textContent).toBe(String(p.answer));
+  });
+
+  it('plays from the physical keyboard: digits type, Backspace and Escape clear, Enter is =', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    expect(doc.activeElement).toBe(doc.body);
+    press('9');
+    press('9');
+    expect(calcAnswer().textContent).toBe('99');
+    expect(spoken).toEqual(['9', '99']);
+    press('Backspace');
+    expect(calcAnswer().textContent).toBe('?');
+    press('4');
+    press('Escape');
+    expect(calcAnswer().textContent).toBe('?');
+    // A chord or a held-down key is not a press of the keypad; nor is a letter.
+    press('5', { ctrlKey: true });
+    press('5', { metaKey: true });
+    press('5', { repeat: true });
+    press('a');
+    expect(calcAnswer().textContent).toBe('?');
+    press('Enter');
+    expect(sounds).toEqual(['tap', 'tap', 'tap', 'tap', 'tap']);
+    const wrong = wrongAnswer(p.answer);
+    for (const d of String(wrong)) press(d);
+    press('Enter');
+    expect(sounds.at(-1)).toBe('wrong');
+    expect(helpLine()).toBe(CALC_SLIP);
+    for (const d of String(p.answer)) press(d);
+    press('Enter');
+    expect(sounds.at(-1)).toBe('win');
+    expect(doc.activeElement).toBe(button('Next puzzle'));
+    // Enter on the focused Next button presses Next only (its own tap), and focus goes to the 7 key.
+    const heard = sounds.length;
+    press('Enter');
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(calcAnswer().textContent).toBe('?');
+    expect(sounds.slice(heard)).toEqual(['tap']);
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+    expect(doc.activeElement).toBe(calcKey('7'));
+  });
+
+  it('keys typed with focus on a keypad key go to the keypad once, not twice', () => {
+    openMath(0);
+    calcKey('3').focus();
+    press('2');
+    expect(calcAnswer().textContent).toBe('2');
+    expect(sounds).toEqual(['tap']);
+  });
+
+  it('keys do nothing while the level card is open, so Escape closes the card and clears nothing', () => {
+    openMath(0);
+    for (let n = 0; n < 4; n++) {
+      solveMath();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    const dialog = openCard();
+    const heard = sounds.length;
+    // Focus is on the card's Play Level 2; the keypad's keys reach nothing.
+    press('3');
+    press('Backspace');
+    expect(sounds).toHaveLength(heard);
+    expect(card()).toBe(dialog);
+    press('Escape');
+    expect(card()).toBeNull();
+    const play = button('Play Level 2');
+    expect(play.closest('.bw-play__slot')!.className).toContain('calc-controls');
+    expect(doc.activeElement).toBe(play);
+    expect(sounds).toHaveLength(heard);
+  });
+
+  it('the speaker reads the sum and asks how many; once solved it reads the solved sum', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    click(button('Hear the sum'));
+    expect(spoken).toEqual([`${p.words}. How many?`]);
+    tapDigits(p.answer);
+    click(calcKey('Equals'));
+    const solvedLine = `${p.words} makes ${p.answer}.`;
+    click(button('Hear the sum'));
+    expect(spoken.at(-1)).toBe(solvedLine);
+    expect(spoken.filter((s) => s === solvedLine)).toHaveLength(2);
+  });
+
+  it('brings the offer after 45 s with no key press at ages 5 to 6, and any key press starts the time again', () => {
+    openMath(0);
+    wait(40 * TICK_MS);
+    click(calcKey('1'));
+    wait(44 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    // = with nothing typed is a key press too.
+    click(calcKey('Clear'));
+    click(calcKey('Equals'));
+    wait(44 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+    expect(helpLine()).toBe(OFFER_LINE);
+  });
+
+  it('a swap brings a different sum with a fresh entry and focus on the 7 key', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    for (let i = 0; i < 2; i++) {
+      tapDigits(wrongAnswer(p.answer));
+      click(calcKey('Equals'));
+    }
+    expect(button('New puzzle')).toBeTruthy();
+    // A digit hides the offer; one more slip brings it back, as a fresh event over the limit.
+    tapDigits(1);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    click(calcKey('Clear'));
+    tapDigits(wrongAnswer(p.answer));
+    click(calcKey('Equals'));
+    expect(button('New puzzle')).toBeTruthy();
+    const swappedFrom = storedRun('math', 0)!.queue[0];
+    click(button('New puzzle'));
+    expect(helpLine()).toBe(SWAPPED_LINE);
+    expect(calcAnswer().textContent).toBe('?');
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(doc.activeElement).toBe(calcKey('7'));
+    expect(storedRun('math', 0)!.queue.at(-1)).toBe(swappedFrom);
+    solveMath();
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 0 });
+  });
+});
+
+describe('Brick Calculator: taking away and mixed levels', () => {
+  it('Level 5 takes away: the minus sign, the last b blue bricks faded, and the take-away lines', () => {
+    openMath(4, '7-8');
+    const p = mathOnScreen();
+    expect(p.op).toBe('minus');
+    expect(p.answer).toBeGreaterThanOrEqual(1);
+    expect(doc.body.querySelectorAll('.calc-eq__sign').map((s) => s.textContent)).toEqual(['−', '=']);
+    expect(byRole('img', `${p.a} ${p.a === 1 ? 'blue brick' : 'blue bricks'}, ${p.b} taken away`)).toBeTruthy();
+    expect([calcCells('blue'), calcCells('taken'), calcCells('orange')]).toEqual([p.a - p.b, p.b, 0]);
+    // The taken bricks are the last b blue ones.
+    const cells = doc.body.querySelectorAll('.calc-cell');
+    expect(cells.slice(p.a - p.b, p.a).every((c) => c.classList.contains('is-taken'))).toBe(true);
+    click(button('Hear the sum'));
+    expect(spoken).toEqual([`${p.a} take away ${p.b}. How many?`]);
+    solveMath();
+    expect(helpLine()).toBe(`${p.a} take away ${p.b} makes ${p.answer}.`);
+  });
+
+  it('0 is a right answer on Level 9, and plus and minus take turns there', () => {
+    const band = '5-6';
+    let seed = 0;
+    while (mathPuzzle(8, 0, { seed, band }).answer !== 0) seed++;
+    child(band);
+    starUpTo('math', 8);
+    progressStore.startRun('math', 8, { set: 'math:1:5-6', seed, keepSolved: true });
+    mount(createElement(MathApp, { params: ['9'] }));
+    const p = mathOnScreen();
+    expect(p.answer).toBe(0);
+    click(calcKey('0'));
+    click(calcKey('Equals'));
+    expect(sounds.at(-1)).toBe('win');
+    expect(helpLine()).toBe(`${p.words} makes 0.`);
+    click(button('Next puzzle'));
+    // The next sum uses the other operation.
+    expect(mathOnScreen().op).not.toBe(p.op);
+  });
+
+  it('keeps the sum on screen when the age band changes mid-level, keeps the solved ones, and takes the new band’s numbers from the next puzzle', () => {
+    const maya = child('3-4');
+    mount(createElement(MathApp, { params: ['1'] }));
+    for (let n = 0; n < 2; n++) {
+      solveMath();
+      click(button('Next puzzle'));
+    }
+    expect(storedRun('math', 0)!.set).toBe('math:1:3-4');
+    const onScreen = mathOnScreen().eq;
+    act(() => progressStore.updatePlayer(maya.id, { ageBand: '9-10' }));
+    expect(mathOnScreen().eq).toBe(onScreen);
+    solveMath();
+    click(button('Next puzzle'));
+    const run = storedRun('math', 0)!;
+    expect(run.set).toBe('math:1:9-10');
+    expect(run.solved).toHaveLength(3);
+    expect(dots()).toBe('Puzzle 4 of 4. 3 solved.');
+    const want = mathPuzzle(0, run.queue[0], { seed: run.seed, band: '9-10' });
+    expect(mathOnScreen().answer).toBe(want.answer);
+  });
+});
+
+describe('Brick Calculator: the level’s end and the finished state', () => {
+  it('four solves open the level card with the slips, and Play Level 2 opens Level 2 (board: levelDone)', () => {
+    openMath(0);
+    for (let n = 0; n < 4; n++) {
+      if (n === 0) {
+        tapDigits(wrongAnswer(mathOnScreen().answer));
+        click(calcKey('Equals'));
+      }
+      solveMath();
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(dots()).toBe('4 of 4 solved.');
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished Level 1', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('4 puzzles, 1 slip.');
+    expect(byRole('img', '3 of 3 stars', dialog)).toBeTruthy();
+    expect(storedStars('math', 0)).toBe(3);
+    click(button('Play Level 2', dialog));
+    expect(hash()).toBe('#/game/math/2');
+  });
+
+  it('shows "?" on the display and empty ten-frames behind the finished card (board: gameDone)', () => {
+    child();
+    starUpTo('math', 12, 2);
+    mount(createElement(MathApp, { params: [] }));
+    expect(byRole('heading', 'Brick Calculator')).toBeTruthy();
+    const dialog = card()!;
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 24 of 36 stars.');
+    const behind = doc.body.querySelector('.bw-play__body')!;
+    expect(isHidden(behind)).toBe(true);
+    expect(behind.querySelector('.calc-eq__answer')!.textContent).toBe('?');
+    expect(behind.querySelectorAll('.calc-eq__sign')).toHaveLength(0);
+    expect(behind.querySelectorAll('.calc-cell.is-empty')).toHaveLength(20);
+    expect(behind.querySelectorAll('.calc-count')).toHaveLength(0);
+    expect(behind.querySelectorAll('button')).toHaveLength(0);
+    // The keys do nothing here either.
+    press('4');
+    expect(sounds).toEqual([]);
+  });
+
+  it('opens Break at Next once the daily limit is used up, and the level waits at the solved puzzle', () => {
+    openMath(0);
+    solveMath();
+    act(() => progressStore.addMinutesPlayed(60));
+    click(button('Next puzzle'));
+    expect(hash()).toBe('#/break');
+    expect(storedRun('math', 0)!.solved).toHaveLength(1);
+  });
+
+  it('a stored run resumes on screen at its next unsolved sum, from its own seed', () => {
+    child();
+    progressStore.startRun('math', 0, { set: 'math:1:5-6', seed: 777, keepSolved: true });
+    progressStore.recordPuzzle('math', 0, { puzzle: 0, count: 0, usedHint: false, outOfTime: false }, { set: 'math:1:5-6', seed: 777, keepSolved: true, levelCount: 12, stars: () => 3 });
+    mount(createElement(MathApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    const want = mathPuzzle(0, 1, { seed: 777, band: '5-6' });
+    expect(mathOnScreen().eq).toBe(`${want.a} plus ${want.b} equals what?`);
+  });
+});
+
+/* =====================================================================================================
+ * Picture Builder
+ * ===================================================================================================== */
+
+const PB_COLORS = ['red', 'yellow', 'green', 'blue', 'orange', 'white'] as const;
+type PbColor = (typeof PB_COLORS)[number];
+type PbCell = PbColor | null;
+const capital = (s: string) => s[0].toUpperCase() + s.slice(1);
+
+/** Brief 8.7, word for word. */
+const PB_COPY_START = 'Pick a color, then tap or drag over the squares.';
+const PB_LOOK_TITLE = 'Look closely.';
+const PB_LOOK_HELP = 'Remember the colors and where they go.';
+const PB_HIDDEN_TITLE = 'Build it from memory.';
+const PB_HIDDEN_HELP = 'Tap Peek if you need another look.';
+const PB_HIDDEN_MODEL = 'Picture hidden. Tap Peek to look again.';
+
+/** The help row's line (Builder has a second status region, for "Picture shown."). */
+const pbHelp = () => doc.body.querySelector('.bw-helprow__line')!.textContent;
+const pbShown = () => doc.body.querySelector('.pb-sr')!.textContent;
+const pbTitle = () => doc.body.querySelector('h2.pb-title')!.textContent;
+const pbModel = () => nameOf(byRole('img', /^Picture /));
+const pbSquares = () => doc.body.querySelector('.pb-grid')!.querySelectorAll('.pb-square');
+const pbSwatch = (name: string) => button(name, byRole('group', 'Colors'));
+const pbPeek = () => queryRole('button', 'Peek at the picture');
+const pbMatch = () => queryRole('progressbar');
+const squareLabel = (size: number, i: number, cell: PbCell) => `Row ${Math.floor(i / size) + 1}, column ${(i % size) + 1}, ${cell ?? 'empty'}`;
+
+/** The picture as a reader hears it while it shows: "Picture of a mushroom. Row 1: red, white, red. Row 2: ..." */
+function builderPicture(): { name: string; size: number; cells: PbCell[] } {
+  const label = pbModel();
+  const m = /^Picture of an? (.+?)\. (Row 1: .+)$/.exec(label);
+  if (!m) throw new Error(`The picture is not showing: ${label}`);
+  const rows = m[2]
+    .split(/ ?Row \d+: /)
+    .filter(Boolean)
+    .map((r) => r.replace(/\.$/, '').split(', '));
+  return { name: m[1], size: rows.length, cells: rows.flat().map((c) => (c === 'empty' ? null : (c as PbColor))) };
+}
+
+/** What the board holds now, read from the squares' names. */
+function boardCells(): PbCell[] {
+  return pbSquares().map((s) => {
+    const m = /^Row \d+, column \d+, (\w+)$/.exec(nameOf(s));
+    if (!m) throw new Error(`Not a square name: ${nameOf(s)}`);
+    return m[1] === 'empty' ? null : (m[1] as PbColor);
+  });
+}
+
+/** A colour that is wrong on a square whose picture holds `want`. */
+const wrongColor = (want: PbCell): PbColor => PB_COLORS.find((c) => c !== want)!;
+
+/** Pick a paint, as the child taps it in the palette. */
+const pickPaint = (paint: PbColor | 'eraser') => click(pbSwatch(capital(paint)));
+
+/** Enter on a square (one key press, one stroke). */
+function keyPaint(i: number, key = 'Enter') {
+  pbSquares()[i].focus();
+  press(key);
+}
+
+/** Paint every brick of the picture, one colour at a time, by keys or by taps. */
+function paintPicture(cells: readonly PbCell[], how: 'key' | 'tap' = 'key', skip: number[] = []) {
+  for (const c of PB_COLORS) {
+    if (!cells.includes(c)) continue;
+    pickPaint(c);
+    cells.forEach((t, i) => {
+      if (t !== c || skip.includes(i)) return;
+      if (how === 'key') keyPaint(i);
+      else tap(pbSquares()[i]);
+    });
+  }
+}
+
+/**
+ * Lay the board out on screen as the 334 px grid with 6 px gaps (scaled by the tablet zoom), so pointer strokes
+ * land on squares. The board's own hit test reads only the grid's box; the squares' boxes are for the taps.
+ */
+function layOutBoard(zoom = 1) {
+  const grid = doc.body.querySelector('.pb-grid')!;
+  const squares = pbSquares();
+  const size = Math.round(Math.sqrt(squares.length));
+  const left = 28 * zoom;
+  const top = 380 * zoom;
+  grid.box = { left, top, width: 334 * zoom, height: 334 * zoom };
+  const cell = (334 - 6 * (size - 1)) / size;
+  squares.forEach((s, i) => {
+    const row = Math.floor(i / size);
+    const col = i % size;
+    s.box = { left: left + col * (cell + 6) * zoom, top: top + row * (cell + 6) * zoom, width: cell * zoom, height: cell * zoom };
+  });
+}
+
+/** A finger stroke: down on the first square, moves over the rest, then up (or the system takes the pointer). */
+function strokeOver(path: number[], end: 'up' | 'cancel' | 'lost' = 'up') {
+  const squares = pbSquares();
+  const board = doc.body.querySelector('.pb-board')!;
+  const fire = (el: FakeElement, type: string, i: number) => {
+    const at = centre(squares[i]);
+    act(() => {
+      dispatch(el, makeEvent(type, el, { pointerId: 5, button: 0, buttons: type === 'pointerup' ? 0 : 1, clientX: at.x, clientY: at.y, pointerType: 'touch', isPrimary: true }));
+    });
+  };
+  fire(squares[path[0]], 'pointerdown', path[0]);
+  for (const i of path.slice(1)) fire(board, 'pointermove', i);
+  const last = path[path.length - 1];
+  fire(board, end === 'up' ? 'pointerup' : end === 'cancel' ? 'pointercancel' : 'lostpointercapture', last);
+}
+
+function openBuilder(level = 0, band: AgeBand = '5-6') {
+  child(band);
+  starUpTo('builder', level);
+  return mount(createElement(BuilderApp, { params: [String(level + 1)] }));
+}
+
+/** On a memory level: read the picture during the look, then wait the look out. */
+function rememberPicture(band: AgeBand = '5-6') {
+  const seen = builderPicture();
+  wait({ '3-4': 6, '5-6': 5, '7-8': 4, '9-10': 3 }[band] * 1000);
+  expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+  return seen;
+}
+
+describe('Picture Builder: a copy level (Level 1)', () => {
+  it('opens with the picture, the title, the match bar, an empty board and the palette, and says nothing (board: copy play)', () => {
+    openBuilder(0);
+    expect(byRole('heading', 'Level 1')).toBeTruthy();
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    const run = storedRun('builder', 0)!;
+    expect(run).toMatchObject({ set: 'builder:1', seed: 0, queue: [0, 1, 2, 3, 4, 5] });
+    const want = builderPuzzle(0, 0);
+    const pic = builderPicture();
+    expect(pic.name).toBe(want.picture.name);
+    expect(pic.cells).toEqual(want.target);
+    expect(pbModel()).toMatch(/^Picture of an? [a-z ]+\. Row 1: [a-z]+(, [a-z]+){2}\. Row 2: .+\. Row 3: .+\.$/);
+    expect(doc.body.querySelectorAll('.pb-model__cell').every((c) => c.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(pbTitle()).toBe(`Build the ${pic.name}.`);
+    const bricks = pic.cells.filter(Boolean).length;
+    const bar = pbMatch()!;
+    expect(nameOf(bar)).toBe(`0 of ${bricks} bricks right`);
+    expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax')]).toEqual(['0', String(bricks)]);
+    expect(doc.body.querySelector('.pb-match__text')!.getAttribute('aria-hidden')).toBe('true');
+    expect(pbHelp()).toBe(PB_COPY_START);
+    expect(doc.body.querySelector('.bw-helprow__line')!.className).toBe('bw-helprow__line bw-helprow__line--help');
+    // The board: 3 by 3 squares named by row and column, one tab stop on the top-left square.
+    const squares = allByRole('button', undefined, byRole('group', 'Board'));
+    expect(squares.map(nameOf)).toEqual(Array.from({ length: 9 }, (_, i) => squareLabel(3, i, null)));
+    expect(squares.map((s) => s.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1', '-1', '-1', '-1', '-1']);
+    expect(squares[0].hasAttribute('data-kit-first')).toBe(true);
+    // The palette, red picked as on the board.
+    const swatches = allByRole('button', undefined, byRole('group', 'Colors'));
+    expect(swatches.map(nameOf)).toEqual(['Red', 'Yellow', 'Green', 'Blue', 'Orange', 'White', 'Eraser']);
+    expect(swatches.map(pressed)).toEqual(['true', 'false', 'false', 'false', 'false', 'false', 'false']);
+    // Copy levels have no Peek; the speaker is the help line's.
+    expect(pbPeek()).toBeNull();
+    expect(button('Hear the help line')).toBeTruthy();
+    expect(pbShown()).toBe('');
+    expect(spoken).toEqual([]);
+    expect(sounds).toEqual([]);
+  });
+
+  it('a palette pick taps and moves the pressed mark; a right brick is good and counts on the bar', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    const i = pic.cells.findIndex((c) => c !== null && c !== 'red');
+    const color = pic.cells[i]!;
+    pickPaint(color);
+    expect(sounds).toEqual(['tap']);
+    expect(pressed(pbSwatch(capital(color)))).toBe('true');
+    expect(pressed(pbSwatch('Red'))).toBe('false');
+    keyPaint(i);
+    expect(sounds).toEqual(['tap', 'good']);
+    expect(nameOf(pbSquares()[i])).toBe(squareLabel(3, i, color));
+    expect(pbSquares()[i].getAttribute('data-brick')).toBe(color);
+    expect(nameOf(pbMatch()!)).toBe(`1 of ${pic.cells.filter(Boolean).length} bricks right`);
+    expect(pbHelp()).toBe(PB_COPY_START);
+    // The same colour on the same square again is skipped: no sound.
+    keyPaint(i);
+    expect(sounds).toEqual(['tap', 'good']);
+    expect(spoken).toEqual([]);
+  });
+
+  it('a wrong brick slips and is named in the line; erasing it never slips, and the eraser on an empty square does nothing (board: wrong)', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    const empty = pic.cells.findIndex((c) => c === null);
+    const brick = pic.cells.findIndex((c) => c !== null);
+    // A colour on a square that must stay empty is wrong too.
+    pickPaint(wrongColor(null));
+    keyPaint(empty);
+    expect(sounds).toEqual(['tap', 'wrong']);
+    expect(pbHelp()).toBe('One brick is not quite right.');
+    // Wrong bricks never count on the bar.
+    expect(nameOf(pbMatch()!)).toBe(`0 of ${pic.cells.filter(Boolean).length} bricks right`);
+    pickPaint(wrongColor(pic.cells[brick]));
+    keyPaint(brick);
+    expect(pbHelp()).toBe('2 bricks are not quite right.');
+    pickPaint('eraser');
+    keyPaint(brick);
+    expect(pbHelp()).toBe('One brick is not quite right.');
+    keyPaint(empty);
+    expect(pbHelp()).toBe(PB_COPY_START);
+    expect(boardCells().every((c) => c === null)).toBe(true);
+    // Nothing but the picks and the two slips made a sound; the eraser on an empty square neither.
+    keyPaint(empty);
+    expect(sounds.filter((s) => s !== 'tap')).toEqual(['wrong', 'wrong']);
+    paintPicture(pic.cells);
+    expect(storedRun('builder', 0)!.solved[0]).toMatchObject({ count: 2 });
+  });
+
+  it('the same wrong colour on the same square again is no new star slip, but feeds the offer, which comes at 3 for ages 5 to 6', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    const empty = pic.cells.findIndex((c) => c === null);
+    for (let i = 0; i < 3; i++) {
+      pickPaint('blue');
+      keyPaint(empty);
+      if (i < 2) {
+        expect(queryRole('button', 'New puzzle')).toBeNull();
+        pickPaint('eraser');
+        keyPaint(empty);
+      }
+    }
+    expect(button('New puzzle')).toBeTruthy();
+    expect(pbHelp()).toBe(OFFER_LINE);
+    expect(sounds.filter((s) => s === 'wrong')).toHaveLength(3);
+    pickPaint('eraser');
+    keyPaint(empty);
+    paintPicture(pic.cells);
+    expect(storedRun('builder', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('a stroke lays a brick on every square it passes, and one with several wrong bricks is one slip, heard when the finger lifts', () => {
+    openBuilder(0);
+    layOutBoard();
+    const pic = builderPicture();
+    // The mushroom's top row is red, white, red: a red stroke along it lays two right bricks and one wrong.
+    expect(pic.cells.slice(0, 3)).toEqual(['red', 'white', 'red']);
+    strokeOver([0, 2]);
+    expect(boardCells().slice(0, 3)).toEqual(['red', 'red', 'red']);
+    expect(sounds).toEqual(['good', 'good', 'wrong']);
+    // A stroke over the bottom row in blue: three wrong bricks, one slip, and the wrong sound only at the end.
+    pickPaint('blue');
+    const before = sounds.length;
+    const squares = pbSquares();
+    const board = doc.body.querySelector('.pb-board')!;
+    const at = (i: number) => centre(squares[i]);
+    act(() => void dispatch(squares[6], makeEvent('pointerdown', squares[6], { pointerId: 9, button: 0, clientX: at(6).x, clientY: at(6).y })));
+    act(() => void dispatch(board, makeEvent('pointermove', board, { pointerId: 9, button: 0, clientX: at(8).x, clientY: at(8).y })));
+    expect(sounds.slice(before)).toEqual([]);
+    expect(pbHelp()).toBe('4 bricks are not quite right.');
+    act(() => void dispatch(board, makeEvent('pointerup', board, { pointerId: 9, button: 0, clientX: at(8).x, clientY: at(8).y })));
+    expect(sounds.slice(before)).toEqual(['wrong']);
+    // Fix the board and finish: two strokes with wrong bricks, two slips.
+    pickPaint('eraser');
+    strokeOver([6, 8]);
+    paintPicture(pic.cells);
+    expect(storedRun('builder', 0)!.solved[0]).toMatchObject({ count: 2 });
+  });
+
+  it('a stroke the system cuts off, or whose capture is lost, ends with no slip, and its bricks stay', () => {
+    openBuilder(0);
+    layOutBoard();
+    const pic = builderPicture();
+    pickPaint('blue');
+    strokeOver([6, 7], 'cancel');
+    expect(boardCells().slice(6, 8)).toEqual(['blue', 'blue']);
+    expect(sounds).toEqual(['tap']);
+    strokeOver([8], 'lost');
+    expect(boardCells()[8]).toBe('blue');
+    expect(sounds).toEqual(['tap']);
+    expect(pbHelp()).toBe('3 bricks are not quite right.');
+    // A later stroke counts again as usual.
+    strokeOver([3]);
+    expect(sounds.at(-1)).toBe('wrong');
+    pickPaint('eraser');
+    strokeOver([6, 8]);
+    strokeOver([3]);
+    paintPicture(pic.cells);
+    expect(storedRun('builder', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the click after a pointer down never paints a second time, while Enter or Space always paint', () => {
+    openBuilder(0);
+    layOutBoard();
+    pickPaint('blue');
+    // Down and up on the top-left square, then the click lands on another square (a tap at an edge, say).
+    strokeOver([0]);
+    expect(boardCells()[0]).toBe('blue');
+    click(pbSquares()[4]);
+    expect(boardCells()[4]).toBeNull();
+    // A click without a pointer down before it is the keyboard's (detail 0): Enter and Space paint.
+    keyPaint(4);
+    expect(boardCells()[4]).toBe('blue');
+    keyPaint(5, ' ');
+    expect(boardCells()[5]).toBe('blue');
+    // A finger tap paints once and the next tap still works.
+    tap(pbSquares()[1]);
+    tap(pbSquares()[2]);
+    expect(boardCells().slice(0, 3)).toEqual(['blue', 'blue', 'blue']);
+  });
+
+  it('the board is one tab stop: the arrows, Home and End move it, and it stays put at an edge', () => {
+    openBuilder(0);
+    const squares = () => pbSquares();
+    squares()[0].focus();
+    const moveTo = (key: string, i: number) => {
+      press(key);
+      expect(doc.activeElement).toBe(squares()[i]);
+      expect(squares().filter((s) => s.getAttribute('tabindex') === '0')).toEqual([squares()[i]]);
+    };
+    moveTo('ArrowUp', 0);
+    moveTo('ArrowLeft', 0);
+    moveTo('ArrowRight', 1);
+    moveTo('ArrowDown', 4);
+    moveTo('End', 5);
+    moveTo('ArrowRight', 5);
+    moveTo('Home', 3);
+    moveTo('ArrowDown', 6);
+    moveTo('ArrowDown', 6);
+    expect(sounds).toEqual([]);
+    // Enter paints the focused square with the picked colour.
+    press('Enter');
+    expect(boardCells()[6]).toBe('red');
+  });
+
+  it('the last right brick solves at once: the line, the full bar, Next in the palette’s place, and the board locks (board: solved)', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    paintPicture(pic.cells);
+    expect(sounds.at(-1)).toBe('win');
+    expect(sounds.filter((s) => s === 'good')).toHaveLength(pic.cells.filter(Boolean).length - 1);
+    expect(pbHelp()).toBe(`You built the ${pic.name}.`);
+    expect(pbTitle()).toBe(`Build the ${pic.name}.`);
+    const bricks = pic.cells.filter(Boolean).length;
+    expect(nameOf(pbMatch()!)).toBe(`${bricks} of ${bricks} bricks right`);
+    expect(dots()).toBe('Puzzle 1 of 4. 1 solved.');
+    const next = button('Next puzzle');
+    expect(next.closest('.bw-play__slot')!.className).toContain('pb-controls');
+    expect(doc.activeElement).toBe(next);
+    expect(queryRole('group', 'Colors')).toBeNull();
+    for (const s of pbSquares()) expect(s.getAttribute('aria-disabled')).toBe('true');
+    // A key or a tap on the board paints nothing now.
+    const heard = sounds.length;
+    keyPaint(pbSquares().length - 1);
+    expect(sounds).toHaveLength(heard);
+    expect(boardCells()).toEqual(pic.cells);
+    const run = storedRun('builder', 0)!;
+    expect(run.solved).toEqual([{ puzzle: 0, count: 0, usedHint: false, outOfTime: false }]);
+    expect(spoken).toEqual([]);
+    // Next: the next picture on an empty board, focus on the top-left square, the picked colour kept.
+    // The palette is out of reach behind Next; the colour picked last is still marked.
+    const pickedName = nameOf(doc.body.querySelectorAll('.pb-swatch').find((s) => pressed(s) === 'true')!);
+    click(next);
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(builderPicture().name).toBe(builderPuzzle(0, 1).picture.name);
+    expect(boardCells().every((c) => c === null)).toBe(true);
+    expect(doc.activeElement).toBe(pbSquares()[0]);
+    expect(pressed(pbSwatch(pickedName))).toBe('true');
+    expect(pbHelp()).toBe(PB_COPY_START);
+  });
+
+  it('erasing the last wrong brick from a square that stays empty solves the picture', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    const empty = pic.cells.findIndex((c) => c === null);
+    pickPaint('yellow');
+    keyPaint(empty);
+    paintPicture(pic.cells);
+    expect(queryRole('button', 'Next puzzle')).toBeNull();
+    expect(pbHelp()).toBe('One brick is not quite right.');
+    pickPaint('eraser');
+    keyPaint(empty);
+    expect(sounds.at(-1)).toBe('win');
+    expect(pbHelp()).toBe(`You built the ${pic.name}.`);
+    expect(storedRun('builder', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the speaker reads the title line and the help line; a square tap says nothing', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    click(button('Hear the help line'));
+    expect(spoken).toEqual([`Build the ${pic.name}. ${PB_COPY_START}`]);
+    pickPaint(wrongColor(pic.cells[0]));
+    keyPaint(0);
+    expect(spoken).toHaveLength(1);
+    click(button('Hear the help line'));
+    expect(spoken[1]).toBe(`Build the ${pic.name}. One brick is not quite right.`);
+  });
+
+  it('a swap brings the next picture on a fresh board with focus on the top-left square, and its slips do not count', () => {
+    openBuilder(0, '3-4');
+    const pic = builderPicture();
+    const empty = pic.cells.findIndex((c) => c === null);
+    pickPaint('blue');
+    keyPaint(empty);
+    keyPaint(0);
+    keyPaint(1);
+    expect(button('New puzzle')).toBeTruthy();
+    click(button('New puzzle'));
+    expect(pbHelp()).toBe(SWAPPED_LINE);
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(builderPicture().name).toBe(builderPuzzle(0, 1).picture.name);
+    expect(boardCells().every((c) => c === null)).toBe(true);
+    expect(doc.activeElement).toBe(pbSquares()[0]);
+    expect(storedRun('builder', 0)!.queue).toEqual([1, 2, 3, 4, 5, 0]);
+    paintPicture(builderPicture().cells);
+    expect(storedRun('builder', 0)!.solved).toEqual([{ puzzle: 1, count: 0, usedHint: false, outOfTime: false }]);
+  });
+
+  it('brings the offer after 40 s at ages 5 to 6; a new right brick starts the time again, a wrong one does not', () => {
+    openBuilder(0);
+    const pic = builderPicture();
+    wait(30 * TICK_MS);
+    const i = pic.cells.findIndex((c) => c === 'red');
+    keyPaint(i);
+    wait(39 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    pickPaint('blue');
+    keyPaint(pic.cells.findIndex((c) => c === null));
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    wait(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+  });
+
+  it('hits the right squares through the tablet zoom', () => {
+    const win = window as unknown as { innerWidth: number; innerHeight: number };
+    win.innerWidth = 834;
+    win.innerHeight = 1194;
+    openBuilder(0);
+    layOutBoard(1.4);
+    pickPaint('green');
+    strokeOver([2, 5, 8]);
+    expect(boardCells()).toEqual([null, null, 'green', null, null, 'green', null, null, 'green']);
+    tap(pbSquares()[4]);
+    expect(boardCells()[4]).toBe('green');
+  });
+});
+
+describe('Picture Builder: a memory level (Level 6)', () => {
+  it('starts on the first look: the picture shows, the board is locked and the lines say to look (board: look)', () => {
+    openBuilder(5);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    expect(pbHelp()).toBe(PB_LOOK_HELP);
+    const pic = builderPicture();
+    // Puzzle n of a memory level shows picture (n + 3) mod 6 of its copy level's set.
+    expect(pic.name).toBe(builderPuzzle(0, 3).picture.name);
+    expect(doc.body.querySelector('.pb-board')!.className).toContain('is-looking');
+    for (const s of pbSquares()) expect(s.getAttribute('aria-disabled')).toBe('true');
+    // Memory levels have no match bar and no Peek while the picture shows.
+    expect(pbMatch()).toBeNull();
+    expect(pbPeek()).toBeNull();
+    // The board takes no bricks; the palette still works.
+    keyPaint(0);
+    expect(boardCells().every((c) => c === null)).toBe(true);
+    pickPaint('yellow');
+    expect(sounds).toEqual(['tap']);
+  });
+
+  it('hides the picture after the band’s first look (5 s at ages 5 to 6) behind Peek, and the board opens (board: hidden)', () => {
+    openBuilder(5);
+    wait(4999);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    wait(1);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+    expect(pbHelp()).toBe(PB_HIDDEN_HELP);
+    expect(pbModel()).toBe(PB_HIDDEN_MODEL);
+    // Nothing of the picture is left in the page.
+    expect(doc.body.querySelectorAll('.pb-model__cell').every((c) => !c.hasAttribute('data-brick'))).toBe(true);
+    const peek = pbPeek()!;
+    expect(peek.textContent).toBe('Peek');
+    expect(doc.body.querySelector('.pb-board')!.className).not.toContain('is-looking');
+    for (const s of pbSquares()) expect(s.getAttribute('aria-disabled')).toBeNull();
+    expect(pbMatch()).toBeNull();
+    expect(spoken).toEqual([]);
+  });
+
+  it('Peek shows the picture for the band’s Peek time, announces it once, locks the board, and focus comes back to Peek (board: peek)', () => {
+    openBuilder(5);
+    const pic = rememberPicture();
+    const peek = pbPeek()!;
+    click(peek);
+    expect(pbShown()).toBe('Picture shown.');
+    expect(builderPicture()).toEqual(pic);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    expect(pbHelp()).toBe(PB_LOOK_HELP);
+    expect(pbPeek()).toBeNull();
+    for (const s of pbSquares()) expect(s.getAttribute('aria-disabled')).toBe('true');
+    keyPaint(0);
+    expect(boardCells().every((c) => c === null)).toBe(true);
+    wait(1999);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    // Focus went with the cover; it comes back to Peek when Peek comes back.
+    act(() => void (doc.focused = null));
+    wait(1);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+    expect(pbShown()).toBe('');
+    expect(doc.activeElement).toBe(pbPeek());
+    // Peek is free and unlimited: no sound, no slip, nothing stored.
+    click(pbPeek()!);
+    wait(2000);
+    expect(sounds).toEqual([]);
+    expect(storedRun('builder', 5)!.solved).toEqual([]);
+  });
+
+  it('counts no time toward the offer while the picture shows: the first look and each Peek', () => {
+    // Ages 3 to 4: a 6 s first look, 3 s Peeks and the offer at 30 s. The clock runs in small steps, so the
+    // screen draws (and the kit sees the hold end) when each look ends, as a browser would.
+    openBuilder(5, '3-4');
+    waitSteps(35 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    click(pbPeek()!);
+    waitSteps(3 * TICK_MS);
+    expect(queryRole('button', 'New puzzle')).toBeNull();
+    waitSteps(TICK_MS);
+    expect(button('New puzzle')).toBeTruthy();
+  });
+
+  it('a look the page was hidden for starts again in full when the page shows', () => {
+    openBuilder(5);
+    wait(3000);
+    setPageHidden(true);
+    wait(20_000);
+    setPageHidden(false);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    wait(4999);
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    wait(1);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+  });
+
+  it('leaving during the first look clears its timer', () => {
+    const { unmount } = openBuilder(5);
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('builds from memory: a wrong stroke is one slip with no wrong line, the solve shows the picture again, and Next starts its own look', () => {
+    openBuilder(5);
+    const pic = rememberPicture();
+    const empty = pic.cells.findIndex((c) => c === null);
+    pickPaint('blue');
+    keyPaint(empty);
+    expect(sounds.at(-1)).toBe('wrong');
+    // Memory levels never name wrong bricks, so trial and error cannot find the picture.
+    expect(pbHelp()).toBe(PB_HIDDEN_HELP);
+    pickPaint('eraser');
+    keyPaint(empty);
+    paintPicture(pic.cells);
+    expect(sounds.at(-1)).toBe('win');
+    expect(pbHelp()).toBe(`You built the ${pic.name} from memory.`);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+    expect(builderPicture()).toEqual(pic);
+    expect(pbPeek()).toBeNull();
+    expect(storedRun('builder', 5)!.solved[0]).toMatchObject({ count: 1 });
+    click(button('Next puzzle'));
+    // The next puzzle opens on its own first look.
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    expect(builderPicture().name).toBe(builderPuzzle(5, 1).picture.name);
+    for (const s of pbSquares()) expect(s.getAttribute('aria-disabled')).toBe('true');
+    wait(5000);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+  });
+
+  it('a swap on a memory level starts the new picture with its own first look', () => {
+    openBuilder(5, '9-10');
+    const pic = rememberPicture('9-10');
+    const empty = pic.cells.findIndex((c) => c === null);
+    pickPaint('blue');
+    for (let i = 0; i < 4; i++) {
+      keyPaint(empty);
+      pickPaint('eraser');
+      keyPaint(empty);
+      pickPaint('blue');
+    }
+    click(button('New puzzle'));
+    expect(pbTitle()).toBe(PB_LOOK_TITLE);
+    expect(pbHelp()).toBe(SWAPPED_LINE);
+    expect(builderPicture().name).toBe(builderPuzzle(5, 1).picture.name);
+    wait(3000);
+    expect(pbTitle()).toBe(PB_HIDDEN_TITLE);
+  });
+
+  it('takes the look times from the band: 3 s and 2 s at ages 9 to 10, 6 s and 3 s at 3 to 4', () => {
+    for (const [band, first, peek] of [['9-10', 3000, 2000], ['3-4', 6000, 3000]] as const) {
+      roots.splice(0).forEach((unmount) => unmount());
+      progressStore.replace(emptyState());
+      openBuilder(5, band);
+      wait(first - 1);
+      expect(pbTitle(), band).toBe(PB_LOOK_TITLE);
+      wait(1);
+      expect(pbTitle(), band).toBe(PB_HIDDEN_TITLE);
+      click(pbPeek()!);
+      wait(peek - 1);
+      expect(pbTitle(), band).toBe(PB_LOOK_TITLE);
+      wait(1);
+      expect(pbTitle(), band).toBe(PB_HIDDEN_TITLE);
+    }
+  });
+});
+
+describe('Picture Builder: big pictures, the level’s end and the finished state', () => {
+  it('Level 10 builds a 5 by 5 picture in the same board', () => {
+    openBuilder(9);
+    const pic = builderPicture();
+    expect(pic.size).toBe(5);
+    expect(pbSquares()).toHaveLength(25);
+    expect(nameOf(pbSquares()[24])).toBe('Row 5, column 5, empty');
+    paintPicture(pic.cells);
+    expect(pbHelp()).toBe(`You built the ${pic.name}.`);
+  });
+
+  it('four solves open the level card, and Escape leaves Play Level 2 in the palette’s place (board: levelDone)', () => {
+    openBuilder(0);
+    for (let n = 0; n < 4; n++) {
+      paintPicture(builderPicture().cells);
+      if (n < 3) click(button('Next puzzle'));
+    }
+    expect(dots()).toBe('4 of 4 solved.');
+    const dialog = openCard();
+    expect(byRole('heading', 'You finished Level 1', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('4 puzzles, no slips.');
+    expect(byRole('img', '3 of 3 stars', dialog)).toBeTruthy();
+    expect(storedStars('builder', 0)).toBe(3);
+    press('Escape');
+    const play = button('Play Level 2');
+    expect(play.closest('.bw-play__slot')!.className).toContain('pb-controls');
+    expect(doc.activeElement).toBe(play);
+    click(play);
+    expect(hash()).toBe('#/game/builder/2');
+    expect(spoken).toEqual([]);
+  });
+
+  it('shows an empty board behind the finished card (board: gameDone)', () => {
+    child();
+    starUpTo('builder', 12, 2);
+    mount(createElement(BuilderApp, { params: [] }));
+    expect(byRole('heading', 'Picture Builder')).toBeTruthy();
+    const dialog = card()!;
+    expect(byRole('heading', 'You finished every level!', dialog)).toBeTruthy();
+    expect(dialog.textContent).toContain('12 levels, 24 of 36 stars.');
+    const behind = doc.body.querySelector('.bw-play__body')!;
+    expect(isHidden(behind)).toBe(true);
+    expect(behind.querySelectorAll('.pb-square')).toHaveLength(16);
+    expect(behind.querySelectorAll('.pb-square[data-brick]')).toHaveLength(0);
+    expect(behind.querySelectorAll('button')).toHaveLength(0);
+    expect(behind.querySelector('[role="img"]')).toBeNull();
+  });
+
+  it('opens Break at Next once the daily limit is used up, and the level waits at the solved puzzle', () => {
+    openBuilder(0);
+    paintPicture(builderPicture().cells);
+    act(() => progressStore.addMinutesPlayed(60));
+    click(button('Next puzzle'));
+    expect(hash()).toBe('#/break');
+    expect(storedRun('builder', 0)!.solved).toHaveLength(1);
+  });
+
+  it('a stored run resumes on screen at its next unsolved picture, and a run of another set version starts over', () => {
+    child();
+    progressStore.startRun('builder', 0, { set: 'builder:1', seed: 0 });
+    progressStore.recordPuzzle('builder', 0, { puzzle: 0, count: 2, usedHint: false, outOfTime: false }, { set: 'builder:1', seed: 0, levelCount: 12, stars: () => 3 });
+    const first = mount(createElement(BuilderApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 2 of 4. 1 solved.');
+    expect(builderPicture().name).toBe(builderPuzzle(0, 1).picture.name);
+    first.unmount();
+    progressStore.replace(emptyState());
+    child();
+    progressStore.startRun('builder', 0, { set: 'builder:0', seed: 0 });
+    mount(createElement(BuilderApp, { params: ['1'] }));
+    expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
+    expect(storedRun('builder', 0)).toMatchObject({ set: 'builder:1', seed: 0, queue: [0, 1, 2, 3, 4, 5], solved: [] });
   });
 });

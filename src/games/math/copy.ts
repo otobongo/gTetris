@@ -22,11 +22,17 @@ export const sumWords = (p: Pair): string => `${p.a} ${opWords(p.op)} ${p.b}`;
 /** Help line once solved: "3 plus 4 makes 7." / "7 take away 3 makes 4." */
 export const solvedLine = (p: Pair & { answer: number }): string => `${sumWords(p)} makes ${p.answer}.`;
 
+/** The panel caption while playing, as the board sets it: one sentence to a line. */
+export const CAPTION_LINES = ['Each row holds 5.', 'Two rows make 10.'] as const;
+
 /** The panel caption while playing. */
-export const CAPTION = 'Each row holds 5. Two rows make 10.';
+export const CAPTION = CAPTION_LINES.join(' ');
 
 /** The panel caption once solved: "Count them: 7". */
 export const solvedCaption = (answer: number): string => `Count them: ${answer}`;
+
+/** The keypad group's accessible name. */
+export const KEYPAD_NAME = 'Keypad';
 
 /** The speaker button's accessible name. */
 export const SPEAKER_NAME = 'Hear the sum';

@@ -16,6 +16,7 @@
  * - The board is locked during a memory look and each Peek: nothing paints.
  * - The puzzle is solved the moment every square matches, so the last right brick solves at once.
  */
+import type { Point } from '../kit/dragToTarget';
 import type { BuilderColor } from './pictures';
 
 /** What the child paints with: one of the 6 colours, or the eraser. */
@@ -156,6 +157,14 @@ export function endStroke(board: Board): StrokeEnd {
   return { board: ended, slip };
 }
 
+/**
+ * A lost pointer (pointercancel, or the capture lost before pointer up): the stroke ends and never counts, so no
+ * slip goes to the kit. The bricks it laid stay on the board, as they are drawn there.
+ */
+export function cancelStroke(board: Board): Board {
+  return board.stroke ? { ...board, stroke: null } : board;
+}
+
 /** One key press (Enter or Space on a square): a whole stroke on one square. */
 export function paintOnce(board: Board, paint: Paint, index: number): PaintStep & { slip: string | null } {
   const step = paintSquare(startStroke(board, paint), index);
@@ -192,4 +201,52 @@ export function moveFocus(size: number, index: number, key: 'ArrowUp' | 'ArrowDo
     case 'End':
       return indexOf(size, row, size - 1);
   }
+}
+
+/* ---------- Where a pointer is on the board (7.8) ---------- */
+
+/** The board's grid is 334 px wide at every grid size, with 6 px between squares. */
+export const BOARD_PX = 334;
+export const BOARD_GAP_PX = 6;
+
+/** Row or column under one coordinate, or null in a gap or outside. */
+function lineAt(v: number, size: number, width: number): number | null {
+  const gap = (width * BOARD_GAP_PX) / BOARD_PX;
+  const cell = (width - gap * (size - 1)) / size;
+  if (!(v >= 0) || v >= width) return null;
+  const k = Math.min(size - 1, Math.floor(v / (cell + gap)));
+  return v - k * (cell + gap) < cell ? k : null;
+}
+
+/**
+ * The square under a point in the board's grid, measured from the grid's top-left corner, or null when the point
+ * sits in a gap or outside. `width` is the grid's width in the same units as the point (the kit's localPoint gives
+ * both with the tablet zoom taken out), so the answer holds at any zoom. The grid is as tall as it is wide.
+ */
+export function squareAt(point: Point, size: number, width: number = BOARD_PX): number | null {
+  if (!Number.isInteger(size) || size < 1 || !(width > 0)) return null;
+  const col = lineAt(point.x, size, width);
+  const row = lineAt(point.y, size, width);
+  return col === null || row === null ? null : indexOf(size, row, col);
+}
+
+/**
+ * The squares a pointer passes over moving from `from` to `to`, in order, leaving out the square under `from` (it
+ * was painted when the pointer got there). A quick drag sends few move events, so the line between them is sampled
+ * every quarter square and no square on the way is skipped.
+ */
+export function squaresAlong(from: Point, to: Point, size: number, width: number = BOARD_PX): number[] {
+  if (!Number.isInteger(size) || size < 1 || !(width > 0)) return [];
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const step = width / size / 4;
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / step));
+  const start = squareAt(from, size, width);
+  const out: number[] = [];
+  for (let k = 1; k <= steps; k++) {
+    const i = squareAt({ x: from.x + (dx * k) / steps, y: from.y + (dy * k) / steps }, size, width);
+    if (i === null || i === (out.length ? out[out.length - 1] : start)) continue;
+    out.push(i);
+  }
+  return out;
 }
