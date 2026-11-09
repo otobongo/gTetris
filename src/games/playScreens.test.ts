@@ -1082,9 +1082,16 @@ const colorByName = (name: string) => {
 };
 const PAINT_NAME: Record<PaintId, string> = { red: 'Red', yellow: 'Yellow', blue: 'Blue', white: 'White' };
 
+/** The text a screen reader gets from a node: aria-hidden parts are skipped. */
+function readerText(node: FakeNode): string {
+  if (node instanceof FakeText) return node.data;
+  if (node instanceof FakeElement && node.getAttribute('aria-hidden') === 'true') return '';
+  return node.childNodes.map(readerText).join('');
+}
+
 /** What the Mixer screen asks, read from the page as a reader would: the chip, the slots and the shelf or swatches. */
 function mixerOnScreen() {
-  const chip = doc.body.querySelector('.mix-chip')!.textContent;
+  const chip = readerText(doc.body.querySelector('.mix-chip')! as unknown as FakeNode);
   const slots = allByRole('button', /^Paint [12]: /).map(nameOf);
   const colors = queryRole('group', 'Colors');
   if (colors) {
@@ -1141,6 +1148,8 @@ describe('Color Mixer: Finish the mix (Level 1)', () => {
     expect(byRole('heading', 'Level 1')).toBeTruthy();
     expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
     expect(p.chip).toMatch(/^Can you make ?(orange|green|purple)\?$/);
+    // A screen reader gets the chip as one sentence, with the space before the colour (brief 9.2).
+    expect(p.chip).toMatch(/^Can you make (orange|green|purple)\?$/);
     expect(p.slots).toEqual([`Paint 1: ${colorWord(p.given)}, given`, 'Paint 2: empty']);
     // The given slot takes no taps and no focus; an empty slot neither.
     for (const slot of allByRole('button', /^Paint [12]: /)) {

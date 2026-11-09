@@ -587,7 +587,7 @@ Dots, Next button (58 px tall in all six games, min width 220), offer button (54
 | Tower well | `--bw-well`, radius 28, padding `16px 8px 12px`, `inset 0 4px 10px rgb(0 0 0 / 0.45)`; 6 columns, gap 6 (towers about 52 px wide) |
 | Tower | number face 48x40, radius 12, numeral 26/800 with `text-shadow: 0 2px 0 rgb(0 0 0 / 0.3)`; stud bricks 40x22, radius 6, gap 2, through the `Brick` look; picked translateY -10 px; dragging scale 1.06 (the board's value); a swap moves both towers over `--bw-base` with `--bw-ease`; each tower button fills its column's full height, so a one-brick tower is still a 54 px target |
 | Number colours | 1 green, 2 yellow, 3 red, 4 blue, 5 purple, 6 orange (`--brick-*`); bigger numbers take these six in the seed's order |
-| Numeral ink | `--bw-text` on red, blue and purple; `--bw-on-yellow` on yellow and orange; `--bw-on-green` on green (9.3) |
+| Numeral ink | `--bw-text` on red and purple; `--bw-on-yellow` on yellow and orange; `--bw-on-green` on green; `--bw-purple-edge` (#241a63) on blue (9.3) |
 | Marks | 8 px tall pills, gap 6; right spot filled `--brick-green-light`; wrong spot `--bw-well` with a 2px inset ring of `--bw-decor`; legend 13/700 `--bw-text-2` |
 | Hint | arrow 34x34, path `M12 21l-6-8h4V3h4v10h4z`, fill `--brick-yellow-light`, stroke `--bw-yellow-edge` 1.5, round joins, above the tower; rings `--bw-ring` |
 | Footer slot | 58 px |
@@ -764,6 +764,7 @@ Child-facing lines are short, calm and literal. The one exclamation stays "You f
 - **Number Line-up numerals** (26/800, large text, 3:1 needed): white on yellow `#ffc21a` 1.6:1, on orange `#ff7a1a` 2.6:1 and on green `#1fb53c` 2.7:1 fail. With `--bw-on-yellow` on yellow 6.7:1 and on orange 4.1:1, and `--bw-on-green` on green 5.1:1, they pass. White stays on red 3.9:1, blue 3.3:1 and purple 4.3:1.
 - **Brick Calculator C key:** white on `--brick-pink` 2.8:1 fails; `--bw-on-pink` measures 5.4:1 there and 8.0:1 on `--brick-pink-light`.
 - These ratios are against each face's base colour, which sits under the numeral in the middle of the face gradient. The light top corner of a blue face falls to about 2.4:1 with white, so A1 checks the numerals on the rendered `Numbers` board with a contrast picker before showing it, and moves any face that fails to dark ink.
+- Outcome (2026-11-09): white on the blue face gradient comes to about 2.9:1 at the top of the numeral, under 3:1, so blue moved to dark ink, `--bw-purple-edge` #241a63, about 4.5:1 on the blue base. The `Numbers` board and the game both use it.
 - **Number Line-up marks:** filled `--brick-green-light` on `--bw-well` 9.7:1; the `--bw-decor` ring 5.1:1.
 - The Calculator's note line (`#8e85d6` on `#121034`) and Mixer's slot labels (`#8e85d6`) move to `--bw-text-2`, since `--bw-decor` is never text. Pattern's old to-do dot (1.4:1) gives way to the shared dots.
 

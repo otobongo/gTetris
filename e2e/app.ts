@@ -517,7 +517,14 @@ export const mixerBowl = (page: Page): Locator => page.getByRole('img', { name: 
  */
 export async function mixerOnScreen(page: Page): Promise<MixerOnScreen> {
   await expect(page.locator('.mix-chip')).toBeVisible();
-  const chip = ((await page.locator('.mix-chip').textContent()) ?? '').trim();
+  // The chip as a screen reader gets it: the aria-hidden drawing is skipped, its one sentence is read.
+  const chip = (
+    await page.locator('.mix-chip').evaluate((root) => {
+      const said = (n: Node): string =>
+        n.nodeType === Node.TEXT_NODE ? (n.nodeValue ?? '') : n instanceof Element && n.getAttribute('aria-hidden') === 'true' ? '' : [...n.childNodes].map(said).join('');
+      return said(root);
+    })
+  ).trim();
   const slot1 = (await mixerSlot(page, 1).getAttribute('aria-label')) ?? '';
   if (await mixerSwatches(page).count()) {
     const slot2 = (await mixerSlot(page, 2).getAttribute('aria-label')) ?? '';

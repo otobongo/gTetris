@@ -99,9 +99,11 @@ export function MixerPlay({ level }: { level: number }) {
       <div className="mix-chip">
         {chip.circle ? (
           <>
-            <span className="mix-chip__text">{chip.text.slice(0, chip.text.length - colorWord(chip.circle).length - 2)}</span>
+            {/* Screen readers get one sentence; the drawn pieces (words split around the colour dot) are hidden from them. */}
+            <span className="mix-chip__said">{chip.text}</span>
+            <span className="mix-chip__text" aria-hidden="true">{chip.text.slice(0, chip.text.length - colorWord(chip.circle).length - 2)}</span>
             <span className="mix-chip__dot" style={paintStyle(chip.circle)} aria-hidden="true" />
-            <span className="mix-chip__text">{colorWord(chip.circle)}?</span>
+            <span className="mix-chip__text" aria-hidden="true">{colorWord(chip.circle)}?</span>
           </>
         ) : (
           <span className="mix-chip__text">{chip.text}</span>
