@@ -1,0 +1,188 @@
+/* Brick Calculator, built from design/canvas/Math.dc.html and its state boards (six-games brief 4.5,
+   7.7, 9.2). Everything is scoped under .calc-*. Colours, radii, spacing, type and motion come from
+   src/styles/tokens.css. Board sizes are px, as slide.css and letters.css keep theirs. The play frame,
+   the help row and Next puzzle are the kit's (kit.css). */
+
+/* The keypad slot is 270px tall (4 rows of 60 and 3 gaps of 10, plus the key edge); PlayScreen reads --bw-slot-min. */
+.calc-controls { --bw-slot-min: 270px; }
+
+/* ---------- Display ---------- */
+.calc-display {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--bw-sp-4) var(--bw-sp-8);
+  border-radius: 22px;
+  background: var(--bw-display);
+  box-shadow:
+    inset 0 4px 10px rgb(0 0 0 / 0.6),
+    0 0 0 4px var(--bw-purple-bottom);
+}
+.calc-eq {
+  display: flex;
+  align-items: baseline;
+  gap: var(--bw-sp-4);
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.calc-eq__a { color: var(--brick-blue-light); }
+.calc-eq__b { color: var(--brick-orange-light); }
+.calc-eq__sign { color: var(--bw-text-2); }
+/* Two digits wide from the start, so the sum does not shift as the child types. */
+.calc-eq__answer {
+  min-width: 2ch;
+  text-align: left;
+  color: var(--bw-text);
+}
+.calc-eq__answer[data-look='empty'] { color: var(--bw-text-2); }
+.calc-eq__answer[data-look='solved'] { color: var(--brick-yellow-light); }
+
+/* ---------- Bricks panel ---------- */
+.calc-panel {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-sp-3);
+  padding: var(--bw-sp-5);
+  border-radius: 22px;
+  background: var(--bw-panel);
+}
+.calc-frames {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bw-sp-3);
+}
+.calc-frame {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  padding: var(--bw-sp-2);
+  border-radius: 14px;
+  background: var(--bw-well);
+}
+.calc-cell {
+  box-sizing: border-box;
+  height: 30px;
+  border-radius: 7px;
+}
+.calc-cell.is-empty { border: 2px dashed var(--bw-purple-bottom); }
+/* A brick: two studs on a lit face, in the brick colour set by data-brick (blue first number, orange second). */
+.calc-cell[data-brick] {
+  background:
+    radial-gradient(circle at 46% 42%, var(--cl) 0 19%, transparent 21%),
+    radial-gradient(circle at 50% 50%, var(--c) 0 25%, transparent 27%),
+    radial-gradient(circle at 54% 58%, rgb(0 0 0 / 0.28) 0 26%, transparent 28%),
+    linear-gradient(160deg, var(--cl) -30%, var(--c) 45%, var(--cd) 140%);
+  background-size: 50% 100%, 50% 100%, 50% 100%, 100% 100%;
+  box-shadow: var(--bw-brick-face);
+}
+/* Taken away: the bricks stay in place, faded, tilted and smaller. They fade a moment after the puzzle
+   appears, so the child sees them go. The DOM state is there at once. */
+.calc-cell.is-taken {
+  opacity: 0.25;
+  transform: scale(0.8) rotate(-8deg);
+  animation: calc-take var(--bw-slow) var(--bw-ease) 400ms backwards;
+}
+@keyframes calc-take {
+  from { opacity: 1; transform: none; }
+}
+
+.calc-caption {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: var(--bw-sp-4);
+  font-size: var(--bw-fs-label);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--bw-text-2);
+}
+.calc-caption__lines > span { display: block; }
+.calc-count {
+  color: var(--brick-yellow-light);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Keypad: 4 columns, rows of 60 ---------- */
+.calc-keys {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(4, 60px);
+  gap: var(--bw-sp-4);
+}
+.calc-key {
+  grid-area: var(--calc-row) / var(--calc-col) / span var(--calc-rows) / span var(--calc-cols);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  font: inherit;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  color: var(--key-ink);
+  background: linear-gradient(180deg, var(--key-top), var(--key-bottom));
+  box-shadow: 0 var(--bw-raise) 0 var(--key-edge);
+  transition:
+    transform var(--bw-fast) var(--bw-ease),
+    box-shadow var(--bw-fast) var(--bw-ease);
+}
+.calc-key--digit {
+  --key-top: var(--bw-purple-top);
+  --key-bottom: var(--bw-purple-bottom);
+  --key-edge: var(--bw-purple-edge);
+  --key-ink: var(--bw-on-purple);
+}
+.calc-key--equals {
+  --key-top: var(--bw-green-top);
+  --key-bottom: var(--bw-green-bottom);
+  --key-edge: var(--bw-green-edge);
+  --key-ink: var(--bw-on-green);
+}
+.calc-key--clear {
+  --key-top: var(--brick-pink-light);
+  --key-bottom: var(--brick-pink);
+  --key-edge: var(--brick-pink-dark);
+  --key-ink: var(--bw-on-pink);
+}
+.calc-key:active {
+  transform: translateY(var(--bw-press-shift));
+  box-shadow: 0 var(--bw-raise-pressed) 0 var(--key-edge);
+}
+.calc-key:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* ---------- Short phones ---------- */
+/* The board is 844px tall. Under 760px the keys drop to the 54px kid minimum and the bricks to 24px, so the
+   keypad stays clear of the panel on a shorter screen (down to about 700px). */
+@media (max-height: 760px) {
+  .calc-controls { --bw-slot-min: 240px; }
+  .calc-keys {
+    grid-template-rows: repeat(4, var(--bw-target-kid));
+    gap: var(--bw-sp-3);
+  }
+  .calc-cell { height: 24px; }
+}
+
+/* ---------- Reduced motion (brief 9.1) ---------- */
+/* The press loses its shift (the shadow still changes), and the bricks taken away fade without tilting. */
+@media (prefers-reduced-motion: reduce) {
+  .calc-key { transition: box-shadow var(--bw-fast) linear; }
+  .calc-key:active { transform: none; }
+  .calc-cell.is-taken {
+    transform: none;
+    animation: calc-take-fade 150ms linear 400ms backwards;
+  }
+  @keyframes calc-take-fade {
+    from { opacity: 1; }
+  }
+}
