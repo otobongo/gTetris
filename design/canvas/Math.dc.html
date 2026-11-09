@@ -9,159 +9,380 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0}</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-key { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .calc-key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sh) !important; } .calc-cell { transition: opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .calc-key { transition: box-shadow 100ms linear; } .calc-key:active { transform: none; } .calc-cell { transform: none !important; transition: opacity 150ms linear; } }</style>
 </helmet>
-<div style="width: {{W}}px; height: {{H}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{Z}}; width: {{IW}}px; height: {{IH}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px;">
+<div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
 </a>
-<div style="text-align: center; line-height: 1.1;">
-<div style="font-size: 24px; font-weight: 800;">Brick Calculator</div>
-<div style="font-size: 15px; font-weight: 700; color: #c9c2ff;">Add and take away</div>
+<div style="text-align: center; line-height: 1.1; min-width: 0;">
+<div style="font-size: 24px; font-weight: 800;">{{title}}</div>
+<sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
+<span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
+</sc-for>
 </div>
-<button onClick="{{speak}}" aria-label="Say it" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+</sc-if>
+</div>
+<div style="display: grid;">
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speak}}" aria-label="{{speakLabel}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
 </button>
+</sc-if>
+</div>
 </div>
 
-<div style="width: 100%; box-sizing: border-box; padding: 10px 18px; border-radius: 22px; background: #121034; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6), 0 0 0 4px #3a2d8f; display: flex; flex-direction: column; align-items: flex-end;">
-<div style="font-size: 15px; font-weight: 700; color: #8e85d6; min-height: 20px;">{{note}}</div>
-<div style="display: flex; align-items: baseline; gap: 10px; font-size: 46px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;">
-<span style="color: #7cc0ff;">{{aText}}</span>
-<span style="color: #c9c2ff;">{{opText}}</span>
-<span style="color: #ffab5e;">{{bText}}</span>
-<span style="color: #c9c2ff;">{{eqText}}</span>
-<span style="color: #ffe266;">{{rText}}</span>
+<div style="width: 100%; box-sizing: border-box; padding: 10px 18px; border-radius: 22px; background: #121034; box-shadow: inset 0 4px 10px rgba(0,0,0,0.6), 0 0 0 4px #3a2d8f; display: flex; justify-content: flex-end;">
+<div role="img" aria-label="{{eqLabel}}" style="display: flex; align-items: baseline; gap: 10px; font-size: 46px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;">
+<span aria-hidden="true" style="color: #7cc0ff;">{{aText}}</span>
+<span aria-hidden="true" style="color: #c9c2ff;">{{opText}}</span>
+<span aria-hidden="true" style="color: #ffab5e;">{{bText}}</span>
+<span aria-hidden="true" style="color: #c9c2ff;">{{eqText}}</span>
+<span aria-hidden="true" style="min-width: 1.2ch; text-align: left; color: {{anscolor}};">{{ansText}}</span>
 </div>
 </div>
+
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
+<div style="grid-column: 1; grid-row: 1; display: grid;">
+<sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
+</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
 
 <div style="width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 12px; box-sizing: border-box; border-radius: 22px; background: #30257a;">
+<div role="img" aria-label="{{bricksLabel}}" style="display: flex; flex-direction: column; gap: 8px;">
 <sc-for list="{{frames}}" as="f" hint-placeholder-count="2">
-<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 6px; border-radius: 14px; background: #1d1550;">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; padding: 6px; border-radius: 14px; background: #1d1550;">
 <sc-for list="{{f.cells}}" as="c" hint-placeholder-count="10">
-<span style="position: relative; height: 30px; border-radius: 7px; transition: opacity 0.3s, transform 0.3s; {{c.style}}"></span>
+<span class="calc-cell" style="height: 30px; border-radius: 7px; box-sizing: border-box; {{c.style}}"></span>
 </sc-for>
 </div>
 </sc-for>
-<div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 800; color: #c9c2ff;">
-<span>Each row holds 5. Two rows make 10.</span>
-<span style="color: #ffe266;">{{countText}}</span>
+</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; column-gap: 10px; font-size: 14px; font-weight: 800; line-height: 1.2; color: #c9c2ff;">
+<span><span style="display: block;">Each row holds 5.</span><span style="display: block;">Two rows make 10.</span></span>
+<span style="color: #ffe266; font-variant-numeric: tabular-nums;">{{countText}}</span>
 </div>
 </div>
 
-<div style="width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: auto;">
-<sc-for list="{{keys}}" as="k" hint-placeholder-count="16">
-<button onClick="{{k.press}}" aria-label="{{k.label}}" style="border: 0; cursor: pointer; font-family: inherit; height: 60px; border-radius: 18px; font-size: 30px; font-weight: 800; transition: transform 0.08s; {{k.style}}">{{k.t}}</button>
+<div style="flex-grow: 1;"></div>
+
+<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<div style="width: 100%; height: 270px; display: flex; align-items: center; justify-content: center;">
+<sc-if value="{{showKeys}}" hint-placeholder-val="{{ true }}">
+<div role="group" aria-label="Keypad" style="width: 100%; height: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(4, 60px); gap: 10px;">
+<sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+<button class="calc-key" onClick="{{k.press}}" aria-label="{{k.label}}" style="border: 0; cursor: pointer; font-family: inherit; border-radius: 18px; font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; {{k.style}}">{{k.t}}</button>
 </sc-for>
 </div>
+</sc-if>
+<sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next puzzle<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+</sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="calc-card-title" aria-describedby="calc-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<h2 id="calc-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
+<sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
+<svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z" fill="{{s.fill}}"></path></svg>
+</sc-for>
+<sc-if value="{{showTotal}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
+</sc-if>
+</div>
+<p id="calc-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
+<sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
+</sc-if>
+<sc-if value="{{showNote}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">A grown-up can pick a level to play again.</p>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+<sc-if value="{{showPlayNext}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{playNext}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{playLabel}}</button>
+<a href="{{hubHref}}" style="width: 100%; min-height: 48px; padding: 10px 18px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #ffffff; font-size: 17px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Back to games</a>
+</sc-if>
+<sc-if value="{{showFinal}}" hint-placeholder-val="{{ false }}">
+<a href="{{hubHref}}" style="width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Back to games</a>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
 
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["add","take","both"],"default":"add"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","typed","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { a: '3', op: '+', b: '4', done: true, note: '3 plus 4 makes 7' };
+    this.state = this.fromLever();
+  }
+  // Sample child: Maya, ages 7 to 8. Ceilings 10 (adding), 15 (taking away), 20 (both); stuck at 3 slips or 60 s (brief 3.3, 4.5).
+  limits() { return { count: 3, secs: 60 }; }
+  // One sample level per chapter, each with 6 sums by the 4.5 rules for ages 7 to 8:
+  // Level 3 (plus, top 9, second number up to 5), Level 7 (minus, start up to 14, second up to 5, answer 1 or more),
+  // Level 11 (plus and minus in turn, top 18, second up to 5). No pair twice, no twin pair, no two equal answers in a row.
+  levels() {
+    return {
+      add: { level: 3, sums: [[4, '+', 2], [3, '+', 5], [3, '+', 4], [6, '+', 3], [5, '+', 1], [2, '+', 5]] },
+      take: { level: 7, sums: [[9, '-', 4], [12, '-', 5], [7, '-', 3], [11, '-', 5], [14, '-', 2], [8, '-', 3]] },
+      both: { level: 11, sums: [[13, '+', 4], [15, '-', 5], [9, '+', 5], [12, '-', 3], [11, '+', 4], [16, '-', 4]] }
+    };
+  }
+  levelKey(p) { return ['add', 'take', 'both'].indexOf(p.level) >= 0 ? p.level : 'add'; }
+  // The other levels follow the sample level's chapter, so Play Level N opens a level of the right kind.
+  sumsFor(level) {
+    var L = this.levels();
+    var key = level <= 4 ? 'add' : level <= 8 ? 'take' : 'both';
+    return L[key].sums;
+  }
+  result(S) { return S[1] === '-' ? S[0] - S[2] : S[0] + S[2]; }
+  leverKey() {
+    var p = this.props || {};
+    return [p.level, p.puzzle, p.moment].join('|');
+  }
+  freshPuzzle() { return { entry: '', note: '', slipShown: false, wrongTaps: 0, seen: {}, idle: 0, offer: false }; }
+  fromLever() {
+    var p = this.props || {};
+    var level = this.levels()[this.levelKey(p)].level;
+    var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
+    var moment = ['play', 'typed', 'slip', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
+    if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    var order = [0, 1, 2, 3, 4, 5];
+    var S = this.sumsFor(level)[order[puzzle - 1]];
+    var r = this.result(S);
+    var s = Object.assign(this.freshPuzzle(), { lever: this.leverKey(), level: level, puzzle: puzzle, moment: 'play', order: order, slips: 1 });
+    // Typed: the answer is on the display, not yet sent with =.
+    if (moment === 'typed') s.entry = String(r);
+    if (moment === 'slip') { s.slipShown = true; s.wrongTaps = 1; s.seen[String(r + 1)] = true; s.slips = 2; }
+    if (moment === 'stuck') {
+      // Three different wrong answers: the offer at 3 for ages 7 to 8; each counts one star slip.
+      [r + 1, r - 1, r + 2].forEach(function (x) { s.seen[String(x)] = true; });
+      s.wrongTaps = this.limits().count; s.slips = this.limits().count; s.offer = true;
+    }
+    if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') { s.moment = moment; s.entry = String(r); }
+    return s;
+  }
+  // The state to render: the last interaction, unless a lever changed since.
+  st() {
+    var key = this.leverKey();
+    if (this.pending && this.pending.lever === key) return this.pending;
+    if (this.state && this.state.lever === key) return this.state;
+    this.pending = this.fromLever();
+    return this.pending;
+  }
+  put(patch) {
+    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    this.pending = next;
+    this.setState(next);
+  }
+  componentDidMount() {
+    var self = this;
+    // The time signal: seconds with no key press, counted only while the puzzle is on screen (brief 3.3).
+    this.timer = setInterval(function () {
+      var s = self.st();
+      if (s.moment !== 'play') return;
+      var idle = s.idle + 1;
+      self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
+    }, 1000);
+    // The physical keyboard: digits, Enter for =, Backspace or Escape for C (brief 4.5).
+    this.onKey = function (e) {
+      if (self.st().moment !== 'play') return;
+      if (/^[0-9]$/.test(e.key)) self.press(e.key);
+      else if (e.key === 'Enter' && !(e.target && e.target.closest && e.target.closest('button'))) self.press('=');
+      else if (e.key === 'Backspace' || e.key === 'Escape') self.press('C');
+    };
+    try { window.addEventListener('keydown', this.onKey); } catch (e) {}
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer); clearTimeout(this.cardT);
+    try { window.removeEventListener('keydown', this.onKey); } catch (e) {}
+  }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  solvedLine(S) { return S[0] + (S[1] === '-' ? ' take away ' : ' plus ') + S[2] + ' makes ' + this.result(S) + '.'; }
+  press(t) {
+    var cs = this.st();
+    if (cs.moment !== 'play') return;
+    var S = this.sumsFor(cs.level)[cs.order[cs.puzzle - 1]];
+    // Any key press resets the time signal and hides the offer until a fresh event (four-puzzle 3.2).
+    var base = { idle: 0 };
+    if (t === 'C') { this.put(Object.assign(base, { entry: '', note: '', slipShown: false })); return; }
+    if (t === '=') {
+      if (cs.entry === '') { this.put(base); return; }
+      if (Number(cs.entry) === this.result(S)) {
+        var last = cs.puzzle === 4;
+        var self = this;
+        if (last) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+        this.put(Object.assign(base, { moment: last ? 'lastSolved' : 'solved', offer: false, note: '', slipShown: false }));
+        this.say(this.solvedLine(S));
+        return;
+      }
+      // A wrong answer always feeds the stuck count; the same wrong answer again adds no star slip (brief 3.1).
+      var key = String(Number(cs.entry));
+      var seen = Object.assign({}, cs.seen);
+      var fresh = !seen[key];
+      seen[key] = true;
+      var wrongTaps = cs.wrongTaps + 1;
+      this.put(Object.assign(base, { entry: '', note: '', slipShown: true, seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count }));
+      return;
+    }
+    // A digit. A third digit is ignored; "07" counts as 7.
+    if (cs.entry.length >= 2) { this.put(Object.assign(base, { note: 'Press = to check, or C to clear.' })); return; }
+    var entry = cs.entry + t;
+    this.put(Object.assign(base, { entry: entry, note: '', slipShown: false }));
+    this.say(String(Number(entry)));
   }
   stud(c1, c0, c2) {
     return 'background: radial-gradient(circle at 46% 42%, ' + c1 + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + c0 + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), linear-gradient(160deg, ' + c1 + ' -30%, ' + c0 + ' 45%, ' + c2 + ' 140%); background-size: 50% 100%, 50% 100%, 50% 100%, 100% 100%; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
   }
-  calc(s) {
-    var a = Number(s.a || 0), b = Number(s.b || 0);
-    return s.op === '-' ? a - b : a + b;
-  }
-  say(text) {
-    try { var u = new SpeechSynthesisUtterance(text); u.rate = 0.9; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) {}
-  }
-  words(s) {
-    var r = this.calc(s);
-    return s.a + (s.op === '-' ? ' take away ' : ' plus ') + s.b + ' makes ' + r;
-  }
-  press(t) {
-    var s = this.state;
-    if (t === '?') {
-      var x = 1 + Math.floor(Math.random() * 9);
-      var minus = Math.random() < 0.4;
-      var y = minus ? 1 + Math.floor(Math.random() * x) : 1 + Math.floor(Math.random() * (10 - x));
-      this.setState({ a: String(x), op: minus ? '-' : '+', b: String(y), done: false, note: 'Count the bricks, then press =' });
-      return;
-    }
-    if (t === 'C') { this.setState({ a: '', op: null, b: '', done: false, note: 'Pick a number up to 10' }); return; }
-    if (t === '+' || t === '-') {
-      if (s.done) { this.setState({ a: String(this.calc(s)), op: t, b: '', done: false, note: '' }); return; }
-      if (s.a === '') return;
-      this.setState({ op: t, note: '' });
-      return;
-    }
-    if (t === '=') {
-      if (s.a === '' || !s.op || s.b === '') return;
-      if (s.op === '-' && Number(s.b) > Number(s.a)) { this.setState({ note: 'Try taking away a smaller number' }); return; }
-      var w = this.words(s);
-      this.setState({ done: true, note: w });
-      this.say(w);
-      return;
-    }
-    // a digit: keep each number at 10 or less so the bricks fit two frames
-    var field = s.done ? 'a' : s.op ? 'b' : 'a';
-    var cur = s.done ? '' : s[field];
-    var next = cur === '0' ? t : cur + t;
-    if (Number(next) > 10) { this.setState({ note: 'Numbers up to 10 for now' }); return; }
-    var upd = { done: false, note: '' };
-    if (s.done) { upd.op = null; upd.b = ''; }
-    upd[field] = next;
-    this.setState(upd);
-    this.say(t);
-  }
   renderVals() {
     var self = this;
-    var s = this.state;
+    var s = this.st();
     var tablet = this.props.device === 'tablet';
-    var a = Number(s.a || 0), b = Number(s.b || 0);
-    var minus = s.op === '-';
+    var m = s.moment;
+    var finished = m === 'gameDone';
+    var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
+    var playing = m === 'play';
+    var lastLevel = s.level === 12;
+    var S = this.sumsFor(s.level)[s.order[s.puzzle - 1]];
+    var a = S[0], minus = S[1] === '-', b = S[2], r = this.result(S);
+    var words = a + (minus ? ' take away ' : ' plus ') + b;
+
+    // Bricks: two ten-frames. On minus sums the last b blue bricks fade; the finished state shows empty frames.
     var cells = [];
     for (var i = 0; i < 20; i++) {
       var style;
-      if (i < a) {
-        var takenAway = minus && s.b !== '' && i >= a - b;
-        style = this.stud('#7cc0ff', '#2f8cff', '#1557c4') + (takenAway ? ' opacity: 0.25; transform: scale(0.8) rotate(-8deg);' : '');
-      } else if (!minus && i < a + b) {
-        style = this.stud('#ffab5e', '#ff7a1a', '#c4500a');
+      if (!finished && i < a) {
+        var takenAway = minus && i >= a - b;
+        style = this.stud('#7cc0ff', '#2f8cff', '#1557c4') + (takenAway ? ' opacity: 0.25; transform: scale(0.8) rotate(-8deg);' : ' opacity: 1; transform: none;');
+      } else if (!finished && !minus && i < a + b) {
+        style = this.stud('#ffab5e', '#ff7a1a', '#c4500a') + ' opacity: 1; transform: none;';
       } else {
-        style = 'border: 2px dashed #3a2d8f; box-sizing: border-box;';
+        style = 'border: 2px dashed #3a2d8f;';
       }
       cells.push({ style: style });
     }
-    var r = this.calc(s);
-    var key = function (t, kind, label) {
-      var st = kind === 'op' ? 'background: linear-gradient(180deg, #ffe266, #ffc21a); color: #5a3500; box-shadow: 0 5px 0 #d48a00;'
-        : kind === 'eq' ? 'background: linear-gradient(180deg, #5fe06e, #1fb53c); color: #063510; box-shadow: 0 5px 0 #0f7a26;'
-        : kind === 'clr' ? 'background: linear-gradient(180deg, #ff9fd4, #ff5fb4); color: #ffffff; box-shadow: 0 5px 0 #c72f84;'
-        : kind === 'rand' ? 'background: linear-gradient(180deg, #6aeee4, #14c8c0); color: #ffffff; box-shadow: 0 5px 0 #0b8c87;'
-        : 'background: linear-gradient(180deg, #5444b8, #3a2d8f); color: #ffffff; box-shadow: 0 5px 0 #241a63;';
-      return { t: t === '-' ? '−' : t, label: label || t, style: st, press: function () { self.press(t); } };
+
+    var offerLine = 'This one is tricky. Want a different puzzle?';
+    var help = solvedNow ? this.solvedLine(S)
+      : s.offer ? offerLine
+      : s.note ? s.note
+      : s.slipShown ? 'Not quite. Count the bricks again.'
+      : 'Count the bricks. Type the answer, then press =.';
+
+    var raised = function (grad, ink, edge) { return 'background: ' + grad + '; color: ' + ink + '; --sh: ' + edge + '; box-shadow: 0 5px 0 ' + edge + ';'; };
+    var digit = raised('linear-gradient(180deg, #5444b8, #3a2d8f)', '#ffffff', '#241a63');
+    var key = function (t, place, kind, label) {
+      var look = kind === 'eq' ? raised('linear-gradient(180deg, #5fe06e, #1fb53c)', '#063510', '#0f7a26')
+        : kind === 'clr' ? raised('linear-gradient(180deg, #ff9fd4, #ff5fb4)', '#241a63', '#c72f84')
+        : digit;
+      return { t: t, label: label || t, style: 'grid-area: ' + place + '; ' + look, press: function () { self.press(t); } };
     };
+
+    // Dots (four-puzzle brief section 8).
+    var solvedCount = s.puzzle - 1 + (solvedNow ? 1 : 0);
+    var dots = [1, 2, 3, 4].map(function (i) {
+      var isCur = i === s.puzzle;
+      var filled = i < s.puzzle || (isCur && solvedNow);
+      return { w: isCur ? 32 : 22, bg: isCur ? '#7cc0ff' : '#1d1550', ring: isCur || filled ? 'none' : 'inset 0 0 0 2px #8e85d6', fill: filled ? 1 : 0 };
+    });
+
+    // Level card: slips over the 4 puzzles (brief 3.2). Totals for the finished state are sample data.
+    var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
+    var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
+    var shown = finished ? '?' : solvedNow ? String(r) : s.entry === '' ? '?' : s.entry;
+
     return {
-      W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
-      note: s.note,
-      aText: s.a === '' ? '?' : s.a,
-      opText: s.op ? (s.op === '-' ? '−' : '+') : '',
-      bText: s.op ? (s.b === '' ? '?' : s.b) : '',
-      eqText: s.done ? '=' : '',
-      rText: s.done ? String(r) : '',
-      countText: s.done ? 'Count them: ' + r : '',
+      title: finished ? 'Brick Calculator' : 'Level ' + s.level,
+      showDots: !finished, dots: dots,
+      dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
+      showPlayArea: !finished,
+      // The speaker reads the sum at any time, then the solved line once solved; while the offer shows, the offer line.
+      speakLabel: s.offer && playing ? 'Read the help line aloud' : 'Hear the sum',
+      speak: function () {
+        var cs = self.st();
+        if (cs.offer && cs.moment === 'play') { self.say(offerLine); return; }
+        self.say(words + '. How many?' + (cs.moment === 'play' ? '' : ' ' + self.solvedLine(S)));
+      },
+      // The finished state shows "?" in the display and empty frames (brief 4.5).
+      aText: finished ? '' : String(a),
+      opText: finished ? '' : minus ? '−' : '+',
+      bText: finished ? '' : String(b),
+      ansText: shown,
+      anscolor: solvedNow && !finished ? '#ffe266' : shown === '?' ? '#c9c2ff' : '#ffffff',
+      eqText: finished ? '' : '=',
+      eqLabel: finished ? 'Empty display.' : solvedNow ? words + ' equals ' + r : words + ' equals what?',
+      help: help,
+      showOffer: playing && s.offer,
+      swap: function () {
+        var cs = self.st();
+        if (cs.moment !== 'play') return;
+        // The current sum moves to the end of the queue; the dots stay where they are.
+        var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
+        self.put(Object.assign(self.freshPuzzle(), { order: order, note: 'Here is a different puzzle.' }));
+      },
       frames: [{ cells: cells.slice(0, 10) }, { cells: cells.slice(10, 20) }],
-      speak: function () { if (s.done) self.say(self.words(s)); },
+      bricksLabel: finished ? 'Two empty ten-frames.' : minus ? a + ' blue bricks, ' + b + ' taken away' : a + ' blue bricks and ' + b + ' orange bricks',
+      countText: solvedNow && !finished ? 'Count them: ' + r : '',
+      // Keypad: 7 8 9 C / 4 5 6 = / 1 2 3 = / 0 0 0 =, where 0 spans three columns and = spans three rows.
+      showKeys: !solvedNow,
       keys: [
-        key('7'), key('8'), key('9'), key('-', 'op', 'take away'),
-        key('4'), key('5'), key('6'), key('+', 'op', 'plus'),
-        key('1'), key('2'), key('3'), key('=', 'eq', 'equals'),
-        key('C', 'clr', 'clear'), key('0'), key('10', 'num', 'ten'), key('?', 'rand', 'surprise problem')
-      ]
+        key('7', '1 / 1'), key('8', '1 / 2'), key('9', '1 / 3'), key('C', '1 / 4', 'clr', 'Clear'),
+        key('4', '2 / 1'), key('5', '2 / 2'), key('6', '2 / 3'), key('=', '2 / 4 / 5 / 5', 'eq', 'Equals'),
+        key('1', '3 / 1'), key('2', '3 / 2'), key('3', '3 / 3'),
+        key('0', '4 / 1 / 5 / 4')
+      ],
+      showNext: m === 'solved',
+      next: function () {
+        var cs = self.st();
+        if (cs.moment !== 'solved') return;
+        self.put(Object.assign(self.freshPuzzle(), { puzzle: cs.puzzle + 1, moment: 'play' }));
+      },
+      cardOpen: m === 'levelDone' || finished,
+      cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
+      stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
+      starsLabel: finished ? '30 of 36 stars' : starsWon + ' of 3 stars',
+      starsgap: finished ? 6 : 4,
+      showTotal: finished,
+      totalText: '30 of 36',
+      cardFact: finished || lastLevel ? '12 levels, 30 of 36 stars.' : fact,
+      showRule: !finished && !lastLevel,
+      showNote: finished,
+      showPlayNext: !finished && !lastLevel,
+      showFinal: finished || lastLevel,
+      playLabel: 'Play Level ' + (s.level + 1),
+      playNext: function () {
+        var cs = self.st();
+        if (cs.moment !== 'levelDone' || cs.level >= 12) return;
+        self.put(Object.assign(self.freshPuzzle(), { level: cs.level + 1, puzzle: 1, moment: 'play', order: [0, 1, 2, 3, 4, 5], slips: 0 }));
+      }
     };
   }
 }

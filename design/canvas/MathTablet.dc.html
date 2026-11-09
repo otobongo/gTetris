@@ -11,11 +11,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0}</style>
 </helmet>
-<dc-import name="Math" device="tablet" hint-size="834px,1194px"></dc-import>
+<dc-import name="Math" device="tablet" level="{{level}}" puzzle="{{puzzle}}" moment="{{moment}}" hint-size="834px,1194px"></dc-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":834,"height":1194}}'>
+<script type="text/x-dc" data-dc-script data-props='{"level":{"editor":"enum","options":["add","take","both"],"default":"add"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","typed","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":834,"height":1194}}'>
 class Component extends DCLogic {
-  renderVals() { return {}; }
+  renderVals() { return { level: this.props.level ?? 'add', puzzle: this.props.puzzle ?? '3', moment: this.props.moment ?? 'play' }; }
 }
 </script>
 </body>
