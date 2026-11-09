@@ -8,6 +8,9 @@ import type { GameMeta } from './meta';
 import { meta as dropMeta } from './drop/meta';
 import { LEVELS as LETTERS_LEVELS } from './letters/levels';
 import { meta as lettersMeta } from './letters/meta';
+import { meta as mixerMeta } from './mixer/meta';
+import { meta as numbersMeta } from './numbers/meta';
+import { meta as sorterMeta } from './sorter/meta';
 import { meta as escapeMeta } from './slide/meta';
 
 export const GAME_IDS = ['escape', 'drop', 'letters', 'mixer', 'sorter', 'pattern', 'numbers', 'builder', 'math'] as const;
@@ -101,12 +104,12 @@ export const GAMES: readonly GameEntry[] = [
   entry('mixer', 'Color Mixer', 'Mix two colors to make a new one', [
     { kind: 'disc', color: 'yellow', x: 6, y: 7, w: 30, h: 30 },
     { kind: 'disc', color: 'blue', x: 24, y: 7, w: 30, h: 30, blend: true },
-  ], null),
+  ], mixerMeta),
   entry('sorter', 'Shape Sorter', 'Match each shape to its hole', [
     { kind: 'disc', color: 'pink', x: 0, y: 16, w: 22, h: 22 },
     { kind: 'triangle', color: 'yellow', x: 18, y: 4, w: 24, h: 22 },
     { kind: 'tile', color: 'teal', x: 36, y: 20, w: 20, h: 20, radius: 4 },
-  ], null),
+  ], sorterMeta),
   entry('pattern', 'Pattern Train', 'Finish the pattern on the train', [
     { kind: 'disc', color: 'red', x: 0, y: 14, w: 16, h: 16 },
     { kind: 'tile', color: 'blue', x: 20, y: 14, w: 16, h: 16, radius: 3 },
@@ -116,7 +119,7 @@ export const GAMES: readonly GameEntry[] = [
     brick('green', 0, 16, 18, 24, undefined, '1'),
     brick('yellow', 19, 10, 18, 30, undefined, '2'),
     brick('red', 38, 4, 18, 36, undefined, '3'),
-  ], null),
+  ], numbersMeta),
   entry('builder', 'Picture Builder', 'Look, then build the picture', [
     brick('red', 14, 2, 13, 13, 13),
     brick('red', 29, 2, 13, 13, 13),

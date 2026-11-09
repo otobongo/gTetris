@@ -55,7 +55,7 @@ export default function Home() {
       </header>
 
       <div className="sc-scroll sc-home__scroll">
-        {/* Today's discovery: the board's sample question. It opens Color Mixer, which is not built yet. */}
+        {/* Today's discovery: the board's sample question. It opens Color Mixer. */}
         <a className="sc-discovery" href={toHref('/game/mixer')}>
           <span className="sc-art" aria-hidden="true" style={{ width: 56, height: 44 }}>
             <span className="sc-art__piece sc-art__disc" data-brick="red" style={{ left: 0, top: 4, width: 34, height: 34, opacity: 0.9 }} />
@@ -63,9 +63,8 @@ export default function Home() {
           </span>
           <span className="sc-discovery__text">
             <span className="sc-discovery__kicker">Today's discovery</span>
-            <span className="sc-discovery__title">What do red and blue make?</span>
+            <span className="sc-discovery__title">Mix two colors to make a new one</span>
           </span>
-          <span className="sc-discovery__reward">+1 sticker</span>
         </a>
 
         <h2 className="sc-h2 sc-home__games-h">Games</h2>

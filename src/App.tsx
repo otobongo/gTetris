@@ -2,6 +2,9 @@ import { useEffect, useMemo, type ComponentType } from 'react';
 import { getGame, type GameId } from './games/registry';
 import DropApp from './games/drop/DropApp';
 import LettersApp from './games/letters/LettersApp';
+import MixerApp from './games/mixer/MixerApp';
+import NumbersApp from './games/numbers/NumbersApp';
+import SorterApp from './games/sorter/SorterApp';
 import SlideApp from './games/slide/SlideApp';
 import { activePlayer, progressStore, useProgressState } from './shared/progress';
 import { parseRoute, replace, useRoute, type Route } from './shared/router';
@@ -26,6 +29,9 @@ const GAME_SCREENS: Partial<Record<GameId, ComponentType<{ params: string[] }>>>
   escape: SlideApp,
   drop: DropApp,
   letters: LettersApp,
+  mixer: MixerApp,
+  sorter: SorterApp,
+  numbers: NumbersApp,
 };
 
 export default function App() {

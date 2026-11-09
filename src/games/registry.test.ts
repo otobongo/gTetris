@@ -3,9 +3,9 @@ import { parseRoute, splitPath } from '../shared/router';
 import { GAMES, GAME_IDS, getGame } from './registry';
 
 describe('game registry', () => {
-  it('lists the nine Home games in board order, three of them playable', () => {
+  it('lists the nine Home games in board order, six of them playable', () => {
     expect(GAMES.map((g) => g.id)).toEqual([...GAME_IDS]);
-    expect(GAMES.filter((g) => g.playable).map((g) => g.id)).toEqual(['escape', 'drop', 'letters']);
+    expect(GAMES.filter((g) => g.playable).map((g) => g.id)).toEqual(['escape', 'drop', 'letters', 'mixer', 'sorter', 'numbers']);
     expect(getGame('escape')?.title).toBe('Brick Escape');
     expect(getGame('drop')?.noun).toBe('Stage');
     expect(getGame('slide')).toBeUndefined();
