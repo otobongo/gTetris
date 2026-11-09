@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Picture Builder pictures</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 834px; height: 1194px; overflow: hidden; box-sizing: border-box; padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
+
+<header style="display: flex; flex-direction: column; gap: 4px;">
+<h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.2;">{{title}}</h1>
+<p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.2; color: #c9c2ff;">{{sub}}</p>
+</header>
+
+<div style="display: flex; flex-direction: column; gap: 14px;">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="7">
+<section aria-label="{{g.label}}" style="display: grid; grid-template-columns: 64px repeat(6, minmax(0, 1fr)); column-gap: 14px; align-items: start;">
+<div style="display: flex; flex-direction: column; gap: 2px; padding-top: 2px;">
+<h2 style="margin: 0; font-size: 17px; font-weight: 800; line-height: 1.2;">{{g.name}}</h2>
+<span style="font-size: 13px; font-weight: 700; line-height: 1.2; color: #c9c2ff;">{{g.size}}</span>
+<span style="font-size: 13px; font-weight: 700; line-height: 1.2; color: #c9c2ff;">{{g.colors}}</span>
+</div>
+<sc-for list="{{g.pics}}" as="p" hint-placeholder-count="6">
+<figure style="margin: 0; display: flex; flex-direction: column; min-width: 0;">
+<div role="img" aria-label="{{p.label}}" style="width: 100px; height: 100px; box-sizing: border-box; padding: 6px; border-radius: 10px; background: #1d1550; box-shadow: inset 0 2px 5px rgba(0,0,0,0.45), 0 0 0 2px #3a2d8f;">
+<div style="display: grid; grid-template-columns: {{p.cols}}; gap: 3px;">
+<sc-for list="{{p.cells}}" as="c" hint-placeholder-count="16">
+<span aria-hidden="true" style="aspect-ratio: 1 / 1; border-radius: 4px; {{c.style}}"></span>
+</sc-for>
+</div>
+</div>
+<figcaption style="margin-top: 6px; display: flex; flex-direction: column; gap: 2px;">
+<span style="font-size: 15px; font-weight: 800; line-height: 1.2;">{{p.name}}</span>
+<span style="font-size: 13px; font-weight: 700; line-height: 1.2; color: #c9c2ff; font-variant-numeric: tabular-nums;">{{p.levels}}</span>
+</figcaption>
+</figure>
+</sc-for>
+</section>
+</sc-for>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":834,"height":1194}}'>
+class Component extends DCLogic {
+  // The 42 pictures, copied character for character from src/games/builder/pictures.ts (DRAWN and SET_RULES).
+  // Rows top to bottom joined by '/', R red, Y yellow, G green, B blue, O orange, W white, '.' an empty square.
+  sets() {
+    return [
+      { set: 'A', size: 3, colors: 2, levels: [1, 6], pics: [
+        ['mushroom', 'RWR/RRR/.W.'],
+        ['flower', '.R./RYR/.R.'],
+        ['apple', '.G./RRR/RRR'],
+        ['tulip', 'Y.Y/YYY/.G.'],
+        ['carrot', 'G.G/OOO/.O.'],
+        ['sailboat', '.W./WW./OOO']
+      ] },
+      { set: 'B', size: 3, colors: 3, levels: [2, 7], pics: [
+        ['cake', 'R.R/WWW/YYY'],
+        ['daisy', '.W./WYW/GG.'],
+        ['ice cream', 'RRR/WWW/.O.'],
+        ['strawberry', 'GGG/RWR/.R.'],
+        ['duck', '.YO/YYY/BBB'],
+        ['present', '.Y./BRB/BRB']
+      ] },
+      { set: 'C', size: 4, colors: 2, levels: [3], pics: [
+        ['tree', '.GG./GGGG/.OO./.OO.'],
+        ['fish', '..../B.BW/BBBB/B.BB'],
+        ['umbrella', '.RR./RRRR/..Y./.YY.'],
+        ['hat', '.BB./.BB./.RR./BBBB'],
+        ['pear', '..G./.YY./YYYY/YYYY'],
+        ['watermelon', '..../RRRR/GRRG/.GG.']
+      ] },
+      { set: 'D', size: 4, colors: 3, levels: [4, 8], pics: [
+        ['house', '.RR./RRRR/YYBY/YYBY'],
+        ['car', '.BB./RRRR/RRRR/W..W'],
+        ['bus', 'YYYY/BYBY/YYYY/W..W'],
+        ['pumpkin', '.GG./OOOO/OYYO/OOOO'],
+        ['castle', 'Y..Y/YBBY/YYYY/YRRY'],
+        ['cupcake', '.RR./WWWW/YYYY/.YY.']
+      ] },
+      { set: 'E', size: 4, colors: 4, levels: [5, 9], pics: [
+        ['boat', '.R../.WW./OOOO/BBBB'],
+        ['flower pot', '.RR./RYYR/.GG./.OO.'],
+        ['train', 'BB.R/BBYY/YYYY/W..W'],
+        ['bird', '.BWO/BBB./BBB./Y.Y.'],
+        ['robot', '..Y./BBBB/BWWB/BRRB'],
+        ['snowman', '.BB./.WWO/WRRW/WWWW']
+      ] },
+      { set: 'F', size: 5, colors: 3, levels: [10], pics: [
+        ['butterfly', 'OO.OO/OYBYO/..B../OYBYO/OO.OO'],
+        ['sunflower', '.YYY./YYOYY/.YYY./GGG../..G..'],
+        ['frog', '.W.W./GGGGG/GRRRG/GGGGG/G...G'],
+        ['owl', 'O...O/OWOWO/OOYOO/OOOOO/.Y.Y.'],
+        ['rainbow', '.RRR./RYYYR/RY.YR/RY.YR/WW.WW'],
+        ['pizza', 'OOOOO/YRYYY/.YYR./.YRY./..Y..']
+      ] },
+      { set: 'G', size: 5, colors: 4, levels: [11, 12], pics: [
+        ['rocket', '..R../.WWW./.WBW./RWWWR/.OOO.'],
+        ['truck', 'YYY../YYYRB/YYYRR/YYYRR/.W..W'],
+        ['burger', '.OOO./GGGGG/RRRRR/YYYY./.OOO.'],
+        ['cat', 'O...O/OOOOO/OGOGO/WOROW/.OOO.'],
+        ['balloon', '.RYR./RYRYR/.RYR./.W.W./.OOO.'],
+        ['lighthouse', '..Y../.RRR./.WWW./.RRR./BBBBB']
+      ] }
+    ];
+  }
+  // The board's studded brick (Builder.dc.html), with its edge shadows scaled to the smaller square.
+  brick(color) {
+    var p = {
+      red: ['#f03a3a', '#ff7a6e', '#b51f27'], yellow: ['#ffc21a', '#ffe266', '#d48a00'], green: ['#1fb53c', '#5fe06e', '#0f7a26'],
+      blue: ['#2f8cff', '#7cc0ff', '#1557c4'], orange: ['#ff7a1a', '#ffab5e', '#c4500a'], white: ['#f1eef7', '#ffffff', '#b9b3c9']
+    }[color];
+    var studs = 'radial-gradient(circle at 46% 42%, ' + p[1] + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + p[0] + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), ';
+    var base = 'linear-gradient(160deg, ' + p[1] + ' -30%, ' + p[0] + ' 45%, ' + p[2] + ' 140%)';
+    return 'background: ' + studs + base + '; box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.22);';
+  }
+  levelsText(levels) {
+    return levels.length === 1 ? 'Level ' + levels[0] : 'Levels ' + levels[0] + ' and ' + levels[1];
+  }
+  renderVals() {
+    var self = this;
+    var map = { R: 'red', Y: 'yellow', G: 'green', B: 'blue', O: 'orange', W: 'white' };
+    // The board's empty cell, its 2 px inner ring scaled to 1 px.
+    var empty = 'background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);';
+    var count = 0;
+    var groups = this.sets().map(function (s) {
+      var levels = self.levelsText(s.levels);
+      return {
+        name: 'Set ' + s.set,
+        label: 'Set ' + s.set + ', ' + s.size + ' by ' + s.size + ', ' + s.colors + ' colors, ' + levels,
+        size: s.size + ' by ' + s.size,
+        colors: s.colors + ' colors',
+        pics: s.pics.map(function (pic) {
+          count++;
+          var rows = pic[1].split('/');
+          return {
+            name: pic[0],
+            levels: levels,
+            label: 'Picture of ' + (/^[aeiou]/.test(pic[0]) ? 'an ' : 'a ') + pic[0] + '. ' + rows.map(function (r, i) { return 'Row ' + (i + 1) + ': ' + r.split('').map(function (ch) { return map[ch] || 'empty'; }).join(', ') + '.'; }).join(' '),
+            cols: 'repeat(' + rows.length + ', minmax(0, 1fr))',
+            cells: rows.join('').split('').map(function (ch) { return { style: map[ch] ? self.brick(map[ch]) : empty }; })
+          };
+        })
+      };
+    });
+    return {
+      title: 'Picture Builder: all ' + count + ' pictures',
+      sub: 'Drawn as the board draws them, from pictures.ts. Under each name: its copy level, then its memory level if it has one.',
+      groups: groups
+    };
+  }
+}
+</script>
+</body>
+</html>

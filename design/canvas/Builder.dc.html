@@ -153,36 +153,36 @@ class Component extends DCLogic {
   limits() { return { count: 4, secs: 50 }; }
   look() { return { first: 4000, peek: 2000 }; }
   // Sample pictures for the board, in the brick style of pictures.ts: r red, y yellow, g green, b blue, o orange, w white, '.' empty.
-  // The board's own house, tree and boat are kept as drawn. The others are stand-ins until pictures.ts lands (brief 4.6);
-  // the BuilderPictures contact sheet is drawn from that file, and these boards follow it then.
+  // The board's own house, tree and boat are kept as drawn. Sets A, D and G are copied from src/games/builder/pictures.ts,
+  // as the BuilderPictures contact sheet is; change them there first.
   sets() {
     return {
       // Set A, 3x3, 2 colours, 5 to 7 bricks (Levels 1 and 6).
       A: [
-        { name: 'tree', rows: ['.g.', 'ggg', '.o.'] },
-        { name: 'mushroom', rows: ['rrr', '.w.', '.w.'] },
+        { name: 'mushroom', rows: ['rwr', 'rrr', '.w.'] },
         { name: 'flower', rows: ['.r.', 'ryr', '.r.'] },
         { name: 'apple', rows: ['.g.', 'rrr', 'rrr'] },
-        { name: 'sailboat', rows: ['.w.', '.ww', 'ooo'] },
-        { name: 'snowman', rows: ['.w.', 'wow', 'www'] }
+        { name: 'tulip', rows: ['y.y', 'yyy', '.g.'] },
+        { name: 'carrot', rows: ['g.g', 'ooo', '.o.'] },
+        { name: 'sailboat', rows: ['.w.', 'ww.', 'ooo'] }
       ],
       // Set D, 4x4, 3 colours, 12 to 15 bricks (Levels 4 and 8): the board's house first.
       D: [
         { name: 'house', rows: ['.rr.', 'rrrr', 'yyby', 'yyby'] },
-        { name: 'car', rows: ['.rr.', 'rwwr', 'rrrr', 'b..b'] },
-        { name: 'duck', rows: ['.yy.', '.yyo', 'yyyy', 'bbbb'] },
-        { name: 'cupcake', rows: ['.rr.', 'wwww', 'oooo', '.oo.'] },
-        { name: 'robot', rows: ['bbbb', 'ybby', 'bbbb', 'r..r'] },
-        { name: 'flag', rows: ['brrr', 'bwww', 'brrr', 'b...'] }
+        { name: 'car', rows: ['.bb.', 'rrrr', 'rrrr', 'w..w'] },
+        { name: 'bus', rows: ['yyyy', 'byby', 'yyyy', 'w..w'] },
+        { name: 'pumpkin', rows: ['.gg.', 'oooo', 'oyyo', 'oooo'] },
+        { name: 'castle', rows: ['y..y', 'ybby', 'yyyy', 'yrry'] },
+        { name: 'cupcake', rows: ['.rr.', 'wwww', 'yyyy', '.yy.'] }
       ],
-      // Set G, 5x5, 4 colours, 15 to 20 bricks (Levels 11 and 12). The train is the sticker mosaic p1.
+      // Set G, 5x5, 4 colours, 15 to 20 bricks (Levels 11 and 12).
       G: [
-        { name: 'train', rows: ['o....', 'o.bbb', 'rrbbb', 'rrrrr', '.g.g.'] },
-        { name: 'flower', rows: ['.rrr.', 'rryrr', '.rrr.', '..g..', '.ooo.'] },
-        { name: 'rocket', rows: ['..r..', '.rrr.', '.wbw.', 'wwwww', 'o.o.o'] },
-        { name: 'lighthouse', rows: ['..y..', '.rrr.', '.www.', '.rrr.', 'bbbbb'] },
-        { name: 'truck', rows: ['bbb..', 'bwbrr', 'bbbrr', 'rrrrr', '.o..o'] },
-        { name: 'cake', rows: ['.r.r.', '.y.y.', 'wwwww', 'ooooo', 'ooooo'] }
+        { name: 'rocket', rows: ['..r..', '.www.', '.wbw.', 'rwwwr', '.ooo.'] },
+        { name: 'truck', rows: ['yyy..', 'yyyrb', 'yyyrr', 'yyyrr', '.w..w'] },
+        { name: 'burger', rows: ['.ooo.', 'ggggg', 'rrrrr', 'yyyy.', '.ooo.'] },
+        { name: 'cat', rows: ['o...o', 'ooooo', 'ogogo', 'worow', '.ooo.'] },
+        { name: 'balloon', rows: ['.ryr.', 'ryryr', '.ryr.', '.w.w.', '.ooo.'] },
+        { name: 'lighthouse', rows: ['..y..', '.rrr.', '.www.', '.rrr.', 'bbbbb'] }
       ],
       // The board's tree and boat open Levels 3 and 5 (brief 4.6).
       C1: { name: 'tree', rows: ['.gg.', 'gggg', '.oo.', '.oo.'] },

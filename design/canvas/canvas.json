@@ -793,6 +793,14 @@
    "w": 834,
    "x": 4204,
    "y": 14400
+  },
+  "BuilderPictures.dc.html": {
+   "h": 1194,
+   "is_interactive": true,
+   "title": "Picture Builder: all 42 pictures, contact sheet",
+   "w": 834,
+   "x": 5118,
+   "y": 12800
   }
  },
  "createdOnFiles": {
@@ -870,7 +878,7 @@
   },
   "row9": {
    "kind": "title1",
-   "maxW": 5038,
+   "maxW": 5952,
    "text": "9. Picture Builder (batch 2, new)",
    "w": 240,
    "x": 0,
@@ -981,6 +989,7 @@
   "LevelsBuilder.dc.html",
   "BuilderTablet.dc.html",
   "BuilderDoneTablet.dc.html",
+  "BuilderPictures.dc.html",
   "Math.dc.html",
   "MathTake.dc.html",
   "MathSlip.dc.html",
