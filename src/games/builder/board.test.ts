@@ -355,11 +355,14 @@ describe('the same wrong colour on the same square counts once for stars (4.6, 3
     expect(counts(play)).toEqual({ stars: 1, stuck: 2 });
   });
 
-  it('keeps the count on one puzzle: the next puzzle starts with no wrong bricks seen', () => {
-    const first = strokes(start(), ['blue', [0]]).play;
-    const fresh = strokes(start(), ['blue', [0]]).play;
-    expect(counts(first)).toEqual(counts(fresh));
-    expect(newBoard(TARGET).seen).toEqual([]);
+  it('keeps the count on one puzzle: on the next puzzle the same wrong brick is a new slip', () => {
+    const { play } = strokes(start(), ['blue', [0]], ['red', [0, 4]], ['blue', [1]]);
+    expect(play.run.phase).toBe('solved');
+    expect(play.run.run.solved[0].count).toBe(1);
+    const next: Play = { board: newBoard(TARGET), run: levelRunReducer(play.run, { type: 'next' }) };
+    expect(counts(next)).toEqual({ stars: 0, stuck: 0 });
+    const again = stroke(next, 'blue', [0]).play;
+    expect(counts(again)).toEqual({ stars: 1, stuck: 1 });
   });
 
   it('gives each square and colour its own slip key', () => {
