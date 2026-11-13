@@ -251,7 +251,14 @@ export function Play({ level }: { level: number }) {
       controls={tray}
     >
       <div className="sort-holes">
-        <div ref={holesRef} className="sort-holes__grid" role="group" aria-label={HOLES_LABEL} onKeyDown={onHolesKey}>
+        <div
+          ref={holesRef}
+          className="sort-holes__grid"
+          style={{ '--sort-hole-cols': Math.min(puzzle.holes.length, 3) } as CSSProperties}
+          role="group"
+          aria-label={HOLES_LABEL}
+          onKeyDown={onHolesKey}
+        >
           {puzzle.holes.map((h) =>
             ui.placed.includes(h.id) ? (
               // Still a drop target, with no tap: a release on a filled hole, or nearer to it than to any

@@ -226,6 +226,53 @@ test('on Level 1 the holes sit just above the tray, so every drag from the tray 
   await expectHolesOnTheTray(page);
 });
 
+test('on Level 1 the two holes sit centred over the tray, so no drag from the tray is long', async ({ page }) => {
+  await openLevel1(page);
+  const zoom = zoomOf(page);
+  const holes = await sorterHoles(page).getByRole('button').all();
+  expect(holes).toHaveLength(2);
+  const boxes = await Promise.all(holes.map(boxOf));
+  const well = await boxOf(page.locator('.sort-well'));
+  // The holes' midpoint, from the left edge of the first to the right edge of the last, is over the tray's centre.
+  const left = Math.min(...boxes.map((b) => b.x));
+  const right = Math.max(...boxes.map((b) => b.x + b.width));
+  expect(Math.abs((left + right) / 2 - centre(well).x), 'holes midpoint to the tray centre').toBeLessThanOrEqual(4);
+  // Every piece to every hole, centre to centre, in the frame's px.
+  for (const name of await sorterPieces(page)) {
+    const from = centre(await boxOf(sorterPiece(page, name)));
+    for (const [i, box] of boxes.entries()) {
+      const to = centre(box);
+      const reach = Math.hypot(to.x - from.x, to.y - from.y) / zoom;
+      expect(reach, `${name} to the ${await holes[i].getAttribute('aria-label')}`).toBeLessThanOrEqual(260);
+    }
+  }
+});
+
+test('boards with three or more holes keep three equal columns across the panel', async ({ page }) => {
+  // Level 3's first board: square, hexagon and star in the top row, circle and triangle under the first two.
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { sorter: { stars: starsUpTo(2) } } }]);
+  await page.goto('/#/game/sorter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/3$/);
+  await expect(sorterHoles(page).getByRole('button')).toHaveCount(5);
+  const grid = page.locator('.sort-holes__grid');
+  // In the frame's px: three equal tracks and two 14 px gaps fill the grid's width.
+  const { tracks, width } = await grid.evaluate((el) => ({
+    tracks: getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat),
+    width: el.clientWidth,
+  }));
+  expect(tracks).toHaveLength(3);
+  for (const t of tracks) expect(Math.abs(t - tracks[0]), 'equal columns').toBeLessThanOrEqual(1);
+  expect(Math.abs(tracks[0] * 3 + 28 - width), 'the columns fill the panel').toBeLessThanOrEqual(1);
+  // Each hole is centred in its column, and the second row starts in the first column, as before.
+  const zoom = zoomOf(page);
+  const g = await boxOf(grid);
+  const col = (n: number) => g.x + (n * (tracks[0] + 14) + tracks[0] / 2) * zoom;
+  const expected: [string, number][] = [['square', 0], ['hexagon', 1], ['star', 2], ['circle', 0], ['triangle', 1]];
+  for (const [shape, n] of expected) {
+    expect(Math.abs(centre(await boxOf(sorterHole(page, shape))).x - col(n)), `${shape} hole in column ${n + 1}`).toBeLessThanOrEqual(1);
+  }
+});
+
 test('on the biggest board (Level 9) the holes and the fact bar still sit just above the tray, below the help row', async ({ page }) => {
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '9-10', games: { sorter: { stars: starsUpTo(8) } } }]);
   await page.goto('/#/game/sorter');

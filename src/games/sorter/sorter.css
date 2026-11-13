@@ -43,10 +43,13 @@
     inset 0 0 0 4px var(--bw-purple-top),
     0 8px 0 var(--bw-purple-edge);
 }
+/* Three columns across the panel. A board with one or two holes (Level 1) keeps the same column width and
+   centres its holes over the tray, so no drag is from the far side (brief 7.4): Play.tsx sets the count. */
 .sort-holes__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--sort-hole-cols, 3), calc((100% - 28px) / 3));
   gap: 14px;
+  justify-content: center;
   justify-items: center;
 }
 /* The finished state keeps the panel's size with nothing in it: two rows of holes. */
