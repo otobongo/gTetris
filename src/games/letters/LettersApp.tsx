@@ -36,10 +36,12 @@ import {
   offerLine,
   offerName,
   playLabel,
+  PRACTICE_LINE,
+  PRACTICE_SPEECH,
   swapLine,
 } from './copy';
 import { LEVELS, isSpelling, makePuzzles, type Prompt } from './levels';
-import { LEVEL_RULE } from './logic';
+import { LEVEL_RULE, isPracticeLevel } from './logic';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
@@ -93,7 +95,8 @@ function PlayerStrip({ player }: { player: Player | null }) {
 }
 
 /** What to show and say for each puzzle. Speech is read aloud only when the child taps a speaker or a picture. */
-function promptText(p: Prompt): { text: string; speech: string } {
+function promptText(p: Prompt, practice: boolean): { text: string; speech: string } {
+  if (practice && p.kind !== 'match' && p.kind !== 'sound') return { text: PRACTICE_LINE, speech: PRACTICE_SPEECH };
   switch (p.kind) {
     case 'train': {
       const a = p.cells[0];
@@ -163,7 +166,9 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   /** The puzzle on screen. It stays put after a solve, while the run's queue already points at the next one. */
   const [puzzle, setPuzzle] = useState(() => puzzleOnScreen(run));
   const prompt = puzzles[puzzle];
-  const { text, speech } = promptText(prompt);
+  // Ages 3 to 4 first learn to drag on Level 1, by the band the puzzle on screen started with.
+  const practice = isPracticeLevel(band, level + 1);
+  const { text, speech } = promptText(prompt, practice);
   const playing = moment === 'play';
   const offer = playing && stuck.offer;
   const levelCount = LEVELS.length;
@@ -339,6 +344,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     helpOverride: offer ? offerLine(spelling) : null,
     offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" onClick={swap} /> : null,
     slot: slot ? <div ref={slotRef} className="lb-slot-wrap">{slot}</div> : undefined,
+    practice,
   };
 
   const solvedNow = moment !== 'play';

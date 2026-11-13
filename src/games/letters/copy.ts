@@ -24,6 +24,13 @@ export function solvedLine(p: Prompt): string {
 /** The help line after the first right tap of a row. */
 export const MID_LINE = 'What comes next?';
 
+/** Practice (Level 1, ages 3 to 4): the puzzle's line, kept up the whole puzzle because any order goes in. */
+export const PRACTICE_LINE = 'Drag each letter to its place.';
+export const PRACTICE_SPEECH = 'Drag each letter up to its place.';
+
+/** Practice: the note after a tap, which says the letter and places nothing. */
+export const DRAG_NOTE = 'Hold the letter and drag it up.';
+
 export const nextLabel = (spelling: boolean) => (spelling ? 'Next word' : 'Next puzzle');
 
 /** The stuck offer: the help line and the green button's name (3.2). */

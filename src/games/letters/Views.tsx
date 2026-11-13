@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import { letterName, say } from '../../shared/speech';
 import { sfx } from '../../shared/sound';
-import { LetterBrick, StaticBrick } from './Brick';
-import { MID_LINE, solvedLine } from './copy';
+import { useLayout } from '../../shared/ui';
+import { LetterBrick, StaticBrick, type DropAt } from './Brick';
+import { DRAG_NOTE, MID_LINE, solvedLine } from './copy';
 import { WordPicture } from './Pictures';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 import {
@@ -15,6 +16,7 @@ import {
   newFill,
   newMatch,
   nextCell,
+  placeOwn,
   tapFill,
   tapMatch,
   tileForKey,
@@ -45,12 +47,14 @@ export interface ViewProps<P> {
   offer?: ReactNode;
   /** Takes the tray's place inside its well once the puzzle is solved: Next, or Play Level after the level card. */
   slot?: ReactNode;
+  /** Practice (Level 1, ages 3 to 4, FillView only): a dropped letter goes to its own cell in any order, and a tap only says it. */
+  practice?: boolean;
 }
 
 /** Smallest slot that can be a real button. Below it the answer row is a plain list. */
 const MIN_BUTTON = 44;
 
-/** Re-triggerable wiggle: the nonce goes into the React key so the animation restarts every time. */
+/** Re-triggerable wiggle (or bounce): the nonce goes into the React key so the animation restarts every time. */
 function useWiggle() {
   const [w, setW] = useState<{ ids: string[]; n: number }>({ ids: [], n: 0 });
   const timer = useRef<number>(0);
@@ -113,6 +117,39 @@ function useLater() {
   return (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
   };
+}
+
+const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** The flight's leg and the snap's leg, each as long as the CSS snap (letters.css lb-snap). */
+const FLIGHT_MS = 280;
+
+/**
+ * Practice: the placed brick flies from where the child let go into its cell, then snaps (FLIP). The cell is
+ * drawn in place first and started at the release point; screen offsets are divided by the tablet zoom,
+ * because the frame is scaled with CSS zoom and a translate inside it is scaled again. The flight runs over
+ * the cell's CSS snap, so the snap's leg is part of it. None under reduced motion: the brick is simply there.
+ */
+function fly(el: HTMLElement, at: DropAt, zoom: number) {
+  if (reducedMotion() || typeof el.animate !== 'function') return;
+  const r = el.getBoundingClientRect();
+  if (!r.width) return;
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const dx = (at.x - (r.left + r.width / 2)) / z;
+  const dy = (at.y - (r.top + r.height / 2)) / z;
+  const ease = getComputedStyle(el).getPropertyValue('--bw-ease').trim() || 'cubic-bezier(0.16, 1, 0.3, 1)';
+  el.style.zIndex = '1';
+  const a = el.animate(
+    [
+      { transform: `translate(${dx}px, ${dy}px) scale(${at.w / r.width})`, easing: ease },
+      { transform: 'scale(1.3)', offset: 0.5, easing: ease },
+      { transform: 'none' },
+    ],
+    { duration: FLIGHT_MS * 2 },
+  );
+  const done = () => el.style.removeProperty('z-index');
+  a.onfinish = done;
+  a.oncancel = done;
 }
 
 /* ---------- Pieces ---------- */
@@ -181,20 +218,70 @@ const rotFor = (i: number) => (i % 2 ? 3 : -3);
 
 /* ---------- Train, missing letters, spelling ---------- */
 
-export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<FillPrompt>) {
+export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot, practice = false }: ViewProps<FillPrompt>) {
   const later = useLater();
+  const { zoom } = useLayout();
   const [fill, setFill] = useState(() => newFill(p));
   const [done, setDone] = useState(false);
   const [lastPlaced, setLastPlaced] = useState(-1);
   const { wiggling, nonce, wiggle } = useWiggle();
+  const bounce = useWiggle();
   const hinting = useHint();
   const note = useNote();
   const used = usedIds(fill);
   const next = nextCell(p, fill);
   const spelling = p.kind === 'spell' && !!p.word;
   const word = p.word?.word ?? '';
+  const slotsRef = useRef<HTMLOListElement>(null);
+  /** Practice: the cell a dropped brick just went into and where it was let go, for its flight after the render. */
+  const flight = useRef<{ cell: number; at: DropAt } | null>(null);
+
+  useLayoutEffect(() => {
+    const f = flight.current;
+    flight.current = null;
+    const el = f && slotsRef.current?.children[f.cell]?.querySelector<HTMLElement>('.lb-cell');
+    if (f && el) fly(el, f.at, zoom);
+  });
+
+  /** A right brick goes into cell `at`: said aloud, and the puzzle is solved when the row is full. */
+  const placeIn = (state: typeof fill, at: number) => {
+    setFill(state);
+    setLastPlaced(at);
+    hinting.clear();
+    note.clear();
+    sfx.tap();
+    say(letterName(p.cells[at]));
+    if (fillDone(p, state)) {
+      setDone(true);
+      // Solved on this tap: the dot fills and Next takes the tray's place. The sound and the word follow the tap.
+      onDone();
+      later(() => {
+        sfx.good();
+        if (p.word) say(p.word.word);
+        else say(p.kind === 'train' ? 'Choo choo!' : 'You found them!');
+      }, 650);
+    } else onProgress?.();
+  };
+
+  /** Practice: any brick goes into its own cell, never wrong. A drop brings where it was let go, for the flight. */
+  const placeOwnCell = (id: string, at?: DropAt) => {
+    if (done || !active) return;
+    const r = placeOwn(p, fill, id);
+    if (r.result === 'ignored') return;
+    if (at) flight.current = { cell: r.cell, at };
+    placeIn(r.state, r.cell);
+  };
+
+  /** Practice: a pointer tap says the letter, nudges the brick and asks for a drag. Not a slip, not progress. */
+  const sayOnly = (t: Tile) => {
+    if (done || !active) return;
+    say(letterName(t.ch));
+    bounce.wiggle([t.id]);
+    note.show(DRAG_NOTE, 2400);
+  };
 
   const tap = (id: string) => {
+    if (practice) return placeOwnCell(id);
     if (done || !active) return;
     const r = tapFill(p, fill, id);
     if (r.result === 'ignored') return;
@@ -208,23 +295,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
       } else note.show('Not that one. Try again.');
       return;
     }
-    const at = next;
-    setFill(r.state);
-    setLastPlaced(at);
-    hinting.clear();
-    note.clear();
-    sfx.tap();
-    say(letterName(p.cells[at]));
-    if (fillDone(p, r.state)) {
-      setDone(true);
-      // Solved on this tap: the dot fills and Next takes the tray's place. The sound and the word follow the tap.
-      onDone();
-      later(() => {
-        sfx.good();
-        if (p.word) say(p.word.word);
-        else say(p.kind === 'train' ? 'Choo choo!' : 'You found them!');
-      }, 650);
-    } else onProgress?.();
+    placeIn(r.state, next);
   };
 
   hintRef.current = () => {
@@ -242,7 +313,8 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
   const slots = slotSize(p.cells.length, innerW);
   const tray = traySize(p.tray.length, innerW);
   const placedCount = fill.placed.filter(Boolean).length;
-  const help = done ? solvedLine(p) : (helpOverride ?? note.note ?? (placedCount === 0 ? instruction : MID_LINE));
+  // Practice keeps its line up: any order goes in, so "What comes next?" would mislead.
+  const help = done ? solvedLine(p) : (helpOverride ?? note.note ?? (practice || placedCount === 0 ? instruction : MID_LINE));
   const canPress = slots.w >= MIN_BUTTON;
 
   return (
@@ -257,7 +329,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
             <span>{p.label}</span>
           </div>
         )}
-        <ol className="lb-slots" data-drop="slots" aria-label="Your answer">
+        <ol ref={slotsRef} className="lb-slots" data-drop="slots" aria-label="Your answer">
           {p.cells.map((ch, i) => {
             const id = fill.placed[i];
             const cls = `lb-cell${id ? ' is-placed' : ' is-given'}${i === lastPlaced ? ' is-fresh' : ''}`;
@@ -300,13 +372,14 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
             <Ghost key={t.id} ch={t.ch} />
           ) : (
             <LetterBrick
-              key={`${t.id}:${wiggling(t.id) ? nonce : 0}`}
+              key={`${t.id}:${wiggling(t.id) ? nonce : 0}:${bounce.wiggling(t.id) ? bounce.nonce : 0}`}
               id={t.id}
               ch={t.ch}
               rot={rotFor(i)}
-              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
+              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${bounce.wiggling(t.id) ? 'is-bounce ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
               onTap={() => tap(t.id)}
-              onDrop={() => tap(t.id)}
+              onPointerTap={practice ? () => sayOnly(t) : undefined}
+              onDrop={practice ? (at) => placeOwnCell(t.id, at) : () => tap(t.id)}
             />
           ),
         )}

@@ -1,5 +1,5 @@
 /* Pure answer checking for Letter Builder. The UI keeps these states in React and only renders them. */
-import { HINTS_PER_RUN } from '../../shared/progress';
+import { HINTS_PER_RUN, type AgeBand } from '../../shared/progress';
 import { capRule, capStars } from '../stars';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
 
@@ -56,6 +56,21 @@ export function tapFill(p: FillPrompt, s: FillState, tileId: string): { state: F
   const placed = s.placed.slice();
   placed[at] = tileId;
   return { state: { placed }, result: 'correct' };
+}
+
+/* ---------- Practice: Level 1 for ages 3 to 4 ---------- */
+
+/** Ages 3 to 4 first learn to move and drop the letters, on Level 1 only (`level` is 1-based). From Level 2 the order counts. */
+export const isPracticeLevel = (band: AgeBand, level: number): boolean => band === '3-4' && level === 1;
+
+/** Practice: a brick goes into its own cell, the first empty one with its letter, whatever the order. Never wrong. */
+export function placeOwn(p: FillPrompt, s: FillState, tileId: string): { state: FillState; result: 'correct' | 'ignored'; cell: number } {
+  const tile = p.tray.find((t) => t.id === tileId);
+  const cell = tile && !usedIds(s).has(tileId) ? p.cells.findIndex((ch, i) => ch === tile.ch && !p.given[i] && s.placed[i] === null) : -1;
+  if (cell < 0) return { state: s, result: 'ignored', cell: -1 };
+  const placed = s.placed.slice();
+  placed[cell] = tileId;
+  return { state: { placed }, result: 'correct', cell };
 }
 
 /** Keyboard: find a free tray brick showing this letter (case-insensitive), preferring the correct one. */
