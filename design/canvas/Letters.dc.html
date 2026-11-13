@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } @keyframes bw-hop { 40% { transform: rotate(var(--rot, 0deg)) translateY(-10px); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
@@ -44,7 +44,7 @@
 </div>
 </sc-if>
 
-<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{showPicture}}" hint-placeholder-val="{{ true }}">
 <button onClick="{{sayWord}}" aria-label="Picture of a {{word}}, tap to hear it" style="border: 0; cursor: pointer; margin-top: 10px; width: 230px; height: 190px; border-radius: 36px; display: grid; place-items: center; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
 <sc-if value="{{isSun}}" hint-placeholder-val="{{ true }}">
 <svg width="150" height="150" viewBox="0 0 100 100" aria-hidden="true">
@@ -175,6 +175,9 @@
 </sc-if>
 </button>
 </sc-if>
+<sc-if value="{{showLabel}}" hint-placeholder-val="{{ false }}">
+<div style="margin-top: 10px; width: 230px; height: 190px; border-radius: 36px; display: grid; place-items: center; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63; font-size: 44px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{runLabel}}</div>
+</sc-if>
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; margin-top: 10px; {{slotrow}}">
@@ -188,7 +191,7 @@
 <div style="width: 100%; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
 <div style="display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New word" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<button class="bw-appear" onClick="{{swap}}" aria-label="{{offerName}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -215,7 +218,7 @@
 </sc-for>
 </sc-if>
 <sc-if value="{{showNext}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Next word<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
+<button class="bw-appear" onClick="{{next}}" style="border: 0; cursor: pointer; font-family: inherit; min-width: 220px; height: 58px; padding: 0 20px; box-sizing: border-box; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">{{nextLabel}}<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg></button>
 </sc-if>
 </div>
 </div>
@@ -258,7 +261,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone","practice"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -286,22 +289,54 @@ class Component extends DCLogic {
       }
     };
   }
+  // Alphabet Train, Level 1 (decision 11): its runs alternate A to D and B to E. For ages 3 to 4 it is the
+  // practice level (brief 4.3 outcome, 2026-11-13): a dragged letter goes into its own place in any order, never wrong.
+  trainRuns() { return ['ABCD', 'BCDE', 'ABCD', 'BCDE']; }
+  // The word or run on screen: train runs on the practice board, the stage's spelling words everywhere else.
+  wordOf(s) { return s.train ? this.trainRuns()[s.order[s.puzzle - 1]] : this.stages()[s.stage].words[s.order[s.puzzle - 1]]; }
+  // Practice places letters in any order, so it keeps which cells are filled; the first empty one gets the yellow border.
+  openCell(s, word) {
+    if (!s.train || s.level !== 1) return s.filled;
+    for (var i = 0; i < word.length; i++) if (!s.placed[i]) return i;
+    return -1;
+  }
+  reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   leverKey() {
     var p = this.props || {};
     return [this.stageOf(p), p.puzzle, p.moment].join('|');
   }
   // A fresh word: the run's word order, solved count and hints stay with the caller.
-  freshWord() { return { filled: 0, used: {}, wrong: null, wrongTaps: 0, idle: 0, offer: false, note: '', hintIdx: null }; }
+  freshWord() { return { filled: 0, used: {}, placed: {}, wrong: null, wrongTaps: 0, idle: 0, offer: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null }; }
   fromLever() {
     var p = this.props || {};
-    var stage = this.stageOf(p);
+    // Practice is Level 1 for ages 3 to 4 only, so it always shows the starter child.
+    var practice = p.moment === 'practice';
+    var stage = practice ? 'starter' : this.stageOf(p);
     var S = this.stages()[stage];
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
     var moment = ['play', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var s = Object.assign(this.freshWord(), { lever: this.leverKey(), stage: stage, level: S.level, puzzle: puzzle, moment: moment, order: [0, 1, 2, 3], shuffle: 0, slips: 1, hintsLeft: 3, usedHint: false });
-    var word = S.words[s.order[puzzle - 1]];
+    if (practice) Object.assign(s, { train: true, level: 1, slips: 0 });
+    var word = this.wordOf(s);
+    if (practice) {
+      // Mid-puzzle: the last letter is already in its own place while the first is still empty, and a
+      // letter is held up on its way to its own cell. The held one is the free letter (not the first) whose
+      // cell is farthest across from its tray place, so the drag reads as going to its place, not the yellow one.
+      var tl = this.shuffled(word, 0);
+      var last = word.length - 1;
+      s.placed[last] = true;
+      s.used[tl.indexOf(word.charAt(last))] = true;
+      s.filled = 1;
+      var far = -1;
+      tl.forEach(function (ch, i) {
+        var j = word.indexOf(ch);
+        if (s.used[i] || j === 0 || Math.abs(i - j) <= far) return;
+        far = Math.abs(i - j);
+        s.dragIdx = i;
+      });
+    }
     if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
       s.filled = word.length;
       word.split('').forEach(function (ch, i) { s.used[i] = true; });
@@ -332,7 +367,7 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.stages()[s.stage].secsLimit });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.hopT); clearTimeout(this.noteT); }
   // One tile per letter of the word, shuffled the same way every time, never in spelling order.
   shuffled(word, extra) {
     var a = word.split('');
@@ -403,7 +438,14 @@ class Component extends DCLogic {
     var S = this.stages()[s.stage];
     var tablet = this.props.device === 'tablet';
     var IW = tablet ? 596 : 390;
-    var word = S.words[s.order[s.puzzle - 1]];
+    var IH = tablet ? 853 : 844;
+    var word = this.wordOf(s);
+    // Train runs say "puzzle" and "solved" where spelling says "word" and "built" (copy.ts).
+    var spelling = !s.train;
+    var practice = s.train && s.level === 1;
+    var nextAt = this.openCell(s, word);
+    var runLabel = word.charAt(0) + ' to ' + word.charAt(word.length - 1);
+    var offerLine = spelling ? 'This word is tricky. Want a different one?' : 'This one is tricky. Want a different puzzle?';
     var trayLetters = this.shuffled(word, s.shuffle);
     var z = this.sizes(word.length, IW);
     var m = s.moment;
@@ -411,11 +453,13 @@ class Component extends DCLogic {
     var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
     var playing = m === 'play';
     var lastLevel = S.level === 24;
-    var helpText = solvedNow ? 'You built ' + word + '.'
-      : s.offer ? 'This word is tricky. Want a different one?'
-      : s.wrong !== null ? 'Not that one. Listen again: ' + word.toLowerCase() + '!'
+    var helpText = solvedNow ? (spelling ? 'You built ' + word + '.' : runLabel + ', all in order.')
+      : s.offer ? offerLine
+      : s.wrong !== null ? (spelling ? 'Not that one. Listen again: ' + word.toLowerCase() + '!' : 'Not that one. Try again.')
       : s.note ? s.note
-      : s.filled === 0 ? 'Tap the letters to build the word.' : 'What comes next?';
+      // Practice keeps its line up: any order goes in, so "What comes next?" would mislead.
+      : practice ? 'Drag each letter to its place.'
+      : s.filled === 0 ? (spelling ? 'Tap the letters to build the word.' : 'Tap ' + runLabel + ' in order.') : 'What comes next?';
 
     // Dots (brief 7.1, 8). Spelling levels count words built.
     var built = s.puzzle - 1 + (solvedNow ? 1 : 0);
@@ -428,44 +472,53 @@ class Component extends DCLogic {
     // Level card: slips over the 4 words (brief 5). A hint caps the level at 2 stars.
     var base = s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
     var starsWon = finished ? 3 : s.usedHint ? Math.min(2, base) : base;
-    var fact = s.slips === 0 ? '4 words, no slips.' : s.slips === 1 ? '4 words, 1 slip.' : '4 words, ' + s.slips + ' slips.';
+    var noun = spelling ? 'words' : 'puzzles';
+    var fact = s.slips === 0 ? '4 ' + noun + ', no slips.' : s.slips === 1 ? '4 ' + noun + ', 1 slip.' : '4 ' + noun + ', ' + s.slips + ' slips.';
     var trayMinH = z.rows * z.th + (z.rows - 1) * z.rowGap;
     var canHint = playing && s.hintsLeft > 0;
 
     return {
-      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: IW, ih: tablet ? 853 : 844,
+      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: IW, ih: IH,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Letter Builder' : 'Level ' + s.level,
       showDots: !finished, dots: dots,
-      dotsLabel: built === 4 ? '4 of 4 built.' : 'Word ' + s.puzzle + ' of 4. ' + built + ' built.',
+      dotsLabel: built === 4 ? '4 of 4 ' + (spelling ? 'built.' : 'solved.') : (spelling ? 'Word ' : 'Puzzle ') + s.puzzle + ' of 4. ' + built + (spelling ? ' built.' : ' solved.'),
       showPlayArea: !finished,
       kidLine: S.kid, kidInitial: S.initial, kidcolor: S.color,
       word: word.toLowerCase(),
+      // Train runs show their label in the picture frame, as the app does; spelling shows the word's picture.
+      showPicture: !finished && spelling, showLabel: !finished && !spelling, runLabel: runLabel,
       isSun: word === 'SUN', isBus: word === 'BUS', isBox: word === 'BOX', isCat: word === 'CAT',
       isFish: word === 'FISH', isFrog: word === 'FROG', isHouse: word === 'HOUSE', isDuck: word === 'DUCK',
       isRocket: word === 'ROCKET', isRainbow: word === 'RAINBOW', isUmbrella: word === 'UMBRELLA', isPenguin: word === 'PENGUIN',
       // Speech only after a tap. While the offer shows, the speaker reads the offer line (brief 10).
-      speakLabel: s.offer ? 'Read the help line aloud' : 'Say the word',
-      speak: function () { self.say(self.st().offer ? 'This word is tricky. Want a different one?' : word.toLowerCase()); },
+      speakLabel: s.offer ? 'Read the help line aloud' : spelling ? 'Say the word' : 'Hear it again',
+      speak: function () {
+        var cs = self.st();
+        self.say(cs.offer ? offerLine : spelling ? word.toLowerCase() : practice ? 'Drag each letter up to its place.' : 'Tap the letters in order, from ' + word.charAt(0) + ' to ' + word.charAt(word.length - 1) + '.');
+      },
       sayWord: function () { self.say(word.toLowerCase()); },
       slotrow: 'gap: ' + z.sGap + 'px;',
       slots: word.split('').map(function (ch, i) {
-        var done = i < s.filled;
+        var done = practice ? !!s.placed[i] : i < s.filled;
+        // Level 1 is a guided train: an empty cell shows its letter faintly.
+        var ghost = practice && !done;
         var box = 'width: ' + z.sw + 'px; height: ' + z.sh + 'px; border-radius: ' + z.sRad + 'px; font-size: ' + z.sFont + 'px; ';
         return {
-          ch: done ? ch : '',
+          ch: done || ghost ? ch : '',
           style: box + (done
             ? self.face(self.colorOf(ch)) + ' color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3);'
-            : 'border: ' + z.sBorder + 'px dashed ' + (i === s.filled ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);')
+            : 'border: ' + z.sBorder + 'px dashed ' + (i === nextAt ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);' + (ghost ? ' color: rgba(201,194,255,0.5);' : ''))
         };
       }),
       help: helpText,
       showOffer: playing && s.offer,
+      offerName: spelling ? 'New word' : 'New puzzle',
       swap: function () {
         var cs = self.st();
         // The current word moves to the end of the unsolved ones; the dots stay where they are (brief 3.3).
         var order = cs.order.slice(0, cs.puzzle - 1).concat(cs.order.slice(cs.puzzle), [cs.order[cs.puzzle - 1]]);
-        self.put(Object.assign(self.freshWord(), { order: order, shuffle: cs.shuffle + 1, note: 'Here is a different word.' }));
+        self.put(Object.assign(self.freshWord(), { order: order, shuffle: cs.shuffle + 1, note: spelling ? 'Here is a different word.' : 'Here is a different puzzle.' }));
       },
       hintsLeft: s.hintsLeft,
       hintOff: canHint ? 'false' : 'true',
@@ -473,7 +526,7 @@ class Component extends DCLogic {
       hint: function () {
         var cs = self.st();
         if (cs.moment !== 'play' || cs.hintsLeft <= 0) return;
-        var target = word.charAt(cs.filled);
+        var target = word.charAt(self.openCell(cs, word));
         var idx = trayLetters.findIndex(function (ch, i) { return !cs.used[i] && ch === target; });
         if (idx < 0) return;
         self.put({ hintIdx: idx, hintsLeft: cs.hintsLeft - 1, usedHint: true });
@@ -486,14 +539,56 @@ class Component extends DCLogic {
         var stud = 'top: -' + (z.studH - 2) + 'px; width: ' + z.studW + 'px; height: ' + z.studH + 'px; background: ' + p[1] + ';';
         var box = 'width: ' + z.tw + 'px; height: ' + z.th + 'px; border-radius: ' + z.tRad + 'px; font-size: ' + z.tFont + 'px; ';
         var lit = s.hintIdx === i && !used ? ' outline: 4px solid #ffc21a; outline-offset: 3px;' : '';
+        var tilt = i % 2 ? 3 : -3;
+        // Practice: the held letter is drawn as the app's dragged brick (letters.css .is-dragging): no tilt,
+        // 1.12 times its size, a deep drop shadow, halfway from its tray place to its own cell.
+        var held = '';
+        if (practice && s.dragIdx === i && !used) {
+          var own = word.indexOf(ch);
+          var fromX = (z.rowW - z.tw) / -2 + i * (z.tw + z.gap);
+          var toX = (z.slotRowW - z.sw) / -2 + own * (z.sw + z.sGap);
+          var fromY = IH - 36 - z.th / 2;
+          var toY = 376 + z.sh / 2;
+          held = ' transform: translate(' + Math.round((toX - fromX) / 2) + 'px, ' + Math.round((toY - fromY) / 2) + 'px) scale(1.12); z-index: 3; box-shadow: 0 14px 24px rgba(0,0,0,0.45);';
+        }
+        // Practice: a tapped letter hops once in place, keeping its tilt (letters.css .is-bounce).
+        var hop = practice && s.hopIdx === i && !used ? ' --rot: ' + tilt + 'deg; animation: bw-hop 400ms cubic-bezier(0.16,1,0.3,1);' : '';
         return {
           ch: ch,
           studl: stud + ' left: ' + z.studIn + 'px;',
           studr: stud + ' right: ' + z.studIn + 'px;',
-          style: box + self.face(self.colorOf(ch)) + lit + (used ? ' opacity: 0.2; transform: scale(0.85);' : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + (i % 2 ? 3 : -3) + 'deg);'),
-          tap: function () {
+          style: box + self.face(self.colorOf(ch)) + lit + (used ? ' opacity: 0.2; transform: scale(0.85);' : held ? held : s.wrong === i ? ' transform: translateX(-8px) rotate(-6deg);' : ' transform: rotate(' + tilt + 'deg);' + hop),
+          tap: function (e) {
             var cs = self.st();
             if (used || cs.moment !== 'play') return;
+            if (practice) {
+              // A pointer tap says the letter, hops it and asks for a drag: not a slip, not progress.
+              // Enter and Space (a click with no pointer, detail 0) place it, since keyboard and switch users cannot drag.
+              if (!(e && e.detail === 0)) {
+                var dragNote = 'Hold the letter and drag it up.';
+                self.say(ch);
+                self.put({ note: dragNote, hopIdx: self.reduced() ? null : i, dragIdx: null });
+                clearTimeout(self.hopT);
+                self.hopT = setTimeout(function () { self.put({ hopIdx: null }); }, 450);
+                clearTimeout(self.noteT);
+                self.noteT = setTimeout(function () { if (self.st().note === dragNote) self.put({ note: '' }); }, 2400);
+                return;
+              }
+              // Its own place: the first empty cell with this letter, whatever the order. Never wrong.
+              var cell = word.split('').findIndex(function (c, j) { return c === ch && !cs.placed[j]; });
+              if (cell < 0) return;
+              self.say(ch);
+              var pl = Object.assign({}, cs.placed);
+              pl[cell] = true;
+              var uu = Object.assign({}, cs.used);
+              uu[i] = true;
+              var all = cs.filled + 1 === word.length;
+              var step = { placed: pl, filled: cs.filled + 1, used: uu, idle: 0, offer: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null };
+              if (all) step.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
+              self.put(step);
+              if (all && cs.puzzle === 4) { clearTimeout(self.cardT); self.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
+              return;
+            }
             if (ch === word.charAt(cs.filled)) {
               self.say(ch);
               var u = Object.assign({}, cs.used);
@@ -515,6 +610,7 @@ class Component extends DCLogic {
         };
       }),
       showNext: m === 'solved',
+      nextLabel: spelling ? 'Next word' : 'Next puzzle',
       next: function () { var cs = self.st(); self.put(Object.assign(self.freshWord(), { puzzle: cs.puzzle + 1, moment: 'play' })); },
       cardOpen: m === 'levelDone' || finished,
       cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
