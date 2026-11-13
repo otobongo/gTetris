@@ -319,3 +319,77 @@ test('a move to ages 3 to 4 mid-puzzle keeps the order rule until the next puzzl
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 2 solved.');
   expect(instruction).toMatch(/drag/i);
 });
+
+test('ages 3 to 4 on Level 1: a letter dragged straight after a tap still goes in when its hop ends mid-drag', async ({ page }) => {
+  await page.clock.install();
+  await open(page, '3-4');
+  await pauseClock(page);
+  const answer = await lettersAnswer(page);
+  const last = answer[answer.length - 1];
+  const instruction = ((await help(page).textContent()) ?? '').trim();
+  const tile = trayTile(page, last);
+  const box = (await tile.boundingBox())!;
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const goal = (await place(page, 0).boundingBox())!;
+  const to = { x: goal.x + goal.width / 2, y: goal.y + goal.height / 2 };
+
+  // A tap: the letter hops and the help line asks for a drag.
+  await page.mouse.click(from.x, from.y);
+  await expect(help(page)).not.toHaveText(instruction);
+  await expect(help(page)).toHaveText(/drag/i);
+
+  // At once the child presses the same letter and drags it up, still holding it when the hop is over.
+  await page.mouse.down();
+  await page.mouse.move(from.x + 6, from.y - 6, { steps: 2 });
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 4 });
+  await page.clock.runFor(1_000);
+  await page.mouse.move(to.x, to.y, { steps: 4 });
+  await page.mouse.up();
+
+  await expect.poll(() => row(page)).toEqual([...empty(answer).slice(1), last]);
+  await expect(trayTile(page, last)).toHaveCount(0);
+});
+
+test('ages 3 to 4 on Level 1 with motion on: a dropped letter starts its flight where it was let go, at the size it was', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await open(page, '3-4');
+  const answer = await lettersAnswer(page);
+  const last = answer[answer.length - 1];
+  const tile = trayTile(page, last);
+  const box = (await tile.boundingBox())!;
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const goal = (await place(page, 0).boundingBox())!;
+  const to = { x: goal.x + goal.width / 2, y: goal.y + goal.height / 2 };
+
+  // Every animation started from here on holds its first frame, so the flight's start can be measured.
+  await page.evaluate(() => {
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
+      const a = animate.apply(this, args);
+      a.pause();
+      return a;
+    };
+  });
+
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 6, from.y - 6, { steps: 2 });
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+  const released = await tile.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width };
+  });
+  await page.mouse.up();
+
+  await expect.poll(() => row(page)).toEqual([...empty(answer).slice(1), last]);
+  const start = await place(page, answer.length - 1)
+    .locator('.lb-cell')
+    .evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, flights: el.getAnimations().filter((a) => !('animationName' in a)).length };
+    });
+  expect(start.flights).toBe(1);
+  expect(Math.abs(start.x - released.x)).toBeLessThan(3);
+  expect(Math.abs(start.y - released.y)).toBeLessThan(3);
+  expect(Math.abs(start.w - released.w)).toBeLessThan(3);
+});

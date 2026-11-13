@@ -54,7 +54,7 @@ export interface ViewProps<P> {
 /** Smallest slot that can be a real button. Below it the answer row is a plain list. */
 const MIN_BUTTON = 44;
 
-/** Re-triggerable wiggle (or bounce): the nonce goes into the React key so the animation restarts every time. */
+/** Re-triggerable wiggle: the nonce goes into the React key so the animation restarts every time. */
 function useWiggle() {
   const [w, setW] = useState<{ ids: string[]; n: number }>({ ids: [], n: 0 });
   const timer = useRef<number>(0);
@@ -65,6 +65,23 @@ function useWiggle() {
   };
   useEffect(() => () => window.clearTimeout(timer.current), []);
   return { wiggling: (id: string) => w.ids.includes(id), nonce: w.n, wiggle };
+}
+
+/**
+ * Practice: a tapped brick hops once. Each tap counts into the brick's React key, so the hop restarts on
+ * every tap; its end only takes the class off and keeps the key, so a drag the child began meanwhile is
+ * not cut off by a new brick under the finger.
+ */
+function useHop() {
+  const [h, setH] = useState<{ id: string | null; taps: Record<string, number> }>({ id: null, taps: {} });
+  const timer = useRef<number>(0);
+  const hop = (id: string) => {
+    setH((p) => ({ id, taps: { ...p.taps, [id]: (p.taps[id] ?? 0) + 1 } }));
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setH((p) => ({ ...p, id: null })), 450);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { hopping: (id: string) => h.id === id, taps: (id: string) => h.taps[id] ?? 0, hop };
 }
 
 function useHint() {
@@ -132,7 +149,8 @@ const FLIGHT_MS = 280;
  */
 function fly(el: HTMLElement, at: DropAt, zoom: number) {
   if (reducedMotion() || typeof el.animate !== 'function') return;
-  const r = el.getBoundingClientRect();
+  // The cell's list item: the cell itself is already drawn at the snap's first frame (scale 1.3).
+  const r = (el.parentElement ?? el).getBoundingClientRect();
   if (!r.width) return;
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   const dx = (at.x - (r.left + r.width / 2)) / z;
@@ -225,7 +243,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
   const [done, setDone] = useState(false);
   const [lastPlaced, setLastPlaced] = useState(-1);
   const { wiggling, nonce, wiggle } = useWiggle();
-  const bounce = useWiggle();
+  const bounce = useHop();
   const hinting = useHint();
   const note = useNote();
   const used = usedIds(fill);
@@ -276,7 +294,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
   const sayOnly = (t: Tile) => {
     if (done || !active) return;
     say(letterName(t.ch));
-    bounce.wiggle([t.id]);
+    bounce.hop(t.id);
     note.show(DRAG_NOTE, 2400);
   };
 
@@ -372,11 +390,11 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
             <Ghost key={t.id} ch={t.ch} />
           ) : (
             <LetterBrick
-              key={`${t.id}:${wiggling(t.id) ? nonce : 0}:${bounce.wiggling(t.id) ? bounce.nonce : 0}`}
+              key={`${t.id}:${wiggling(t.id) ? nonce : 0}:${bounce.taps(t.id)}`}
               id={t.id}
               ch={t.ch}
               rot={rotFor(i)}
-              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${bounce.wiggling(t.id) ? 'is-bounce ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
+              className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${bounce.hopping(t.id) ? 'is-bounce ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
               onTap={() => tap(t.id)}
               onPointerTap={practice ? () => sayOnly(t) : undefined}
               onDrop={practice ? (at) => placeOwnCell(t.id, at) : () => tap(t.id)}
