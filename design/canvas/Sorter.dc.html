@@ -61,7 +61,7 @@
 </button>
 </sc-if>
 <sc-if value="{{h.filled}}" hint-placeholder-val="{{ false }}">
-<div role="img" aria-label="{{h.label}}" style="width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; {{h.wrap}}">
+<div role="img" data-hole="{{h.key}}" aria-label="{{h.label}}" style="width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; {{h.wrap}}">
 <span style="width: 70px; height: 70px; {{h.style}}"></span>
 </div>
 </sc-if>
@@ -463,7 +463,8 @@ class Component extends DCLogic {
             el.style.visibility = '';
             var holeEl = hit && hit.closest ? hit.closest('[data-hole]') : null;
             var h = holeEl ? holeEl.getAttribute('data-hole') : null;
-            // The catch area (brief 7.4): off every hole, the nearest open hole within 24 px of the release, in the frame's px, counts.
+            // The catch area (brief 7.4): off every hole, the nearest hole within 24 px of the release, in the frame's px, counts.
+            // Filled holes count too, so a release on or nearest a filled hole goes back, never into the open hole beside it.
             if (!h) {
               var best = 24 * Z;
               document.querySelectorAll('[data-hole]').forEach(function (hEl) {

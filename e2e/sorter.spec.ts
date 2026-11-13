@@ -298,3 +298,36 @@ test('a piece let go 40 px from every hole goes back, and nothing counts', async
   await expect(help(page)).toHaveText('Every shape is home.');
   await expectSlips(page, 0, 0);
 });
+
+test('a piece let go on a filled hole goes back and is no slip, even beside an open hole', async ({ page }) => {
+  // Level 3's first board: square, hexagon and star in the top row, circle and triangle under them.
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { sorter: { stars: starsUpTo(2) } } }]);
+  await page.goto('/#/game/sorter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/3$/);
+  const zoom = zoomOf(page);
+
+  await pointerDrag(page, sorterPiece(page, 'hexagon'), sorterHole(page, 'hexagon'));
+  const filled = page.getByRole('img', { name: 'Filled hexagon hole', exact: true });
+  await expect(filled).toBeVisible();
+
+  // 3 px (the frame's px) inside the filled hexagon hole's bottom edge, right over the open triangle hole.
+  const box = await boxOf(filled);
+  const release = { x: box.x + box.width / 2, y: box.y + box.height - 3 * zoom };
+  const triangle = await boxOf(sorterHole(page, 'triangle'));
+  const gap = (triangle.y - release.y) / zoom;
+  expect(release.x, 'the triangle hole is under the hexagon').toBeGreaterThan(triangle.x);
+  expect(release.x, 'the triangle hole is under the hexagon').toBeLessThan(triangle.x + triangle.width);
+  expect(gap, 'the release is within the triangle hole’s catch area').toBeLessThanOrEqual(24);
+
+  // The square let go there was dropped on a filled hole: it goes back, and the triangle hole does not count it.
+  await pointerDrag(page, sorterPiece(page, 'square'), release);
+  await expect(sorterPiece(page, 'square')).toBeVisible();
+  await expect(sorterPiece(page, 'square')).toHaveAttribute('aria-pressed', 'false');
+  await expect(help(page)).toHaveText('Drag each shape into its hole.');
+  await expect(help(page)).not.toHaveClass(/is-wrong/);
+  await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(0);
+
+  await sortShapes(page, 'drag');
+  await expect(help(page)).toHaveText('Every shape is home.');
+  await expectSlips(page, 2, 0);
+});

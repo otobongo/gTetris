@@ -254,7 +254,9 @@ export function Play({ level }: { level: number }) {
         <div ref={holesRef} className="sort-holes__grid" role="group" aria-label={HOLES_LABEL} onKeyDown={onHolesKey}>
           {puzzle.holes.map((h) =>
             ui.placed.includes(h.id) ? (
-              <div key={h.id} className="sort-hole is-filled" role="img" aria-label={filledHoleLabel(h, cm)}>
+              // Still a drop target, with no tap: a release on a filled hole, or nearer to it than to any
+              // open one, lands there and goes back with no slip (brief 4.2), never in the open hole next to it.
+              <div key={h.id} ref={drag.target(h.id).ref} className="sort-hole is-filled" role="img" aria-label={filledHoleLabel(h, cm)}>
                 <Shape piece={h} />
               </div>
             ) : (
