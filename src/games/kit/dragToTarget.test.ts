@@ -1,8 +1,9 @@
 /**
  * Drag an item onto a target, the pure part (six-games brief 3.1, 7.2, 10.1): the 8 px threshold, the
- * offset with the tablet zoom taken out, the hit test, a drop, a miss that returns, a lost pointer
- * that counts for nothing, and the click after a drag, ignored once through a flag that the next
- * pointerdown clears. Also the tap path and the pointer parts Picture Builder reuses.
+ * offset with the tablet zoom taken out, the hit test, the catch area around a target (a release
+ * within `reach` of its edge, which only Shape Sorter uses), a drop, a miss that returns, a lost
+ * pointer that counts for nothing, and the click after a drag, ignored once through a flag that the
+ * next pointerdown clears. Also the tap path and the pointer parts Picture Builder reuses.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -15,6 +16,7 @@ import {
   inRect,
   localPoint,
   pastThreshold,
+  rectDistance,
   releasePointer,
   tapStep,
   targetAt,
@@ -145,6 +147,132 @@ describe('the hit test', () => {
 
   it('reads targets from a Map as well as an array', () => {
     expect(targetAt({ x: 80, y: 10 }, new Map(holes))).toBe('square');
+  });
+});
+
+describe('the distance from a point to a rect (the catch area, brief 7.2, 7.4)', () => {
+  const box: Rect = { left: 10, top: 20, right: 60, bottom: 70 };
+
+  it('is 0 inside the rect', () => {
+    expect(rectDistance({ x: 35, y: 45 }, box)).toBe(0);
+    expect(rectDistance({ x: 11, y: 69 }, box)).toBe(0);
+  });
+
+  it('is 0 on any edge or corner, as inRect counts them inside', () => {
+    expect(rectDistance({ x: 10, y: 45 }, box)).toBe(0);
+    expect(rectDistance({ x: 60, y: 45 }, box)).toBe(0);
+    expect(rectDistance({ x: 35, y: 20 }, box)).toBe(0);
+    expect(rectDistance({ x: 35, y: 70 }, box)).toBe(0);
+    expect(rectDistance({ x: 10, y: 20 }, box)).toBe(0);
+    expect(rectDistance({ x: 60, y: 70 }, box)).toBe(0);
+  });
+
+  it('straight out from a side, is the gap to that side', () => {
+    expect(rectDistance({ x: 0, y: 45 }, box)).toBe(10);
+    expect(rectDistance({ x: 72, y: 45 }, box)).toBe(12);
+    expect(rectDistance({ x: 35, y: 5 }, box)).toBe(15);
+    expect(rectDistance({ x: 35, y: 94 }, box)).toBe(24);
+    // level with an edge but past the end of it: still straight out from the side
+    expect(rectDistance({ x: 10, y: 0 }, box)).toBe(20);
+    expect(rectDistance({ x: 76, y: 70 }, box)).toBe(16);
+  });
+
+  it('out from a corner, is the straight line to that corner, not x plus y', () => {
+    expect(rectDistance({ x: 7, y: 16 }, box)).toBeCloseTo(5, 9);
+    expect(rectDistance({ x: 63, y: 74 }, box)).toBeCloseTo(5, 9);
+    expect(rectDistance({ x: 66, y: 12 }, box)).toBeCloseTo(10, 9);
+    expect(rectDistance({ x: 5, y: 82 }, box)).toBeCloseTo(13, 9);
+    expect(rectDistance({ x: 0, y: 0 }, box)).toBeCloseTo(Math.sqrt(500), 9);
+  });
+
+  it('works for a rect with no size: the distance to that point', () => {
+    expect(rectDistance({ x: 3, y: 4 }, { left: 0, top: 0, right: 0, bottom: 0 })).toBeCloseTo(5, 9);
+    expect(rectDistance({ x: 0, y: 0 }, { left: 0, top: 0, right: 0, bottom: 0 })).toBe(0);
+  });
+});
+
+describe('the hit test with a catch area (reach): a release near a target counts as on it', () => {
+  // Two 50 px holes side by side, 50 px apart.
+  const holes: [string, Rect][] = [
+    ['circle', { left: 0, top: 0, right: 50, bottom: 50 }],
+    ['square', { left: 100, top: 0, right: 150, bottom: 50 }],
+  ];
+
+  it('a release inside a target still finds it, with or without a reach', () => {
+    expect(targetAt({ x: 25, y: 25 }, holes, null, 24)).toBe('circle');
+    expect(targetAt({ x: 125, y: 25 }, holes, null, 24)).toBe('square');
+  });
+
+  it('a release inside a target wins over a neighbour whose edge is nearer than that target’s middle', () => {
+    const tight: [string, Rect][] = [
+      ['circle', { left: 0, top: 0, right: 50, bottom: 50 }],
+      ['square', { left: 52, top: 0, right: 102, bottom: 50 }],
+    ];
+    // 1 px inside the circle's right edge, 3 px from the square, 24 px from the circle's middle
+    expect(targetAt({ x: 49, y: 25 }, tight, null, 24)).toBe('circle');
+    expect(targetAt({ x: 49, y: 25 }, [...tight].reverse(), null, 24)).toBe('circle');
+  });
+
+  it('where rects overlap, a release inside both still gives the last listed, as with no reach', () => {
+    const overlap: [string, Rect][] = [
+      ['under', { left: 0, top: 0, right: 100, bottom: 100 }],
+      ['over', { left: 50, top: 50, right: 150, bottom: 150 }],
+    ];
+    expect(targetAt({ x: 75, y: 75 }, overlap, null, 24)).toBe('over');
+    expect(targetAt({ x: 25, y: 25 }, overlap, null, 24)).toBe('under');
+  });
+
+  it('a release outside every target but within reach of one finds that one', () => {
+    expect(targetAt({ x: 25, y: 60 }, holes, null, 24)).toBe('circle');
+    expect(targetAt({ x: 160, y: 25 }, holes, null, 24)).toBe('square');
+    expect(targetAt({ x: -10, y: -10 }, holes, null, 24)).toBe('circle');
+  });
+
+  it('a release within reach of two targets finds the nearer one, whichever is listed first', () => {
+    expect(targetAt({ x: 70, y: 25 }, holes, null, 40)).toBe('circle');
+    expect(targetAt({ x: 85, y: 25 }, holes, null, 40)).toBe('square');
+    expect(targetAt({ x: 85, y: 25 }, [...holes].reverse(), null, 40)).toBe('square');
+    expect(targetAt({ x: 70, y: 25 }, [...holes].reverse(), null, 40)).toBe('circle');
+  });
+
+  it('on an exact tie, the first listed target wins', () => {
+    expect(targetAt({ x: 75, y: 25 }, holes, null, 30)).toBe('circle');
+    expect(targetAt({ x: 75, y: 25 }, [...holes].reverse(), null, 30)).toBe('square');
+  });
+
+  it('a release exactly `reach` from a target counts; just past it, nothing is found', () => {
+    expect(targetAt({ x: 25, y: 74 }, holes, null, 24)).toBe('circle');
+    expect(targetAt({ x: 25, y: 74.5 }, holes, null, 24)).toBeNull();
+    // out from a corner the reach is a straight line: 18 by 18 is about 25.5 px, past a 24 px reach
+    expect(targetAt({ x: -18, y: -18 }, holes, null, 24)).toBeNull();
+    expect(targetAt({ x: -18, y: -18 }, holes, null, 26)).toBe('circle');
+  });
+
+  it('a reach of 0, below 0 or not a finite number means exact drops only', () => {
+    for (const reach of [0, -24, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      expect(targetAt({ x: 25, y: 60 }, holes, null, reach), `${reach}`).toBeNull();
+      expect(targetAt({ x: 500, y: 500 }, holes, null, reach), `${reach}`).toBeNull();
+      expect(targetAt({ x: 25, y: 25 }, holes, null, reach), `${reach}`).toBe('circle');
+      expect(targetAt({ x: 50, y: 50 }, holes, null, reach), `${reach}`).toBe('circle');
+    }
+  });
+
+  it('with no reach given, drops are exact, so every caller that passes none is unchanged', () => {
+    expect(targetAt({ x: 25, y: 51 }, holes)).toBeNull();
+    expect(targetAt({ x: 25, y: 51 }, holes, null)).toBeNull();
+    expect(targetAt({ x: 25, y: 51 }, holes, undefined)).toBeNull();
+    expect(targetAt({ x: 25, y: 25 }, holes)).toBe('circle');
+  });
+
+  it('never finds the skipped target, even within reach, but still finds another one in reach', () => {
+    expect(targetAt({ x: 25, y: 60 }, holes, 'circle', 24)).toBeNull();
+    expect(targetAt({ x: 70, y: 25 }, holes, 'circle', 40)).toBe('square');
+    expect(targetAt({ x: 25, y: 60 }, holes, 'square', 24)).toBe('circle');
+  });
+
+  it('finds nothing with no targets, and reads a Map as well as an array', () => {
+    expect(targetAt({ x: 25, y: 60 }, [], null, 24)).toBeNull();
+    expect(targetAt({ x: 160, y: 25 }, new Map(holes), null, 24)).toBe('square');
   });
 });
 

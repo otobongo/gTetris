@@ -7,6 +7,9 @@
  *   tablet zoom and written to the item as the CSS variables `--drag-x` and `--drag-y` (no React render
  *   per move), while `dragging` names the item once, so the game adds its dragging class.
  * - A release over a target drops the item there; anywhere else it goes back (`onMiss`, never a slip).
+ *   With `reach` (Shape Sorter's catch area, brief 7.4), a release within that many px of a target's
+ *   edge drops it on the nearest such target too; a release inside a target still wins. The default is
+ *   0: exact drops, as every other game has them.
  * - `pointercancel` (or a lost capture) drops the drag and nothing counts.
  * - The click the browser sends after a drag is ignored, through a flag the next pointerdown clears;
  *   keyboard clicks (Enter, Space) always count.
@@ -37,6 +40,11 @@ export interface UseDragToTargetOptions<I extends string, T extends string> {
   disabled?: boolean;
   /** The tablet frame's zoom; defaults to the layout's. */
   zoom?: number;
+  /**
+   * The catch area around each target, in the frame's px (default 0, exact drops only). The hit test
+   * works in screen px, so it is multiplied by the zoom: Shape Sorter's 24 px is 33.6 px on the tablet frame.
+   */
+  reach?: number;
 }
 
 /** Spread on each item's <button>. */
@@ -159,12 +167,14 @@ export function useDragToTarget<I extends string, T extends string = string>(opt
     /**
      * The target under the release point. With itemsAreTargets the other items count too, never the
      * dragged one (it is under the finger). A target may share the dragged item's id (a piece and its own hole).
+     * The rects are screen px, so the reach (the frame's px) is scaled by the same zoom as the drag.
      */
     const hit = (e: PointerEvent, item: string | null): string | null => {
       const rects: [string, Rect][] = [];
       targets.current.forEach((el, id) => rects.push([id, el.getBoundingClientRect()]));
       if (live.current.options.itemsAreTargets) items.current.forEach((el, id) => id !== item && rects.push([id, el.getBoundingClientRect()]));
-      return targetAt(point(e), rects);
+      const { options: o, zoom } = live.current;
+      return targetAt(point(e), rects, null, (o.reach ?? 0) * zoom);
     };
 
     const dragged = () => (track.current.phase.kind === 'idle' ? null : track.current.phase.item);

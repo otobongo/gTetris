@@ -3,7 +3,8 @@
  * 8 px threshold through the pointer handlers, the offset written as --drag-x and --drag-y on phone
  * (zoom 1) and on the tablet frame (zoom 1.4), pointer capture, a drop and a miss, pointercancel and
  * a lost capture, a second pointer during a drag, the click after a drag, the tap path, Number
- * Line-up's towers as targets, and the board turned off mid-drag.
+ * Line-up's towers as targets, the board turned off mid-drag, and the catch area (`reach`, in the
+ * frame's px, so 24 px is 33.6 screen px on the tablet frame) that Shape Sorter turns on.
  *
  * The hook runs in a real React root. The browser parts are stand-ins: the window (its size decides
  * the tablet zoom), the elements (their rects, style and pointer capture) and the pointer events.
@@ -446,5 +447,75 @@ describe('review: the board turned off', () => {
     b.move('red', 25, 125);
     b.up('red', 25, 225);
     expect(b.log).toEqual([]);
+  });
+});
+
+/** Drag red from its place and let go at (x, y). */
+function dragRedTo(b: ReturnType<typeof board>, x: number, y: number) {
+  b.down('red', 25, 25);
+  b.move('red', 25, 125);
+  b.up('red', x, y);
+}
+
+describe('review: the catch area (reach), which Shape Sorter turns on (brief 7.2, 7.4)', () => {
+  it('with no reach, a release 5 px below a hole is a miss, as before', () => {
+    const b = board();
+    dragRedTo(b, 25, 255);
+    expect(b.log).toEqual(['start red', 'miss red']);
+  });
+
+  it('on phone (zoom 1), a release 20 px below a hole drops there with a 24 px reach, and 30 px below is a miss', () => {
+    const b = board({ reach: 24 });
+    dragRedTo(b, 25, 270);
+    dragRedTo(b, 25, 280);
+    expect(b.log).toEqual(['start red', 'drop red on circle by drag', 'start red', 'miss red']);
+    expect(b.els.red.vars.size).toBe(0);
+  });
+
+  it('on the tablet frame (zoom 1.4), the reach is in the frame’s px: 30 screen px below a hole drops, 35 is a miss', () => {
+    screenOf('tablet');
+    const b = board({ reach: 24 });
+    dragRedTo(b, 25, 280);
+    dragRedTo(b, 25, 285);
+    expect(b.log).toEqual(['start red', 'drop red on circle by drag', 'start red', 'miss red']);
+  });
+
+  it('a zoom the game passes sets the reach too: at zoom 1 on a tablet screen, 30 px below is a miss', () => {
+    screenOf('tablet');
+    const b = board({ reach: 24, zoom: 1 });
+    dragRedTo(b, 25, 280);
+    expect(b.log).toEqual(['start red', 'miss red']);
+  });
+
+  it('between two holes, the nearer one catches the release; halfway, past the reach of both, is a miss', () => {
+    const b = board({ reach: 24 });
+    dragRedTo(b, 70, 225);
+    dragRedTo(b, 80, 225);
+    dragRedTo(b, 75, 225);
+    expect(b.log).toEqual(['start red', 'drop red on circle by drag', 'start red', 'drop red on square by drag', 'start red', 'miss red']);
+  });
+
+  it('a release inside a hole still drops there', () => {
+    const b = board({ reach: 24 });
+    dragRedTo(b, 140, 210);
+    expect(b.log).toEqual(['start red', 'drop red on square by drag']);
+  });
+
+  it('with towers as targets, the dragged tower never catches its own release; another tower in reach does', () => {
+    const b = board({ itemsAreTargets: true, reach: 24 });
+    b.down('red', 25, 25);
+    b.move('red', 25, 45);
+    b.up('red', 25, 60);
+    b.down('red', 25, 25);
+    b.move('red', 60, 25);
+    b.up('red', 80, 25);
+    expect(b.log).toEqual(['start red', 'miss red', 'start red', 'drop red on blue by drag']);
+  });
+
+  it('the tap path is unchanged by the reach: a tap on a hole places the picked piece', () => {
+    const b = board({ reach: 24 });
+    b.tap('blue');
+    b.tap('square');
+    expect(b.log).toEqual(['pick blue', 'pick null', 'drop blue on square by tap']);
   });
 });

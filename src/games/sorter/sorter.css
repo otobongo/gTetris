@@ -7,6 +7,11 @@
    so Next puzzle replaces the tray without anything moving. */
 .sort { --bw-slot-min: 112px; }
 .sort--rows-2 { --bw-slot-min: 196px; }
+/* The holes sit just above the tray, so a drag from the tray is short (brief 7.4, after play-testing): the
+   holes panel and the fact bar go to the bottom of the kit's body and the spare height opens above them,
+   under the help row. An auto margin, not justify-content, so on a short screen it falls to 0 and the
+   panel never goes up out of the body. */
+.sort .sort-holes { margin-top: auto; }
 
 /* ---------- Shapes: one look for pieces, holes and ghosts ---------- */
 .sort-shape {
@@ -38,10 +43,13 @@
     inset 0 0 0 4px var(--bw-purple-top),
     0 8px 0 var(--bw-purple-edge);
 }
+/* Three columns across the panel. A board with one or two holes (Level 1) keeps the same column width and
+   centres its holes over the tray, so no drag is from the far side (brief 7.4): Play.tsx sets the count. */
 .sort-holes__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--sort-hole-cols, 3), calc((100% - 28px) / 3));
   gap: 14px;
+  justify-content: center;
   justify-items: center;
 }
 /* The finished state keeps the panel's size with nothing in it: two rows of holes. */
@@ -138,12 +146,13 @@ div.sort-hole { cursor: default; }
   background: var(--bw-well);
   box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45);
 }
-/* The finished state: an empty well at the bottom, one row high. */
+/* The finished state: an empty well at the bottom, one row high. The holes panel keeps its place in play:
+   above the well by the fact bar's 56px plus the frame's 14px gap, which the finished screen has no fact bar for. */
 .sort-well.is-empty {
   box-sizing: border-box;
   width: 100%;
   flex-shrink: 0;
-  margin-top: auto;
+  margin-top: 70px;
   min-height: 112px;
 }
 .sort-tray {

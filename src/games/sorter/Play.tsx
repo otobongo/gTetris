@@ -27,6 +27,11 @@ import { SHAPE_STYLE } from './shapes';
 
 /** The hole's red ring stays this long after a wrong placement; the help line stays until the next move. */
 const WRONG_RING_MS = 660;
+/**
+ * The catch area around each hole, in the frame's px (brief 7.4, after play-testing): a piece let go within
+ * this of a hole's edge drops in the nearest such hole, right or wrong. A release inside a hole still wins.
+ */
+export const SORTER_REACH_PX = 24;
 /** Pieces in a tray row: 4 on a phone, 8 on a tablet (the board's values). */
 const PER_ROW = { phone: 4, tablet: 8 } as const;
 
@@ -96,6 +101,7 @@ export function Play({ level }: { level: number }) {
 
   const drag = useDragToTarget<string, string>({
     disabled: !playing,
+    reach: SORTER_REACH_PX,
     onPick(id) {
       commit({ wrongLine: null, wrongHole: null });
       if (id === null) return;
@@ -245,10 +251,19 @@ export function Play({ level }: { level: number }) {
       controls={tray}
     >
       <div className="sort-holes">
-        <div ref={holesRef} className="sort-holes__grid" role="group" aria-label={HOLES_LABEL} onKeyDown={onHolesKey}>
+        <div
+          ref={holesRef}
+          className="sort-holes__grid"
+          style={{ '--sort-hole-cols': Math.min(puzzle.holes.length, 3) } as CSSProperties}
+          role="group"
+          aria-label={HOLES_LABEL}
+          onKeyDown={onHolesKey}
+        >
           {puzzle.holes.map((h) =>
             ui.placed.includes(h.id) ? (
-              <div key={h.id} className="sort-hole is-filled" role="img" aria-label={filledHoleLabel(h, cm)}>
+              // Still a drop target, with no tap: a release on a filled hole, or nearer to it than to any
+              // open one, lands there and goes back with no slip (brief 4.2), never in the open hole next to it.
+              <div key={h.id} ref={drag.target(h.id).ref} className="sort-hole is-filled" role="img" aria-label={filledHoleLabel(h, cm)}>
                 <Shape piece={h} />
               </div>
             ) : (

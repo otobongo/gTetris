@@ -414,3 +414,26 @@ test('speech plays only after a tap: not on opening, not when the offer comes up
   expect(await spoken()).toEqual(atCard);
   for (const line of atCard) expect(line).not.toMatch(/Super builder|You did it|Great building|You built|Well done/i);
 });
+
+test('a dragged letter stays under the finger on every screen size, the tablet frame zoom taken out', async ({ page }) => {
+  // On the tablet the frame is drawn with CSS zoom, and a translate inside it is scaled again, so a drag that
+  // did not divide by the zoom ran ahead of the finger (40% at zoom 1.4). Ages 5 to 6 on Level 1: not practice.
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/letters');
+  const tile = page.locator('.lb-tray').getByRole('button').first();
+  await expect(tile).toBeVisible();
+  const centre = async () => {
+    const b = (await tile.boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  };
+  const start = await centre();
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 10, start.y - 10, { steps: 2 });
+  await page.mouse.move(start.x + 60, start.y - 150, { steps: 8 });
+  await expect(tile).toHaveClass(/is-dragging/);
+  const held = await centre();
+  expect(Math.abs(held.x - (start.x + 60))).toBeLessThanOrEqual(3);
+  expect(Math.abs(held.y - (start.y - 150))).toBeLessThanOrEqual(3);
+  await page.mouse.up();
+});
