@@ -27,6 +27,11 @@ import { SHAPE_STYLE } from './shapes';
 
 /** The hole's red ring stays this long after a wrong placement; the help line stays until the next move. */
 const WRONG_RING_MS = 660;
+/**
+ * The catch area around each hole, in the frame's px (brief 7.4, after play-testing): a piece let go within
+ * this of a hole's edge drops in the nearest such hole, right or wrong. A release inside a hole still wins.
+ */
+export const SORTER_REACH_PX = 24;
 /** Pieces in a tray row: 4 on a phone, 8 on a tablet (the board's values). */
 const PER_ROW = { phone: 4, tablet: 8 } as const;
 
@@ -96,6 +101,7 @@ export function Play({ level }: { level: number }) {
 
   const drag = useDragToTarget<string, string>({
     disabled: !playing,
+    reach: SORTER_REACH_PX,
     onPick(id) {
       commit({ wrongLine: null, wrongHole: null });
       if (id === null) return;

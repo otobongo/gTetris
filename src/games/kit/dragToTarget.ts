@@ -1,8 +1,8 @@
 /**
  * Drag an item onto a target (six-games brief 3.1, 7.2): Shape Sorter drops a piece into its hole,
  * Number Line-up drops a tower onto another tower. This file is the pure part (the 8 px threshold,
- * the offset with the tablet zoom taken out, the hit test, one drag as a small state machine) plus
- * the pointer parts on their own, which Picture Builder's paint strokes use.
+ * the offset with the tablet zoom taken out, the hit test with its optional catch area, one drag as a
+ * small state machine) plus the pointer parts on their own, which Picture Builder's paint strokes use.
  *
  * The pointer handling copies Brick Escape's (SlideGame.tsx): pointer capture as a nicety, offsets
  * divided by the zoom of the tablet frame, and a lost pointer (pointercancel) never counts.
@@ -43,14 +43,47 @@ export function dragOffset(start: Point, now: Point, zoom = 1): Point {
 export const inRect = (p: Point, r: Rect): boolean => p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
 
 /**
+ * How far a point is from a rect: 0 inside it or on its edge (as inRect counts them), else the straight
+ * line to the nearest point of the rect, so out from a corner it is the line to that corner.
+ */
+export function rectDistance(p: Point, r: Rect): number {
+  const dx = Math.max(r.left - p.x, 0, p.x - r.right);
+  const dy = Math.max(r.top - p.y, 0, p.y - r.bottom);
+  return Math.hypot(dx, dy);
+}
+
+/**
  * The target under a screen point, from targets' screen rects (getBoundingClientRect, so no zoom is
  * needed). `skip` leaves one out: the dragged tower is itself a target in Number Line-up. When rects
  * overlap, the last one listed wins, as the one painted on top would.
+ *
+ * `reach` is the catch area, in screen px (Shape Sorter's, brief 7.4): when no rect holds the point,
+ * the target whose edge is nearest, and no further than `reach`, counts as under it; on an exact tie the
+ * first listed wins. A release inside a target always wins over one near another. A reach of 0, below 0
+ * or not a finite number means exact drops only, which is every other game's rule.
  */
-export function targetAt<T extends string>(point: Point, targets: Iterable<readonly [T, Rect]>, skip?: string | null): T | null {
+export function targetAt<T extends string>(
+  point: Point,
+  targets: Iterable<readonly [T, Rect]>,
+  skip?: string | null,
+  reach = 0,
+): T | null {
+  const near = Number.isFinite(reach) && reach > 0;
   let hit: T | null = null;
-  for (const [id, rect] of targets) if (id !== skip && inRect(point, rect)) hit = id;
-  return hit;
+  let nearest: T | null = null;
+  let best = Infinity;
+  for (const [id, rect] of targets) {
+    if (id === skip) continue;
+    if (inRect(point, rect)) hit = id;
+    else if (near && hit === null) {
+      const d = rectDistance(point, rect);
+      if (d <= reach && d < best) {
+        best = d;
+        nearest = id;
+      }
+    }
+  }
+  return hit ?? nearest;
 }
 
 /* ---------- One drag, as a state machine ---------- */
