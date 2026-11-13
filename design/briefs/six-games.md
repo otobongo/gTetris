@@ -254,6 +254,7 @@ Each game owns `src/games/<id>/` with `meta.ts`, its content module, `copy.ts`, 
 
 **Screen, top to bottom:** top bar; help row; holes panel (3 columns); fact bar; tray well.
 - *play;* *picked* (piece lifted, "Now tap the {red circle} hole."); *dragging* ("Drop the {red circle} in its hole."); *wrong* (the hole shakes with a red ring, the line names what matched); *solved* (every hole filled, "Every shape is home.", **Next puzzle** centred in the tray well); *stuck;* *levelDone;* *gameDone* (empty holes panel and tray).
+- **Note (2026-11-13):** the order is the same, but the holes panel and fact bar now sit just above the tray well, with the spare height between the help row and the holes, and "a drop off every hole" in the slip rule above means a release more than 24 px from every hole's edge. See the outcome under 7.4.
 
 **Edge cases:** a drag cut off by the system puts the piece back with no slip; the tap after a drag always works (3.1); tapping a second piece moves the pick; a wrong placement sends the piece back and clears the pick; the wrong line stays until the next pick, drag or placement; filled holes are not focusable; the last placement solves at once; after a placement focus goes to the next tray piece; on tablet, drag offsets are divided by the zoom.
 
@@ -579,6 +580,8 @@ Dots, Next button (58 px tall in all six games, min width 220), offer button (54
 | Fact bar | full width, `--bw-panel`, radius 18, min height 56, padding `6px 16px`, gap 10; badge 40x40, radius 12, `--bw-accent` with `--bw-on-yellow` 22/800; fact 16/700/1.2 |
 | Colours | `--brick-*` tokens only (the board's hex values equal them) |
 | Shapes | the board's five; new: rectangle `inset(22% 0 round 6px)`, diamond `polygon(50% 0, 90% 50%, 50% 100%, 10% 50%)`, pentagon `polygon(50% 2%, 98% 38%, 80% 96%, 20% 96%, 2% 38%)` |
+
+**Outcome (2026-11-13):** after play-testing, the drag from the tray to a hole was too far for a child, so the holes panel and the fact bar moved down to sit just above the tray well (`margin-top: auto` on the holes panel), and the spare height now sits between the help row and the holes. On Level 1 the drag from a piece to a hole went from about 800 px to about 350 px on the iPad (290 to 417 screen px, which is 207 to 298 px in the zoomed frame) and from about 530 px to about 225 px on a phone (207 to 252 px). A piece let go within 24 px of a hole's edge (the frame's px, so 33.6 screen px on the iPad) now counts as dropped on that hole, nearest hole first; a release inside a hole still wins, and a near drop on the wrong hole is a wrong placement, like an exact one. The tap path is unchanged, and every other game keeps exact drops (the kit's `reach`, 0 by default). The finished state keeps the fact bar's height empty, so the holes panel stays where it is in play.
 
 ### 7.5 Number Line-up
 | Item | Value |
