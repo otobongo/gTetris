@@ -86,6 +86,9 @@ div.sort-hole { cursor: default; }
   background: color-mix(in srgb, var(--bw-error-border) 35%, transparent);
   box-shadow: 0 0 0 4px var(--bw-error-border);
 }
+/* Ages 3 to 6, after a second slip with one piece: its own hole rings while that piece is picked or dragged
+   (Play.tsx). A still ring, the same one a picked piece wears under Reduce Motion; nothing moves. */
+.sort-hole.is-target { box-shadow: var(--bw-ring); }
 .sort-hole.is-shake-a { animation: sort-shake-a 360ms linear; }
 .sort-hole.is-shake-b { animation: sort-shake-b 360ms linear; }
 @keyframes sort-shake-a {
@@ -205,11 +208,28 @@ div.sort-hole { cursor: default; }
   transform: scale(0.85);
 }
 
+/* ---------- Short phones (under 700px tall, iPhone SE and Safari with its bars) ---------- */
+/* The body has about 283px there. 76px holes with tighter gaps fit two rows of holes and the fact bar (256px),
+   or three rows alone (272px): the 8-piece boards hide the fact bar, and the speaker still reads the fact
+   (Play.tsx). A hole stays well over the 54pt finger size. */
+@media (max-height: 700px) {
+  .sort-holes { padding: 12px; }
+  .sort-holes__grid {
+    grid-template-columns: repeat(var(--sort-hole-cols, 3), calc((100% - 20px) / 3));
+    gap: 10px;
+  }
+  .sort-hole { width: 76px; height: 76px; }
+  .sort-hole .sort-shape { width: 62px; height: 62px; }
+  .sort--holes-3 .sort-fact { display: none; }
+}
+
 /* ---------- Reduced motion (brief 9.1) ---------- */
 /* Shakes, tilts and lifts go; the ring on a wrong hole and a ring on the picked piece stay. The tray's lift
    after a hole tapped first becomes a still ring on the tray well, kept until the child picks or drags. */
 @media (prefers-reduced-motion: reduce) {
   .sort-hole { transition: background 150ms linear, box-shadow 150ms linear; }
+  /* The 150ms fade beats the global 0.01ms rule in global.css. */
+  .sort-hole { transition-duration: 150ms !important; }
   .sort-hole.is-shake-a,
   .sort-hole.is-shake-b { animation: none; }
   .sort-piece[aria-pressed='true'] {

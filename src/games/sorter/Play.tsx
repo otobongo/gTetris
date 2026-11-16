@@ -23,7 +23,7 @@ import {
   spokenOnPlace,
 } from './copy';
 import { GAME } from './game';
-import { compare, fits, pieceName, slipKey, type SorterPiece } from './puzzles';
+import { compare, countSlip, fits, pieceName, slipKey, targetHole, type SorterPiece } from './puzzles';
 import { SHAPE_STYLE } from './shapes';
 
 /** The hole's red ring stays this long after a wrong placement; the help line stays until the next move. */
@@ -75,6 +75,8 @@ interface Ui {
   nudging: boolean;
   /** Counts those taps, so each one starts its lift's timer again. */
   nudgeSeq: number;
+  /** Wrong placements per piece id, on any hole: at ages 3 to 6 the second one rings that piece's own hole. */
+  slipsBy: Readonly<Record<string, number>>;
 }
 
 const fresh = (round: number): Ui => ({
@@ -87,6 +89,7 @@ const fresh = (round: number): Ui => ({
   pickFirst: false,
   nudging: false,
   nudgeSeq: 0,
+  slipsBy: {},
 });
 
 /** What a pick, a drag or a placement clears: the wrong line and ring, and the ask to pick first. */
@@ -154,7 +157,13 @@ export function Play({ level }: { level: number }) {
       if (!piece || !hole) return;
       if (!fits(piece, hole, cm)) {
         // A wrong placement: the piece goes back (the hook already returned it), the hole shakes, the line names what matched.
-        commit({ ...CLEARED, wrongLine: helpWrong(hole, compare(piece, hole), cm), wrongHole: hole.id, wrongSeq: cur.wrongSeq + 1 });
+        commit({
+          ...CLEARED,
+          wrongLine: helpWrong(hole, compare(piece, hole), cm),
+          wrongHole: hole.id,
+          wrongSeq: cur.wrongSeq + 1,
+          slipsBy: countSlip(cur.slipsBy, piece.id),
+        });
         run.slip(slipKey(piece.id, hole.id));
         // The pick is cleared, so a keyboard child lands back on the piece to try again.
         focusPiece.current = piece.id;
@@ -257,6 +266,11 @@ export function Play({ level }: { level: number }) {
   const picked = byId(drag.picked);
   const dragging = byId(drag.dragging);
   const solved = !playing;
+  /**
+   * Ages 3 to 6: after a second slip with one piece, its own hole rings while that piece is picked or dragged
+   * (sorter-numbers-7). A still ring, no words, no sound, not a slip; it goes with the pick or the drag.
+   */
+  const target = playing ? targetHole(ui.slipsBy, drag.dragging ?? drag.picked, run.band) : null;
 
   const line = solved
     ? HELP_SOLVED
@@ -274,6 +288,8 @@ export function Play({ level }: { level: number }) {
   const perRow = PER_ROW[layout.mode];
   const cols = Math.min(pieces.length, perRow);
   const rows = Math.ceil(pieces.length / perRow);
+  /** Rows of holes (3 columns): 3 on the 8-piece boards, which hide the fact bar on a short phone (sorter.css). */
+  const holeRows = Math.ceil(puzzle.holes.length / 3);
 
   const tray = (
     <div
@@ -313,7 +329,7 @@ export function Play({ level }: { level: number }) {
       line={line}
       lineStyle="prompt"
       wrong={ui.wrongLine !== null && !solved}
-      className={cx('sort', `sort--rows-${rows}`)}
+      className={cx('sort', `sort--rows-${rows}`, `sort--holes-${holeRows}`)}
       slotClassName={cx('sort-well', ui.pickFirst && !solved && 'is-pick-first')}
       controls={tray}
     >
@@ -338,7 +354,12 @@ export function Play({ level }: { level: number }) {
                 key={h.id}
                 type="button"
                 {...holeProps(h.id)}
-                className={cx('sort-hole', ui.wrongHole === h.id && 'is-wrong', ui.wrongHole === h.id && (ui.wrongSeq % 2 ? 'is-shake-a' : 'is-shake-b'))}
+                className={cx(
+                  'sort-hole',
+                  target === h.id && 'is-target',
+                  ui.wrongHole === h.id && 'is-wrong',
+                  ui.wrongHole === h.id && (ui.wrongSeq % 2 ? 'is-shake-a' : 'is-shake-b'),
+                )}
                 data-hole={h.id}
                 aria-label={holeLabel(h, cm)}
               >
