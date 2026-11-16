@@ -169,3 +169,215 @@ test('after tapping keys on the keypad, Enter on the physical keyboard sends the
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 1 solved.');
   await expect.poll(spoken).toEqual([...[...digits].map((_, k) => String(Number(digits.slice(0, k + 1)))), solvedLine]);
 });
+
+/* ---------- A wrong answer stays in view for a moment (usability batch L) ---------- */
+// With Sounds off, a wrong = must still be told apart from a missed tap where the child is looking: the sent
+// number stays in the answer place in the wrong look for about 500 ms, then the "?" comes back. The entry is
+// already cleared underneath, so the next digit replaces the wrong look at once and = during it does nothing.
+// The right answer is never shown (brief 4.5).
+
+/** Band 3 to 4 opens Level 1 with the sum on screen. */
+async function openLevel1For3To4(page: Page) {
+  await seed(page, [{ id: 'ada', name: 'Ada', ageBand: '3-4' }]);
+  await page.goto('/#/game/math/1');
+  await expect(page).toHaveURL(/#\/game\/math\/1$/);
+  return mathOnScreen(page);
+}
+
+/** A one-digit wrong answer for a Level 1 sum at 3 to 4 (answers 0 to 5), different for each `step` from 1 to 4. */
+const wrongFor = (answer: number, step = 1) => (answer + step) % 10;
+
+test('a wrong answer shows in the wrong look for a moment, then the "?" comes back', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const wrong = wrongFor(p.answer);
+  await sendMathAnswer(page, wrong, 'taps');
+  // Within 100 ms: the sent number, in the wrong look. The sum's name still waits for the answer.
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(String(wrong), { timeout: 100 });
+  await expect(page.getByRole('img', { name: `${p.words} equals what?`, exact: true })).toBeVisible();
+  // After 700 ms: the start look again.
+  await page.waitForTimeout(700);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'empty', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText('?', { timeout: 100 });
+});
+
+test('a digit typed during the wrong look replaces it at once', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const wrong = wrongFor(p.answer);
+  await sendMathAnswer(page, wrong, 'taps');
+  await page.waitForTimeout(200);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  const digit = String((wrong + 1) % 10);
+  await mathKey(page, digit).click();
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'typed', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(digit, { timeout: 100 });
+  // The wrong look's timer does not come back over the typed digit.
+  await page.waitForTimeout(500);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'typed', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(digit, { timeout: 100 });
+});
+
+test('= during the wrong look does nothing and adds no slip: two wrong answers still bring New puzzle at 3 to 4', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  const first = wrongFor(p.answer, 1);
+  await sendMathAnswer(page, first, 'taps');
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  // = while the sent number still shows: the wrong look stays, and no second slip brings the offer.
+  await mathKey(page, 'Equals').click();
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(String(first), { timeout: 100 });
+  await page.waitForTimeout(700);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'empty', { timeout: 100 });
+  await expect(offer).toHaveCount(0);
+  // The second wrong answer is the one that reaches the limit of 2.
+  await sendMathAnswer(page, wrongFor(p.answer, 2), 'taps');
+  await expect(offer).toBeVisible();
+  // Two slips on this puzzle, no more.
+  await solveMathPuzzle(page, 'taps');
+  expect((await savedRun(page, 'math', 0)).solved[0].count).toBe(2);
+});
+
+test('with reduced motion the wrong answer only fades, with no shift', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const p = await openLevel1For3To4(page);
+  await sendMathAnswer(page, wrongFor(p.answer), 'taps');
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  expect(await answerPlace(page).evaluate((el) => getComputedStyle(el).transform)).toBe('none');
+});
+
+test.describe('with motion allowed', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('the wrong answer shifts left, dimmed in the error colour, as a Choice row answer does', async ({ page }) => {
+    const p = await openLevel1For3To4(page);
+    await sendMathAnswer(page, wrongFor(p.answer), 'taps');
+    await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+    const look = () =>
+      answerPlace(page).evaluate((el) => {
+        const s = getComputedStyle(el);
+        // --bw-error-text, resolved to rgb by a probe next to the answer.
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--bw-error-text)';
+        el.parentElement!.appendChild(probe);
+        const error = getComputedStyle(probe).color;
+        probe.remove();
+        return { shifted: new DOMMatrixReadOnly(s.transform).m41 < -3, errorColour: s.color === error, dimmed: Number(s.opacity) < 0.75 };
+      });
+    await expect.poll(look, { intervals: [20], timeout: 450 }).toEqual({ shifted: true, errorColour: true, dimmed: true });
+  });
+});
+
+/* ---------- The wrong look at every size and age band (usability batch L, review) ---------- */
+// The four sizes the finding names, each with a different age band and the widest wrong answer (two digits):
+// the shifted number stays inside the display, nothing else in the sum moves, and the page never scrolls sideways.
+
+const WRONG_LOOK_SIZES = [
+  { name: 'iPhone 390x844', width: 390, height: 844, band: '3-4' },
+  { name: 'iPhone 375x667', width: 375, height: 667, band: '5-6' },
+  { name: 'iPad portrait 834x1194 (zoom 1.4)', width: 834, height: 1194, band: '7-8' },
+  { name: 'iPad landscape 1194x834', width: 1194, height: 834, band: '9-10' },
+] as const;
+
+interface WrongLookAtRest {
+  shift: number;
+  display: [number, number];
+  answer: [number, number];
+  sum: number[];
+  pageWidth: number;
+  viewport: number;
+}
+
+/** Where the display and the sum's parts are once the wrong answer has finished its shift, read in the page. */
+function wrongLookAtRest(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<WrongLookAtRest>((done, fail) => {
+        const answer = document.querySelector('.calc-eq__answer')!;
+        const start = performance.now();
+        const read = () => {
+          const shift = new DOMMatrixReadOnly(getComputedStyle(answer).transform).m41;
+          if (shift > -5.99) {
+            if (performance.now() - start > 450) fail(new Error(`the wrong answer never finished its shift: ${shift}`));
+            else requestAnimationFrame(read);
+            return;
+          }
+          const d = document.querySelector('.calc-display')!.getBoundingClientRect();
+          const a = answer.getBoundingClientRect();
+          const sum = [...document.querySelectorAll('.calc-eq > span:not(.calc-eq__answer)')].map((e) => e.getBoundingClientRect().left);
+          done({ shift, display: [d.left, d.right], answer: [a.left, a.right], sum, pageWidth: document.documentElement.scrollWidth, viewport: innerWidth });
+        };
+        read();
+      }),
+  );
+}
+
+test.describe('the wrong look at every size', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  for (const size of WRONG_LOOK_SIZES) {
+    test(`${size.name}, ages ${size.band}: a two-digit wrong answer shifts inside the display and the sum stays still`, { tag: '@phone-only' }, async ({ page }) => {
+      await page.setViewportSize({ width: size.width, height: size.height });
+      await seed(page, [{ id: 'ada', name: 'Ada', ageBand: size.band }]);
+      await page.goto('/#/game/math/1');
+      const p = await mathOnScreen(page);
+      const wrong = p.answer === 17 ? 18 : 17;
+      for (const d of String(wrong)) await mathKey(page, d).click();
+      await expect(answerPlace(page)).toHaveText(String(wrong));
+      const sumTyped = await page
+        .locator('.calc-eq > span:not(.calc-eq__answer)')
+        .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().left));
+      await mathKey(page, 'Equals').click();
+      await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+      await expect(answerPlace(page)).toHaveText(String(wrong), { timeout: 100 });
+      const rest = await wrongLookAtRest(page);
+      expect(rest.answer[0]).toBeGreaterThanOrEqual(rest.display[0]);
+      expect(rest.answer[1]).toBeLessThanOrEqual(rest.display[1]);
+      expect(rest.sum).toEqual(sumTyped);
+      expect(rest.pageWidth).toBeLessThanOrEqual(rest.viewport);
+      // Then the "?" again, back in place.
+      await expect(answerPlace(page)).toHaveAttribute('data-look', 'empty', { timeout: 700 });
+      await expect(answerPlace(page)).toHaveText('?');
+      await expect.poll(() => answerPlace(page).evaluate((el) => getComputedStyle(el).transform), { timeout: 450 }).toBe('none');
+    });
+  }
+});
+
+interface AnswerFrame {
+  look: string | null;
+  transform: string;
+  errorInk: boolean;
+  opacity: number;
+}
+
+test('with reduced motion the wrong look keeps its ink and dim for its whole time and never shifts', { tag: '@phone-only' }, async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  await sendMathAnswer(page, wrongFor(p.answer), 'taps');
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  // Every frame until the "?" comes back: none shifts, and each wrong frame is dimmed in the error ink.
+  const frames = await answerPlace(page).evaluate(
+    (el) =>
+      new Promise<AnswerFrame[]>((done) => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--bw-error-text)';
+        el.parentElement!.appendChild(probe);
+        const ink = getComputedStyle(probe).color;
+        probe.remove();
+        const seen: AnswerFrame[] = [];
+        const read = () => {
+          const s = getComputedStyle(el);
+          const look = el.getAttribute('data-look');
+          seen.push({ look, transform: s.transform, errorInk: s.color === ink, opacity: Number(s.opacity) });
+          if (look === 'wrong' && seen.length < 200) requestAnimationFrame(read);
+          else done(seen);
+        };
+        read();
+      }),
+  );
+  const wrongFrames = frames.filter((f) => f.look === 'wrong');
+  expect(wrongFrames.length).toBeGreaterThan(5);
+  expect(frames.every((f) => f.transform === 'none')).toBe(true);
+  // The first frame may still be fading in; from the second on the look is at rest.
+  expect(wrongFrames.slice(1).every((f) => f.errorInk && Math.abs(f.opacity - 0.6) < 0.01)).toBe(true);
+  expect(frames.at(-1)!.look).toBe('empty');
+});

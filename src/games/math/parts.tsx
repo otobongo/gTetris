@@ -11,7 +11,7 @@ import { FRAME_SIZE, signOf, type FrameCell, type MathPuzzle } from './puzzles';
 /** The answer place's "?" before anything is typed. */
 const ANSWER_PLACE = '?';
 
-export type AnswerLook = 'empty' | 'typed' | 'solved';
+export type AnswerLook = 'empty' | 'typed' | 'wrong' | 'solved';
 
 export interface DisplayProps {
   /** The sum to show; null draws the finished state's display, which holds only the "?". */
@@ -20,12 +20,18 @@ export interface DisplayProps {
   entry: string;
   /** The right answer was sent: it shows in yellow and the equation's name gives it. */
   solved: boolean;
+  /**
+   * A wrong answer just sent, shown for a moment in the wrong look while nothing is typed; null or left out
+   * shows the "?". It is never the right answer, and the equation's name still asks for the answer.
+   */
+  wrong?: number | null;
 }
 
 /** The dark display: "3 + 4 = ?", right-aligned, with the first number in blue and the second in orange. */
-export function Display({ puzzle: p, entry, solved }: DisplayProps) {
-  const look: AnswerLook = solved ? 'solved' : entry === '' ? 'empty' : 'typed';
-  const answer = p && solved ? String(p.answer) : entry === '' ? ANSWER_PLACE : entry;
+export function Display({ puzzle: p, entry, solved, wrong = null }: DisplayProps) {
+  const sent = !solved && entry === '' && wrong !== null ? String(wrong) : null;
+  const look: AnswerLook = solved ? 'solved' : sent !== null ? 'wrong' : entry === '' ? 'empty' : 'typed';
+  const answer = p && solved ? String(p.answer) : (sent ?? (entry === '' ? ANSWER_PLACE : entry));
   return (
     <div className="calc-display">
       <div className="calc-eq" role={p ? 'img' : undefined} aria-label={p ? (solved ? equationSolvedName(p) : equationName(p)) : undefined}>

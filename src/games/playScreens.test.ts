@@ -2992,7 +2992,12 @@ describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
     expect(spoken).toHaveLength(said);
     expect(helpLine()).toBe(CALC_SLIP);
     expect(SLIP_LINE).toBe(CALC_SLIP);
+    // The sent number stays for a moment in the wrong look (never the answer), then the entry shows cleared.
+    expect(calcAnswer().textContent).toBe(String(wrong));
+    expect(calcAnswer().getAttribute('data-look')).toBe('wrong');
+    wait(CHOICE_WRONG_MS);
     expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
     expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
     expect(doc.body.querySelector('.calc-count')).toBeNull();
     expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
@@ -3002,6 +3007,116 @@ describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
     tapDigits(p.answer);
     expect(helpLine()).toBe(CALC_START);
     click(calcKey('Equals'));
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the wrong look lasts the Choice row wrong time; a digit or C replaces it at once, and = during it changes nothing', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // = while it shows: nothing to send, so the look and its timer stay as they were, and no slip is added.
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    wait(200);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    wait(CHOICE_WRONG_MS - 200);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // A digit replaces it at once, and the old timer does not clear the typed digit.
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    tapDigits(1);
+    expect(look()).toEqual(['1', 'typed']);
+    wait(CHOICE_WRONG_MS);
+    expect(look()).toEqual(['1', 'typed']);
+
+    // C replaces it at once with the "?".
+    click(calcKey('Clear'));
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    click(calcKey('Clear'));
+    expect(look()).toEqual(['?', 'empty']);
+
+    // The look belongs to its puzzle: New puzzle during it opens the next sum on the "?".
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    click(byRole('button', 'New puzzle'));
+    expect(look()).toEqual(['?', 'empty']);
+    wait(CHOICE_WRONG_MS);
+    expect(look()).toEqual(['?', 'empty']);
+  });
+
+  it('a wrong answer sent during the wrong look shows for its own full time, even the same number again; two digits show whole at 9 to 10', () => {
+    openMath(0, '9-10');
+    const p = mathOnScreen();
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    // Two digits, never the answer (Level 1 answers stay under 10 at 9 to 10).
+    const wide = p.answer === 17 ? 18 : 17;
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wide), 'wrong']);
+
+    // The same number again, 300 ms in: its own 500 ms start from this =, not from the first one.
+    wait(300);
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(wide), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // A different number during the look replaces it and also gets its full time.
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    wait(400);
+    const other = wrongAnswer(p.answer);
+    tapDigits(other);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(other), 'wrong']);
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(other), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+    // The right answer is never shown in the wrong look, and the sum still asks for it.
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+  });
+
+  it('on the physical keyboard, Backspace and Escape bring the "?" back at once, Enter during the wrong look sends nothing, and a digit replaces it', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    blur();
+    for (const clear of ['Backspace', 'Escape']) {
+      for (const d of String(wrong)) press(d);
+      press('Enter');
+      expect(look()).toEqual([String(wrong), 'wrong']);
+      press(clear);
+      expect(look()).toEqual(['?', 'empty']);
+    }
+    // Enter while the sent number shows: nothing typed, so no sound, no slip and the look stays.
+    for (const d of String(wrong)) press(d);
+    press('Enter');
+    const heard = sounds.length;
+    press('Enter');
+    expect(sounds).toHaveLength(heard);
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    press(String(p.answer)[0]);
+    expect(look()).toEqual([String(p.answer)[0], 'typed']);
+    // One answer sent three times: one star slip.
+    press('Backspace');
+    for (const d of String(p.answer)) press(d);
+    press('Enter');
     expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
   });
 
