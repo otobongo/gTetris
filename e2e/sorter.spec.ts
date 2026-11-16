@@ -378,3 +378,54 @@ test('a piece let go on a filled hole goes back and is no slip, even beside an o
   await expect(help(page)).toHaveText('Every shape is home.');
   await expectSlips(page, 2, 0);
 });
+
+/* ---------- A resting palm on the tray (the kit drag takeover, sorter-numbers-2) ---------- */
+
+/** The middle of an element, in viewport px. */
+async function middleOf(el: Locator) {
+  return centre(await boxOf(el));
+}
+
+/**
+ * Multi-touch, as on an iPad: one finger (a palm) rests still on `rest`, then a second finger drags `piece`
+ * to `to` and lifts. The palm stays down until `lift` is called. Chromium turns these touches into pointer events.
+ */
+async function palmThenDrag(page: Page, rest: Locator, piece: Locator, to: Locator) {
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', touchPoints: { x: number; y: number; id: number }[]) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+  const p = await middleOf(rest);
+  const a = await middleOf(piece);
+  const b = await middleOf(to);
+  const palm = { ...p, id: 1 };
+  await touch('touchStart', [palm]);
+  await touch('touchStart', [palm, { ...a, id: 2 }]);
+  for (let i = 1; i <= 10; i++) await touch('touchMove', [palm, { x: a.x + ((b.x - a.x) * i) / 10, y: a.y + ((b.y - a.y) * i) / 10, id: 2 }]);
+  // the dragging finger lifts (Chromium lifts the points a touchEnd lists); the palm stays
+  await touch('touchEnd', [{ ...b, id: 2 }]);
+  return {
+    lift: async () => {
+      await touch('touchEnd', [palm]);
+      await cdp.detach();
+    },
+  };
+}
+
+test('a palm resting on one tray piece does not block a drag of another, and its lift picks nothing', async ({ page }) => {
+  await openLevel1(page);
+  const [first, second] = await sorterPieces(page);
+  expect(second, 'Level 1 has a second piece to rest a palm on').toBeTruthy();
+
+  const palm = await palmThenDrag(page, sorterPiece(page, second), sorterPiece(page, first), sorterHole(page, first));
+  await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+  await expect(sorterPiece(page, first)).toHaveCount(0);
+
+  await palm.lift();
+  // the resting piece was never picked, before or after the palm lifted
+  await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'false');
+  await expect(help(page)).not.toHaveText(/^Now tap/);
+
+  // and a real tap on it still picks it
+  await sorterPiece(page, second).tap();
+  await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'true');
+});

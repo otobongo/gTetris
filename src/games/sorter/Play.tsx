@@ -102,6 +102,8 @@ export function Play({ level }: { level: number }) {
   const drag = useDragToTarget<string, string>({
     disabled: !playing,
     reach: SORTER_REACH_PX,
+    // A palm or the other hand resting still on one tray piece never blocks a drag of another.
+    takeover: true,
     onPick(id) {
       commit({ wrongLine: null, wrongHole: null });
       if (id === null) return;
