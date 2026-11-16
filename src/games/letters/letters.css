@@ -118,6 +118,13 @@ button.lb-picture:active { transform: translateY(var(--bw-press-shift)); box-sha
   background: rgb(0 0 0 / 0.15);
 }
 .lb-slot.is-next { border-color: var(--bw-accent); }
+/* Practice: while a dragged letter is over the train, its empty places light up to say it will go in.
+   Colour only, no motion, so it reads the same with reduced motion. */
+.lb-slots.is-over .lb-slot {
+  border-style: solid;
+  border-color: var(--bw-accent);
+  background: color-mix(in srgb, var(--bw-accent) 16%, rgb(0 0 0 / 0.15));
+}
 .lb-slot__ghost {
   font-size: var(--sfs);
   font-weight: 800;

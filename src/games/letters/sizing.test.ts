@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { FRAME_PAD, MAX_TILE, MIN_TILE, WELL_PAD, innerWidth, minViewHeight, slotSize, traySize, trayHeight, wordSizes } from './sizing';
+import {
+  FRAME_PAD,
+  MAX_TILE,
+  MIN_TILE,
+  WELL_PAD,
+  innerWidth,
+  isShortScreen,
+  matchTraySize,
+  matchViewHeight,
+  minViewHeight,
+  slotSize,
+  traySize,
+  trayHeight,
+  wordSizes,
+} from './sizing';
 
 const PHONE_WIDTHS = [320, 360, 375, 390, 414, 430];
 
@@ -79,5 +93,59 @@ describe('frame width and height', () => {
     const two = minViewHeight(84, traySize(8, 390));
     expect(two).toBeGreaterThan(one);
     expect(trayHeight(traySize(8, 390))).toBeGreaterThan(trayHeight(traySize(3, 390)));
+  });
+});
+
+describe('Big and small on a short phone (375x667)', () => {
+  /** The play area's height at 375x667 (.lb-body clientHeight), and its bottom padding (letters.css). */
+  const BODY_375x667 = 497;
+  const BODY_PAD = 6;
+
+  it('counts as short only on a phone under 700px tall', () => {
+    expect(isShortScreen('phone', 667)).toBe(true);
+    expect(isShortScreen('phone', 699)).toBe(true);
+    expect(isShortScreen('phone', 700)).toBe(false);
+    expect(isShortScreen('phone', 844)).toBe(false);
+    // The tablet frame is always drawn 853 tall and zoomed to fit, so its trays never shrink.
+    expect(isShortScreen('tablet', 600)).toBe(false);
+  });
+
+  it('keeps the 64px match tiles and 18px row gap on a tall phone', () => {
+    expect(matchTraySize(8, 390, false)).toMatchObject({ w: 64, h: 68, rows: 2, rowGap: 18 });
+    expect(matchTraySize(4, 390, false)).toEqual(traySize(4, 390, 64));
+  });
+
+  it('8 pairs: tiles 54 to 56 wide in two rows with a 12px row gap, at the frame width and with the page gutter taken off', () => {
+    for (const innerW of [375, 343]) {
+      const t = matchTraySize(8, innerW, true);
+      expect(t.w, `at ${innerW}`).toBeGreaterThanOrEqual(54);
+      expect(t.w, `at ${innerW}`).toBeLessThanOrEqual(56);
+      expect(t).toMatchObject({ rows: 2, perRow: 4, rowGap: 12 });
+    }
+    // The concrete tray the view draws at 375: 56 by 59 tiles, a stud of 8, so each well's tray is 138px tall.
+    const t = matchTraySize(8, 375, true);
+    expect(t).toMatchObject({ w: 56, h: 59, studH: 8, rowGap: 12 });
+    expect(t.studH + t.rows * t.h + (t.rows - 1) * t.rowGap).toBe(138);
+    expect(trayHeight(t)).toBe(174);
+  });
+
+  it('6 and 8 pairs: both trays, the help row and the gaps fit the 497px play area', () => {
+    for (const pairs of [6, 8]) {
+      const t = matchTraySize(pairs, 375, true);
+      expect(t.rows, `${pairs} pairs`).toBe(2);
+      expect(matchViewHeight(t) + BODY_PAD, `${pairs} pairs`).toBeLessThanOrEqual(BODY_375x667);
+    }
+  });
+
+  it('the tall phone sizes are what overflowed: 538px of content in the 497px area', () => {
+    expect(Math.round(matchViewHeight(matchTraySize(8, 375, false)) + BODY_PAD)).toBe(538);
+  });
+
+  it('keeps every match tile at least 44px on every phone width when short', () => {
+    for (const width of PHONE_WIDTHS) for (const pairs of [3, 4, 6, 8]) {
+      const t = matchTraySize(pairs, width, true);
+      expect(t.w, `${pairs} pairs at ${width}`).toBeGreaterThanOrEqual(44);
+      expect(t.perRow * t.w + (t.perRow - 1) * t.gap, `${pairs} pairs at ${width}`).toBeLessThanOrEqual(width - FRAME_PAD * 2 - WELL_PAD * 2);
+    }
   });
 });

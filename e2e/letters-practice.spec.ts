@@ -393,3 +393,75 @@ test('ages 3 to 4 on Level 1 with motion on: a dropped letter starts its flight 
   expect(Math.abs(start.y - released.y)).toBeLessThan(3);
   expect(Math.abs(start.w - released.w)).toBeLessThan(3);
 });
+
+/* ---------- A drop counts by the brick the child sees on the train, not by the finger ---------- */
+
+const slots = (page: Page) => page.locator('.lb-slots');
+
+/** Press a tray letter, carry it to `to` (the finger's point) and hold it there; `release` lets go. */
+async function holdOver(page: Page, ch: string, to: { x: number; y: number }) {
+  const box = (await trayTile(page, ch).boundingBox())!;
+  const from = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 6, from.y - 6, { steps: 2 });
+  await page.mouse.move(to.x, to.y, { steps: 8 });
+}
+
+test('ages 3 to 4 on Level 1: a letter let go a little above or below the train, its brick over it, goes in', async ({ page }) => {
+  await open(page, '3-4');
+  const answer = await lettersAnswer(page);
+  const [a, , , d] = answer;
+  const rowBox = (await slots(page).boundingBox())!;
+  const x = rowBox.x + rowBox.width / 2;
+
+  // The finger 30 above the row, on the picture's edge: the brick it holds dips onto the train, which lights up.
+  await holdOver(page, a, { x, y: rowBox.y - 30 });
+  await expect(slots(page)).toHaveClass(/is-over/);
+  await page.mouse.up();
+  await expect.poll(() => row(page)).toEqual([a, null, null, null]);
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+
+  // The finger 20 below the row: the brick still sits on it.
+  await holdOver(page, d, { x, y: rowBox.y + rowBox.height + 20 });
+  await expect(slots(page)).toHaveClass(/is-over/);
+  await page.mouse.up();
+  await expect.poll(() => row(page)).toEqual([a, null, null, d]);
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+  await expect(help(page)).not.toContainText('Not that one');
+});
+
+test('ages 3 to 4 on Level 1: the train lights only while the brick is over it, and a letter carried off goes back', async ({ page }) => {
+  await open(page, '3-4');
+  const answer = await lettersAnswer(page);
+  const instruction = ((await help(page).textContent()) ?? '').trim();
+  const rowBox = (await slots(page).boundingBox())!;
+  const picture = (await page.locator('.lb-picture--label').boundingBox())!;
+
+  // Nothing is lit before a drag, nor while the letter is still near the tray.
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+  const b = answer[1];
+  await holdOver(page, b, { x: rowBox.x + rowBox.width / 2, y: rowBox.y + rowBox.height / 2 });
+  await expect(slots(page)).toHaveClass(/is-over/);
+  // Carried on up to the middle of the picture, clear of the train: the light goes off.
+  await page.mouse.move(picture.x + picture.width / 2, picture.y + picture.height / 2, { steps: 6 });
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+  await page.mouse.up();
+
+  await expect(trayTile(page, b)).toBeVisible();
+  await expect(trayTile(page, b)).not.toHaveClass(/is-dragging/);
+  expect(await row(page)).toEqual(empty(answer));
+  await expect(help(page)).toHaveText(instruction);
+});
+
+test('ages 5 to 6 on Level 1: a letter let go just above the train is not taken and nothing lights', async ({ page }) => {
+  // The overlap rule is practice only: ordered levels keep the finger test.
+  await open(page, '5-6');
+  const answer = await lettersAnswer(page);
+  const rowBox = (await slots(page).boundingBox())!;
+  await holdOver(page, answer[0], { x: rowBox.x + rowBox.width / 2, y: rowBox.y - 30 });
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+  await page.mouse.up();
+  await expect(trayTile(page, answer[0])).toBeVisible();
+  expect(await row(page)).toEqual(empty(answer));
+});

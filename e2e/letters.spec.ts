@@ -2,10 +2,13 @@
  * Letter Builder journeys (four-puzzle brief 12): stuck, swap and finish; Break between puzzles and back after
  * extra time; a grown-up's jump to Level 20 that every screen names; an age band change mid-level; the last
  * level of the game; the level's hint budget over a swap (3.3); and Break on the level card's Play tap (2.4).
+ * Also: the finger tap that places the last letter never presses the Next button that takes its place, and
+ * Big and small fits the small iPhone (375x667) with no scrolling.
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   dots,
+  recordSpeech,
   editSavedInAnotherTab,
   hashOf,
   homeCard,
@@ -436,4 +439,116 @@ test('a dragged letter stays under the finger on every screen size, the tablet f
   expect(Math.abs(held.x - (start.x + 60))).toBeLessThanOrEqual(3);
   expect(Math.abs(held.y - (start.y - 150))).toBeLessThanOrEqual(3);
   await page.mouse.up();
+});
+
+/* ---------- One tap does one thing: the last letter's tap never presses Next ---------- */
+
+/**
+ * Fix Math.random before the app loads, so the run seed, and with it every tray, is the same on each run.
+ * The seed is picked so that at least one last letter sits where Next then appears, on the phone and the tablet.
+ */
+async function fixedRandom(page: Page, from: number) {
+  await page.addInitScript((start) => {
+    let a = start;
+    Math.random = () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }, from);
+}
+
+const centreOf = async (el: Locator) => {
+  const b = (await el.boundingBox())!;
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+const inside = (p: { x: number; y: number }, b: { x: number; y: number; width: number; height: number }) =>
+  p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height;
+
+/**
+ * Finger-tap the letters of the puzzle on screen in order, then check the solved moment holds: Next shows,
+ * the dots stay on this puzzle, the solved line shows and the success line is spoken. Returns whether the last
+ * letter sat under where Next appeared (the tap whose click used to press it).
+ */
+async function tapSolve(page: Page, n: number, spoken: () => Promise<string[]>, spelling: boolean): Promise<boolean> {
+  const answer = await lettersAnswer(page);
+  const tray = page.locator('.lb-tray');
+  let last = { x: 0, y: 0 };
+  for (let i = 0; i < answer.length; i++) {
+    const tile = tray.getByRole('button', { name: answer[i], exact: true }).first();
+    if (i === answer.length - 1) last = await centreOf(tile);
+    await tile.tap();
+  }
+  const Noun = spelling ? 'Word' : 'Puzzle';
+  const done = spelling ? 'built' : 'solved';
+  const success = spelling ? answer.join('').toLowerCase() : 'choo choo!';
+  await expect(help(page)).toHaveText(spelling ? `You built ${answer.join('')}.` : `${answer[0]} to ${answer[answer.length - 1]}, all in order.`);
+  // The solve's sound and spoken line follow the tap by 650 ms: the view must still be up to play them.
+  await expect.poll(async () => (await spoken()).filter((s) => s.toLowerCase() === success).length).toBe(spelling ? 1 : n + 1);
+  if (n === 3) return false;
+  const next = page.getByRole('button', { name: spelling ? 'Next word' : 'Next puzzle' });
+  await expect(next).toBeVisible();
+  await expect(dots(page)).toHaveAttribute('aria-label', `${Noun} ${n + 1} of 4. ${n + 1} ${done}.`);
+  const under = inside(last, (await next.boundingBox())!);
+  await next.tap();
+  await expect(dots(page)).toHaveAttribute('aria-label', `${Noun} ${n + 2} of 4. ${n + 1} ${done}.`);
+  return under;
+}
+
+test('a finger tap on the last letter solves the puzzle and stops on Next, every puzzle of Level 1', async ({ page }) => {
+  await fixedRandom(page, 7);
+  const spoken = await recordSpeech(page);
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+  await expect(page.locator('.lb-tray button').first()).toBeVisible();
+
+  let under = 0;
+  for (let n = 0; n < 4; n++) if (await tapSolve(page, n, spoken, false)) under++;
+  // At least one last letter sat where Next appeared, so a click passed on to it would have skipped a puzzle.
+  expect(under).toBeGreaterThan(0);
+  await expect(levelCard(page).getByRole('heading')).toHaveText('You finished Level 1');
+});
+
+test('a finger tap on the last letter of a spelling word stops on Next word and says the word', async ({ page }) => {
+  await fixedRandom(page, 7);
+  const spoken = await recordSpeech(page);
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { letters: { stars: starsUpTo(15) } } }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/16$/);
+  await expect(page.locator('.lb-tray button').first()).toBeVisible();
+
+  let under = 0;
+  for (let n = 0; n < 3; n++) if (await tapSolve(page, n, spoken, true)) under++;
+  expect(under).toBeGreaterThan(0);
+});
+
+/* ---------- Big and small on the small iPhone ---------- */
+
+test.describe('Big and small on a 375x667 phone', () => {
+  test.use({ viewport: { width: 375, height: 667 } });
+
+  for (const level of [10, 11]) {
+    test(`Level ${level} fits with no scrolling and every letter stays 44px or more @phone-only`, async ({ page }) => {
+      await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { letters: { stars: starsUpTo(level - 1) } } }]);
+      await page.goto('/#/game/letters');
+      await expect(page).toHaveURL(new RegExp(`#/game/letters/${level}$`));
+      const bricks = page.locator('.lb-match .lb-brick');
+      await expect(bricks.first()).toBeVisible();
+      await expect(bricks).toHaveCount(level === 10 ? 12 : 16);
+
+      const body = await page.locator('.lb-body').evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+      expect(body.scroll).toBeLessThanOrEqual(body.client + 1);
+      // Every tile is a whole press target, and the last row sits inside the screen.
+      const sizes = await bricks.evaluateAll((els) =>
+        els.map((el) => ({ w: (el as HTMLElement).offsetWidth, h: (el as HTMLElement).offsetHeight, bottom: el.getBoundingClientRect().bottom })),
+      );
+      for (const s of sizes) {
+        expect(s.w).toBeGreaterThanOrEqual(44);
+        expect(s.h).toBeGreaterThanOrEqual(44);
+        expect(s.bottom).toBeLessThanOrEqual(667);
+      }
+    });
+  }
 });

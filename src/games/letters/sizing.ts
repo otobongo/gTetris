@@ -111,3 +111,32 @@ export function trayHeight(t: TraySize): number {
 export function minViewHeight(rowH: number, t: TraySize): number {
   return PICTURE_MIN + 10 + rowH + 10 + HELP_ROW + trayHeight(t) + GAP * 3;
 }
+
+/* ---------- Big and small ---------- */
+
+/** Below this height a phone is short (the 375x667 iPhone SE), and Big and small draws its trays smaller. */
+export const SHORT_PHONE = 700;
+/** Largest match tile: 64 on most screens, 56 on a short phone. */
+export const MATCH_TILE = 64;
+export const MATCH_TILE_SHORT = 56;
+/** Gap between the two rows of a match tray: 18 as everywhere, 12 on a short phone. */
+const MATCH_ROW_GAP_SHORT = 12;
+
+/** Only the phone column gets short: the tablet frame is always drawn 853 tall and zoomed to fit. */
+export const isShortScreen = (mode: 'phone' | 'tablet', height: number): boolean => mode === 'phone' && height < SHORT_PHONE;
+
+/** The size of each Big and small tray (both trays share it). */
+export function matchTraySize(pairs: number, innerW: number, short: boolean): TraySize {
+  if (!short) return traySize(pairs, innerW, MATCH_TILE);
+  return { ...traySize(pairs, innerW, MATCH_TILE_SHORT), rowGap: MATCH_ROW_GAP_SHORT };
+}
+
+/** The tray well's label line ("Big letters": 14px Baloo 2 at its normal line height, 22px as measured), and the 8px under it. */
+const WELL_LABEL = 22 + 8;
+/** Gap between the help row and the two wells in .lb-match (letters.css). */
+const MATCH_GAP = 10;
+
+/** Height of the Big and small view: the help row, then two labelled wells, as letters.css lays them out. */
+export function matchViewHeight(t: TraySize): number {
+  return HELP_ROW + 2 * (MATCH_GAP + WELL_LABEL + trayHeight(t));
+}
