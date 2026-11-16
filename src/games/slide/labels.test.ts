@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fromSpec, initialState, withMove, type GateDef } from './engine';
 import { brickLabel, doorLabel, exitLine, moveLine, slidLine } from './labels';
+import { PUZZLE_LEVELS } from './puzzles';
 
 const DASHES = /[‒–—―−]/;
 
@@ -122,5 +123,35 @@ describe('every name and line', () => {
       slidLine('purple', [0, 0], [3, 3]),
     ];
     for (const line of all) expect(line, line).not.toMatch(DASHES);
+  });
+});
+
+describe('on every board the game plays', () => {
+  it('no two bricks and no two doors share a name, every name says where it is, and none has a dash', () => {
+    let boards = 0;
+    PUZZLE_LEVELS.forEach((level, li) =>
+      level.puzzles.forEach((board, pi) => {
+        const where = `Level ${li + 1}, board ${pi}`;
+        const s = initialState(board);
+        const bricks = board.blocks.map((b, i) => brickLabel(b, s.pos[i]!));
+        const doors = board.gates.map((g) => doorLabel(board, g, s));
+        expect(new Set(bricks).size, where).toBe(bricks.length);
+        expect(new Set(doors).size, where).toBe(doors.length);
+        for (const name of bricks) expect(name, where).toMatch(/^[A-Z][a-z]+ brick, .+, rows? \d+( to \d+)?, columns? \d+( to \d+)?$/);
+        for (const name of doors) expect(name, where).toMatch(/^[A-Z][a-z]+ door, (top|bottom|left|right) side, (rows?|columns?) \d+( to \d+)?(, melts .+)?$/);
+        for (const name of [...bricks, ...doors]) expect(name, where).not.toMatch(DASHES);
+        boards++;
+      }),
+    );
+    expect(boards).toBeGreaterThan(100);
+  });
+
+  it('a door iced by a count and by a colour says the count first, then the colour', () => {
+    const l = fromSpec({ map: ['A.', 'B.', 'C.'], colors: { A: 'red', B: 'blue', C: 'green' }, gates: [{ side: 'right', at: 0, len: 1, color: 'red', lock: 1, lockColor: 'blue' }] }, 5);
+    const s = initialState(l);
+    expect(doorLabel(l, l.gates[0], s)).toBe('Frozen door, right side, row 1, melts after 1 more brick leaves');
+    const green = withMove(s, 2, null);
+    expect(doorLabel(l, l.gates[0], green)).toBe('Frozen door, right side, row 1, melts when every blue brick is out');
+    expect(doorLabel(l, l.gates[0], withMove(green, 1, null))).toBe('Red door, right side, row 1');
   });
 });

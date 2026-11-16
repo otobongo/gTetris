@@ -460,6 +460,12 @@ export default function SlideGame({ index }: { index: number }) {
     follow(e, d);
   };
 
+  /** A drag that ends with the brick still on the board, somewhere new, is read out like a key press. */
+  const sayWhereItWent = (d: Drag) => {
+    const end = stateRef.current.pos[d.block];
+    if (end && (end[0] !== d.start[0] || end[1] !== d.start[1])) announce(slidLine(level.blocks[d.block].color, d.start, end));
+  };
+
   const onPointerUp = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d || d.pointerId !== e.pointerId) return;
@@ -468,17 +474,18 @@ export default function SlideGame({ index }: { index: number }) {
     const left = follow(e, d);
     drag.current = null;
     setPull(null);
-    const end = stateRef.current.pos[d.block];
-    if (!left && end && (end[0] !== d.start[0] || end[1] !== d.start[1])) announce(slidLine(level.blocks[d.block].color, d.start, end));
+    if (!left) sayWhereItWent(d);
     // pushed into a wall or another brick: a small nudge says it can not go there
     if (!left && !d.moved && !d.pulled && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
   };
 
-  /** A lost pointer (a system gesture, say) never takes a brick out: it just drops the drag. */
+  /** A lost pointer (a system gesture, say) never takes a brick out: it just drops the drag, where the brick got to. */
   const onPointerCancel = (e: PointerEvent<HTMLButtonElement>) => {
-    if (drag.current?.pointerId !== e.pointerId) return;
+    const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId) return;
     drag.current = null;
     setPull(null);
+    sayWhereItWent(d);
   };
 
   /*
