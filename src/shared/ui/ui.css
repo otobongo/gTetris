@@ -30,6 +30,29 @@
 .bw-screen--phone .bw-screen__frame--standard { padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .bw-screen--phone .bw-screen__frame--roomy { padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
 .bw-screen--phone .bw-screen__frame--home { padding: max(22px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+/* Tablets (and phones turned sideways) too. The frame is zoomed and env() is in screen px, so each inset
+   is divided by the zoom Screen hands down as --bw-zoom. Home keeps 0 at the bottom: its list pads itself. */
+.bw-screen--tablet .bw-screen__frame--standard {
+  padding:
+    max(20px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
+    max(16px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    max(18px, calc(env(safe-area-inset-bottom) / var(--bw-zoom, 1)))
+    max(16px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+}
+.bw-screen--tablet .bw-screen__frame--roomy {
+  padding:
+    max(24px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
+    max(20px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    max(22px, calc(env(safe-area-inset-bottom) / var(--bw-zoom, 1)))
+    max(20px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+}
+.bw-screen--tablet .bw-screen__frame--home {
+  padding:
+    max(22px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
+    max(16px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    0
+    max(16px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+}
 
 /* ---------- Brick ---------- */
 .bw-brick {
@@ -360,4 +383,8 @@
   .bw-dot { transition: none; }
   .bw-dot__fill { transition: opacity 150ms linear; }
   .bw-levelcard { animation: bw-fade-in 150ms linear; }
+  /* The 0.01ms safety net in global.css is !important too; these class selectors outrank its `*`,
+     so only the designed fades come back and everything else stays instant. */
+  .bw-dot__fill { transition-duration: 150ms !important; }
+  .bw-levelcard, .bw-appear { animation-duration: 150ms !important; }
 }

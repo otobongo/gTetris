@@ -138,11 +138,13 @@
 
 /* ---------- Reduced motion (brief 9.1) ---------- */
 /* Shakes, tilts, lifts and slides go; dims, rings and lines stay, and changes crossfade over 150ms.
-   A dragged item still follows the finger (the child moves it), and a miss puts it back at once. */
+   A dragged item still follows the finger (the child moves it), and a miss puts it back at once.
+   The 150ms durations carry !important to get past the 0.01ms safety net in global.css. */
 @media (prefers-reduced-motion: reduce) {
   .bw-choice { transition: opacity 150ms linear; }
   .bw-choice.is-wrong,
   .bw-choice.is-right { transform: none; }
   .bw-drag:not([style*='--drag-x']) { transform: none; transition: opacity 150ms linear; }
   .bw-drag[style*='--drag-x'] { transform: translate(var(--drag-x), var(--drag-y)); }
+  .bw-choice, .bw-drag:not([style*='--drag-x']) { transition-duration: 150ms !important; }
 }

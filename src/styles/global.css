@@ -54,8 +54,11 @@ body {
 
 button { font-family: inherit; color: inherit; }
 
-/* Pinch zoom stays on for everyone (no user-scalable=no). Tap targets skip double-tap zoom, so a
-   quick second tap is a tap. Boards and drag areas set touch-action: none on their own classes. */
+/* Pinch zoom stays on for everyone (no user-scalable=no). Double-tap zoom is off on the whole page,
+   so a child drumming on the help line or the gaps between tiles never zooms it, and a quick second
+   tap on a control is a tap. Boards and drag areas set touch-action: none on their own classes, and
+   the browser takes the stricter of the two. */
+html { touch-action: manipulation; }
 button,
 a,
 [role="button"],

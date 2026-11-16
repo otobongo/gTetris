@@ -27,7 +27,8 @@ export interface ScreenProps {
 export function Screen({ children, padding = 'standard', fit = 'viewport', gap = 12, className }: ScreenProps) {
   const layout = useLayout();
   const tablet = layout.mode === 'tablet';
-  const frameStyle: CSSProperties = { gap };
+  // --bw-zoom lets the frame's safe-area padding (ui.css) turn env() screen px into zoomed frame px.
+  const frameStyle = { gap, '--bw-zoom': tablet ? layout.zoom : 1 } as CSSProperties;
   if (tablet) {
     frameStyle.zoom = layout.zoom;
     const h = `${Math.floor(layout.height / layout.zoom)}px`;

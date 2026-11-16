@@ -346,7 +346,8 @@
   font-variant-numeric: tabular-nums;
 }
 .sc-star { color: var(--bw-star); }
-.sc-home__scroll { margin: -6px calc(-1 * var(--bw-gutter) - 6px) 0; padding: 6px calc(var(--bw-gutter) + 6px) var(--bw-sp-10); gap: 0; }
+/* The list ends clear of the home indicator: env() is in screen px, so it is divided by the frame's zoom. */
+.sc-home__scroll { margin: -6px calc(-1 * var(--bw-gutter) - 6px) 0; padding: 6px calc(var(--bw-gutter) + 6px) calc(var(--bw-sp-10) + env(safe-area-inset-bottom, 0px) / var(--bw-zoom, 1)); gap: 0; }
 .sc-discovery {
   display: flex;
   align-items: center;
@@ -677,7 +678,7 @@ button.sc-tile { cursor: pointer; }
 .sc-legal { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
 .sc-legal__item { display: inline-flex; align-items: center; }
 .sc-legal__dot { color: var(--bw-text-2); font-weight: 800; }
-.sc-check { display: flex; gap: var(--bw-sp-4); align-items: flex-start; font-size: var(--bw-fs-label); font-weight: 700; line-height: 1.3; color: var(--bw-text-2); cursor: pointer; }
+.sc-check { display: flex; gap: var(--bw-sp-4); align-items: center; min-height: var(--bw-target); font-size: var(--bw-fs-label); font-weight: 700; line-height: 1.3; color: var(--bw-text-2); cursor: pointer; }
 .sc-check input { width: 22px; height: 22px; margin: 0; accent-color: var(--bw-green-bottom); flex-shrink: 0; }
 .sc-check__links { display: flex; flex-wrap: wrap; gap: var(--bw-sp-3); margin: -4px 0 0 22px; }
 .sc-check__links .sc-textlink { font-size: var(--bw-fs-label); padding: 0 var(--bw-sp-4); }
@@ -740,7 +741,8 @@ button.sc-tile { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .sc-settle { animation: sc-fade 150ms ease-out both; }
   .sc-drop { animation: sc-fade 150ms linear backwards; animation-delay: 0ms; }
-  .sc-overlay__card { animation-duration: 150ms; }
+  /* Past the 0.01ms safety net in global.css: these class selectors outrank its `*`. */
+  .sc-settle, .sc-drop, .sc-overlay__card { animation-duration: 150ms !important; }
   .sc-press, .sc-discovery, .sc-gamecard, .sc-tile, .sc-player, .sc-btn, .sc-face, .sc-hold, .sc-switch__thumb, .sc-hold__layer--fill { transition: none; }
 }
 
