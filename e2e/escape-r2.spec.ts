@@ -24,6 +24,8 @@ async function openLevel(page: Page, level: number, band: Band = '5-6') {
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band, games: { escape: { stars: starsUpTo(level) } } }]);
   await page.goto(`/#/game/escape/${level + 1}`);
   await expect(page.locator('.esc-brick').first()).toBeVisible();
+  // the real font (Baloo 2, weights 700 and 800) before any measuring: a late swap would re-wrap the help line
+  expect(await page.evaluate(async () => (await document.fonts.ready, document.fonts.check('800 16px "Baloo 2"') && document.fonts.check('700 16px "Baloo 2"')))).toBe(true);
   const puzzle = await escapePuzzleOnScreen(page, level);
   return { puzzle, board: escapeBoard(level, puzzle) };
 }
@@ -368,16 +370,27 @@ async function checkTargets(page: Page, board: Level, s: State, where: string) {
     const buttons = tapButtons(board, s, b);
     if (!buttons.length) continue;
     // one square now: the help line above the tools can change its height after a move, and the board with it
+    const before = (await page.locator('.esc-board').boundingBox())!;
     const cellPt = (await page.locator('.esc-well').first().boundingBox())!.width;
     await brick(page, b).tap();
     await expect(targets(page)).toHaveCount(buttons.length);
-    // picking a brick never resizes the board
-    expect(Math.abs((await page.locator('.esc-well').first().boundingBox())!.width - cellPt), `${where} board steady`).toBeLessThan(0.5);
-    const bricks = await page.locator('.esc-brick').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().toJSON() as Box));
+    // picking a brick never resizes or moves the board
+    const after = (await page.locator('.esc-board').boundingBox())!;
+    for (const k of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after[k] - before[k]), `${where} board steady (${k})`).toBeLessThan(0.5);
+    // the bricks and every target read in one go, from one layout
+    const names = buttons.map((t) => targetName(board, b, t));
+    const seen = await page.evaluate((names) => {
+      const rect = (e: Element) => e.getBoundingClientRect().toJSON() as Box;
+      const byName = (n: string) => [...document.querySelectorAll('.esc-target')].find((e) => e.getAttribute('aria-label') === n)!;
+      return {
+        bricks: [...document.querySelectorAll('.esc-brick')].map(rect),
+        targets: names.map((n) => ({ box: rect(byName(n)), reach: [...byName(n).querySelectorAll('.esc-target__reach')].map(rect) })),
+      };
+    }, names);
+    const bricks = seen.bricks;
     const boxes: Box[] = [];
-    for (const t of buttons) {
-      const btn = page.getByRole('button', { name: targetName(board, b, t), exact: true });
-      const box = (await btn.boundingBox())!;
+    for (const [i, t] of buttons.entries()) {
+      const { box, reach } = seen.targets[i];
       if (t.kind === 'slide') {
         // the button is exactly the free squares at the leading edge
         const rows = new Set(t.cells.map((c) => c[0])).size;
@@ -387,15 +400,15 @@ async function checkTargets(page: Page, board: Level, s: State, where: string) {
         boxes.push(box);
       } else {
         // the door's hit area: the button plus the squares it reaches into, 44 pt both ways at least
-        const parts = await btn.evaluate((el) => [el, ...Array.from(el.querySelectorAll('.esc-target__reach'))].map((e) => e.getBoundingClientRect().toJSON()));
+        const parts = [box, ...reach];
         const x0 = Math.min(...parts.map((p) => p.x));
         const y0 = Math.min(...parts.map((p) => p.y));
         const x1 = Math.max(...parts.map((p) => p.x + p.width));
         const y1 = Math.max(...parts.map((p) => p.y + p.height));
         expect(x1 - x0, `${where} exit width`).toBeGreaterThanOrEqual(44 - 0.5);
         expect(y1 - y0, `${where} exit height`).toBeGreaterThanOrEqual(44 - 0.5);
-        for (const p of parts.slice(1)) boxes.push(p);
-        // the part on the door sits outside the grid, so it never covers a brick
+        for (const p of reach) boxes.push(p);
+        // the part on the door sits outside the tray's squares, so it never covers a brick
         for (const k of bricks) expect(overlaps(box, k), `${where} exit over a brick`).toBe(false);
       }
     }

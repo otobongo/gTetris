@@ -23,15 +23,19 @@ const CONFUSED: [Color, Color][] = [
 const PX = 14;
 const SUB = 4; // samples per pixel side
 
-function inside(rings: Pt[][], x: number, y: number): boolean {
-  let hit = false;
+/**
+ * Where a row of samples at height `y` crosses the mark's outline: a sample at x is inside (even-odd) when an
+ * odd number of these lie to its right. The same test as a point-in-polygon check, done once per row.
+ */
+function crossings(rings: Pt[][], y: number): number[] {
+  const xs: number[] = [];
   for (const ring of rings)
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
       const [xi, yi] = ring[i];
       const [xj, yj] = ring[j];
-      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+      if (yi > y !== yj > y) xs.push(((xj - xi) * (y - yi)) / (yj - yi) + xi);
     }
-  return hit;
+  return xs;
 }
 
 const turn = (rings: Pt[][], deg: number): Pt[][] => {
@@ -39,17 +43,21 @@ const turn = (rings: Pt[][], deg: number): Pt[][] => {
   return rings.map((ring) => ring.map(([x, y]) => [12 + (x - 12) * Math.cos(a) - (y - 12) * Math.sin(a), 12 + (x - 12) * Math.sin(a) + (y - 12) * Math.cos(a)] as Pt));
 };
 
-/** How much of each of the 14 x 14 pixels the mark covers, 0 to 1. */
+/** How much of each of the 14 x 14 pixels the mark covers, 0 to 1 (SUB x SUB samples a pixel). */
 function raster(rings: Pt[][]): number[] {
-  const out: number[] = [];
+  const n = new Array<number>(PX * PX).fill(0);
   for (let py = 0; py < PX; py++)
-    for (let px = 0; px < PX; px++) {
-      let n = 0;
-      for (let sy = 0; sy < SUB; sy++)
-        for (let sx = 0; sx < SUB; sx++) if (inside(rings, ((px + (sx + 0.5) / SUB) * 24) / PX, ((py + (sy + 0.5) / SUB) * 24) / PX)) n++;
-      out.push(n / (SUB * SUB));
+    for (let sy = 0; sy < SUB; sy++) {
+      const xs = crossings(rings, ((py + (sy + 0.5) / SUB) * 24) / PX);
+      for (let px = 0; px < PX; px++)
+        for (let sx = 0; sx < SUB; sx++) {
+          const x = ((px + (sx + 0.5) / SUB) * 24) / PX;
+          let right = 0;
+          for (const cx of xs) if (x < cx) right++;
+          if (right % 2) n[py * PX + px]++;
+        }
     }
-  return out;
+  return n.map((v) => v / (SUB * SUB));
 }
 
 /** Overlap of two drawn marks: 1 is the same picture, 0 shares nothing. */

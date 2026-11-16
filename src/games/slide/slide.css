@@ -12,6 +12,9 @@
   --esc-arrow-on-white: #6b6585;
   --esc-pad: 22px;
   align-items: center;
+  /* a door's tap target grows outward past the board, and a leaving brick slides out past it: neither may
+     make the screen scrollable, or a focused target would scroll the whole board out of place */
+  overflow: clip;
 }
 
 /* visually hidden, still read by VoiceOver: the clock's "Time left" and the move line (role=status) */
@@ -234,7 +237,13 @@
   font-weight: 700;
   line-height: var(--bw-lh-body);
   color: var(--bw-text-2);
+  display: grid;
 }
+/* the line on screen, and while a brick is picked the line it replaced, unseen and unread, in the same cell:
+   the help keeps its height, so the board above it stays put between the two taps */
+.esc-help__line,
+.esc-help[data-hold]::after { grid-area: 1 / 1; }
+.esc-help[data-hold]::after { content: attr(data-hold); visibility: hidden; }
 
 /* ---------- tools row: Undo and Hint centred, the stuck offer pinned right (brief 3.2, 7.1) ----------
    The row spans the screen and keeps its height, so the board never resizes when Next or the offer shows. */

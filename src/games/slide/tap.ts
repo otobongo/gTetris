@@ -6,7 +6,7 @@
  * Every target is found with the arrow keys' own keyStep, one square at a time, so a tap can only make a slide
  * a key press could make, and a brick still leaves only through its own open door (brief 11.1 #13).
  */
-import { type Cell, type Level, type State, DIRS, withMove } from './engine';
+import { type Cell, type GateDef, type Level, type State, DIRS, gateDepth, isPlayable, withMove } from './engine';
 import { keyStep } from './drag';
 
 /** A spot the picked brick can slide to in a straight line. */
@@ -113,4 +113,80 @@ export function tapMove(level: Level, state: State, block: number, target: TapTa
   if (target.kind !== 'slide') return null;
   const at = s.pos[block]!;
   return at[0] === target.at[0] && at[1] === target.at[1] ? { kind: 'moved', at, state: s } : null;
+}
+
+/* ---------- where the targets sit on the board, in the grid's px ---------- */
+
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** The frame around the tray, which is also the door thickness + 4 (SlideGame's PAD). */
+export const FRAME = 22;
+/** The least a tap target is across, in the frame's px (HIG 44 pt). */
+export const MIN_HIT = 44;
+
+/** Where a door sits: in the frame (or a void square), just outside its squares, 4 px in from each end. */
+export function doorBox(level: Level, gate: GateDef, cell: number): Box {
+  const d = gateDepth(level, gate);
+  const span = gate.len * cell - 8;
+  const thick = FRAME - 4;
+  return gate.side === 'right'
+    ? { left: (d + 1) * cell + 2, top: gate.at * cell + 4, width: thick, height: span }
+    : gate.side === 'left'
+      ? { left: d * cell - FRAME + 2, top: gate.at * cell + 4, width: thick, height: span }
+      : gate.side === 'bottom'
+        ? { left: gate.at * cell + 4, top: (d + 1) * cell + 2, width: span, height: thick }
+        : { left: gate.at * cell + 4, top: d * cell - FRAME + 2, width: span, height: thick };
+}
+
+/** The bounding box of whole squares; null for none. */
+export function cellsBox(cells: readonly Cell[], cell: number): Box | null {
+  if (!cells.length) return null;
+  const rows = cells.map((c) => c[0]);
+  const cols = cells.map((c) => c[1]);
+  const r0 = Math.min(...rows);
+  const c0 = Math.min(...cols);
+  return { left: c0 * cell, top: r0 * cell, width: (Math.max(...cols) - c0 + 1) * cell, height: (Math.max(...rows) - r0 + 1) * cell };
+}
+
+/** Does `box` reach into a square of the tray, one a brick could stand on? */
+function coversTray(level: Level, box: Box, cell: number): boolean {
+  const r0 = Math.floor(box.top / cell);
+  const r1 = Math.ceil((box.top + box.height) / cell) - 1;
+  const c0 = Math.floor(box.left / cell);
+  const c1 = Math.ceil((box.left + box.width) / cell) - 1;
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (isPlayable(level, r, c)) return true;
+  return false;
+}
+
+/**
+ * The hit area of a door's target: the door, grown outward (away from its squares) and along the door to 44 px.
+ * Growing along the door never reaches into a square of the tray: a door set in a notch of the board stops at
+ * the squares beside it and grows the other way, or not at all (then it is as long as the door).
+ */
+export function exitHit(level: Level, gate: GateDef, cell: number): Box {
+  const door = doorBox(level, gate, cell);
+  const upright = gate.side === 'left' || gate.side === 'right';
+  const grow = (n: number) => Math.max(0, MIN_HIT - n);
+  const hit = { ...door };
+  if (upright) {
+    hit.width = door.width + grow(door.width);
+    if (gate.side === 'left') hit.left = door.left - grow(door.width);
+  } else {
+    hit.height = door.height + grow(door.height);
+    if (gate.side === 'top') hit.top = door.top - grow(door.height);
+  }
+  const need = grow(upright ? door.height : door.width);
+  if (!need) return hit;
+  const along = (before: number, after: number): Box =>
+    upright ? { ...hit, top: door.top - before, height: door.height + before + after } : { ...hit, left: door.left - before, width: door.width + before + after };
+  for (const [before, after] of [[need / 2, need / 2], [0, need], [need, 0]]) {
+    const box = along(before, after);
+    if (!coversTray(level, box, cell)) return box;
+  }
+  return hit;
 }
