@@ -21,8 +21,9 @@ import { isBandMove } from '../../shared/progress/model';
 import { go, replace, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { letterName, say } from '../../shared/speech';
-import { Brick, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, Screen, TopBar, useLayout } from '../../shared/ui';
+import { Brick, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, Screen, TopBar, useLayout, type BrickColor } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
+import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
 import { currentLevel } from '../meta';
 import { STUCK, STUCK_START, lettersLevelStars, lettersSet, levelTotals, puzzleOnScreen, rotateQueue, stuckStep, type StuckEvent } from '../run';
 import { capRule } from '../stars';
@@ -42,7 +43,7 @@ import {
   swapLine,
 } from './copy';
 import { LEVELS, isSpelling, makePuzzles, type Prompt } from './levels';
-import { LEVEL_RULE, isPracticeLevel, readyAfter } from './logic';
+import { LEVEL_RULE, isPracticeLevel, lettersCapped, readyAfter } from './logic';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
@@ -115,6 +116,22 @@ function promptText(p: Prompt, practice: boolean): { text: string; speech: strin
   }
 }
 
+/** The sticker a level card shows: its name and its 25 mosaic cells, row by row. */
+export interface NewSticker {
+  name: string;
+  cells: (BrickColor | null)[];
+}
+
+/**
+ * Letter Builder stickers the player is due once a level is saved (decision 19): the ids to award now and the
+ * first one, for the level card. Only this game's stickers; any other stays for Home and the sticker book.
+ */
+export function levelSticker(player: Player | null): { ids: string[]; sticker?: NewSticker } {
+  const ids = stickersDue(player).filter((id) => STICKERS.find((s) => s.id === id)?.game === GAME);
+  const first = STICKERS.find((s) => s.id === ids[0]);
+  return first ? { ids, sticker: { name: first.name, cells: stickerCells(first) } } : { ids };
+}
+
 /** A fresh run seed: it fixes the level's runs, letters, pictures, word order and trays. */
 const newSeed = () => (Math.random() * 2 ** 31) | 0;
 
@@ -154,6 +171,10 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   const [nonce, setNonce] = useState(0);
   const [swapped, setSwapped] = useState(false);
   const [hintsLeft, setHintsLeft] = useState(run.hintsLeft ?? HINTS_PER_RUN);
+  /** A counted hint was used on the puzzle on screen: usedHintRef, mirrored for the capped-star mark (decision 25). */
+  const [hintOnScreen, setHintOnScreen] = useState(false);
+  /** The sticker this level earned, taken when its fourth puzzle was saved (after the award it is no longer due). */
+  const [sticker, setSticker] = useState<NewSticker | undefined>(undefined);
   const [stuck, setStuck] = useState(STUCK_START);
   const slipsRef = useRef(0);
   const usedHintRef = useRef(false);
@@ -243,6 +264,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     setPuzzle(puzzleOnScreen(from));
     slipsRef.current = 0;
     usedHintRef.current = false;
+    setHintOnScreen(false);
     stuckOn({ type: event });
     setSwapped(event === 'swap');
     setNonce((x) => x + 1);
@@ -272,6 +294,12 @@ function Play({ level, player }: { level: number; player: Player | null }) {
       return;
     }
     if (outcome.kind !== 'finished') return;
+    if (player) {
+      // The level is saved: award the stickers it finished for this game, and show the first on the card.
+      const due = levelSticker(findPlayer(progressStore.getState(), player.id));
+      for (const id of due.ids) progressStore.awardSticker(id, player.id);
+      setSticker(due.sticker);
+    }
     setFinish(outcome);
     setMoment('levelDone');
     showSlot();
@@ -302,7 +330,10 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     const left = player ? progressStore.spendHint(GAME, level, player.id) : null;
     setHintsLeft(left ?? Math.max(0, hintsLeft - 1));
     // The practice level is never wrong, so its hint glows and spends but never caps the stars (decision 22).
-    if (!practice) usedHintRef.current = true;
+    if (!practice) {
+      usedHintRef.current = true;
+      setHintOnScreen(true);
+    }
   };
 
   const playNextLevel = (to: number) => {
@@ -365,7 +396,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     innerW: innerWidth(layout.mode, layout.width),
     instruction: swapped ? swapLine(spelling) : text,
     helpOverride: offer ? offerLine(spelling) : null,
-    offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" onClick={swap} /> : null,
+    // Ages 3 to 4 get one chime and a short ring when the offer appears (decision 8, by the band of the puzzle on screen).
+    offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" cue={band === '3-4'} onClick={swap} /> : null,
     slot: slot ? (
       <div ref={slotRef} className="lb-slot-wrap" onPointerDown={(e) => (mousePressed.current = e.pointerType === 'mouse')}>
         {slot}
@@ -377,7 +409,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
 
   const solvedNow = moment !== 'play';
   const doneCount = moment === 'levelDone' ? 4 : run.solved.length;
-  const dots = <PuzzleDots solved={doneCount} puzzle={solvedNow ? Math.max(1, doneCount) : undefined} noun={spelling ? 'word' : 'puzzle'} />;
+  const capped = lettersCapped(practice, hintOnScreen, finish?.results ?? run.solved);
+  const dots = <PuzzleDots solved={doneCount} puzzle={solvedNow ? Math.max(1, doneCount) : undefined} noun={spelling ? 'word' : 'puzzle'} capped={capped} />;
 
   const card = (() => {
     if (!cardOpen || !finish) return null;
@@ -388,6 +421,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
           title={GAME_DONE_TITLE}
           stars={finish.stars}
           fact={gameDoneFact(levelCount, total)}
+          sticker={sticker}
           primary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}
           onClose={closeCard}
         />
@@ -401,6 +435,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
         fact={levelFact(spelling, totals.count)}
         rule={LEVEL_RULE}
         cap={totals.usedHint ? capRule({ hint: true }) : undefined}
+        sticker={sticker}
         primary={{ label: playLabel(finish.next + 1), onClick: () => playNextLevel(finish.next!) }}
         secondary={{ label: BACK_TO_GAMES, href: toHref(HOME) }}
         onClose={closeCard}

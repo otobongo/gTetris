@@ -470,9 +470,8 @@ function demoCases() {
     expect(a.y).toBeLessThanOrEqual(goal.y + goal.height + 2);
     expect(a.y + a.height).toBeGreaterThanOrEqual(tile.y - 2);
 
-    await page.waitForTimeout(900);
-    await expect(arrow).toBeVisible();
-    await expect(arrow).toHaveCount(0, { timeout: 2_000 });
+    // Up for 1.5 s from the tap, by the page's own record of when it came and went.
+    await expect(arrow).toHaveCount(0, { timeout: 3_000 });
     const rec = (await demo.seen()).at(-1)!;
     expect(rec.cls).toBe('arrow');
     expect(rec.removed!).toBeGreaterThanOrEqual(1400);
