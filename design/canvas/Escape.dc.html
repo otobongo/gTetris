@@ -21,10 +21,20 @@
 <div style="text-align: center; line-height: 1.1; min-width: 0;">
 <div style="font-size: 24px; font-weight: 800;">{{lvTitle}}</div>
 <sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
-<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<div style="display: flex; justify-content: center; margin-top: 4px;">
+<div style="position: relative; display: flex;">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px;">
 <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
 <span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
 </sc-for>
+</div>
+<sc-if value="{{capped}}" hint-placeholder-val="{{ false }}">
+<span role="img" aria-label="Hint used. Up to 2 stars." style="position: absolute; left: calc(100% + 8px); top: 50%; width: 20px; height: 20px; margin-top: -10px; display: grid; place-items: center;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true" style="grid-area: 1 / 1;"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z"></path></svg>
+<span aria-hidden="true" style="grid-area: 1 / 1; font-size: 11px; font-weight: 800; line-height: 1; color: #c9c2ff; padding-top: 2px;">2</span>
+</span>
+</sc-if>
+</div>
 </div>
 </sc-if>
 </div>
@@ -55,7 +65,7 @@
 
 <div style="flex-grow: 1; display: grid; place-items: center; width: 100%;">
 <div style="position: relative; width: {{boardpx}}px; height: {{boardpx}}px; touch-action: none; filter: drop-shadow(0 16px 22px rgba(0,0,0,0.35));">
-<div style="position: absolute; left: {{pad}}px; top: {{pad}}px; width: {{gridpx}}px; height: {{gridpx}}px;">
+<div onClick="{{boardTap}}" style="position: absolute; left: {{pad}}px; top: {{pad}}px; width: {{gridpx}}px; height: {{gridpx}}px;">
 <sc-for list="{{frames}}" as="f" hint-placeholder-count="16">
 <div style="position: absolute; background: #3a2d8f; {{f.style}}"></div>
 </sc-for>
@@ -68,7 +78,10 @@
 <sc-for list="{{gates}}" as="g" hint-placeholder-count="4">
 <div aria-label="{{g.label}}" style="position: absolute; border-radius: 8px; display: grid; place-items: center; transition: background 0.4s, box-shadow 0.4s; {{g.style}}">
 <sc-if value="{{g.open}}" hint-placeholder-val="{{ true }}">
-<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{g.arrowColor}}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{g.arrow}}"></path></svg>
+<span style="display: flex; align-items: center; gap: 2px; {{g.dir}}">
+<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" style="display: block; flex-shrink: 0; filter: drop-shadow(0 -1px 0 rgba(255,255,255,0.35));"><path d="{{g.mark}}" fill="{{g.markFill}}" fill-rule="evenodd"></path></svg>
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{g.arrowColor}}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: block; flex-shrink: 0; margin: {{g.arrowMargin}};"><path d="{{g.arrow}}"></path></svg>
+</span>
 </sc-if>
 <sc-if value="{{g.locked}}" hint-placeholder-val="{{ false }}">
 <span style="display: flex; align-items: center; gap: 3px; font-size: 15px; font-weight: 800; line-height: 1; color: #6b3f00; text-shadow: 0 1px 0 #ffffff; {{g.dir}}">
@@ -81,7 +94,8 @@
 </div>
 </sc-for>
 <sc-for list="{{bricks}}" as="b" hint-placeholder-count="4">
-<button aria-label="{{b.label}}" onPointerDown="{{b.down}}" onPointerMove="{{b.move}}" onPointerUp="{{b.up}}" onPointerCancel="{{b.up}}" style="position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: grab; touch-action: none; border-radius: 9px; transition: transform 0.1s ease-out, opacity 0.3s ease-in; {{b.style}}">
+<button aria-label="{{b.label}}" aria-pressed="{{b.pressed}}" onClick="{{b.click}}" onPointerDown="{{b.down}}" onPointerMove="{{b.move}}" onPointerUp="{{b.up}}" onPointerCancel="{{b.up}}" style="position: absolute; left: 0; top: 0; border: 0; padding: 0; cursor: grab; touch-action: none; border-radius: 9px; transition: transform 0.1s ease-out, opacity 0.3s ease-in; {{b.style}}">
+<svg width="{{b.markSize}}" height="{{b.markSize}}" viewBox="0 0 24 24" aria-hidden="true" style="position: absolute; left: 50%; top: calc(50% - 1px); transform: translate(-50%, -50%); filter: drop-shadow(0 -1px 0 rgba(255,255,255,0.35));"><path d="{{b.mark}}" fill="{{b.markFill}}" fill-rule="evenodd"></path></svg>
 <sc-if value="{{b.isFrozen}}" hint-placeholder-val="{{ false }}">
 <span style="position: absolute; inset: 0; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(160deg, rgba(235,250,255,0.75), rgba(150,210,240,0.55)); box-shadow: inset 0 0 0 3px rgba(255,255,255,0.85);">
 <span style="min-width: 30px; height: 30px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; background: #e8f7ff; color: #1d5f8a; font-size: 18px; font-weight: 800; box-shadow: 0 2px 0 #7cc4ea;">{{b.frozenLeft}}</span>
@@ -91,6 +105,19 @@
 <span style="position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.92); box-shadow: 0 2px 0 rgba(0,0,0,0.3);">
 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#241a63" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform: rotate({{b.axisdeg}}deg);"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"></path></svg>
 </span>
+</sc-if>
+</button>
+</sc-for>
+<sc-for list="{{targets}}" as="t" hint-placeholder-count="2">
+<button aria-label="{{t.label}}" onClick="{{t.tap}}" style="position: absolute; z-index: 2; margin: 0; padding: 0; border: 0; background: none; cursor: pointer; {{t.style}}">
+<sc-if value="{{t.ring}}" hint-placeholder-val="{{ true }}">
+<span style="position: absolute; inset: 6px; border: 3px solid rgba(255,194,26,0.6); border-radius: 8px;"></span>
+</sc-if>
+<sc-if value="{{t.isExit}}" hint-placeholder-val="{{ false }}">
+<span style="position: absolute; border-radius: 8px; box-shadow: 0 0 0 4px #ffc21a; {{t.door}}"></span>
+</sc-if>
+<sc-if value="{{t.hasReach}}" hint-placeholder-val="{{ false }}">
+<span style="position: absolute; {{t.reach}}"><span style="position: absolute; inset: 6px; border: 3px solid rgba(255,194,26,0.6); border-radius: 8px;"></span></span>
 </sc-if>
 </button>
 </sc-for>
@@ -104,7 +131,11 @@
 
 <sc-if value="{{showPlay}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; min-height: 63px;">
-<span></span>
+<div style="justify-self: start; display: flex;">
+<button onClick="{{speak}}" aria-label="Hear the help line" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</div>
 <div style="display: flex; justify-content: center;">
 <sc-if value="{{showTools}}" hint-placeholder-val="{{ true }}">
 <div style="display: flex; gap: 18px;">
@@ -122,7 +153,7 @@
 </div>
 <div style="justify-self: end; display: flex;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 58px; height: 58px; border-radius: 18px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; {{cueStyle}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -130,9 +161,13 @@
 </div>
 </sc-if>
 
+<sc-if value="{{cueNote}}" hint-placeholder-val="{{ false }}">
+<p data-board-note="true" aria-hidden="true" style="position: absolute; top: 2px; left: 0; right: 0; margin: 0; text-align: center; font-size: 11px; font-weight: 800; line-height: 16px; color: #ffc21a;">Board note. Ages 3 to 4: one chime and this ring for the first 2 s</p>
+</sc-if>
+
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="esc-card-title" aria-describedby="esc-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="esc-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="esc-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -142,6 +177,16 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="esc-card-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 10px;">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px; width: 69px; height: 69px; flex-shrink: 0;">
+<sc-for list="{{stickerCells}}" as="c" hint-placeholder-count="25">
+<span style="display: block; border-radius: 2px; {{c.style}}"></span>
+</sc-for>
+</div>
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2; text-align: left;">New sticker: {{stickerName}}.</span>
+</div>
+</sc-if>
 <p id="esc-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardRule}}</p>
@@ -168,7 +213,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","5","9","ice","walls","master"],"default":"1"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","5","9","ice","walls","master"],"default":"1"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","select","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -200,7 +245,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     var key = this.levels()[p.level] ? p.level : '1';
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
-    var moment = ['play', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    var moment = ['play', 'select', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var s = Object.assign(this.fresh(key, puzzle % 2 === 0), { lever: this.leverKey(), level: key, puzzle: puzzle, moment: moment, usedHint: false, ranOut: false });
@@ -210,6 +255,15 @@ class Component extends DCLogic {
       Object.keys(L.bricks).forEach(function (k) { s.gone[k] = true; });
       s.moves = moment === 'solved' ? L.best + 2 : L.best;
       s.tLeft = Math.round(limit * 0.4);
+    }
+    // One brick picked with a tap (decision 1): the first two bricks of the level's order are out, and a brick
+    // that can both slide and leave is picked. On Level 1 that is the black brick at the bottom: a ring in the
+    // square to its left, and its door's ring reaching into the square beside the door. It plays on from there.
+    if (moment === 'select') {
+      (L.order || Object.keys(L.bricks)).slice(0, 2).forEach(function (k) { s.gone[k] = true; });
+      s.moves = 2;
+      s.selAuto = true; // the first brick left that has somewhere to go (selKey), worked out once the board is up
+      s.moment = 'play';
     }
     if (moment === 'stuck') {
       s.moves = L.best * 3;
@@ -261,7 +315,7 @@ class Component extends DCLogic {
     var L = this.board(key, mirror);
     var pos = {};
     Object.keys(L.bricks).forEach(function (k) { pos[k] = L.bricks[k].at; });
-    return { mirror: !!mirror, pos: pos, gone: {}, exiting: null, moves: 0, history: [], hintKey: null, tLeft: Math.round(L.base * 1.5), bumped: null, note: '', tries: 0, overMoves: false, idle: 0, offer: false };
+    return { mirror: !!mirror, pos: pos, gone: {}, exiting: null, moves: 0, history: [], hintKey: null, sel: null, selAuto: false, tLeft: Math.round(L.base * 1.5), bumped: null, note: '', tries: 0, overMoves: false, idle: 0, offer: false };
   }
   componentDidMount() {
     var self = this;
@@ -325,13 +379,13 @@ class Component extends DCLogic {
     if (g.lockCount) return Object.keys(gone).length < g.lockCount;
     return false;
   }
-  exitSide(k, r, c) {
+  exitSide(k, r, c, gone) {
     var d = this.defs()[k];
     var N = this.lv().N;
     var gates = this.gateList();
     for (var i = 0; i < gates.length; i++) {
       var g = gates[i];
-      if (g.color !== d.color || this.locked(g, this.st().gone)) continue;
+      if (g.color !== d.color || this.locked(g, gone || this.st().gone)) continue;
       if (d.axis === 'h' && (g.side === 'top' || g.side === 'bottom')) continue;
       if (d.axis === 'v' && (g.side === 'left' || g.side === 'right')) continue;
       var acrossRows = r >= g.at && r + d.h <= g.at + g.len;
@@ -342,6 +396,68 @@ class Component extends DCLogic {
       if (g.side === 'top' && acrossCols && r === 0) return 'top';
     }
     return null;
+  }
+  // One plain mark per colour (decision 2), the same paths and inks as src/games/slide/marks.ts.
+  marks() {
+    return {"red":{"d":"M12 4L13.04 4.07L14.07 4.27L15.06 4.61L16 5.07L16.87 5.65L17.66 6.34L18.35 7.13L18.93 8L19.39 8.94L19.73 9.93L19.93 10.96L20 12L19.93 13.04L19.73 14.07L19.39 15.06L18.93 16L18.35 16.87L17.66 17.66L16.87 18.35L16 18.93L15.06 19.39L14.07 19.73L13.04 19.93L12 20L10.96 19.93L9.93 19.73L8.94 19.39L8 18.93L7.13 18.35L6.34 17.66L5.65 16.87L5.07 16L4.61 15.06L4.27 14.07L4.07 13.04L4 12L4.07 10.96L4.27 9.93L4.61 8.94L5.07 8L5.65 7.13L6.34 6.34L7.13 5.65L8 5.07L8.94 4.61L9.93 4.27L10.96 4.07Z","fill":"rgb(0 0 0 / 0.6)"},"green":{"d":"M19 4L19.26 4.03L19.5 4.13L19.71 4.29L19.87 4.5L19.97 4.74L20 5L20 19L19.97 19.26L19.87 19.5L19.71 19.71L19.5 19.87L19.26 19.97L19 20L5 20L4.74 19.97L4.5 19.87L4.29 19.71L4.13 19.5L4.03 19.26L4 19L4 5L4.03 4.74L4.13 4.5L4.29 4.29L4.5 4.13L4.74 4.03L5 4Z","fill":"rgb(0 0 0 / 0.55)"},"pink":{"d":"M12 3L21.5 19.75L2.5 19.75Z","fill":"rgb(0 0 0 / 0.55)"},"blue":{"d":"M12 1.9L14.94 8.85L22.46 9.5L16.76 14.45L18.47 21.8L12 17.9L5.53 21.8L7.24 14.45L1.54 9.5L9.06 8.85Z","fill":"rgb(0 0 0 / 0.6)"},"purple":{"d":"M8.5 3L15.5 3L15.5 8.5L21 8.5L21 15.5L15.5 15.5L15.5 21L8.5 21L8.5 15.5L3 15.5L3 8.5L8.5 8.5Z","fill":"rgb(0 0 0 / 0.65)"},"orange":{"d":"M18.5 8.5L19.41 8.62L20.25 8.97L20.97 9.53L21.53 10.25L21.88 11.09L22 12L22 12L21.88 12.91L21.53 13.75L20.97 14.47L20.25 15.03L19.41 15.38L18.5 15.5L5.5 15.5L4.59 15.38L3.75 15.03L3.03 14.47L2.47 13.75L2.12 12.91L2 12L2 12L2.12 11.09L2.47 10.25L3.03 9.53L3.75 8.97L4.59 8.62L5.5 8.5Z","fill":"rgb(0 0 0 / 0.55)"},"yellow":{"d":"M12 2.5L21.5 12L12 21.5L2.5 12Z","fill":"rgb(0 0 0 / 0.5)"},"teal":{"d":"M12 3.4L13.12 3.47L14.23 3.69L15.29 4.05L16.3 4.55L17.24 5.18L18.08 5.92L18.82 6.76L19.45 7.7L19.95 8.71L20.31 9.77L20.53 10.88L20.6 12L20.53 13.12L20.31 14.23L19.95 15.29L19.45 16.3L18.82 17.24L18.08 18.08L17.24 18.82L16.3 19.45L15.29 19.95L14.23 20.31L13.12 20.53L12 20.6L10.88 20.53L9.77 20.31L8.71 19.95L7.7 19.45L6.76 18.82L5.92 18.08L5.18 17.24L4.55 16.3L4.05 15.29L3.69 14.23L3.47 13.12L3.4 12L3.47 10.88L3.69 9.77L4.05 8.71L4.55 7.7L5.18 6.76L5.92 5.92L6.76 5.18L7.7 4.55L8.71 4.05L9.77 3.69L10.88 3.47ZM12 7.6L12.57 7.64L13.14 7.75L13.68 7.93L14.2 8.19L14.68 8.51L15.11 8.89L15.49 9.32L15.81 9.8L16.07 10.32L16.25 10.86L16.36 11.43L16.4 12L16.36 12.57L16.25 13.14L16.07 13.68L15.81 14.2L15.49 14.68L15.11 15.11L14.68 15.49L14.2 15.81L13.68 16.07L13.14 16.25L12.57 16.36L12 16.4L11.43 16.36L10.86 16.25L10.32 16.07L9.8 15.81L9.32 15.49L8.89 15.11L8.51 14.68L8.19 14.2L7.93 13.68L7.75 13.14L7.64 12.57L7.6 12L7.64 11.43L7.75 10.86L7.93 10.32L8.19 9.8L8.51 9.32L8.89 8.89L9.32 8.51L9.8 8.19L10.32 7.93L10.86 7.75L11.43 7.64Z","fill":"rgb(0 0 0 / 0.5)"},"white":{"d":"M16.77 3.34L20.66 7.23L15.89 12L20.66 16.77L16.77 20.66L12 15.89L7.23 20.66L3.34 16.77L8.11 12L3.34 7.23L7.23 3.34L12 8.11Z","fill":"rgb(0 0 0 / 0.45)"},"black":{"d":"M1 12L6.5 5.5L17.5 5.5L23 12L17.5 18.5L6.5 18.5Z","fill":"rgb(255 255 255 / 0.7)"}};
+  }
+  // Brick Escape's first sticker, as src/screens/logic/stickers.ts draws it (25 squares, row by row).
+  firstSticker() {
+    return {"name":"Open door","cells":["orange","orange","orange",null,null,"orange","orange","orange",null,null,"orange","orange","yellow","red","red","orange","orange","orange",null,null,"orange","orange","orange",null,null]};
+  }
+  /**
+   * Where a picked brick can go by taps (decision 1), as src/games/slide/tap.ts finds it: every spot in a
+   * straight line in its row or column, and its own open door at the end of a slide toward it. A door's
+   * target reaches into the free squares beside it, so the spot there is left out.
+   */
+  targetsFor(k, pos, gone) {
+    var self = this;
+    var d = this.defs()[k];
+    if (gone[k] || this.isFrozen(k, gone)) return [];
+    var dirOf = { right: [0, 1], left: [0, -1], bottom: [1, 0], top: [-1, 0] };
+    var cover = function (at) { var out = []; for (var r = 0; r < d.h; r++) for (var c = 0; c < d.w; c++) out.push((at[0] + r) + ',' + (at[1] + c)); return out; };
+    var all = [];
+    [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(function (dir) {
+      if ((d.axis === 'h' && dir[0]) || (d.axis === 'v' && dir[1])) return;
+      var at = pos[k], lead = [];
+      for (var steps = 1; steps <= 12; steps++) {
+        var side = self.exitSide(k, at[0], at[1], gone);
+        if (side && dirOf[side][0] === dir[0] && dirOf[side][1] === dir[1]) { all.push({ kind: 'exit', side: side, from: at, steps: steps, reach: lead }); break; }
+        var next = [at[0] + dir[0], at[1] + dir[1]];
+        if (!self.fits(k, next[0], next[1], pos, gone)) break;
+        var before = cover(at);
+        lead = cover(next).filter(function (x) { return before.indexOf(x) < 0; });
+        all.push({ kind: 'slide', at: next, steps: steps, cells: lead });
+        at = next;
+      }
+    });
+    var reached = [];
+    all.forEach(function (t) { if (t.kind === 'exit') reached = reached.concat(t.reach); });
+    return all.filter(function (t) { return t.kind === 'exit' || !t.cells.some(function (x) { return reached.indexOf(x) >= 0; }); });
+  }
+  // The picked brick: the one a tap picked, or on the select board one that can slide and leave (else any that can move).
+  selKey(s) {
+    var self = this;
+    if (s.sel || !s.selAuto) return s.sel;
+    var best = null, score = 0;
+    (this.lv().order || Object.keys(this.defs())).forEach(function (k) {
+      if (s.gone[k]) return;
+      var ts = self.targetsFor(k, s.pos, s.gone);
+      var n = ts.length ? 1 + (ts.some(function (t) { return t.kind === 'exit'; }) && ts.some(function (t) { return t.kind === 'slide'; }) ? 1 : 0) : 0;
+      if (n > score) { best = k; score = n; }
+    });
+    return best;
+  }
+  // A tap on a target: one move, as one drag is.
+  tapTarget(k, t) {
+    var cs = this.st();
+    if (!(cs.moment === 'play' || cs.moment === 'stuck') || cs.exiting) return;
+    this.drag = null;
+    this.begin({ pos: cs.pos, gone: cs.gone, moves: cs.moves });
+    var pos = Object.assign({}, this.st().pos);
+    pos[k] = t.kind === 'exit' ? t.from : t.at;
+    this.put({ pos: pos, sel: null, selAuto: false });
+    if (t.kind === 'exit') this.leave(k, t.side);
   }
   // A brick that leaves is progress: it hides the offer and resets the time signal (brief 3.1, 3.2).
   leave(k, side) {
@@ -446,7 +562,11 @@ class Component extends DCLogic {
       wells.push({ style: box });
       if (t === 'X') walls.push({ style: 'left: ' + (c * cell + 2) + 'px; top: ' + (r * cell + 2) + 'px; width: ' + (cell - 4) + 'px; height: ' + (cell - 4) + 'px;' });
     }
+    var picked = this.selKey(s);
+    var sel = playing && !s.exiting && picked && !s.gone[picked] ? picked : null;
+    var selTargets = sel ? this.targetsFor(sel, s.pos, s.gone) : [];
     var help = solvedNow ? 'Solved in ' + s.moves + ' moves.'
+      : sel ? (selTargets.length ? 'Now tap where it should slide.' : 'This brick cannot move yet.')
       : s.offer ? 'This one is tricky. Want a different puzzle?'
       : s.note ? s.note
       : s.tLeft <= 0 ? "Time's up! Keep going, you can still finish."
@@ -472,6 +592,8 @@ class Component extends DCLogic {
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       lvTitle: finished ? 'Brick Escape' : 'Level ' + no,
       showDots: !finished, dots: dots, dotsLabel: dotsLabel,
+      // a hint used on this board caps the level: the mark beside the dots (decision 25)
+      capped: !finished && s.usedHint,
       showRestart: playing,
       showPanel: !finished,
       showPlay: !finished,
@@ -495,6 +617,8 @@ class Component extends DCLogic {
         return {
           label: lk ? 'Frozen door' + (g.lockColor ? ', melts when every ' + g.lockColor + ' brick is out' : ', melts after ' + (g.lockCount - outCount) + ' more bricks leave') : g.color + ' door',
           arrow: arrows[g.side], arrowColor: g.color === 'white' ? '#6b6585' : '#ffffff', open: !lk, locked: lk,
+          mark: self.marks()[g.color].d, markFill: self.marks()[g.color].fill,
+          arrowMargin: g.side === 'left' || g.side === 'right' ? '-4px 0' : '0 -4px',
           needColor: !!g.lockColor, need: g.lockColor ? p[g.lockColor][0] : '',
           count: g.lockCount ? String(g.lockCount - outCount) : '',
           dir: g.side === 'left' || g.side === 'right' ? 'flex-direction: column;' : '',
@@ -512,11 +636,20 @@ class Component extends DCLogic {
         if (ex === 'top') y -= (d.h + 0.6) * cell;
         if (s.bumped === k) x += 5;
         var frozen = self.isFrozen(k, s.gone);
-        var glow = s.hintKey === k ? ' box-shadow: 0 0 0 4px #ffffff, 0 0 22px #ffffff;' : ' box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22), 0 3px 0 rgba(0,0,0,0.25);';
+        var glow = sel === k ? ' z-index: 3; box-shadow: 0 0 0 4px #ffc21a, inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22), 0 3px 0 rgba(0,0,0,0.25);' : s.hintKey === k ? ' box-shadow: 0 0 0 4px #ffffff, 0 0 22px #ffffff;' : ' box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -4px 0 rgba(0,0,0,0.22), 0 3px 0 rgba(0,0,0,0.25);';
         return {
           label: d.color + ' brick' + (frozen ? ', frozen until ' + (d.frozen - outCount) + ' more bricks leave' : '') + (d.axis ? (d.axis === 'h' ? ', slides left and right only' : ', slides up and down only') : ''),
           isFrozen: frozen, frozenLeft: frozen ? String(d.frozen - outCount) : '',
           hasAxis: !!d.axis && !frozen, axisdeg: d.axis === 'v' ? 90 : 0,
+          pressed: sel === k ? 'true' : 'false',
+          mark: self.marks()[d.color].d, markFill: self.marks()[d.color].fill, markSize: Math.max(14, Math.round(cell / 2)),
+          // the click after a press that did not move the brick picks it; a second tap lets it go
+          click: function () {
+            if (self.dragMoved) { self.dragMoved = false; return; }
+            var cs = self.st();
+            if (!(cs.moment === 'play' || cs.moment === 'stuck') || cs.exiting) return;
+            self.put({ sel: self.selKey(cs) === k ? null : k, selAuto: false });
+          },
           style: 'width: ' + (d.w * cell - 4) + 'px; height: ' + (d.h * cell - 4) + 'px; transform: translate(' + x + 'px, ' + y + 'px); opacity: ' + (ex ? 0 : 1) + '; ' + self.brick(d.color, cell) + 'background-position: -2px -2px;' + glow + (frozen ? ' cursor: not-allowed;' : ''),
           down: function (e) {
             var cs = self.st();
@@ -524,6 +657,7 @@ class Component extends DCLogic {
             if (self.isFrozen(k, cs.gone)) { self.bump(k, 'That brick is frozen. Get ' + (d.frozen - Object.keys(cs.gone).length) + ' more bricks out to melt it.'); return; }
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
             var rect = e.currentTarget.getBoundingClientRect();
+            self.dragMoved = false;
             self.drag = { k: k, id: e.pointerId, x0: e.clientX, y0: e.clientY, start: cs.pos[k], before: { pos: cs.pos, gone: cs.gone, moves: cs.moves }, unit: rect.width / (d.w - 4 / cell), moved: false };
           },
           move: function (e) {
@@ -544,7 +678,7 @@ class Component extends DCLogic {
                 var side = self.exitSide(dg.k, cp[0], cp[1]);
                 var res = self.step(dg.k, tries[i][0], tries[i][1]);
                 if (res === 'blocked') continue;
-                if (!dg.moved) { dg.moved = true; self.begin(dg.before); }
+                if (!dg.moved) { dg.moved = true; self.dragMoved = true; self.begin(dg.before); self.put({ sel: null, selAuto: false }); }
                 if (res === 'exit') {
                   self.drag = null;
                   self.leave(dg.k, side);
@@ -559,17 +693,53 @@ class Component extends DCLogic {
           up: function () { self.drag = null; }
         };
       }),
+      targets: selTargets.map(function (t) {
+        var px = function (b) { return 'left: ' + b.left + 'px; top: ' + b.top + 'px; width: ' + b.width + 'px; height: ' + b.height + 'px;'; };
+        var strip = function (cells) {
+          var rs = cells.map(function (x) { return +x.split(',')[0]; }), cs = cells.map(function (x) { return +x.split(',')[1]; });
+          var r0 = Math.min.apply(null, rs), c0 = Math.min.apply(null, cs);
+          return { left: c0 * cell, top: r0 * cell, width: (Math.max.apply(null, cs) - c0 + 1) * cell, height: (Math.max.apply(null, rs) - r0 + 1) * cell };
+        };
+        var color = defs[sel].color;
+        var cap1 = color.charAt(0).toUpperCase() + color.slice(1);
+        if (t.kind === 'slide') return { label: 'Slide ' + cap1 + ' brick to row ' + (t.at[0] + 1) + ', column ' + (t.at[1] + 1), style: px(strip(t.cells)), ring: true, isExit: false, hasReach: false, door: '', reach: '', tap: function () { self.tapTarget(sel, t); } };
+        var g = self.gateList().filter(function (x) { return x.color === color && x.side === t.side; })[0];
+        var span = g.len * cell - 8, thick = pad - 4;
+        var door = t.side === 'right' ? { left: grid + 2, top: g.at * cell + 4, width: thick, height: span }
+          : t.side === 'left' ? { left: -pad + 2, top: g.at * cell + 4, width: thick, height: span }
+          : t.side === 'bottom' ? { left: g.at * cell + 4, top: grid + 2, width: span, height: thick }
+          : { left: g.at * cell + 4, top: -pad + 2, width: span, height: thick };
+        // 44 px at least both ways: outward, away from the squares, and along the door
+        var hit = Object.assign({}, door);
+        var grow = function (n) { return Math.max(0, 44 - n); };
+        if (t.side === 'left' || t.side === 'right') {
+          hit.width = door.width + grow(door.width); if (t.side === 'left') hit.left = door.left - grow(door.width);
+          hit.top = door.top - grow(door.height) / 2; hit.height = door.height + grow(door.height);
+        } else {
+          hit.height = door.height + grow(door.height); if (t.side === 'top') hit.top = door.top - grow(door.height);
+          hit.left = door.left - grow(door.width) / 2; hit.width = door.width + grow(door.width);
+        }
+        var inside = function (b) { return px({ left: b.left - hit.left, top: b.top - hit.top, width: b.width, height: b.height }); };
+        return { label: 'Take ' + cap1 + ' brick out through its door', style: px(hit), ring: false, isExit: true, door: inside(door), hasReach: t.reach.length > 0, reach: t.reach.length ? inside(strip(t.reach)) : '', tap: function () { self.tapTarget(sel, t); } };
+      }),
+      boardTap: function (e) {
+        if (e && e.target && e.target.closest && e.target.closest('button')) return;
+        self.put({ sel: null, selAuto: false });
+      },
       help: help,
+      speak: function () {
+        try { var u = new SpeechSynthesisUtterance(help); window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch (err) {}
+      },
       undo: function () {
         var cs = self.st();
         if (!cs.history.length || cs.exiting) return;
         var last = cs.history[cs.history.length - 1];
-        self.put({ pos: last.pos, gone: last.gone, moves: last.moves, history: cs.history.slice(0, -1), hintKey: null, note: '' });
+        self.put({ pos: last.pos, gone: last.gone, moves: last.moves, history: cs.history.slice(0, -1), hintKey: null, sel: null, selAuto: false, note: '' });
       },
       hint: function () {
         var cs = self.st();
         var nextBrick = L.order.filter(function (k) { return !cs.gone[k]; })[0];
-        self.put({ hintKey: nextBrick || null, usedHint: true });
+        self.put({ hintKey: nextBrick || null, usedHint: true, sel: null, selAuto: false });
       },
       restart: function () {
         self.drag = null;
@@ -584,6 +754,9 @@ class Component extends DCLogic {
         self.put(Object.assign(self.fresh(cs.level, !cs.mirror), { puzzle: cs.puzzle + 1, moment: 'play' }));
       },
       showOffer: playing && s.offer,
+      // ages 3 to 4: one chime and a 4 px ring for the first 2 s (decision 8); drawn on the stuck board
+      cueStyle: s.moment === 'stuck' && s.offer ? 'outline: 4px solid #ffc21a; outline-offset: 0;' : '',
+      cueNote: s.moment === 'stuck' && s.offer,
       swap: function () {
         var cs = self.st();
         self.drag = null;
@@ -592,6 +765,10 @@ class Component extends DCLogic {
       best: L.best,
       caption: 'Maya: each puzzle gets ' + L.base + 's x 1.5 = ' + Math.floor(limit / 60) + ':' + (limit % 60 < 10 ? '0' : '') + (limit % 60),
       cardOpen: s.moment === 'levelDone' || finished,
+      showSticker: s.moment === 'levelDone' && this.props.sticker === 'new',
+      stickerName: this.firstSticker().name,
+      stickerCells: this.firstSticker().cells.map(function (c) { return { style: c ? self.brick(c, 13) : 'background: transparent;' }; }),
+      cardDescribedBy: s.moment === 'levelDone' && this.props.sticker === 'new' ? 'esc-card-fact esc-card-sticker' : 'esc-card-fact',
       cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + no,
       // Every level done (decision D6): one star and the game's total, never the last level's star row.
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
