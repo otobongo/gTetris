@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-key { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .calc-key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sh) !important; } .calc-cell { transition: opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .calc-key { transition: box-shadow 100ms linear; } .calc-key:active { transform: none; } .calc-cell { transform: none !important; transition: opacity 150ms linear; } .calc-ans { transform: none !important; } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: opacity 150ms linear; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } @keyframes bw-sticker-in { from { opacity: 0; transform: scale(0.92); } } .bw-sticker { animation: bw-sticker-in 320ms ease-out; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-key { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .calc-key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sh) !important; } .calc-cell { transition: opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-sticker { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .calc-key { transition: box-shadow 100ms linear; } .calc-key:active { transform: none; } .calc-cell { transform: none !important; transition: opacity 150ms linear; } .calc-ans { transform: none !important; } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: opacity 150ms linear; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
@@ -41,7 +41,7 @@
 <div role="img" aria-label="{{eqLabel}}" style="display: flex; align-items: baseline; gap: 10px; font-size: 46px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums;">
 <span aria-hidden="true" style="color: #7cc0ff;">{{aText}}</span>
 <span aria-hidden="true" style="color: #c9c2ff;">{{opText}}</span>
-<span aria-hidden="true" style="color: #ffab5e;">{{bText}}</span>
+<span aria-hidden="true" style="color: {{bColor}};">{{bText}}</span>
 <span aria-hidden="true" style="color: #c9c2ff;">{{eqText}}</span>
 <span class="calc-ans" data-look="{{anslook}}" aria-hidden="true" style="min-width: 1.2ch; text-align: left; color: {{anscolor}}; opacity: {{ansopacity}}; transform: {{ansshift}};">{{ansText}}</span>
 </div>
@@ -52,7 +52,8 @@
 <p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
 <div style="grid-column: 1; grid-row: 1; display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<!-- Board note: Ages 3 to 4: one chime and this ring for the first 2 s. The ring is static, so Reduce Motion needs nothing more; focus does not move. -->
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; outline: {{offerRing}}; outline-offset: 0;">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -95,7 +96,7 @@
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="calc-card-title" aria-describedby="calc-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="calc-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="calc-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -105,6 +106,16 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="calc-card-sticker" class="bw-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 12px; text-align: start;">
+<span aria-hidden="true" style="flex: none; display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px;">
+<sc-for list="{{stickerCells}}" as="sc" hint-placeholder-count="25">
+<span style="width: 13px; height: 13px; border-radius: 2px; box-sizing: border-box; {{sc.style}}"></span>
+</sc-for>
+</span>
+<p style="margin: 0; min-width: 0; font-size: 18px; font-weight: 800; line-height: 1.15; color: #ffffff; text-wrap: balance;">{{stickerLine}}</p>
+</div>
+</sc-if>
 <p id="calc-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -128,7 +139,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["add","take","both"],"default":"add"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","typed","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["add","take","both"],"default":"add"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","typed","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -156,9 +167,9 @@ class Component extends DCLogic {
   result(S) { return S[1] === '-' ? S[0] - S[2] : S[0] + S[2]; }
   leverKey() {
     var p = this.props || {};
-    return [p.level, p.puzzle, p.moment].join('|');
+    return [p.level, p.puzzle, p.moment, p.sticker].join('|');
   }
-  freshPuzzle() { return { entry: '', note: '', slipShown: false, wrongShown: '', wrongTaps: 0, seen: {}, idle: 0, offer: false }; }
+  freshPuzzle() { return { entry: '', note: '', slipShown: false, wrongShown: '', wrongTaps: 0, seen: {}, idle: 0, offer: false, cue: false }; }
   fromLever() {
     var p = this.props || {};
     var level = this.levels()[this.levelKey(p)].level;
@@ -166,6 +177,8 @@ class Component extends DCLogic {
     var moment = ['play', 'typed', 'slip', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    // A new sticker comes when a chapter is finished: Adding ends at Level 4, where "Plus sign" is earned.
+    if (moment === 'levelDone' && p.sticker === 'new') level = 4;
     var order = [0, 1, 2, 3, 4, 5];
     var S = this.sumsFor(level)[order[puzzle - 1]];
     var r = this.result(S);
@@ -178,6 +191,8 @@ class Component extends DCLogic {
       // Three different wrong answers: the offer at 3 for ages 7 to 8; each counts one star slip.
       [r + 1, r - 1, r + 2].forEach(function (x) { s.seen[String(x)] = true; });
       s.wrongTaps = this.limits().count; s.slips = this.limits().count; s.offer = true;
+      // The still shows the offer's first 2 s, with its ring (decision 8).
+      s.cue = true;
     }
     if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') { s.moment = moment; s.entry = String(r); }
     return s;
@@ -191,7 +206,16 @@ class Component extends DCLogic {
     return this.pending;
   }
   put(patch) {
-    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    var prev = this.st();
+    var next = Object.assign({}, prev, patch, { lever: this.leverKey() });
+    // The offer's cue (decision 8): each new appearance of the offer rings for 2 s (and chimes once in the app).
+    if (next.offer && !prev.offer) {
+      next.cue = true;
+      var self = this;
+      clearTimeout(this.cueT);
+      this.cueT = setTimeout(function () { self.put({ cue: false }); }, 2000);
+    }
+    if (!next.offer) next.cue = false;
     this.pending = next;
     this.setState(next);
   }
@@ -214,7 +238,7 @@ class Component extends DCLogic {
     try { window.addEventListener('keydown', this.onKey); } catch (e) {}
   }
   componentWillUnmount() {
-    clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT);
+    clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.cueT);
     try { window.removeEventListener('keydown', this.onKey); } catch (e) {}
   }
   say(text) {
@@ -265,6 +289,16 @@ class Component extends DCLogic {
   }
   stud(c1, c0, c2) {
     return 'background: radial-gradient(circle at 46% 42%, ' + c1 + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + c0 + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), linear-gradient(160deg, ' + c1 + ' -30%, ' + c0 + ' 45%, ' + c2 + ' 140%); background-size: 50% 100%, 50% 100%, 50% 100%, 100% 100%; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  // One stud per cell, as the app's Brick with stud 13 draws a mosaic cell.
+  stud1(c1, c0, c2) {
+    return 'background: radial-gradient(circle at 46% 42%, ' + c1 + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + c0 + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), linear-gradient(160deg, ' + c1 + ' -30%, ' + c0 + ' 45%, ' + c2 + ' 140%); box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  // The Calculator's first sticker, "Plus sign" (c1 in src/screens/logic/stickers.ts): a cross of blue bricks.
+  plusSign() {
+    var self = this;
+    var art = ['..b..', '..b..', 'bbbbb', '..b..', '..b..'].join('');
+    return art.split('').map(function (ch) { return { style: ch === 'b' ? self.stud1('#7cc0ff', '#2f8cff', '#1557c4') : '' }; });
   }
   renderVals() {
     var self = this;
@@ -322,6 +356,8 @@ class Component extends DCLogic {
     var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
     var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
     var wrongNow = !finished && !solvedNow && s.entry === '' && !!s.wrongShown;
+    // The sticker this level earned (decision 19), on the level card when the lever asks for it.
+    var sticker = m === 'levelDone' && this.props.sticker === 'new';
     var shown = finished ? '?' : solvedNow ? String(r) : wrongNow ? s.wrongShown : s.entry === '' ? '?' : s.entry;
 
     return {
@@ -342,6 +378,8 @@ class Component extends DCLogic {
       aText: finished ? '' : String(a),
       opText: finished ? '' : minus ? '−' : '+',
       bText: finished ? '' : String(b),
+      // A take away's second number is blue, like the bricks it takes away (decision 28); plus keeps orange.
+      bColor: minus ? '#7cc0ff' : '#ffab5e',
       ansText: shown,
       // Wrong: --bw-error-text at 0.6, shifted 6px left as a Choice row answer is; 4.2:1 on the display at 46px bold.
       anslook: solvedNow && !finished ? 'solved' : wrongNow ? 'wrong' : shown === '?' ? 'empty' : 'typed',
@@ -352,6 +390,8 @@ class Component extends DCLogic {
       eqLabel: finished ? 'Empty display.' : solvedNow ? words + ' equals ' + r : words + ' equals what?',
       help: help,
       showOffer: playing && s.offer,
+      // Ages 3 to 4 (decision 8): a static 4px --bw-accent ring for the offer's first 2 s.
+      offerRing: s.cue ? '4px solid #ffc21a' : 'none',
       swap: function () {
         var cs = self.st();
         if (cs.moment !== 'play') return;
@@ -377,6 +417,10 @@ class Component extends DCLogic {
         self.put(Object.assign(self.freshPuzzle(), { puzzle: cs.puzzle + 1, moment: 'play' }));
       },
       cardOpen: m === 'levelDone' || finished,
+      showSticker: sticker,
+      stickerCells: this.plusSign(),
+      stickerLine: 'New sticker: Plus sign.',
+      cardDescribedBy: sticker ? 'calc-card-fact calc-card-sticker' : 'calc-card-fact',
       cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '30 of 36 stars' : starsWon + ' of 3 stars',

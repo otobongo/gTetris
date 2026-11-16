@@ -5,7 +5,8 @@
 
    Sounds follow Letter Builder: the kit plays the slip and the solve, this file plays the tap on a digit
    or C. Speech follows the child's own move: a digit says the number now typed, a right = says the
-   solved sum, a slip says nothing; the speaker reads the sum on request.
+   solved sum, a slip says nothing; the speaker reads the sum on request, then the help line on screen in
+   spoken form (decision 7), and once solved the solved line.
 
    A slip also shows where the child is looking: the sent number stays in the answer place in the wrong
    look for a moment, then the "?" comes back, so a wrong answer is not mistaken for a lost tap with the
@@ -16,7 +17,7 @@ import { say } from '../../shared/speech';
 import { CHOICE_WRONG_MS } from '../kit/ChoiceRow';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
-import { FULL_LINE, SLIP_LINE, SPEAKER_NAME, START_LINE, solvedLine, spokenEntry, spokenSolved, spokenText } from './copy';
+import { FULL_LINE, SLIP_LINE, SPEAKER_NAME, START_LINE, solvedLine, spokenEntry, spokenHelp, spokenSolved } from './copy';
 import { START_STATE, entryValue, helpAfter, keyboardKey, pressKey, type HelpKind, type KeyFocus, type KeyId, type KeypadState } from './entry';
 import { MATH } from './game';
 import { BricksPanel, Display, Keypad } from './parts';
@@ -133,7 +134,7 @@ export function Play({ level }: { level: number }) {
       run={run}
       className="calc-screen"
       slotClassName="calc-controls"
-      speaker={{ label: SPEAKER_NAME, text: () => spokenText(p, solved) }}
+      speaker={{ label: SPEAKER_NAME, text: () => spokenHelp(p, solved, shown.help) }}
       line={line}
       lineStyle="help"
       top={<Display puzzle={p} entry={shown.keypad.entry} solved={solved} wrong={wrongShown} />}

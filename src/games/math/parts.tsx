@@ -27,14 +27,15 @@ export interface DisplayProps {
   wrong?: number | null;
 }
 
-/** The dark display: "3 + 4 = ?", right-aligned, with the first number in blue and the second in orange. */
+/** The dark display: "3 + 4 = ?", right-aligned, with the first number in blue and the second in orange, or in blue
+    on a take away, like the bricks it takes away (decision 28). */
 export function Display({ puzzle: p, entry, solved, wrong = null }: DisplayProps) {
   const sent = !solved && entry === '' && wrong !== null ? String(wrong) : null;
   const look: AnswerLook = solved ? 'solved' : sent !== null ? 'wrong' : entry === '' ? 'empty' : 'typed';
   const answer = p && solved ? String(p.answer) : (sent ?? (entry === '' ? ANSWER_PLACE : entry));
   return (
     <div className="calc-display">
-      <div className="calc-eq" role={p ? 'img' : undefined} aria-label={p ? (solved ? equationSolvedName(p) : equationName(p)) : undefined}>
+      <div className="calc-eq" data-op={p?.op} role={p ? 'img' : undefined} aria-label={p ? (solved ? equationSolvedName(p) : equationName(p)) : undefined}>
         {p && (
           <>
             <span className="calc-eq__a" aria-hidden="true">{p.a}</span>
