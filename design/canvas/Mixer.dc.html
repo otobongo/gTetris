@@ -13,6 +13,9 @@
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
+<sc-if value="{{cueNote}}" hint-placeholder-val="{{ false }}">
+<p data-board-note="true" aria-hidden="true" style="position: absolute; top: 2px; left: 0; right: 0; margin: 0; text-align: center; font-size: 11px; font-weight: 800; line-height: 16px; color: #ffc21a;">Board note. Ages 3 to 4: one chime and this ring for the first 2 s</p>
+</sc-if>
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
@@ -64,7 +67,7 @@
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div aria-live="polite" style="width: 100%; text-align: center; min-height: 64px;">
-<div style="font-size: 28px; font-weight: 800; line-height: 1.1;">{{resultName}}</div>
+<div style="font-weight: 800; line-height: 1.1; {{nameStyle}}">{{resultName}}</div>
 <div style="font-size: 16px; font-weight: 700; line-height: 1.35; color: #c9c2ff; text-wrap: balance;">{{resultText}}</div>
 </div>
 </sc-if>
@@ -74,7 +77,7 @@
 <p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
 <div style="grid-column: 1; grid-row: 1; display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; {{cueStyle}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -114,7 +117,7 @@
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="mix-card-title" aria-describedby="mix-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="mix-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="mix-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -124,6 +127,16 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="mix-card-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 10px;">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px; width: 69px; height: 69px; flex-shrink: 0;">
+<sc-for list="{{stickerCells}}" as="c" hint-placeholder-count="25">
+<span style="display: block; border-radius: 2px; {{c.style}}"></span>
+</sc-for>
+</div>
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2; text-align: left;">New sticker: {{stickerName}}.</span>
+</div>
+</sc-if>
 <p id="mix-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -147,11 +160,22 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"form":{"editor":"enum","options":["finish","guess","make"],"default":"finish"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"form":{"editor":"enum","options":["finish","guess","make"],"default":"finish"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = this.fromLever();
+  }
+  // Color Mixer's first sticker, as src/screens/logic/stickers.ts draws it (25 squares, row by row).
+  firstSticker() {
+    var art = ['.rrr.', 'ttttt', '.ttt.', '.ttt.', '.ttt.'];
+    var named = { r: 'red', t: 'teal' };
+    return { name: 'Paint pot', cells: art.join('').split('').map(function (ch) { return named[ch] || null; }) };
+  }
+  // A 13px mosaic brick: the --brick-* light, base and dark tones.
+  brickCell(c) {
+    var t = { red: ['#ff7a6e', '#f03a3a', '#b51f27'], teal: ['#6aeee4', '#14c8c0', '#0b8c87'] }[c];
+    return 'background: linear-gradient(180deg, ' + t[0] + ', ' + t[1] + '); box-shadow: inset 0 -2px 0 ' + t[2] + ';';
   }
   // The board's 4 paints and 6 recipes, unchanged (brief 4.1 and 7.3). Every unordered pair of paints makes one color.
   paints() {
@@ -304,7 +328,7 @@ class Component extends DCLogic {
   }
   componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.slotT); }
   // A wrong pair (Finish, Make it): both slots dim and tilt for 500 ms, as a wrong Guess colour does (CHOICE_WRONG_MS).
-  // A repeat tap on the wrong pot in Finish replays it, with no new slip.
+  // A repeat tap on the wrong pot in Finish replays it and the wrong sound, with no new slip (decision 34).
   flashSlots() {
     var self = this;
     clearTimeout(this.slotT);
@@ -431,6 +455,11 @@ class Component extends DCLogic {
       liquid: liquid,
       bowlLabel: 'Bowl: ' + bowl,
       resultName: resultName, resultText: resultText,
+      // No colour made yet: the name is a quiet prompt, so the help line stays the instruction a child reads first.
+      nameStyle: resultText === '' ? 'font-size: 18px; color: #c9c2ff;' : 'font-size: 28px;',
+      // Ages 3 to 4 (decision 8): one chime and a 4px ring on New puzzle for the first 2 s, drawn on the stuck board.
+      cueStyle: playing && s.offer && this.props.moment === 'stuck' ? 'outline: 4px solid #ffc21a; outline-offset: 0;' : '',
+      cueNote: playing && s.offer && this.props.moment === 'stuck',
       help: help,
       showOffer: playing && s.offer,
       swap: function () {
@@ -491,6 +520,11 @@ class Component extends DCLogic {
         self.put(Object.assign(self.freshPuzzle(NP), { puzzle: cs.puzzle + 1, moment: 'play' }));
       },
       cardOpen: m === 'levelDone' || finished,
+      // A level that earns a sticker shows it on the card (decision 19): Color Mixer's first, from src/screens/logic/stickers.ts.
+      showSticker: m === 'levelDone' && this.props.sticker === 'new',
+      stickerName: this.firstSticker().name,
+      stickerCells: this.firstSticker().cells.map(function (c) { return { style: c ? self.brickCell(c) : 'background: transparent;' }; }),
+      cardDescribedBy: m === 'levelDone' && this.props.sticker === 'new' ? 'mix-card-fact mix-card-sticker' : 'mix-card-fact',
       cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '24 of 27 stars' : starsWon + ' of 3 stars',
