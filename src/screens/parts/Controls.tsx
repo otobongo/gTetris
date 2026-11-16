@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { sfx } from '../../shared/sound';
 import { cx } from '../../shared/ui';
-import { gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type Random } from '../logic/gate';
+import { checkGateAnswer, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type Random } from '../logic/gate';
 import { Glyph } from './Glyph';
 
 /* ---------- Field: label above, inset input (Signup, Sign in, Settings) ---------- */
@@ -107,6 +107,8 @@ export function GrownUpCheck({ onPass, onCancel, intro, random = Math.random }: 
   const [sum, setSum] = useState(() => makeGateSum(random));
   const [answer, setAnswer] = useState('');
   const [wrong, setWrong] = useState(false);
+  // Check with nothing typed: a gentle hint, the same sum, and no wrong answer counted.
+  const [empty, setEmpty] = useState(false);
   const field = useRef<HTMLInputElement>(null);
   const id = useId();
 
@@ -115,11 +117,20 @@ export function GrownUpCheck({ onPass, onCancel, intro, random = Math.random }: 
   }, []);
 
   const check = () => {
-    if (gateMatches(answer, sum)) {
+    const result = checkGateAnswer(answer, sum);
+    if (result === 'right') {
       sfx.tap();
       onPass();
       return;
     }
+    if (result === 'empty') {
+      setWrong(false);
+      setEmpty(true);
+      setAnswer('');
+      field.current?.focus();
+      return;
+    }
+    setEmpty(false);
     setWrong(true);
     setAnswer('');
     setSum((s) => nextGateSum(s, random));
@@ -163,10 +174,15 @@ export function GrownUpCheck({ onPass, onCancel, intro, random = Math.random }: 
           value={answer}
           invalid={wrong}
           aria-label={gateSpoken(sum)}
-          aria-describedby={wrong ? `${id}-err` : undefined}
+          aria-describedby={wrong ? `${id}-err` : empty ? `${id}-hint` : undefined}
           onChange={(e) => setAnswer(e.target.value)}
           id={`${id}-num`}
         />
+        {empty && (
+          <p id={`${id}-hint`} role="status" className="sc-helper">
+            Type the answer, then tap Check.
+          </p>
+        )}
         <div className="sc-row">
           {onCancel && (
             <button type="button" className="sc-btn sc-btn--flat sc-grow-1" onClick={onCancel}>

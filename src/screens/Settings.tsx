@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { GAMES, getGame, type GameId } from '../games/registry';
 import { auth } from '../shared/account';
 import {
@@ -20,6 +20,7 @@ import { sfx } from '../shared/sound';
 import { Icon, Screen, TopBar } from '../shared/ui';
 import { settingsRowName, settingsRowSub } from './logic/levels';
 import { grownUpGate, settingsReturn } from './logic/session';
+import { setScroll, takeScroll } from './logic/settingsScroll';
 import { Notice, ProviderButtons, useAuthNotice, LegalLinks } from './parts/Account';
 import { AddChild, BAND_LABEL, bandText } from './parts/AddChild';
 import { Avatar } from './parts/Art';
@@ -83,6 +84,14 @@ export default function Settings() {
   const [notice, report] = useAuthNotice();
 
   const kid = state.players.find((p) => p.id === kidId) ?? state.players[0] ?? null;
+  const scroller = useRef<HTMLDivElement>(null);
+
+  // Back from a game's level picker, or Set Level N there, lands where the grown-up was (the Progress
+  // row they tapped), once and without a smooth scroll. Before paint, so the top never flashes.
+  useLayoutEffect(() => {
+    const top = takeScroll();
+    if (top !== null && scroller.current) scroller.current.scrollTop = top;
+  }, []);
 
   // A level set for another child in the picker ends here, with its toast.
   useEffect(() => {
@@ -132,7 +141,7 @@ export default function Settings() {
   return (
     <Screen>
       <TopBar title="Settings" subtitle="For grown-ups" back="/" backLabel="Back to home" />
-      <div className="sc-scroll">
+      <div ref={scroller} className="sc-scroll">
         <section className="sc-panel" aria-labelledby="set-save">
           <div>
             <h2 id="set-save" className="sc-panel__title">
@@ -181,6 +190,7 @@ export default function Settings() {
 
         {adding && (
           <AddChild
+            focusOnOpen
             onCancel={() => setAdding(false)}
             onAdded={(p) => {
               setAdding(false);
@@ -215,7 +225,10 @@ export default function Settings() {
                   className="sc-gamerow"
                   href={toHref(pathFor({ name: 'levelPicker', game: g.id, playerId: kid.id }))}
                   aria-label={settingsRowName(g, kid)}
-                  onClick={() => sfx.tap()}
+                  onClick={() => {
+                    sfx.tap();
+                    setScroll(scroller.current?.scrollTop ?? 0);
+                  }}
                 >
                   <span className="sc-gamerow__text">
                     <span className="sc-gamerow__name">{g.title}</span>

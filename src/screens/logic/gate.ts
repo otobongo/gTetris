@@ -51,3 +51,11 @@ export function gateMatches(answer: string, sum: GateSum): boolean {
   const v = answer.trim();
   return /^[0-9]{1,3}$/.test(v) && Number(v) === gateAnswer(sum);
 }
+
+/** What Check does with the typed answer: an empty field (or spaces only) is neither right nor wrong. */
+export type GateResult = 'empty' | 'wrong' | 'right';
+
+export function checkGateAnswer(answer: string, sum: GateSum): GateResult {
+  if (answer.trim() === '') return 'empty';
+  return gateMatches(answer, sum) ? 'right' : 'wrong';
+}

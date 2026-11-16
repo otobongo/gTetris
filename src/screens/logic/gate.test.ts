@@ -8,7 +8,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rng } from '../../shared/rng';
 import { GrownUpCheck } from '../parts/Controls';
-import { GATE_MAX, GATE_MIN, gateAnswer, gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type GateSum } from './gate';
+import { GATE_MAX, GATE_MIN, checkGateAnswer, gateAnswer, gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type GateSum } from './gate';
 
 /** A random function that returns the given values in turn, then starts over. */
 function seq(...values: number[]) {
@@ -131,6 +131,26 @@ describe('grown-up check: the typed answer', () => {
     for (const typed of ['4 2', '+42', '-42', '42a', 'a42', '42.0', '0x2A', '4.2e1', '23+19', '٤٢', '４２', 'forty-two', '42,', '0042', ' ', '']) {
       expect(gateMatches(typed, sum), JSON.stringify(typed)).toBe(false);
     }
+  });
+});
+
+describe('grown-up check: what Check does with the typed answer (usability batch D)', () => {
+  const sum = { a: 23, b: 19 };
+
+  it('treats an empty field, or one with only spaces, as empty, not wrong', () => {
+    expect(checkGateAnswer('', sum)).toBe('empty');
+    expect(checkGateAnswer('   ', sum)).toBe('empty');
+    expect(checkGateAnswer('\t\n', sum)).toBe('empty');
+  });
+
+  it('passes the answer to the sum, with or without spaces around it', () => {
+    expect(checkGateAnswer('42', sum)).toBe('right');
+    expect(checkGateAnswer('  42  ', sum)).toBe('right');
+    expect(checkGateAnswer('22', { a: 11, b: 11 })).toBe('right');
+  });
+
+  it('calls any other number, or anything that is not plain digits, wrong', () => {
+    for (const typed of ['41', '43', '0', '4 2', '+42', 'abc', '42a']) expect(checkGateAnswer(typed, sum), typed).toBe('wrong');
   });
 });
 
