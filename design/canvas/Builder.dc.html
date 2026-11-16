@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pb-square { transition: background 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .pb-board { transition: opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pb-swatch { transition: transform 100ms cubic-bezier(0.16,1,0.3,1); } .pb-fill { transition: width 350ms cubic-bezier(0.16,1,0.3,1); } .pb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pb-swatch { transform: none !important; transition: none; } .pb-fill { transition: none; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } @keyframes pb-sticker-in { from { opacity: 0; transform: scale(0.92); } } .pb-sticker { animation: pb-sticker-in 320ms ease-out; } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pb-square { transition: background 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .pb-board { transition: opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pb-swatch { transition: transform 100ms cubic-bezier(0.16,1,0.3,1); } .pb-fill { transition: width 350ms cubic-bezier(0.16,1,0.3,1); } .pb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .pb-sticker { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pb-swatch { transform: none !important; transition: none; } .pb-fill { transition: none; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: {{fgap}}px; position: relative;">
@@ -70,7 +70,7 @@ Peek
 <p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
 <div style="grid-column: 1; grid-row: 1; display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; {{cueRing}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -107,9 +107,13 @@ Peek
 </div>
 </sc-if>
 
+<sc-if value="{{showCueNote}}" hint-placeholder-val="{{ false }}">
+<p aria-hidden="true" title="Board note" style="position: absolute; left: 16px; right: 16px; bottom: 1px; margin: 0; padding: 0 8px; border-radius: 8px; background: rgba(10,6,30,0.75); font-size: 12px; font-weight: 700; line-height: 16px; color: #ffc21a; text-align: center; white-space: nowrap; overflow: hidden;">Ages 3 to 4: one chime and this ring for the first 2 s</p>
+</sc-if>
+
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="pb-card-title" aria-describedby="pb-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="pb-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="pb-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -119,6 +123,16 @@ Peek
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="pb-card-sticker" class="pb-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 12px; text-align: start;">
+<span aria-hidden="true" style="flex: none; display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px;">
+<sc-for list="{{stickerCells}}" as="k" hint-placeholder-count="25">
+<span style="display: block; width: 13px; height: 13px; border-radius: 2px; {{k.style}}"></span>
+</sc-for>
+</span>
+<p style="margin: 0; min-width: 0; font-size: 18px; font-weight: 800; line-height: 1.15; color: #ffffff; text-wrap: balance;">{{stickerLine}}</p>
+</div>
+</sc-if>
 <p id="pb-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -142,7 +156,7 @@ Peek
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"level":{"editor":"enum","options":["1","4","8","11"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","look","hidden","peek","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"level":{"editor":"enum","options":["1","4","8","11"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","look","hidden","peek","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -411,6 +425,12 @@ class Component extends DCLogic {
     var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
     var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
     var showModel = !finished && !hidden;
+    // The sticker a finished chapter gives, on the level card (decision 19): Picture Builder's first, House, from
+    // src/screens/logic/stickers.ts (b1). The lever shows it on any level's card; the game gives it after Level 5.
+    var sticker = { name: 'House', rows: ['..r..', '.rrr.', 'rrrrr', 'yybyy', 'yybyy'] };
+    var showSticker = this.props.sticker === 'new' && m === 'levelDone';
+    // The stuck lever (decision 8): the sample child is 7 to 8, so the board draws the 3 to 4 cue with a note.
+    var stuckLever = this.props.moment === 'stuck' && playing && s.offer;
 
     return {
       w: tablet ? 834 : short ? 375 : 390, h: tablet ? 1194 : short ? 667 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : short ? 375 : 390, ih: tablet ? 853 : short ? 667 : 844,
@@ -448,6 +468,9 @@ class Component extends DCLogic {
       srNote: s.srNote || '',
       help: help,
       showOffer: playing && s.offer,
+      // Ages 3 to 4: the offer's first 2 s carry one chime and a static 4px #ffc21a (--bw-accent) ring, nothing moving.
+      cueRing: stuckLever ? 'outline: 4px solid #ffc21a; outline-offset: 0;' : '',
+      showCueNote: stuckLever,
       swap: function () {
         var cs = self.st();
         if (cs.moment !== 'play') return;
@@ -467,7 +490,8 @@ class Component extends DCLogic {
           tab: i === s.focus ? '0' : '-1',
           off: locked ? 'true' : 'false',
           label: 'Row ' + row + ', column ' + col + ', ' + (c || 'empty'),
-          style: c ? self.brick(c, true) : 'background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08);',
+          // An empty square: the 5% fill with a 2px #8e85d6 (--bw-decor) ring, 4.47:1 against that fill (decision 27).
+          style: c ? self.brick(c, true) : 'background: rgba(255,255,255,0.05); box-shadow: inset 0 0 0 2px #8e85d6;',
           // Enter or Space paints with the picked colour. A pointer click (detail 1 or more) was already painted on pointer down.
           key: function (e) {
             if (e && e.detail) return;
@@ -516,6 +540,10 @@ class Component extends DCLogic {
         if (self.levelSpec(cs.level).memory) self.showFor('look', self.look().first);
       },
       cardOpen: m === 'levelDone' || finished,
+      showSticker: showSticker,
+      cardDescribedBy: showSticker ? 'pb-card-fact pb-card-sticker' : 'pb-card-fact',
+      stickerCells: this.cellsOf(sticker).map(function (c) { return { style: c ? self.brick(c, true) : '' }; }),
+      stickerLine: 'New sticker: ' + sticker.name + '.',
       cardTitle: finished || lastLevel ? 'You finished every level!' : 'You finished Level ' + s.level,
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '34 of 36 stars' : starsWon + ' of 3 stars',
