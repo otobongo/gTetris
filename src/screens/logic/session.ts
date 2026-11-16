@@ -100,6 +100,17 @@ export function notePath(path: string) {
   currentPath = next;
 }
 
+/**
+ * The router's note of a new path (app-grownups-2). App registers it with the router, which calls it
+ * for each new hash before React draws the screen, so a screen that reads backTarget while it draws
+ * (Support, Terms, Privacy, Sign in, Sign up, the grown-up check) already knows the screen just left.
+ * `redirect` is where App sends the path on (null when it stays): a path that only redirects is never
+ * recorded, so Back never lands on it.
+ */
+export function noteArrival(path: string, redirect: string | null) {
+  if (redirect === null) notePath(path);
+}
+
 /** Where Back goes: the previous path when it is one of `allowed`, otherwise `fallback`. */
 export function backTarget(allowed: readonly string[], fallback: string): string {
   return previousPath && allowed.includes(previousPath) ? previousPath : fallback;

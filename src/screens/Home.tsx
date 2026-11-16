@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { GAMES } from '../games/registry';
 import { gameOf, progressStore, totalStars, useActivePlayer } from '../shared/progress';
 import { toHref } from '../shared/router';
@@ -9,12 +9,20 @@ import { STICKERS, earnedCount, stickersDue } from './logic/stickers';
 import { Avatar, GameArt } from './parts/Art';
 import './screens.css';
 
+/** How long after Home opens the avatar ignores a tap (app-core-2). */
+const AVATAR_GUARD_MS = 700;
+
 /** Home (design/canvas/Hub.dc.html, brief 3.6 and four-puzzle brief 7.2): greeting, sticker line, Today's discovery, all nine games. */
 export default function Home() {
   const player = useActivePlayer();
   const tablet = useLayout().mode === 'tablet';
+  // The avatar sits where every top-bar Back sits (games, Levels, Stickers). A second tap carried over
+  // from Back, or a tap again because nothing seemed to happen, would open Who's playing; for a moment
+  // after Home opens the avatar does nothing (app-core-2). A deliberate tap a moment later still works.
+  const mountedAt = useRef(Date.now());
 
   useEffect(() => {
+    mountedAt.current = Date.now();
     grownUpGate.reset();
     settingsReturn.setChild(null);
   }, []);
@@ -32,7 +40,14 @@ export default function Home() {
   return (
     <Screen padding="home" gap={14}>
       <header className="sc-home__head">
-        <a className="sc-avatar-link" href={toHref('/players')} aria-label="Switch player">
+        <a
+          className="sc-avatar-link"
+          href={toHref('/players')}
+          aria-label="Switch player"
+          onClick={(e) => {
+            if (Date.now() - mountedAt.current < AVATAR_GUARD_MS) e.preventDefault();
+          }}
+        >
           <Avatar name={player.name} color={player.color} size={54} radius={16} fontSize={28} />
         </a>
         <div className="sc-home__hello">

@@ -118,10 +118,29 @@ export function toHref(path: string): string {
 
 const read = () => (typeof window === 'undefined' ? [] : splitPath(window.location.hash));
 
+/** Called with each new path before React draws it; see onRouteChange. */
+let beforeDraw: ((segments: string[]) => void) | null = null;
+
+/**
+ * Hear about each new path before its screen draws, in the hashchange handler ahead of the state
+ * update (App records the path Back returns to here). One listener at a time; the returned function
+ * removes it.
+ */
+export function onRouteChange(listener: (segments: string[]) => void): () => void {
+  beforeDraw = listener;
+  return () => {
+    if (beforeDraw === listener) beforeDraw = null;
+  };
+}
+
 export function useRoute(): string[] {
   const [route, setRoute] = useState<string[]>(read);
   useEffect(() => {
-    const onChange = () => setRoute(read());
+    const onChange = () => {
+      const next = read();
+      beforeDraw?.(next);
+      setRoute(next);
+    };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);

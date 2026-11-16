@@ -1,14 +1,20 @@
 import { useState, type ReactNode } from 'react';
 import { go } from '../../shared/router';
 import { Screen, TopBar } from '../../shared/ui';
-import { grownUpGate } from '../logic/session';
+import { backTarget, grownUpGate } from '../logic/session';
 import { GrownUpCheck } from './Controls';
 
-/** The locked view of a grown-up screen (Grownups board): the addition check, Cancel goes home. */
+/**
+ * The locked view of a grown-up screen (Grownups board): the addition check. Cancel and Back return to
+ * Who's playing when the check opened from there (its Add a child tile, app-grownups-8), and go home
+ * otherwise. Not history.back(): Settings can be the first page this tab opened.
+ */
 export function GrownUpLock({ title, onPass }: { title: string; onPass: () => void }) {
+  const back = backTarget(['/players'], '/');
+  const backLabel = back === '/players' ? "Back to Who's playing" : 'Back to home';
   return (
     <Screen>
-      <TopBar title={title} subtitle="For grown-ups" back="/" backLabel="Back to home" />
+      <TopBar title={title} subtitle="For grown-ups" back={back} backLabel={backLabel} />
       <div className="sc-locked">
         <p className="sc-locked__title">This area is for grown-ups</p>
         <GrownUpCheck
@@ -16,7 +22,7 @@ export function GrownUpLock({ title, onPass }: { title: string; onPass: () => vo
             grownUpGate.pass();
             onPass();
           }}
-          onCancel={() => go('/')}
+          onCancel={() => go(back)}
         />
       </div>
     </Screen>
