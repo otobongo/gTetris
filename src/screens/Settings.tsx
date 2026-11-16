@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { GAMES, getGame, type GameId } from '../games/registry';
 import { auth } from '../shared/account';
 import {
@@ -20,6 +20,7 @@ import { sfx } from '../shared/sound';
 import { Icon, Screen, TopBar } from '../shared/ui';
 import { settingsRowName, settingsRowSub } from './logic/levels';
 import { grownUpGate, settingsReturn } from './logic/session';
+import { setScroll, takeScroll } from './logic/settingsScroll';
 import { Notice, ProviderButtons, useAuthNotice, LegalLinks } from './parts/Account';
 import { AddChild, BAND_LABEL, bandText } from './parts/AddChild';
 import { Avatar } from './parts/Art';
@@ -83,6 +84,20 @@ export default function Settings() {
   const [notice, report] = useAuthNotice();
 
   const kid = state.players.find((p) => p.id === kidId) ?? state.players[0] ?? null;
+  const scroller = useRef<HTMLDivElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  // The form took the cursor when it opened; when it closes the cursor goes back to Add a child, not the page.
+  const closeAdding = () => {
+    addButton.current?.focus();
+    setAdding(false);
+  };
+
+  // Back from a game's level picker, or Set Level N there, lands where the grown-up was (the Progress
+  // row they tapped), once and without a smooth scroll. Before paint, so the top never flashes.
+  useLayoutEffect(() => {
+    const top = takeScroll();
+    if (top !== null && scroller.current) scroller.current.scrollTop = top;
+  }, []);
 
   // A level set for another child in the picker ends here, with its toast.
   useEffect(() => {
@@ -132,7 +147,7 @@ export default function Settings() {
   return (
     <Screen>
       <TopBar title="Settings" subtitle="For grown-ups" back="/" backLabel="Back to home" />
-      <div className="sc-scroll">
+      <div ref={scroller} className="sc-scroll">
         <section className="sc-panel" aria-labelledby="set-save">
           <div>
             <h2 id="set-save" className="sc-panel__title">
@@ -172,7 +187,7 @@ export default function Settings() {
                 </span>
               </button>
             ))}
-            <button type="button" className="sc-chip-btn sc-chip-btn--add" aria-expanded={adding} onClick={() => setAdding(true)}>
+            <button ref={addButton} type="button" className="sc-chip-btn sc-chip-btn--add" aria-expanded={adding} onClick={() => setAdding(true)}>
               <Icon name="plus" size={18} strokeWidth={3} />
               Add a child
             </button>
@@ -181,9 +196,10 @@ export default function Settings() {
 
         {adding && (
           <AddChild
-            onCancel={() => setAdding(false)}
+            focusOnOpen
+            onCancel={closeAdding}
             onAdded={(p) => {
-              setAdding(false);
+              closeAdding();
               setKidId(p.id);
               showToast(`${p.name} was added. They can now pick their brick on Who's playing.`);
             }}
@@ -215,7 +231,10 @@ export default function Settings() {
                   className="sc-gamerow"
                   href={toHref(pathFor({ name: 'levelPicker', game: g.id, playerId: kid.id }))}
                   aria-label={settingsRowName(g, kid)}
-                  onClick={() => sfx.tap()}
+                  onClick={() => {
+                    sfx.tap();
+                    setScroll(scroller.current?.scrollTop ?? 0);
+                  }}
                 >
                   <span className="sc-gamerow__text">
                     <span className="sc-gamerow__name">{g.title}</span>

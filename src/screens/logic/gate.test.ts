@@ -8,7 +8,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rng } from '../../shared/rng';
 import { GrownUpCheck } from '../parts/Controls';
-import { GATE_MAX, GATE_MIN, gateAnswer, gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type GateSum } from './gate';
+import { GATE_MAX, GATE_MIN, checkGateAnswer, gateAnswer, gateMatches, gateQuestion, gateSpoken, makeGateSum, nextGateSum, type GateSum } from './gate';
 
 /** A random function that returns the given values in turn, then starts over. */
 function seq(...values: number[]) {
@@ -134,6 +134,26 @@ describe('grown-up check: the typed answer', () => {
   });
 });
 
+describe('grown-up check: what Check does with the typed answer (usability batch D)', () => {
+  const sum = { a: 23, b: 19 };
+
+  it('treats an empty field, or one with only spaces, as empty, not wrong', () => {
+    expect(checkGateAnswer('', sum)).toBe('empty');
+    expect(checkGateAnswer('   ', sum)).toBe('empty');
+    expect(checkGateAnswer('\t\n', sum)).toBe('empty');
+  });
+
+  it('passes the answer to the sum, with or without spaces around it', () => {
+    expect(checkGateAnswer('42', sum)).toBe('right');
+    expect(checkGateAnswer('  42  ', sum)).toBe('right');
+    expect(checkGateAnswer('22', { a: 11, b: 11 })).toBe('right');
+  });
+
+  it('calls any other number, or anything that is not plain digits, wrong', () => {
+    for (const typed of ['41', '43', '0', '4 2', '+42', 'abc', '42a']) expect(checkGateAnswer(typed, sum), typed).toBe('wrong');
+  });
+});
+
 describe('grown-up check: what it shows', () => {
   const render = (random: () => number) => renderToString(createElement(GrownUpCheck, { onPass: () => {}, onCancel: () => {}, random }));
 
@@ -154,5 +174,13 @@ describe('grown-up check: what it shows', () => {
 
   it('shows no error before the first answer', () => {
     expect(render(seq(R23, R19))).not.toContain('role="alert"');
+  });
+
+  // Review of batch D: a live region added to the page with its text already in it is often not read
+  // (VoiceOver especially), so the hint's region is on the page from the start, empty, like the Toast slot.
+  it('has an empty status region for the Check hint from the start, so the hint is read when it appears', () => {
+    const html = render(seq(R23, R19));
+    expect(html).toMatch(/<p[^>]*role="status"[^>]*><\/p>/);
+    expect(html).not.toContain('Type the answer');
   });
 });
