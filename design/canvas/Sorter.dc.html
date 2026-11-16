@@ -74,8 +74,8 @@
 <sc-if value="{{showBadge}}" hint-placeholder-val="{{ true }}">
 <span role="img" aria-label="{{badgeName}}" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; background: #ffc21a; color: #5a3500; font-size: 22px; font-weight: 800;">{{badge}}</span>
 </sc-if>
-<sc-if value="{{showQuestionBadge}}" hint-placeholder-val="{{ false }}">
-<span aria-hidden="true" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; background: #ffc21a; color: #5a3500; font-size: 22px; font-weight: 800;">?</span>
+<sc-if value="{{showEmptyBadge}}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; background: #1d1550; box-shadow: inset 0 0 0 2px #8e85d6;"></span>
 </sc-if>
 <span style="min-width: 0; font-size: 16px; font-weight: 700; line-height: 1.2;">{{fact}}</span>
 </div>
@@ -425,7 +425,8 @@ class Component extends DCLogic {
         };
       }),
       showBadge: !!last, badge: last ? S[last.shape].badge : '', badgeName: last ? S[last.shape].badgeName : '',
-      showQuestionBadge: !last,
+      // Before the first placement the badge is an empty slot; the yellow fill is for earned badges only.
+      showEmptyBadge: !last,
       fact: fact,
       traybox: 'width: ' + (rowLen * 64 + (rowLen - 1) * 8) + 'px; min-height: ' + (finished ? 76 : trayMinH) + 'px;',
       showTray: !solvedNow,

@@ -429,3 +429,45 @@ test('a palm resting on one tray piece does not block a drag of another, and its
   await sorterPiece(page, second).tap();
   await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'true');
 });
+
+/* ---------- The fact bar's badge before the first placement (sorter-numbers-8) ---------- */
+
+/** A token's colour as the browser computes it for a background (rgb(...)). */
+async function tokenColour(page: Page, token: string) {
+  return page.evaluate((t) => {
+    const probe = document.createElement('span');
+    probe.style.background = `var(${t})`;
+    document.body.append(probe);
+    const c = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return c;
+  }, token);
+}
+
+test('before the first placement the fact badge is an empty slot; a placement fills it with the earned badge', async ({ page }) => {
+  // a child aged 3 to 4, who taps what looks like a button
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/sorter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+  const badge = page.locator('.sort-fact__badge');
+  await expect(badge).toHaveCount(1);
+  // no yellow '?' that reads as a Hint button: an empty, neutral slot, hidden from assistive tech
+  await expect(badge).toHaveText('');
+  await expect(badge).toHaveAttribute('aria-hidden', 'true');
+  const well = await tokenColour(page, '--bw-well');
+  const accent = await tokenColour(page, '--bw-accent');
+  const decor = await tokenColour(page, '--bw-decor');
+  const empty = await badge.evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, ring: getComputedStyle(el).boxShadow }));
+  expect(empty.bg).toBe(well);
+  expect(empty.bg).not.toBe(accent);
+  expect(empty.ring).toBe(`${decor} 0px 0px 0px 2px inset`);
+
+  // the accent is kept for the badge the child earns
+  const [first] = await sorterPieces(page);
+  await pointerDrag(page, sorterPiece(page, first), sorterHole(page, first));
+  await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+  await expect(badge).not.toHaveText('');
+  await expect(badge).toHaveAttribute('role', 'img');
+  await expect(badge).not.toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(() => badge.evaluate((el) => `${el.className} ${getComputedStyle(el).backgroundColor}`)).toBe(`sort-fact__badge ${accent}`);
+});

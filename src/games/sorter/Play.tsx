@@ -289,9 +289,8 @@ export function Play({ level }: { level: number }) {
             {fact.badge}
           </span>
         ) : (
-          <span className="sort-fact__badge" aria-hidden="true">
-            ?
-          </span>
+          // Before the first placement: an empty slot that the earned badge fills, never a yellow '?' that reads as help.
+          <span className="sort-fact__badge is-empty" aria-hidden="true" />
         )}
         <span className="sort-fact__text">{factText}</span>
       </div>
