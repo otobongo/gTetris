@@ -259,11 +259,11 @@
   }
   .pb-board { padding: var(--bw-sp-3); }
   .pb-grid { width: min(334px, calc(100cqh - 2 * var(--bw-sp-3)), calc(100cqw - 2 * var(--bw-sp-3) - 8px)); }
-  /* The floor: a 5 by 5 grid of 44 px squares (5 x 44 + 4 x 6 gaps), the well's padding and its ring. Below it
-     the play column scrolls. */
+  /* The floor: a 5 by 5 grid of 44 px squares (--bw-target, the smallest hit area) and its 4 gaps of 6 px, the
+     well's padding and its ring. Below it the play column scrolls. */
   .pb-screen .bw-play__body {
     flex: 1 0 auto;
-    min-height: calc(5 * 44px + 4 * 6px + 2 * var(--bw-sp-3) + 8px);
+    min-height: calc(5 * var(--bw-target) + 4 * 6px + 2 * var(--bw-sp-3) + 8px);
   }
 }
 

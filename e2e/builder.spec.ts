@@ -6,7 +6,9 @@
  * it shows, and the bricks are laid through the palette and the board.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { LEVELS, LOOK_SECONDS } from '../src/games/builder/puzzles';
 import {
+  type Band,
   builderBoard,
   builderBoardCells,
   builderModel,
@@ -345,9 +347,9 @@ test('a grown-up picks a locked Picture Builder level and the child builds it', 
  * the palette, so a tap on a bottom-row square picked a colour instead. The board now takes only the height left
  * between the help row and the palette, its squares never under 44 px; on a shorter screen the play column scrolls. */
 
-/** Open Picture Builder on `level` (1-based) for a 5 to 6 year old who has every level before it. */
-async function openBuilderLevel(page: Page, level: number) {
-  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: level > 1 ? { builder: { stars: starsUpTo(level - 1) } } : undefined }]);
+/** Open Picture Builder on `level` (1-based) for a child (5 to 6 unless `band` says) who has every level before it. */
+async function openBuilderLevel(page: Page, level: number, band: Band = '5-6') {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band, games: level > 1 ? { builder: { stars: starsUpTo(level - 1) } } : undefined }]);
   await page.goto('/#/game/builder');
   await expect(page).toHaveURL(new RegExp(`#/game/builder/${level}$`));
   await expect(builderSquares(page).first()).toBeVisible();
@@ -402,14 +404,22 @@ async function scrollOf(page: Page): Promise<{ top: number; room: number }> {
   });
 }
 
-/** A real finger drag through the browser's touch input, so the page scrolls wherever touch-action lets it. */
-async function fingerDrag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, steps = 8) {
+/**
+ * A real finger drag through the browser's touch input, so the page scrolls wherever touch-action lets it. With
+ * `hold`, the finger rests at the end for 240 ms before it lifts, so a scroll ends with no fling. A fling that runs
+ * into the end of the column shows no movement while it lasts, and it would move a scroll the test sets after it.
+ */
+async function fingerDrag(page: Page, from: { x: number; y: number }, to: { x: number; y: number }, { steps = 8, hold = false } = {}) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: from.x, y: from.y }] });
   for (let k = 1; k <= steps; k++) {
     const x = from.x + ((to.x - from.x) * k) / steps;
     const y = from.y + ((to.y - from.y) * k) / steps;
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+  }
+  for (let k = 0; hold && k < 6; k++) {
+    await page.waitForTimeout(40);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: to.x, y: to.y }] });
   }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
@@ -433,7 +443,7 @@ for (const viewport of [
       test(`Level ${level}: every square takes its own tap, clear of the palette, and the palette keeps its 54 px rows`, { tag: '@phone-only' }, async ({ page }) => {
         await openBuilderLevel(page, level);
         const hits = await squareHits(page);
-        expect(hits.length).toBeGreaterThanOrEqual(9);
+        expect(hits).toHaveLength(LEVELS[level - 1].size ** 2);
         expect(hits.filter((h) => !h.hits).map((h) => h.cell)).toEqual([]);
 
         // Every square is a 44 pt target at least, on the 5 by 5 boards too.
@@ -482,57 +492,75 @@ test.describe('a short phone, 375x667, by taps alone', () => {
   });
 });
 
-test.describe('a very short phone, 375x548', () => {
-  test.use({ viewport: { width: 375, height: 548 }, isMobile: true, hasTouch: true });
+/* 375x548 is an iPhone SE in Safari with its toolbars; 320x568 is a first iPhone SE, or a phone with Display Zoom,
+ * where the board used to run past the right edge too. */
+for (const viewport of [
+  { width: 375, height: 548 },
+  { width: 320, height: 568 },
+]) {
+  test.describe(`a very short phone, ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true });
 
-  for (const level of [1, 10]) {
-    test(`Level ${level}: the play column scrolls, every square takes its own tap, and a stroke never scrolls`, { tag: '@phone-only' }, async ({ page }) => {
-      await openBuilderLevel(page, level);
-      const size = level === 1 ? 3 : 5;
+    for (const level of [1, 10]) {
+      test(`Level ${level}: the play column scrolls, every square takes its own tap, and a stroke never scrolls`, { tag: '@phone-only' }, async ({ page }) => {
+        await openBuilderLevel(page, level);
+        const size = LEVELS[level - 1].size;
 
-      // The screen is too short for the board and the palette, so the play column scrolls: a finger drag up on the
-      // picture's title, above the board, scrolls it.
-      expect((await scrollOf(page)).room).toBeGreaterThan(0);
-      const above = await middleOf(pictureTitle(page));
-      await fingerDrag(page, above, { x: above.x, y: above.y - 120 });
-      await expect.poll(async () => (await scrollOf(page)).top).toBeGreaterThan(0);
-      // Let any fling from that drag come to rest before measuring.
-      let prev = -1;
-      await expect
-        .poll(async () => {
-          const top = (await scrollOf(page)).top;
-          const still = top === prev;
-          prev = top;
-          return still;
-        }, { intervals: [150] })
-        .toBe(true);
+        // The board and its 4 px ring stay inside the 16 px side gutters.
+        const well = (await boardWell(page).boundingBox())!;
+        expect(well.x - 4).toBeGreaterThanOrEqual(16);
+        expect(well.x + well.width + 4).toBeLessThanOrEqual(viewport.width - 16);
 
-      // Scrolled to each square in turn, a finger at its middle lands on it. Squares stay 44 px or more.
-      for (let i = 0; i < size * size; i++) {
-        await builderSquare(page, size, i).evaluate((el) => el.scrollIntoView({ block: 'nearest' }));
-        const [hit] = await squareHits(page, [i]);
-        expect(hit.hits, `square ${i}`).toBe(true);
-        expect(hit.width).toBeGreaterThanOrEqual(44);
-        expect(hit.height).toBeGreaterThanOrEqual(44);
-      }
+        // The screen is too short for the board and the palette, so the play column scrolls: a finger drag up on the
+        // picture's title, above the board, scrolls it.
+        expect((await scrollOf(page)).room).toBeGreaterThan(0);
+        const above = await middleOf(pictureTitle(page));
+        await fingerDrag(page, above, { x: above.x, y: above.y - 120 }, { hold: true });
+        await expect.poll(async () => (await scrollOf(page)).top).toBeGreaterThan(0);
+        // Let the scroll come to rest before measuring.
+        let prev = -1;
+        await expect
+          .poll(async () => {
+            const top = (await scrollOf(page)).top;
+            const still = top === prev;
+            prev = top;
+            return still;
+          }, { intervals: [150] })
+          .toBe(true);
 
-      // The palette is below the board, never over it, and keeps its 54 px swatches.
-      const board = (await boardWell(page).boundingBox())!;
-      const palette = (await builderPalette(page).boundingBox())!;
-      expect(palette.y).toBeGreaterThanOrEqual(board.y + board.height);
-      expect(await paletteRows(page)).toEqual(PALETTE_ROWS);
+        // Scrolled to each square in turn, a finger at its middle lands on it. Squares stay 44 px or more.
+        for (let i = 0; i < size * size; i++) {
+          await builderSquare(page, size, i).evaluate((el) => el.scrollIntoView({ block: 'nearest' }));
+          const [hit] = await squareHits(page, [i]);
+          expect(hit.hits, `square ${i}`).toBe(true);
+          expect(hit.width).toBeGreaterThanOrEqual(44);
+          expect(hit.height).toBeGreaterThanOrEqual(44);
+        }
 
-      // With the whole board in view, a finger stroke down the first column paints it and leaves the scroll alone.
-      await boardWell(page).evaluate((el) => el.scrollIntoView({ block: 'center' }));
-      const before = (await scrollOf(page)).top;
-      const first = await builderSquareMiddle(page, size, 0);
-      const last = await builderSquareMiddle(page, size, (size - 1) * size);
-      await fingerDrag(page, first, last, 12);
-      await expect.poll(async () => (await builderBoardCells(page)).filter((_, i) => i % size === 0)).toEqual(Array(size).fill('red'));
-      expect((await scrollOf(page)).top).toBe(before);
-    });
-  }
-});
+        // The palette is below the board, never over it, and keeps its 54 px swatches.
+        const board = (await boardWell(page).boundingBox())!;
+        const palette = (await builderPalette(page).boundingBox())!;
+        expect(palette.y).toBeGreaterThanOrEqual(board.y + board.height);
+        expect(await paletteRows(page)).toEqual(PALETTE_ROWS);
+
+        // With the whole board in view, a finger stroke down the first column paints it and leaves the scroll alone.
+        await boardWell(page).evaluate((el) => el.scrollIntoView({ block: 'center' }));
+        const where = async () => ({ ...(await scrollOf(page)), board: (await boardWell(page).boundingBox())!.y });
+        const before = await where();
+        const first = await builderSquareMiddle(page, size, 0);
+        const last = await builderSquareMiddle(page, size, (size - 1) * size);
+        await fingerDrag(page, first, last, { steps: 12 });
+        await expect.poll(async () => (await builderBoardCells(page)).filter((_, i) => i % size === 0)).toEqual(Array(size).fill('red'));
+        // The board stays under the finger, and the column scrolled no further than its own end moved. That end moves
+        // only at 320 px, where the first wrong brick shortens the help line from three lines to two: the column
+        // gives back those 6 px and, scrolled to its end, follows them, with the board in the same place on screen.
+        const after = await where();
+        expect(Math.abs(after.board - before.board)).toBeLessThanOrEqual(0.5);
+        expect(after.top - before.top).toBe(after.room - before.room);
+      });
+    }
+  });
+}
 
 /* Where the board always fitted it keeps its size: 334 px at 390x844, and the same board zoomed on the tablet. */
 for (const [level, size, phone, tablet] of [
@@ -553,3 +581,91 @@ for (const [level, size, phone, tablet] of [
     expect(await paletteRows(page)).toEqual(PALETTE_ROWS);
   });
 }
+
+/* The tablet held sideways is taller than every short-phone query, so its board keeps the 390x844 sizes. */
+test.describe('the tablet held sideways, 1194x834', () => {
+  test.use({ viewport: { width: 1194, height: 834 }, isMobile: true, hasTouch: true });
+
+  for (const [level, size, want] of [
+    [1, 3, 107.3],
+    [4, 4, 79],
+    [10, 5, 62],
+  ] as const) {
+    test(`Level ${level}: ${size} by ${size} squares keep their size`, { tag: '@phone-only' }, async ({ page }) => {
+      await openBuilderLevel(page, level);
+      const hits = await squareHits(page);
+      expect(hits).toHaveLength(size * size);
+      for (const h of hits) {
+        expect(h.hits).toBe(true);
+        expect(Math.abs(h.width - want)).toBeLessThanOrEqual(1);
+        expect(Math.abs(h.height - want)).toBeLessThanOrEqual(1);
+      }
+      expect(await paletteRows(page)).toEqual(PALETTE_ROWS);
+    });
+  }
+});
+
+/* The edges of the short-phone sizes on a 5 by 5 board: 781 and 780 px high, where the board starts to fit its
+ * stage; 721 and 720, where the picture, the gaps and the well give up more; 657 and 656, around the 44 px floor
+ * where the column starts to scroll. At each one every square takes its own tap at 44 px or more, and the whole
+ * palette is on screen below the board. */
+for (const height of [781, 780, 721, 720, 657, 656]) {
+  test.describe(`a 390 px phone, ${height} px high`, () => {
+    test.use({ viewport: { width: 390, height }, isMobile: true, hasTouch: true });
+
+    test('Level 10: every square takes its own tap, and the palette is on screen below the board', { tag: '@phone-only' }, async ({ page }) => {
+      await openBuilderLevel(page, 10);
+      const hits = await squareHits(page);
+      expect(hits).toHaveLength(25);
+      expect(hits.filter((h) => !h.hits).map((h) => h.cell)).toEqual([]);
+      for (const h of hits) {
+        expect(h.width).toBeGreaterThanOrEqual(44);
+        expect(h.height).toBeGreaterThanOrEqual(44);
+      }
+      const board = (await boardWell(page).boundingBox())!;
+      const palette = (await builderPalette(page).boundingBox())!;
+      expect(palette.y).toBeGreaterThanOrEqual(board.y + board.height);
+      expect(palette.y + palette.height).toBeLessThanOrEqual(height);
+      expect(await paletteRows(page)).toEqual(PALETTE_ROWS);
+    });
+  });
+}
+
+/* A memory level on a short phone, for every age band. Only the picture shrinks there, so once the band's first look
+ * ends Peek keeps its full-size cover (54 px or more, its eye 26 px, its label unshrunk), and a finger on it shows the
+ * picture for the band's peek time. Throughout, every square takes its own tap, clear of the palette. */
+test.describe('a memory level on a short phone, 375x667', () => {
+  test.use({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
+
+  for (const band of ['3-4', '5-6', '7-8', '9-10'] as const) {
+    test(`ages ${band}: Peek keeps its full size above a board that fits`, { tag: '@phone-only' }, async ({ page }) => {
+      await page.clock.install();
+      await openBuilderLevel(page, 12, band);
+      await expect(pictureTitle(page)).toHaveText('Look closely.');
+      await page.clock.runFor(LOOK_SECONDS[band].first * 1000);
+      await expect(pictureTitle(page)).toHaveText('Build it from memory.');
+
+      const cover = (await peek(page).boundingBox())!;
+      expect(cover.width).toBeGreaterThanOrEqual(54);
+      expect(cover.height).toBeGreaterThanOrEqual(54);
+      const eye = (await peek(page).locator('svg').boundingBox())!;
+      expect(Math.abs(eye.width - 26)).toBeLessThanOrEqual(0.5);
+
+      const hits = await squareHits(page);
+      expect(hits).toHaveLength(25);
+      expect(hits.filter((h) => !h.hits).map((h) => h.cell)).toEqual([]);
+      for (const h of hits) expect(Math.min(h.width, h.height)).toBeGreaterThanOrEqual(44);
+      const board = (await boardWell(page).boundingBox())!;
+      expect((await builderPalette(page).boundingBox())!.y).toBeGreaterThanOrEqual(board.y + board.height);
+
+      // A finger on Peek shows the picture and locks the board for the band's peek time, then the picture hides.
+      const at = await middleOf(peek(page));
+      await page.touchscreen.tap(at.x, at.y);
+      await expect(builderModel(page)).toHaveAccessibleName(/^Picture of /);
+      await expect(builderSquare(page, 5, 0)).toHaveAttribute('aria-disabled', 'true');
+      await page.clock.runFor(LOOK_SECONDS[band].peek * 1000);
+      await expect(builderModel(page)).toHaveAccessibleName('Picture hidden. Tap Peek to look again.');
+      await expect(peek(page)).toBeVisible();
+    });
+  }
+});
