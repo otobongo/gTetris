@@ -214,7 +214,7 @@ class Component extends DCLogic {
     try { window.addEventListener('keydown', this.onKey); } catch (e) {}
   }
   componentWillUnmount() {
-    clearInterval(this.timer); clearTimeout(this.cardT);
+    clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT);
     try { window.removeEventListener('keydown', this.onKey); } catch (e) {}
   }
   say(text) {

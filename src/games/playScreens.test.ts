@@ -3056,6 +3056,70 @@ describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
     expect(look()).toEqual(['?', 'empty']);
   });
 
+  it('a wrong answer sent during the wrong look shows for its own full time, even the same number again; two digits show whole at 9 to 10', () => {
+    openMath(0, '9-10');
+    const p = mathOnScreen();
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    // Two digits, never the answer (Level 1 answers stay under 10 at 9 to 10).
+    const wide = p.answer === 17 ? 18 : 17;
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wide), 'wrong']);
+
+    // The same number again, 300 ms in: its own 500 ms start from this =, not from the first one.
+    wait(300);
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(wide), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // A different number during the look replaces it and also gets its full time.
+    tapDigits(wide);
+    click(calcKey('Equals'));
+    wait(400);
+    const other = wrongAnswer(p.answer);
+    tapDigits(other);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(other), 'wrong']);
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(other), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+    // The right answer is never shown in the wrong look, and the sum still asks for it.
+    expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
+  });
+
+  it('on the physical keyboard, Backspace and Escape bring the "?" back at once, Enter during the wrong look sends nothing, and a digit replaces it', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    blur();
+    for (const clear of ['Backspace', 'Escape']) {
+      for (const d of String(wrong)) press(d);
+      press('Enter');
+      expect(look()).toEqual([String(wrong), 'wrong']);
+      press(clear);
+      expect(look()).toEqual(['?', 'empty']);
+    }
+    // Enter while the sent number shows: nothing typed, so no sound, no slip and the look stays.
+    for (const d of String(wrong)) press(d);
+    press('Enter');
+    const heard = sounds.length;
+    press('Enter');
+    expect(sounds).toHaveLength(heard);
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    press(String(p.answer)[0]);
+    expect(look()).toEqual([String(p.answer)[0], 'typed']);
+    // One answer sent three times: one star slip.
+    press('Backspace');
+    for (const d of String(p.answer)) press(d);
+    press('Enter');
+    expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
   it('a repeated wrong answer counts once for stars and every time for the offer, which comes at 2 for ages 5 to 6; a key press then hides it', () => {
     openMath(0);
     const p = mathOnScreen();
