@@ -24,7 +24,8 @@ export function AddChild({
   primaryLabel = 'Add child',
   focusOnOpen = false,
 }: {
-  onAdded: (p: Player) => void;
+  /** `named` is false when no name was typed and the child got a "Player N" name. */
+  onAdded: (p: Player, named: boolean) => void;
   onCancel?: () => void;
   heading?: string;
   primaryLabel?: string;
@@ -51,8 +52,9 @@ export function AddChild({
       onSubmit={(e) => {
         e.preventDefault();
         sfx.tap();
-        const p = progressStore.addPlayer({ name: name.trim() || `Player ${players.length + 1}`, ageBand: band, color: nextAvatarColor(players) });
-        onAdded(p);
+        const named = name.trim() !== '';
+        const p = progressStore.addPlayer({ name: named ? name.trim() : `Player ${players.length + 1}`, ageBand: band, color: nextAvatarColor(players) });
+        onAdded(p, named);
       }}
     >
       <h2 className="sc-panel__title">{heading}</h2>
