@@ -289,3 +289,31 @@ export function puzzle(level: number, n: number, ctx: { seed: number; band: AgeB
   if (!Number.isInteger(n) || n < 0 || n >= PUZZLES_PER_LEVEL) throw new RangeError(`Number Line-up has no puzzle ${n}`);
   return makePuzzles(level, ctx.seed, ctx.band)[n];
 }
+
+/* ---------- The swap cue (decision 23) ---------- */
+
+/** The only age band that sees the swap cue. */
+export const SWAP_CUE_BAND: AgeBand = '3-4';
+
+/** What the Play screen knows when it decides on the swap cue. */
+export interface SwapCueState {
+  band: AgeBand;
+  /** 0-based level. */
+  level: number;
+  /** Puzzles of the level already solved. */
+  solved: number;
+  /** The puzzle on screen is the first one shown since the level opened (a reload opens it again). */
+  firstOfVisit: boolean;
+  /** The child has picked, dragged, asked for a hint or swapped since the level opened. */
+  acted: boolean;
+}
+
+/**
+ * Whether the play screen draws the swap cue: a still double arrow between the two towers of the
+ * first swap, and a ring on both. Only at ages 3 to 4, only on Level 1 before any puzzle of it is
+ * solved, only on the first puzzle of the visit, and only until the child first acts. Not a hint: it
+ * costs nothing and makes no sound.
+ */
+export function showsSwapCue(s: SwapCueState): boolean {
+  return s.band === SWAP_CUE_BAND && s.level === 0 && s.solved === 0 && s.firstOfVisit && !s.acted;
+}

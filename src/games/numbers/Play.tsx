@@ -1,7 +1,8 @@
 /* Number Line-up's play screen (brief 4.3): the goal strip, the help row (prompt style, Hint on the
    right), the tower well with its marks, and the footer slot that holds the legend during play and
    Next puzzle after the solve. The child swaps two towers at a time, by dragging one onto another or
-   by tapping two, until the row is in the level's order. */
+   by tapping two, until the row is in the level's order. At ages 3 to 4 the first puzzle of Level 1
+   shows that first swap as a still picture (the swap cue) until the child acts. */
 import { useEffect, useRef, useState } from 'react';
 import { sfx } from '../../shared/sound';
 import { PlayScreen } from '../kit/PlayScreen';
@@ -9,8 +10,8 @@ import { useDragToTarget } from '../kit/useDragToTarget';
 import { useLevelRun } from '../kit/useLevelRun';
 import { LEGEND, PICKED_LINE, SLIP_LINE, SPEAKER_NAME, START_LINE, hintLine, solvedLine, spokenText } from './copy';
 import { NUMBERS } from './game';
-import { hintStep, inOrder, rightSpots, swapAt, swapKind, type HintStep } from './order';
-import { studCount } from './puzzles';
+import { hintStep, inOrder, rightSpots, swapAt, swapCueSpots, swapKind, type HintStep } from './order';
+import { showsSwapCue, studCount } from './puzzles';
 import { GoalStrip, HintButton, Tower, TowerWell } from './parts';
 import './numbers.css';
 
@@ -63,6 +64,11 @@ export function Play({ level }: { level: number }) {
   live.current = board;
   const swaps = useRef(0);
 
+  // The swap cue (decision 23) belongs to the first puzzle this visit shows, and goes for good the first
+  // time the child picks, drags, asks for a hint or swaps.
+  const firstRound = useRef(run.round);
+  const [acted, setActed] = useState(false);
+
   /** Swap the towers in spots a and b (a is the one picked or dragged). */
   const swap = (a: number, b: number, how: 'drag' | 'tap') => {
     const now = live.current;
@@ -72,6 +78,7 @@ export function Play({ level }: { level: number }) {
     // A dropped tower lands where the finger left it; the tower it displaced slides over. A tap swap slides both.
     const shifts: Record<number, number> = how === 'drag' ? { [a]: b - a } : { [a]: b - a, [b]: a - b };
     swaps.current += 1;
+    setActed(true);
     const solves = inOrder(row, p.dir);
     // A slip says so on screen too (the line in the wrong style, a ring on both towers), so it shows with Sound off.
     const slip: Slip | null = !solves && kind !== 'forward' ? { spots: [a, b], id: swaps.current, ring: true } : null;
@@ -85,15 +92,19 @@ export function Play({ level }: { level: number }) {
 
   const drag = useDragToTarget<string>({
     itemsAreTargets: true,
+    // A resting palm or the other hand on one tower must not block a finger dragging another (sorter-numbers-2).
+    takeover: true,
     disabled: !playing,
     onDrop: (item, target, how) => swap(Number(item), Number(target), how),
     onPick: (item) => {
       if (item === null) return;
+      setActed(true);
       sfx.tap();
       // A new tap cuts a swap's slide short and puts the normal line back after a slip.
       if (live.current.motion || live.current.slip) setBoard({ ...live.current, motion: null, slip: null });
     },
     onDragStart: () => {
+      setActed(true);
       sfx.tap();
       if (live.current.slip) setBoard({ ...live.current, slip: null });
     },
@@ -142,6 +153,7 @@ export function Play({ level }: { level: number }) {
     const step = hintStep(now.row, p.dir);
     if (!step) return;
     hints.use();
+    setActed(true);
     sfx.tap();
     // The hint clears a pick and a slip, and stays until the next swap.
     drag.pick(null);
@@ -163,6 +175,18 @@ export function Play({ level }: { level: number }) {
   const slipLine = line === SLIP_LINE;
 
   const right = rightSpots(board.row, p.dir);
+  const cueOn =
+    playing &&
+    drag.picked === null &&
+    hint === null &&
+    showsSwapCue({ band: run.band, level: run.level, solved: run.dots.solved, firstOfVisit: run.round === firstRound.current, acted });
+  const cueSpots = cueOn ? swapCueSpots(board.row, p.dir) : null;
+  // The arrow clears every stack it passes over, not only the two at its ends.
+  const cue = cueSpots && {
+    lo: cueSpots[0],
+    hi: cueSpots[1],
+    studs: Math.max(...board.row.slice(cueSpots[0], cueSpots[1] + 1).map((v) => studCount(p, v))),
+  };
   const towers = board.row.map((value, spot) => {
     const shift = board.motion && !board.motion.go ? board.motion.shifts[spot] ?? null : null;
     return (
@@ -177,6 +201,7 @@ export function Play({ level }: { level: number }) {
         locked={!playing}
         lit={hint !== null && (hint.from === spot || hint.to === spot)}
         arrow={hint !== null && hint.from === spot}
+        cued={cue !== null && (cue.lo === spot || cue.hi === spot)}
         shift={shift}
         wrong={slip !== null && slip.ring && slip.spots.includes(spot)}
         moved={board.motion !== null && board.motion.shifts[spot] !== undefined}
@@ -198,7 +223,7 @@ export function Play({ level }: { level: number }) {
       top={<GoalStrip puzzle={p} />}
       controls={<p className="num-legend">{LEGEND}</p>}
     >
-      <TowerWell towers={towers} marks={right} />
+      <TowerWell towers={towers} marks={right} cue={cue} />
     </PlayScreen>
   );
 }
