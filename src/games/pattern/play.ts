@@ -32,3 +32,23 @@ export function trainSlots(p: PatternPuzzle, solved: boolean): TrainSlot[] {
 
 /** What the speaker reads: the pattern and the question, or, once solved, the whole train and the solved line. */
 export const spokenFor = (p: PatternPuzzle, solved: boolean): string => (solved ? speechSolved(p.cars, p.answer) : speech(p.cars));
+
+/** The train's zoom (decision 16): on phone it follows the car count; on tablet it is 1, since the frame is zoomed already. */
+export const TRAIN_ZOOM = { four: 0.95, five: 0.82, tablet: 1 } as const;
+
+/** The train at zoom 1, in px: the 70 px locomotive, then each car 56 px wide with a 4 px gap before it. */
+const trainWidth = (cars: number): number => 70 + cars * 60;
+
+/** The phone frame (Screen, ui.css): at most --bw-phone-max wide, with 16 px of padding each side. */
+const PHONE_FRAME = { max: 430, pad: 16 };
+
+/**
+ * The zoom for a train of `shown` cars before the empty one: 0.95 with 4 (Levels 1 to 3), 0.82 with 5, 1 on tablet.
+ * On a phone narrower than 390 it is lowered just enough that the train fits the frame's column (0.92 and 0.79 at 375).
+ */
+export function trainZoom(layout: { mode: 'phone' | 'tablet'; width: number }, shown: number): number {
+  if (layout.mode === 'tablet') return TRAIN_ZOOM.tablet;
+  const want = shown <= 4 ? TRAIN_ZOOM.four : TRAIN_ZOOM.five;
+  const room = Math.min(layout.width, PHONE_FRAME.max) - 2 * PHONE_FRAME.pad;
+  return Math.min(want, Math.floor((room / trainWidth(shown + 1)) * 100) / 100);
+}
