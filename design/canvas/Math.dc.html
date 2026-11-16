@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-key { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .calc-key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sh) !important; } .calc-cell { transition: opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .calc-key { transition: box-shadow 100ms linear; } .calc-key:active { transform: none; } .calc-cell { transform: none !important; transition: opacity 150ms linear; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-key { transition: transform 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .calc-key:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--sh) !important; } .calc-cell { transition: opacity 350ms cubic-bezier(0.16,1,0.3,1), transform 350ms cubic-bezier(0.16,1,0.3,1); } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .calc-key { transition: box-shadow 100ms linear; } .calc-key:active { transform: none; } .calc-cell { transform: none !important; transition: opacity 150ms linear; } .calc-ans { transform: none !important; } .calc-ans[data-look='wrong'], .calc-ans[data-look='empty'] { transition: opacity 150ms linear; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
@@ -43,7 +43,7 @@
 <span aria-hidden="true" style="color: #c9c2ff;">{{opText}}</span>
 <span aria-hidden="true" style="color: #ffab5e;">{{bText}}</span>
 <span aria-hidden="true" style="color: #c9c2ff;">{{eqText}}</span>
-<span aria-hidden="true" style="min-width: 1.2ch; text-align: left; color: {{anscolor}};">{{ansText}}</span>
+<span class="calc-ans" data-look="{{anslook}}" aria-hidden="true" style="min-width: 1.2ch; text-align: left; color: {{anscolor}}; opacity: {{ansopacity}}; transform: {{ansshift}};">{{ansText}}</span>
 </div>
 </div>
 
@@ -158,7 +158,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     return [p.level, p.puzzle, p.moment].join('|');
   }
-  freshPuzzle() { return { entry: '', note: '', slipShown: false, wrongTaps: 0, seen: {}, idle: 0, offer: false }; }
+  freshPuzzle() { return { entry: '', note: '', slipShown: false, wrongShown: '', wrongTaps: 0, seen: {}, idle: 0, offer: false }; }
   fromLever() {
     var p = this.props || {};
     var level = this.levels()[this.levelKey(p)].level;
@@ -172,7 +172,8 @@ class Component extends DCLogic {
     var s = Object.assign(this.freshPuzzle(), { lever: this.leverKey(), level: level, puzzle: puzzle, moment: 'play', order: order, slips: 1 });
     // Typed: the answer is on the display, not yet sent with =.
     if (moment === 'typed') s.entry = String(r);
-    if (moment === 'slip') { s.slipShown = true; s.wrongTaps = 1; s.seen[String(r + 1)] = true; s.slips = 2; }
+    // Slip: the sent number still in the answer place, in the wrong look (held here as a still of that moment).
+    if (moment === 'slip') { s.slipShown = true; s.wrongShown = String(r + 1); s.wrongTaps = 1; s.seen[String(r + 1)] = true; s.slips = 2; }
     if (moment === 'stuck') {
       // Three different wrong answers: the offer at 3 for ages 7 to 8; each counts one star slip.
       [r + 1, r - 1, r + 2].forEach(function (x) { s.seen[String(x)] = true; });
@@ -231,7 +232,7 @@ class Component extends DCLogic {
     var S = this.sumsFor(cs.level)[cs.order[cs.puzzle - 1]];
     // Any key press resets the time signal and hides the offer until a fresh event (four-puzzle 3.2).
     var base = { idle: 0 };
-    if (t === 'C') { this.put(Object.assign(base, { entry: '', note: '', slipShown: false })); return; }
+    if (t === 'C') { clearTimeout(this.wrongT); this.put(Object.assign(base, { entry: '', note: '', slipShown: false, wrongShown: '' })); return; }
     if (t === '=') {
       if (cs.entry === '') { this.put(base); return; }
       if (Number(cs.entry) === this.result(S)) {
@@ -243,18 +244,23 @@ class Component extends DCLogic {
         return;
       }
       // A wrong answer always feeds the stuck count; the same wrong answer again adds no star slip (brief 3.1).
+      // The sent number stays 500 ms in the wrong look (the Choice row's wrong time), then the "?" comes back.
       var key = String(Number(cs.entry));
       var seen = Object.assign({}, cs.seen);
       var fresh = !seen[key];
       seen[key] = true;
       var wrongTaps = cs.wrongTaps + 1;
-      this.put(Object.assign(base, { entry: '', note: '', slipShown: true, seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count }));
+      clearTimeout(this.wrongT);
+      var wrongSelf = this;
+      this.wrongT = setTimeout(function () { wrongSelf.put({ wrongShown: '' }); }, 500);
+      this.put(Object.assign(base, { entry: '', note: '', slipShown: true, wrongShown: key, seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count }));
       return;
     }
     // A digit. A third digit is ignored; "07" counts as 7.
     if (cs.entry.length >= 2) { this.put(Object.assign(base, { note: 'Press = to check, or C to clear.' })); return; }
     var entry = cs.entry + t;
-    this.put(Object.assign(base, { entry: entry, note: '', slipShown: false }));
+    clearTimeout(this.wrongT);
+    this.put(Object.assign(base, { entry: entry, note: '', slipShown: false, wrongShown: '' }));
     this.say(String(Number(entry)));
   }
   stud(c1, c0, c2) {
@@ -315,7 +321,8 @@ class Component extends DCLogic {
     // Level card: slips over the 4 puzzles (brief 3.2). Totals for the finished state are sample data.
     var starsWon = finished ? 3 : s.slips <= 1 ? 3 : s.slips <= 4 ? 2 : 1;
     var fact = s.slips === 0 ? '4 puzzles, no slips.' : s.slips === 1 ? '4 puzzles, 1 slip.' : '4 puzzles, ' + s.slips + ' slips.';
-    var shown = finished ? '?' : solvedNow ? String(r) : s.entry === '' ? '?' : s.entry;
+    var wrongNow = !finished && !solvedNow && s.entry === '' && !!s.wrongShown;
+    var shown = finished ? '?' : solvedNow ? String(r) : wrongNow ? s.wrongShown : s.entry === '' ? '?' : s.entry;
 
     return {
       w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
@@ -336,7 +343,11 @@ class Component extends DCLogic {
       opText: finished ? '' : minus ? '−' : '+',
       bText: finished ? '' : String(b),
       ansText: shown,
-      anscolor: solvedNow && !finished ? '#ffe266' : shown === '?' ? '#c9c2ff' : '#ffffff',
+      // Wrong: --bw-error-text at 0.6, shifted 6px left as a Choice row answer is; 4.2:1 on the display at 46px bold.
+      anslook: solvedNow && !finished ? 'solved' : wrongNow ? 'wrong' : shown === '?' ? 'empty' : 'typed',
+      anscolor: solvedNow && !finished ? '#ffe266' : wrongNow ? '#ff9fd4' : shown === '?' ? '#c9c2ff' : '#ffffff',
+      ansopacity: wrongNow ? 0.6 : 1,
+      ansshift: wrongNow ? 'translateX(-6px)' : 'none',
       eqText: finished ? '' : '=',
       eqLabel: finished ? 'Empty display.' : solvedNow ? words + ' equals ' + r : words + ' equals what?',
       help: help,

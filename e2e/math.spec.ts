@@ -169,3 +169,101 @@ test('after tapping keys on the keypad, Enter on the physical keyboard sends the
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 1 solved.');
   await expect.poll(spoken).toEqual([...[...digits].map((_, k) => String(Number(digits.slice(0, k + 1)))), solvedLine]);
 });
+
+/* ---------- A wrong answer stays in view for a moment (usability batch L) ---------- */
+// With Sounds off, a wrong = must still be told apart from a missed tap where the child is looking: the sent
+// number stays in the answer place in the wrong look for about 500 ms, then the "?" comes back. The entry is
+// already cleared underneath, so the next digit replaces the wrong look at once and = during it does nothing.
+// The right answer is never shown (brief 4.5).
+
+/** Band 3 to 4 opens Level 1 with the sum on screen. */
+async function openLevel1For3To4(page: Page) {
+  await seed(page, [{ id: 'ada', name: 'Ada', ageBand: '3-4' }]);
+  await page.goto('/#/game/math/1');
+  await expect(page).toHaveURL(/#\/game\/math\/1$/);
+  return mathOnScreen(page);
+}
+
+/** A one-digit wrong answer for a Level 1 sum at 3 to 4 (answers 0 to 5), different for each `step` from 1 to 4. */
+const wrongFor = (answer: number, step = 1) => (answer + step) % 10;
+
+test('a wrong answer shows in the wrong look for a moment, then the "?" comes back', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const wrong = wrongFor(p.answer);
+  await sendMathAnswer(page, wrong, 'taps');
+  // Within 100 ms: the sent number, in the wrong look. The sum's name still waits for the answer.
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(String(wrong), { timeout: 100 });
+  await expect(page.getByRole('img', { name: `${p.words} equals what?`, exact: true })).toBeVisible();
+  // After 700 ms: the start look again.
+  await page.waitForTimeout(700);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'empty', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText('?', { timeout: 100 });
+});
+
+test('a digit typed during the wrong look replaces it at once', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const wrong = wrongFor(p.answer);
+  await sendMathAnswer(page, wrong, 'taps');
+  await page.waitForTimeout(200);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  const digit = String((wrong + 1) % 10);
+  await mathKey(page, digit).click();
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'typed', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(digit, { timeout: 100 });
+  // The wrong look's timer does not come back over the typed digit.
+  await page.waitForTimeout(500);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'typed', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(digit, { timeout: 100 });
+});
+
+test('= during the wrong look does nothing and adds no slip: two wrong answers still bring New puzzle at 3 to 4', async ({ page }) => {
+  const p = await openLevel1For3To4(page);
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  const first = wrongFor(p.answer, 1);
+  await sendMathAnswer(page, first, 'taps');
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  // = while the sent number still shows: the wrong look stays, and no second slip brings the offer.
+  await mathKey(page, 'Equals').click();
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  await expect(answerPlace(page)).toHaveText(String(first), { timeout: 100 });
+  await page.waitForTimeout(700);
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'empty', { timeout: 100 });
+  await expect(offer).toHaveCount(0);
+  // The second wrong answer is the one that reaches the limit of 2.
+  await sendMathAnswer(page, wrongFor(p.answer, 2), 'taps');
+  await expect(offer).toBeVisible();
+  // Two slips on this puzzle, no more.
+  await solveMathPuzzle(page, 'taps');
+  expect((await savedRun(page, 'math', 0)).solved[0].count).toBe(2);
+});
+
+test('with reduced motion the wrong answer only fades, with no shift', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const p = await openLevel1For3To4(page);
+  await sendMathAnswer(page, wrongFor(p.answer), 'taps');
+  await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+  expect(await answerPlace(page).evaluate((el) => getComputedStyle(el).transform)).toBe('none');
+});
+
+test.describe('with motion allowed', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('the wrong answer shifts left, dimmed in the error colour, as a Choice row answer does', async ({ page }) => {
+    const p = await openLevel1For3To4(page);
+    await sendMathAnswer(page, wrongFor(p.answer), 'taps');
+    await expect(answerPlace(page)).toHaveAttribute('data-look', 'wrong', { timeout: 100 });
+    const look = () =>
+      answerPlace(page).evaluate((el) => {
+        const s = getComputedStyle(el);
+        // --bw-error-text, resolved to rgb by a probe next to the answer.
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--bw-error-text)';
+        el.parentElement!.appendChild(probe);
+        const error = getComputedStyle(probe).color;
+        probe.remove();
+        return { shifted: new DOMMatrixReadOnly(s.transform).m41 < -3, errorColour: s.color === error, dimmed: Number(s.opacity) < 0.75 };
+      });
+    await expect.poll(look, { intervals: [20], timeout: 450 }).toEqual({ shifted: true, errorColour: true, dimmed: true });
+  });
+});

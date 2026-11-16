@@ -2992,7 +2992,12 @@ describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
     expect(spoken).toHaveLength(said);
     expect(helpLine()).toBe(CALC_SLIP);
     expect(SLIP_LINE).toBe(CALC_SLIP);
+    // The sent number stays for a moment in the wrong look (never the answer), then the entry shows cleared.
+    expect(calcAnswer().textContent).toBe(String(wrong));
+    expect(calcAnswer().getAttribute('data-look')).toBe('wrong');
+    wait(CHOICE_WRONG_MS);
     expect(calcAnswer().textContent).toBe('?');
+    expect(calcAnswer().getAttribute('data-look')).toBe('empty');
     expect(nameOf(byRole('img', / equals /))).toBe(p.eq);
     expect(doc.body.querySelector('.calc-count')).toBeNull();
     expect(dots()).toBe('Puzzle 1 of 4. 0 solved.');
@@ -3003,6 +3008,52 @@ describe('Brick Calculator: play, typed, slip and solved (Level 1)', () => {
     expect(helpLine()).toBe(CALC_START);
     click(calcKey('Equals'));
     expect(storedRun('math', 0)!.solved[0]).toMatchObject({ count: 1 });
+  });
+
+  it('the wrong look lasts the Choice row wrong time; a digit or C replaces it at once, and = during it changes nothing', () => {
+    openMath(0);
+    const p = mathOnScreen();
+    const wrong = wrongAnswer(p.answer);
+    const look = () => [calcAnswer().textContent, calcAnswer().getAttribute('data-look')];
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    wait(CHOICE_WRONG_MS - 1);
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    wait(1);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // = while it shows: nothing to send, so the look and its timer stay as they were, and no slip is added.
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    wait(200);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    wait(CHOICE_WRONG_MS - 200);
+    expect(look()).toEqual(['?', 'empty']);
+
+    // A digit replaces it at once, and the old timer does not clear the typed digit.
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    tapDigits(1);
+    expect(look()).toEqual(['1', 'typed']);
+    wait(CHOICE_WRONG_MS);
+    expect(look()).toEqual(['1', 'typed']);
+
+    // C replaces it at once with the "?".
+    click(calcKey('Clear'));
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    click(calcKey('Clear'));
+    expect(look()).toEqual(['?', 'empty']);
+
+    // The look belongs to its puzzle: New puzzle during it opens the next sum on the "?".
+    tapDigits(wrong);
+    click(calcKey('Equals'));
+    expect(look()).toEqual([String(wrong), 'wrong']);
+    click(byRole('button', 'New puzzle'));
+    expect(look()).toEqual(['?', 'empty']);
+    wait(CHOICE_WRONG_MS);
+    expect(look()).toEqual(['?', 'empty']);
   });
 
   it('a repeated wrong answer counts once for stars and every time for the offer, which comes at 2 for ages 5 to 6; a key press then hides it', () => {

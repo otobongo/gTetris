@@ -38,8 +38,25 @@
   text-align: left;
   color: var(--bw-text);
 }
-.calc-eq__answer[data-look='empty'] { color: var(--bw-text-2); }
 .calc-eq__answer[data-look='solved'] { color: var(--brick-yellow-light); }
+/* Wrong: the sent number stays for a moment (Play's WRONG_SHOWN_MS), dimmed in the error ink and shifted
+   left as a Choice row answer is (kit.css .bw-choice.is-wrong), then the "?" comes back over --bw-base.
+   The error ink at 0.6 is 4.2:1 on --bw-display, above 3:1 for 46px bold. Each look carries the
+   transition into it, so only the wrong look and the return from it move: a typed digit lands at once. */
+.calc-eq__answer[data-look='wrong'] {
+  color: var(--bw-error-text);
+  opacity: 0.6;
+  transform: translateX(-6px);
+  transition:
+    transform var(--bw-base) var(--bw-ease),
+    opacity var(--bw-base) var(--bw-ease);
+}
+.calc-eq__answer[data-look='empty'] {
+  color: var(--bw-text-2);
+  transition:
+    transform var(--bw-base) var(--bw-ease),
+    opacity var(--bw-base) var(--bw-ease);
+}
 
 /* ---------- Bricks panel ---------- */
 .calc-panel {
@@ -174,8 +191,12 @@
 }
 
 /* ---------- Reduced motion (brief 9.1) ---------- */
-/* The press loses its shift (the shadow still changes), and the bricks taken away fade without tilting. */
+/* The press loses its shift (the shadow still changes), the bricks taken away fade without tilting, and a
+   wrong answer keeps its ink and dim but only fades in and out, with no shift. */
 @media (prefers-reduced-motion: reduce) {
+  .calc-eq__answer[data-look='wrong'] { transform: none; }
+  .calc-eq__answer[data-look='wrong'],
+  .calc-eq__answer[data-look='empty'] { transition: opacity 150ms linear; }
   .calc-key { transition: box-shadow var(--bw-fast) linear; }
   .calc-key:active { transform: none; }
   .calc-cell.is-taken {

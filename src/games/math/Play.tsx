@@ -5,10 +5,15 @@
 
    Sounds follow Letter Builder: the kit plays the slip and the solve, this file plays the tap on a digit
    or C. Speech follows the child's own move: a digit says the number now typed, a right = says the
-   solved sum, a slip says nothing; the speaker reads the sum on request. */
+   solved sum, a slip says nothing; the speaker reads the sum on request.
+
+   A slip also shows where the child is looking: the sent number stays in the answer place in the wrong
+   look for a moment, then the "?" comes back, so a wrong answer is not mistaken for a lost tap with the
+   sound off. It is display only; the entry is already cleared underneath. */
 import { useEffect, useRef, useState } from 'react';
 import { sfx } from '../../shared/sound';
 import { say } from '../../shared/speech';
+import { CHOICE_WRONG_MS } from '../kit/ChoiceRow';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
 import { FULL_LINE, SLIP_LINE, SPEAKER_NAME, START_LINE, solvedLine, spokenEntry, spokenSolved, spokenText } from './copy';
@@ -26,6 +31,18 @@ interface Held {
 }
 
 const fresh = (round: number): Held => ({ round, keypad: START_STATE, help: 'start' });
+
+/** How long a wrong answer stays in the answer place before the "?" comes back: the Choice row's wrong time. */
+const WRONG_SHOWN_MS = CHOICE_WRONG_MS;
+
+/**
+ * A wrong answer the display still shows (display only: the entry is already cleared). A new object for each
+ * wrong =, so its timer starts again even when the same number is sent twice.
+ */
+interface WrongShown {
+  round: number;
+  value: number;
+}
 
 /** Where focus is when a key goes down: the keypad (`.calc-keys`), another button or link, or neither. */
 const focusOf = (target: EventTarget | null): KeyFocus => {
@@ -48,12 +65,24 @@ export function Play({ level }: { level: number }) {
   const current = (): Held => (latest.current.round === run.round ? latest.current : fresh(run.round));
   const shown = held.round === run.round ? held : fresh(run.round);
 
+  // A wrong = keeps the sent number in view for WRONG_SHOWN_MS, tied to the round, so a new puzzle never shows it.
+  // The next digit or C replaces it at once; = in the meantime has nothing to send and leaves it be.
+  const [wrong, setWrong] = useState<WrongShown | null>(null);
+  const wrongShown = wrong !== null && wrong.round === run.round ? wrong.value : null;
+  useEffect(() => {
+    if (wrong === null) return;
+    const timer = window.setTimeout(() => setWrong((w) => (w === wrong ? null : w)), WRONG_SHOWN_MS);
+    return () => window.clearTimeout(timer);
+  }, [wrong]);
+
   const press = (key: KeyId) => {
     const cur = current();
     const step = pressKey(cur.keypad, key, p.answer, locked);
     if (step.event === 'locked') return;
     latest.current = { round: run.round, keypad: step.state, help: helpAfter(cur.help, step.event) };
     setHeld(latest.current);
+    if (step.event === 'wrong' && step.sent !== null) setWrong({ round: run.round, value: step.sent });
+    else if (step.event !== 'empty') setWrong(null);
     // Any key press resets the time signal. It comes before slip(), since progress() hides the offer
     // and a slip may be the thing that brings it up.
     run.progress();
@@ -107,7 +136,7 @@ export function Play({ level }: { level: number }) {
       speaker={{ label: SPEAKER_NAME, text: () => spokenText(p, solved) }}
       line={line}
       lineStyle="help"
-      top={<Display puzzle={p} entry={shown.keypad.entry} solved={solved} />}
+      top={<Display puzzle={p} entry={shown.keypad.entry} solved={solved} wrong={wrongShown} />}
       controls={<Keypad onPress={press} />}
     >
       <BricksPanel puzzle={p} cells={frameCells(p)} solved={solved} />
