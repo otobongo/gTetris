@@ -85,6 +85,12 @@ export default function Settings() {
 
   const kid = state.players.find((p) => p.id === kidId) ?? state.players[0] ?? null;
   const scroller = useRef<HTMLDivElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  // The form took the cursor when it opened; when it closes the cursor goes back to Add a child, not the page.
+  const closeAdding = () => {
+    addButton.current?.focus();
+    setAdding(false);
+  };
 
   // Back from a game's level picker, or Set Level N there, lands where the grown-up was (the Progress
   // row they tapped), once and without a smooth scroll. Before paint, so the top never flashes.
@@ -181,7 +187,7 @@ export default function Settings() {
                 </span>
               </button>
             ))}
-            <button type="button" className="sc-chip-btn sc-chip-btn--add" aria-expanded={adding} onClick={() => setAdding(true)}>
+            <button ref={addButton} type="button" className="sc-chip-btn sc-chip-btn--add" aria-expanded={adding} onClick={() => setAdding(true)}>
               <Icon name="plus" size={18} strokeWidth={3} />
               Add a child
             </button>
@@ -191,9 +197,9 @@ export default function Settings() {
         {adding && (
           <AddChild
             focusOnOpen
-            onCancel={() => setAdding(false)}
+            onCancel={closeAdding}
             onAdded={(p) => {
-              setAdding(false);
+              closeAdding();
               setKidId(p.id);
               showToast(`${p.name} was added. They can now pick their brick on Who's playing.`);
             }}

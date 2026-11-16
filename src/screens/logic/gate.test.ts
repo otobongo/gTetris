@@ -175,4 +175,12 @@ describe('grown-up check: what it shows', () => {
   it('shows no error before the first answer', () => {
     expect(render(seq(R23, R19))).not.toContain('role="alert"');
   });
+
+  // Review of batch D: a live region added to the page with its text already in it is often not read
+  // (VoiceOver especially), so the hint's region is on the page from the start, empty, like the Toast slot.
+  it('has an empty status region for the Check hint from the start, so the hint is read when it appears', () => {
+    const html = render(seq(R23, R19));
+    expect(html).toMatch(/<p[^>]*role="status"[^>]*><\/p>/);
+    expect(html).not.toContain('Type the answer');
+  });
 });

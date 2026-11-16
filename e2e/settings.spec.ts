@@ -95,6 +95,102 @@ test.describe('Settings keeps its place around the level picker', () => {
     await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeAttached();
     expect(await scrollTop(page)).toBe(0);
   });
+
+  // Review of batch D: the picker for the child who is playing ends in the game, not Settings, so the
+  // place kept for the way back must not wait there for the next, unrelated visit to Settings.
+  test('Play Level N for the child who is playing, then a later visit to Settings starts at the top', async ({ page }) => {
+    await seed(page, FAMILY);
+    await openSettings(page);
+    const row = escapeRow(page, 'Maya');
+    await scrollToRow(page, row);
+
+    await row.click();
+    await expect(page).toHaveURL(/#\/settings\/levels\/escape\/maya$/);
+    await page.getByRole('button', { name: 'Level 3, locked' }).click();
+    await page.getByRole('button', { name: 'Play Level 3' }).click();
+    await expect(page).toHaveURL(/#\/game\/escape\/3$/);
+
+    // Home from the game, then the gear again: the game ended the grown-up pass, so the check opens first.
+    await page.getByRole('button', { name: 'Back to home' }).or(page.getByRole('link', { name: 'Back to home' })).first().click();
+    await expect(page).toHaveURL(/#\/$/);
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await passGrownUpCheck(page);
+    await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeAttached();
+    await expect(page.getByRole('heading', { name: 'Save your progress' })).toBeInViewport();
+    expect(await scrollTop(page)).toBe(0);
+  });
+});
+
+/* ---------- Review of batch D: the same return by every way back, at every size and age band ---------- */
+
+/** Open Maya's Brick Escape picker from its Progress row and come back by `back`: the row is where it was. */
+async function returnKeepsPlace(page: Page, back: (page: Page) => Promise<unknown>) {
+  const row = escapeRow(page, 'Maya');
+  // Centred, not at the top: on the landscape iPad the list is short enough that Settings scrolls to its end
+  // first, and the row then sits a fraction of a pixel under the top bar.
+  await row.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await expect(row).toBeInViewport({ ratio: 1 });
+  const before = await scrollTop(page);
+  expect(before).toBeGreaterThan(200);
+  await row.click();
+  await expect(page).toHaveURL(/#\/settings\/levels\/escape\/maya$/);
+  await expect(page.getByRole('link', { name: 'Back to settings' })).toBeVisible();
+  await back(page);
+
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(escapeRow(page, 'Maya')).toBeVisible();
+  await expect.poll(() => scrollTop(page)).toBeGreaterThan(before - 40);
+  expect(Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(40);
+  await expect(escapeRow(page, 'Maya')).toBeInViewport({ ratio: 1 });
+}
+
+const backToSettings = (page: Page) => page.getByRole('link', { name: 'Back to settings' }).click();
+
+test.describe('Settings keeps its place: every way back, size and age', () => {
+  test('the device Back gesture from the picker returns to the row too', async ({ page }) => {
+    await seed(page, FAMILY);
+    await openSettings(page);
+    await returnKeepsPlace(page, (p) => p.goBack());
+  });
+
+  test('the place is kept once: Back to home and the gear again starts at the top', async ({ page }) => {
+    await seed(page, FAMILY);
+    await openSettings(page);
+    await returnKeepsPlace(page, backToSettings);
+    await page.getByRole('link', { name: 'Back to home' }).click();
+    await expect(page).toHaveURL(/#\/$/);
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await passGrownUpCheck(page);
+    await expect(page.getByRole('heading', { name: 'Save your progress' })).toBeInViewport();
+    expect(await scrollTop(page)).toBe(0);
+  });
+
+  for (const ageBand of ['3-4', '5-6', '7-8', '9-10'] as const) {
+    test(`Back returns to the row for a child aged ${ageBand} @phone-only`, async ({ page }) => {
+      await seed(page, [{ id: 'maya', name: 'Maya', ageBand }]);
+      await openSettings(page);
+      await returnKeepsPlace(page, backToSettings);
+    });
+  }
+
+  for (const viewport of [
+    { width: 375, height: 667 },
+    { width: 1194, height: 834 },
+  ]) {
+    test.describe(`at ${viewport.width}x${viewport.height} @phone-only`, () => {
+      test.use({ viewport });
+
+      test('Back from the picker returns to the row', async ({ page }) => {
+        await seed(page, FAMILY);
+        await openSettings(page);
+        await returnKeepsPlace(page, backToSettings);
+      });
+
+      test('Add a child puts the cursor in the name field, fully on screen', async ({ page }) => {
+        await addChildFocusesName(page);
+      });
+    });
+  }
 });
 
 /** Add a child: the cursor goes to the name field, which is fully on screen. */
@@ -130,6 +226,33 @@ test.describe('Add a child', () => {
     await expect(page.getByLabel("Child's first name")).not.toBeFocused();
     expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
   });
+
+  // Review of batch D: the form now takes the cursor when it opens, so closing it must not drop the cursor
+  // on the page (VoiceOver and the keyboard lose their place): it goes back to Add a child.
+  test('Cancel closes the form and puts the cursor back on Add a child', async ({ page }) => {
+    await seed(page, FAMILY);
+    await openSettings(page);
+    const add = page.getByRole('button', { name: 'Add a child' });
+    await add.click();
+    await expect(page.getByLabel("Child's first name")).toBeFocused();
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(page.getByRole('form', { name: 'Add a child' })).toHaveCount(0);
+    await expect(add).toBeFocused();
+    await expect(add).toHaveAttribute('aria-expanded', 'false');
+    await expect(add).toBeInViewport({ ratio: 1 });
+  });
+
+  test('Add child closes the form, picks the new child and puts the cursor back on Add a child', async ({ page }) => {
+    await seed(page, FAMILY);
+    await openSettings(page);
+    const add = page.getByRole('button', { name: 'Add a child' });
+    await add.click();
+    await page.keyboard.type('Ada');
+    await page.keyboard.press('Enter');
+    await expect(page.getByText("Ada was added. They can now pick their brick on Who's playing.")).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Ada/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(add).toBeFocused();
+  });
 });
 
 test.describe('The grown-up check', () => {
@@ -149,7 +272,8 @@ test.describe('The grown-up check', () => {
     await expect(field).not.toHaveAttribute('aria-invalid', 'true');
     await expect(field).toBeFocused();
 
-    // Spaces only count as empty too.
+    // Spaces only: the field takes digits only (its pattern), so the browser holds the form back before
+    // Check runs. Either way it is no wrong answer and the sum stays. (checkGateAnswer calls it empty.)
     await field.fill('   ');
     await page.getByRole('button', { name: 'Check', exact: true }).click();
     await expect(sum).toHaveText(question);
@@ -166,5 +290,49 @@ test.describe('The grown-up check', () => {
     // And the right answer to the new sum still opens Settings.
     await passGrownUpCheck(page);
     await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeAttached();
+  });
+
+  // Review of batch D: a status region that arrives with its text in it is often not read (VoiceOver
+  // especially), so the hint's region waits on the page, empty, and takes no room until it speaks.
+  test("the hint's status region is there, empty, before the first Check, and takes no room", async ({ page }) => {
+    await seed(page, FAMILY);
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    const gate = page.locator('.sc-gate');
+    const field = page.getByLabel(/^Answer for \d+ plus \d+$/);
+    await expect(field).toBeFocused();
+
+    const status = gate.getByRole('status');
+    await expect(status).toHaveCount(1);
+    await expect(status).toHaveText('');
+    // The field and the buttons are one form gap apart, as before the hint existed.
+    const spacing = await gate.locator('.sc-gate__form').evaluate((form) => {
+      const field = form.querySelector('.sc-field')!.getBoundingClientRect();
+      const row = form.querySelector('.sc-row')!.getBoundingClientRect();
+      const zoom = (form as HTMLElement & { currentCSSZoom?: number }).currentCSSZoom ?? 1;
+      return { between: row.top - field.bottom, gap: parseFloat(getComputedStyle(form).rowGap) * zoom };
+    });
+    expect(Math.abs(spacing.between - spacing.gap)).toBeLessThan(1);
+
+    await page.getByRole('button', { name: 'Check', exact: true }).click();
+    await expect(status).toHaveText('Type the answer, then tap Check.');
+    await expect(status).toBeVisible();
+    await expect(field).toHaveAttribute('aria-describedby', (await status.getAttribute('id'))!);
+  });
+
+  test('Break: Grown-ups: add time treats an empty Check the same way', async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8', dailyLimit: 10, minutesToday: 12 }]);
+    await page.goto('/#/break');
+    await page.getByRole('button', { name: 'Grown-ups: add time' }).click();
+    const sum = page.locator('.sc-gate__sum');
+    const question = (await sum.textContent()) ?? '';
+    expect(question).toMatch(/^What is \d+ \+ \d+\?$/);
+
+    await page.getByRole('button', { name: 'Check', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Type the answer, then tap Check.' })).toBeVisible();
+    await expect(sum).toHaveText(question);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByLabel(/^Answer for \d+ plus \d+$/)).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeInViewport({ ratio: 1 });
   });
 });

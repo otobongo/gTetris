@@ -178,11 +178,11 @@ export function GrownUpCheck({ onPass, onCancel, intro, random = Math.random }: 
           onChange={(e) => setAnswer(e.target.value)}
           id={`${id}-num`}
         />
-        {empty && (
-          <p id={`${id}-hint`} role="status" className="sc-helper">
-            Type the answer, then tap Check.
-          </p>
-        )}
+        {/* On the page from the start, empty and out of the layout, like the Toast slot: a live region that
+            arrives with its text already in it is often not read (VoiceOver especially). */}
+        <p id={`${id}-hint`} role="status" className={empty ? 'sc-helper' : 'sc-visually-hidden'}>
+          {empty ? 'Type the answer, then tap Check.' : ''}
+        </p>
         <div className="sc-row">
           {onCancel && (
             <button type="button" className="sc-btn sc-btn--flat sc-grow-1" onClick={onCancel}>

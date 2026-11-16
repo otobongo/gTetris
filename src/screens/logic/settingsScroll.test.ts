@@ -3,7 +3,8 @@
  * game's level picker from a Progress row, and scrolls back there once on its way back.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { setScroll, takeScroll } from './settingsScroll';
+import { parseRoute, splitPath } from '../../shared/router';
+import { followRoute, setScroll, takeScroll } from './settingsScroll';
 
 describe('Settings scroll return', () => {
   beforeEach(() => {
@@ -38,5 +39,43 @@ describe('Settings scroll return', () => {
       setScroll(bad);
       expect(takeScroll(), String(bad)).toBeNull();
     }
+  });
+
+  describe('the trip to the level picker (review of batch D)', () => {
+    const follow = (hash: string) => followRoute(parseRoute(splitPath(hash)));
+
+    it('keeps the place while the grown-up is on the picker, and when they come back to Settings', () => {
+      setScroll(1235);
+      follow('#/settings/levels/escape/maya');
+      follow('#/settings');
+      expect(takeScroll()).toBe(1235);
+    });
+
+    it('keeps it across a picker for another game or child, with an encoded child id', () => {
+      setScroll(640);
+      follow('#/settings/levels/escape/maya');
+      follow('#/settings/levels/drop/leo%20b');
+      expect(takeScroll()).toBe(640);
+    });
+
+    it('drops it when the picker opens the game (Play Level N for the child who is playing)', () => {
+      setScroll(1497);
+      follow('#/settings/levels/escape/maya');
+      follow('#/game/escape/5');
+      expect(takeScroll()).toBeNull();
+    });
+
+    it('drops it on any other screen, so the next visit to Settings starts at the top', () => {
+      for (const hash of ['#/', '#/home', '#/players', '#/break', '#/stickers', '#/help', '#/help/terms', '#/signin', '#/signup', '#/game/escape', '#/nowhere', '#/settings/levels/escape']) {
+        setScroll(900);
+        follow(hash);
+        expect(takeScroll(), hash).toBeNull();
+      }
+    });
+
+    it('stays empty when nothing was stored', () => {
+      follow('#/settings');
+      expect(takeScroll()).toBeNull();
+    });
   });
 });
