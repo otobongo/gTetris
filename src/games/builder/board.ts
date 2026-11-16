@@ -79,6 +79,20 @@ export function newBoard(target: readonly Cell[], locked = false): Board {
   return { target, cells: target.map(() => null), seen: [], given: [], stroke: null, locked, solved: false };
 }
 
+/**
+ * The board a kept draft brings back (decision 13): the same cells, with its wrong bricks remembered as seen, so
+ * laying one again after an erase passes the key the kit already restored. Cells that do not fit the picture, or
+ * that would already finish it, give a new empty board instead.
+ */
+export function restoreBoard(target: readonly Cell[], kept: readonly Cell[] | null, locked = false): Board {
+  const board = newBoard(target, locked);
+  if (!kept || kept.length !== target.length) return board;
+  const restored: Board = { ...board, cells: kept.slice() };
+  if (isSolved(restored)) return board;
+  const seen = kept.flatMap((c, i) => (c !== null && c !== target[i] ? [slipKey(i, c)] : []));
+  return { ...restored, seen };
+}
+
 /** Lock or unlock the board (a memory look or a Peek starts or ends). Locking ends any stroke without a slip check. */
 export function setLocked(board: Board, locked: boolean): Board {
   if (board.locked === locked) return board;
