@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { dayKey, playToday, progressStore, useActivePlayer, useProgressState } from '../shared/progress';
+import { dayKey, playToday, progressStore, useActivePlayer, useProgressState, useSettings } from '../shared/progress';
 import { getGame } from '../games/registry';
 import { go, parseRoute, splitPath, toHref } from '../shared/router';
 import { say } from '../shared/speech';
@@ -32,12 +32,14 @@ function midLevelLine(player: Parameters<typeof breakSavedLine>[1]): string | nu
 
 /**
  * Break time (design/canvas/Break.dc.html, brief 3.4). Shown when today's minutes reach the
- * player's limit. No back button. Nothing is read aloud until the speaker button is tapped.
+ * player's limit. No back button. Nothing is read aloud until the speaker button is tapped; with
+ * Voice off there is no speaker.
  * A grown-up can add 10, 20 or 30 minutes for today after answering the sum they are asked.
  */
 export default function Break() {
   const state = useProgressState();
   const player = useActivePlayer();
+  const { voice } = useSettings();
   const tablet = useLayout().mode === 'tablet';
   const [view, setView] = useState<View>('break');
   const [amount, setAmount] = useState<(typeof AMOUNTS)[number]>('10');
@@ -64,7 +66,8 @@ export default function Break() {
   return (
     <Screen className="sc-break">
       <div className="sc-break__top">
-        {view === 'break' && <IconButton icon="speaker" label="Read it aloud" onClick={() => say(`${heading}. ${message} ${saved}`)} />}
+        {/* The row stays when Voice is off and the speaker goes (decision 20), so the heading keeps its place. */}
+        {view === 'break' && voice && <IconButton icon="speaker" label="Read it aloud" onClick={() => say(`${heading}. ${message} ${saved}`)} />}
       </div>
 
       {view === 'break' && <div className="sc-spacer" />}

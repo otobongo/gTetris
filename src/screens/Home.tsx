@@ -1,16 +1,28 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { GAMES } from '../games/registry';
 import { gameOf, progressStore, totalStars, useActivePlayer } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { Icon, IconButton, Pill, Screen, cx, useLayout } from '../shared/ui';
 import { homeCardName, homePill } from './logic/levels';
-import { grownUpGate, settingsReturn } from './logic/session';
+import { backTarget, grownUpGate, settingsReturn } from './logic/session';
 import { STICKERS, earnedCount, stickersDue } from './logic/stickers';
 import { Avatar, GameArt } from './parts/Art';
 import './screens.css';
 
 /** How long after Home opens the avatar ignores a tap (app-core-2). */
 const AVATAR_GUARD_MS = 700;
+
+/** How long after Home opens from Who's playing a game card ignores a finger tap (decision 35). */
+export const CARD_GUARD_MS = 700;
+
+/**
+ * True when a game card should ignore this activation: Home has just opened from Who's playing and a
+ * finger made it. A second tap on Play as lands on a card where the button was. Mouse, pen and keyboard
+ * (pointer type '') always go through.
+ */
+export function holdCardTap(fromPlayers: boolean, pointerType: string, sinceMount: number): boolean {
+  return fromPlayers && pointerType === 'touch' && sinceMount < CARD_GUARD_MS;
+}
 
 /** Home (design/canvas/Hub.dc.html, brief 3.6 and four-puzzle brief 7.2): greeting, sticker line, Today's discovery, all nine games. */
 export default function Home() {
@@ -20,6 +32,20 @@ export default function Home() {
   // from Back, or a tap again because nothing seemed to happen, would open Who's playing; for a moment
   // after Home opens the avatar does nothing (app-core-2). A deliberate tap a moment later still works.
   const mountedAt = useRef(Date.now());
+  // The router notes a new path before the screen draws, so on Home's first draw the screen just left is known.
+  const [fromPlayers] = useState(() => backTarget(['/players'], '') === '/players');
+  const lastPointer = useRef('');
+  const cardGuard = {
+    onPointerDown: (e: PointerEvent<HTMLAnchorElement>) => {
+      lastPointer.current = e.pointerType;
+    },
+    onClick: (e: MouseEvent<HTMLAnchorElement>) => {
+      // A keyboard activation has no pointer behind it (detail 0), whatever the last pointer was.
+      const type = e.detail === 0 ? '' : lastPointer.current;
+      lastPointer.current = '';
+      if (holdCardTap(fromPlayers, type, Date.now() - mountedAt.current)) e.preventDefault();
+    },
+  };
 
   useEffect(() => {
     mountedAt.current = Date.now();
@@ -71,7 +97,7 @@ export default function Home() {
 
       <div className="sc-scroll sc-home__scroll">
         {/* Today's discovery: the board's sample question. It opens Color Mixer. */}
-        <a className="sc-discovery" href={toHref('/game/mixer')}>
+        <a className="sc-discovery" href={toHref('/game/mixer')} {...cardGuard}>
           <span className="sc-art" aria-hidden="true" style={{ width: 56, height: 44 }}>
             <span className="sc-art__piece sc-art__disc" data-brick="red" style={{ left: 0, top: 4, width: 34, height: 34, opacity: 0.9 }} />
             <span className="sc-art__piece sc-art__disc sc-art__blend" data-brick="blue" style={{ left: 20, top: 4, width: 34, height: 34, opacity: 0.85 }} />
@@ -89,7 +115,7 @@ export default function Home() {
             const pill = homePill(g.meta, gameOf(player, g.id), player.ageBand, g.noun);
             return (
               <li key={g.id}>
-                <a className={cx('sc-gamecard', !g.playable && 'is-soon')} href={toHref(g.route)} aria-label={homeCardName(g, player)}>
+                <a className={cx('sc-gamecard', !g.playable && 'is-soon')} href={toHref(g.route)} aria-label={homeCardName(g, player)} {...cardGuard}>
                   <GameArt art={g.art} />
                   <span className="sc-gamecard__title">{g.title}</span>
                   <span className="sc-gamecard__sub">{g.sub}</span>

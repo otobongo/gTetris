@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { progressStore, useActivePlayer } from '../shared/progress';
+import { progressStore, useActivePlayer, useSettings } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { say } from '../shared/speech';
 import { Icon, IconButton, PressButton, Screen, TopBar, useLayout } from '../shared/ui';
@@ -13,12 +13,13 @@ const TABS: { key: StickerPage; label: string }[] = [
   { key: 'discoveries', label: 'Discoveries' },
 ];
 
-const DISCOVERY_HOW = "Today's discovery on Home gives you a sticker. Try a new one each day.";
+/** Nothing awards discovery stickers yet (six-games 11.1-2), so their slots say so and send nowhere (decision 29). */
+const DISCOVERY_HOW = 'Discovery stickers are coming soon.';
 
-/** How to get a missing sticker, and where the green button goes. */
-function howToGet(st: Sticker): { line: string; cta: string; href: string; play: boolean; from: string } {
+/** How to get a missing sticker, and where the green button goes; no button (cta null) for a discovery. */
+export function howToGet(st: Sticker): { line: string; cta: string | null; href: string; play: boolean; from: string } {
   const src = stickerSource(st);
-  if (!src) return { line: DISCOVERY_HOW, cta: 'Go to Home', href: '/', play: false, from: "From Today's discovery" };
+  if (!src) return { line: DISCOVERY_HOW, cta: null, href: '/', play: false, from: "From Today's discovery" };
   if (!src.playable) return { line: `${src.game} is coming soon. Its stickers come with it.`, cta: 'Back to games', href: '/', play: false, from: `From ${src.game}` };
   return { line: `Finish ${src.chapter} in ${src.game} to get this sticker.`, cta: `Play ${src.game}`, href: src.route, play: true, from: `From ${src.game} · ${src.chapter}` };
 }
@@ -26,6 +27,8 @@ function howToGet(st: Sticker): { line: string; cta: string; href: string; play:
 /** Sticker book (design/canvas/Stickers.dc.html, brief 3.3): two pages, earned stickers and outlines for the rest. */
 export default function Stickers() {
   const player = useActivePlayer();
+  // With Voice off the speakers would say nothing, so they are not shown (decision 20).
+  const { voice } = useSettings();
   const tablet = useLayout().mode === 'tablet';
   const [tab, setTab] = useState<StickerPage>('games');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export default function Stickers() {
   const pageLine = empty
     ? tab === 'games'
       ? 'Each game chapter you finish adds a sticker here.'
-      : "Today's discovery on Home gives you a sticker."
+      : DISCOVERY_HOW
     : pageDone
       ? 'You found every sticker on this page.'
       : `${gotOnPage} of ${onPage.length} on this page`;
@@ -81,7 +84,7 @@ export default function Stickers() {
         back="/"
         backLabel="Back to home"
         action={
-          young ? (
+          young && voice ? (
             <IconButton icon="speaker" label="Read this page aloud" onClick={() => say(`Sticker book. You have ${total} of ${STICKERS.length} stickers. Tap a sticker to see it.`)} />
           ) : undefined
         }
@@ -177,6 +180,7 @@ export default function Stickers() {
           sticker={open}
           got={has(open)}
           young={young}
+          voice={voice}
           onClose={() => {
             window.speechSynthesis?.cancel?.();
             setOpenId(null);
@@ -187,7 +191,8 @@ export default function Stickers() {
   );
 }
 
-function StickerCard({ sticker, got, young, onClose }: { sticker: Sticker; got: boolean; young: boolean; onClose: () => void }) {
+/** A sticker opened from the book. Ages 3 to 6 get a speaker for how to get it; every speaker needs Voice on. */
+export function StickerCard({ sticker, got, young, voice, onClose }: { sticker: Sticker; got: boolean; young: boolean; voice: boolean; onClose: () => void }) {
   const how = howToGet(sticker);
   const title = got ? sticker.name : 'Not found yet';
   return (
@@ -199,24 +204,28 @@ function StickerCard({ sticker, got, young, onClose }: { sticker: Sticker; got: 
       <p className="sc-overlay__text">{got ? how.from : how.line}</p>
       {got ? (
         <div className="sc-overlay__actions">
-          <button type="button" className="sc-btn sc-btn--secondary" data-autofocus onClick={() => say(sticker.name)}>
-            <span className="sc-btn__inner">
-              <Icon name="speaker" size={22} />
-              Say the name
-            </span>
-          </button>
-          <button type="button" className="sc-btn sc-btn--secondary sc-btn--fixed" onClick={onClose}>
+          {voice && (
+            <button type="button" className="sc-btn sc-btn--secondary" data-autofocus onClick={() => say(sticker.name)}>
+              <span className="sc-btn__inner">
+                <Icon name="speaker" size={22} />
+                Say the name
+              </span>
+            </button>
+          )}
+          <button type="button" className="sc-btn sc-btn--secondary sc-btn--fixed" data-autofocus={voice ? undefined : true} onClick={onClose}>
             Close
           </button>
         </div>
       ) : (
         <>
-          <PressButton variant="green" size="lg" block icon={how.play ? 'play' : undefined} iconEnd href={toHref(how.href)} data-autofocus className="sc-overlay__cta">
-            {how.cta}
-          </PressButton>
+          {how.cta && (
+            <PressButton variant="green" size="lg" block icon={how.play ? 'play' : undefined} iconEnd href={toHref(how.href)} data-autofocus className="sc-overlay__cta">
+              {how.cta}
+            </PressButton>
+          )}
           <div className="sc-overlay__actions sc-overlay__actions--tight">
-            {young && <IconButton icon="speaker" label="Hear how to get it" onClick={() => say(how.line)} />}
-            <button type="button" className="sc-btn sc-btn--secondary" onClick={onClose}>
+            {young && voice && <IconButton icon="speaker" label="Hear how to get it" onClick={() => say(how.line)} />}
+            <button type="button" className="sc-btn sc-btn--secondary" data-autofocus={how.cta ? undefined : true} onClick={onClose}>
               Close
             </button>
           </div>
