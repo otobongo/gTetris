@@ -145,13 +145,16 @@ const stillChanging = (page: Page) =>
     return out;
   });
 
-test('with Reduce Motion on, what still changes over time only fades: nothing slides, tilts or grows', async ({ page }) => {
+/** Properties that move, turn or resize something, and `all`, which includes them. */
+const MOTION = /^(all|transform|translate|rotate|scale|top|right|bottom|left|inset|margin|padding|width|height|min-|max-|offset|flex|grid|gap)/;
+
+test('with Reduce Motion on, what still changes over time only fades or recolours: nothing slides, tilts or grows', async ({ page }) => {
   // The 150ms fades get past the safety net with !important durations; a game rule that set a transform
   // transition on the same element would ride along, so each state a child reaches is checked.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
   const onlyFades = async (where: string) => {
-    for (const { el, changes } of await stillChanging(page)) expect(changes, `${where}: ${el}`).toEqual(['opacity']);
+    for (const { el, changes } of await stillChanging(page)) expect(changes.filter((p) => MOTION.test(p)), `${where}: ${el}`).toEqual([]);
   };
 
   await page.goto('/#/game/pattern/1');
