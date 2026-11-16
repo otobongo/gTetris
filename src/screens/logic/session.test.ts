@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AVATAR_COLORS, type Player } from '../../shared/progress';
 import type { Route } from '../../shared/router';
-import { GROWN_UP_PASS_MS, backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, notePath, setResumePath, shouldBreak } from './session';
+import { GROWN_UP_PASS_MS, backTarget, getResumePath, grownUpGate, isGrownUpRoute, isPlayRoute, nextAvatarColor, noteArrival, notePath, setResumePath, shouldBreak } from './session';
 
 const NOON = new Date(2026, 10, 4, 12, 0).getTime();
 
@@ -241,5 +241,55 @@ describe('the grown-up pass runs out 10 minutes after it was given', () => {
 
   it('is 10 minutes', () => {
     expect(GROWN_UP_PASS_MS).toBe(10 * 60_000);
+  });
+});
+
+describe('Back on the grown-up pages knows the screen it came from before that screen draws (app-grownups-2)', () => {
+  // The router calls noteArrival for each new hash before React draws it, so the screen's backTarget,
+  // read while it draws, already sees the path just left. A path that only redirects is never recorded.
+  it('sends Back on Terms to Support after Settings, then Support, then Terms', () => {
+    noteArrival('/settings', null);
+    noteArrival('/help', null);
+    // Support draws now: it came from Settings.
+    expect(backTarget(['/settings', '/signin', '/signup'], '/settings')).toBe('/settings');
+    noteArrival('/help/terms', null);
+    // Terms draws now: it came from Support, not from Settings.
+    expect(backTarget(['/help', '/settings', '/signup', '/signin'], '/help')).toBe('/help');
+  });
+
+  it('sends Back on Sign up to Sign in, and Back on Support to Sign in', () => {
+    noteArrival('/settings', null);
+    noteArrival('/signin', null);
+    noteArrival('/signup', null);
+    expect(backTarget(['/settings', '/signin', '/help'], '/settings')).toBe('/signin');
+    noteArrival('/signin', null);
+    noteArrival('/help', null);
+    expect(backTarget(['/settings', '/signin', '/signup'], '/settings')).toBe('/signin');
+  });
+
+  it('does not record a path that only redirects', () => {
+    noteArrival('/players', null);
+    // The old level grid goes on to the current level.
+    noteArrival('/game/escape/levels', '/game/escape/3');
+    noteArrival('/game/escape/3', null);
+    noteArrival('/settings', null);
+    expect(backTarget(['/game/escape/levels', '/game/escape/3'], '/')).toBe('/game/escape/3');
+
+    noteArrival('/players', null);
+    noteArrival('/settings', null);
+    // Home with nobody picked goes on to Who's playing.
+    noteArrival('/', '/players');
+    noteArrival('/players', null);
+    // Who's playing came from Settings: the Home path in between only redirected.
+    expect(backTarget(['/', '/settings'], '/help')).toBe('/settings');
+  });
+
+  it("sends the grown-up check reached from Who's playing back there, and to Home otherwise", () => {
+    noteArrival('/players', null);
+    noteArrival('/settings', null);
+    expect(backTarget(['/players'], '/')).toBe('/players');
+    noteArrival('/', null);
+    noteArrival('/settings', null);
+    expect(backTarget(['/players'], '/')).toBe('/');
   });
 });
