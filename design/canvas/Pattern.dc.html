@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pat-choice { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pat-train { transition: opacity 150ms linear; } .pat-ghost { transition: transform 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pat-choice { transform: none !important; transition: opacity 150ms linear; } .pat-ghost { display: none !important; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } @keyframes bw-sticker-in { from { opacity: 0; transform: scale(0.92); } } .bw-sticker { animation: bw-sticker-in 320ms ease-out; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pat-choice { transition: transform 200ms cubic-bezier(0.16,1,0.3,1), opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pat-train { transition: opacity 150ms linear; } .pat-ghost { transition: transform 200ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-sticker { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pat-choice { transform: none !important; transition: opacity 150ms linear; } .pat-ghost { display: none !important; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
@@ -38,11 +38,12 @@
 </div>
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
-<p style="margin: 0; font-size: 20px; font-weight: 800; line-height: 1.2; text-align: center; text-wrap: balance;">{{prompt}}</p>
+<!-- Board note: the prompt, the train and the help row sit together in the middle of the space above the tray (auto margins above the prompt and below the help row); the tray stays where it was. -->
+<p style="margin: auto 0 0; font-size: 20px; font-weight: 800; line-height: 1.2; text-align: center; text-wrap: balance;">{{prompt}}</p>
 </sc-if>
 
 <div style="width: 100%; overflow: hidden; padding-top: 10px; position: relative;">
-<div role="img" aria-label="{{trainLabel}}" class="pat-train" style="display: flex; justify-content: center; align-items: flex-end; gap: 4px; zoom: 0.78; opacity: {{trainop}};">
+<div role="img" aria-label="{{trainLabel}}" class="pat-train" style="display: flex; justify-content: center; align-items: flex-end; gap: 4px; zoom: {{trainZoom}}; opacity: {{trainop}};">
 <div style="flex-shrink: 0; width: 70px; height: 86px; position: relative;" aria-hidden="true">
 <div style="position: absolute; left: 6px; top: 0; width: 22px; height: 22px; border-radius: 6px 6px 0 0; background: #2e2e38;"></div>
 <div style="position: absolute; left: 0; top: 18px; width: 70px; height: 50px; border-radius: 12px 20px 8px 8px; background: linear-gradient(180deg, #ff7a6e, #f03a3a); box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);"></div>
@@ -52,8 +53,8 @@
 </div>
 <sc-for list="{{cars}}" as="car" hint-placeholder-count="5">
 <div aria-hidden="true" style="flex-shrink: 0; width: 56px; height: 86px; position: relative;">
-<div style="position: absolute; left: 0; top: 22px; width: 56px; height: 46px; border-radius: 10px; box-sizing: border-box; display: grid; place-items: center; {{car.box}}">
-<span style="width: 30px; height: 30px; {{car.shape}}"></span>
+<div style="position: absolute; left: 0; top: 22px; width: 56px; height: 46px; border-radius: 10px; box-sizing: border-box; padding-bottom: 5px; display: grid; place-items: center; {{car.box}}">
+<svg viewBox="0 0 30 30" aria-hidden="true" style="display: block; width: 36px; height: 36px; overflow: visible;"><path d="{{car.shape.d}}" fill="{{car.shape.fill}}" stroke="{{car.shape.edge}}" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"></path></svg>
 </div>
 <div style="position: absolute; left: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
 <div style="position: absolute; right: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
@@ -61,7 +62,7 @@
 </sc-for>
 </div>
 <sc-if value="{{showGhost}}" hint-placeholder-val="{{ false }}">
-<div aria-hidden="true" class="pat-ghost" style="position: absolute; left: 0; right: 0; top: 10px; display: flex; justify-content: center; align-items: flex-end; gap: 4px; zoom: 0.78; transform: translateX({{ghostx}}px);">
+<div aria-hidden="true" class="pat-ghost" style="position: absolute; left: 0; right: 0; top: 10px; display: flex; justify-content: center; align-items: flex-end; gap: 4px; zoom: {{trainZoom}}; transform: translateX({{ghostx}}px);">
 <div style="flex-shrink: 0; width: 70px; height: 86px; position: relative;">
 <div style="position: absolute; left: 6px; top: 0; width: 22px; height: 22px; border-radius: 6px 6px 0 0; background: #2e2e38;"></div>
 <div style="position: absolute; left: 0; top: 18px; width: 70px; height: 50px; border-radius: 12px 20px 8px 8px; background: linear-gradient(180deg, #ff7a6e, #f03a3a); box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);"></div>
@@ -71,8 +72,8 @@
 </div>
 <sc-for list="{{ghostCars}}" as="g" hint-placeholder-count="5">
 <div style="flex-shrink: 0; width: 56px; height: 86px; position: relative;">
-<div style="position: absolute; left: 0; top: 22px; width: 56px; height: 46px; border-radius: 10px; box-sizing: border-box; display: grid; place-items: center; {{g.box}}">
-<span style="width: 30px; height: 30px; {{g.shape}}"></span>
+<div style="position: absolute; left: 0; top: 22px; width: 56px; height: 46px; border-radius: 10px; box-sizing: border-box; padding-bottom: 5px; display: grid; place-items: center; {{g.box}}">
+<svg viewBox="0 0 30 30" aria-hidden="true" style="display: block; width: 36px; height: 36px; overflow: visible;"><path d="{{g.shape.d}}" fill="{{g.shape.fill}}" stroke="{{g.shape.edge}}" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"></path></svg>
 </div>
 <div style="position: absolute; left: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
 <div style="position: absolute; right: 6px; bottom: 0; width: 16px; height: 16px; border-radius: 50%; background: #2e2e38;"></div>
@@ -84,19 +85,18 @@
 </div>
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
-<div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
+<div style="width: 100%; min-height: 54px; margin-bottom: auto; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
 <p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 16px; font-weight: 700; line-height: 1.25; color: #c9c2ff; text-align: center; text-wrap: balance;">{{help}}</p>
 <div style="grid-column: 1; grid-row: 1; display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<!-- Board note: Ages 3 to 4: one chime and this ring for the first 2 s. The ring is static, so Reduce Motion needs nothing more; focus does not move. -->
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; {{offerRing}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
 </div>
 </div>
 </sc-if>
-
-<div style="flex-grow: 1;"></div>
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; box-sizing: border-box; padding: 18px 12px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45);">
@@ -106,7 +106,7 @@
 <div role="group" aria-labelledby="pat-tray-label" style="display: flex; justify-content: center; gap: 14px; padding-bottom: 5px;">
 <sc-for list="{{choices}}" as="ch" hint-placeholder-count="3">
 <button class="pat-choice" onClick="{{ch.tap}}" aria-label="{{ch.label}}" aria-disabled="{{ch.off}}" style="border: 0; cursor: pointer; width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; background: linear-gradient(180deg, #5444b8, #3a2d8f); {{ch.wrap}}">
-<span aria-hidden="true" style="width: 46px; height: 46px; {{ch.shape}}"></span>
+<svg viewBox="0 0 30 30" aria-hidden="true" style="display: block; width: 46px; height: 46px; overflow: visible;"><path d="{{ch.shape.d}}" fill="{{ch.shape.fill}}" stroke="{{ch.shape.edge}}" stroke-width="2.5" stroke-linejoin="round" paint-order="stroke"></path></svg>
 </button>
 </sc-for>
 </div>
@@ -120,7 +120,7 @@
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="pat-card-title" aria-describedby="pat-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="pat-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="pat-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -130,6 +130,16 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="pat-card-sticker" class="bw-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 12px; text-align: start;">
+<span aria-hidden="true" style="flex: none; display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px;">
+<sc-for list="{{stickerCells}}" as="sc" hint-placeholder-count="25">
+<span style="width: 13px; height: 13px; border-radius: 2px; box-sizing: border-box; {{sc.style}}"></span>
+</sc-for>
+</span>
+<p style="margin: 0; min-width: 0; font-size: 18px; font-weight: 800; line-height: 1.15; color: #ffffff; text-wrap: balance;">{{stickerLine}}</p>
+</div>
+</sc-if>
 <p id="pat-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -153,7 +163,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","4","7","10"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","4","7","10"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -163,16 +173,18 @@ class Component extends DCLogic {
   colors() {
     return { r: { name: 'red', hex: '#f03a3a' }, b: { name: 'blue', hex: '#2f8cff' }, y: { name: 'yellow', hex: '#ffc21a' }, g: { name: 'green', hex: '#1fb53c' }, p: { name: 'pink', hex: '#ff5fb4' } };
   }
+  // Each shape in a 30 unit box, as the app draws it (Train.tsx): the triangle and the star keep the old clip-path points.
   shapes() {
     return {
-      c: { name: 'circle', css: 'border-radius: 50%;' },
-      s: { name: 'square', css: 'border-radius: 6px;' },
-      t: { name: 'triangle', css: 'clip-path: polygon(50% 4%, 98% 94%, 2% 94%);' },
-      x: { name: 'star', css: 'clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);' }
+      c: { name: 'circle', d: 'M15 0A15 15 0 1 1 15 30A15 15 0 1 1 15 0Z' },
+      s: { name: 'square', d: 'M6 0H24A6 6 0 0 1 30 6V24A6 6 0 0 1 24 30H6A6 6 0 0 1 0 24V6A6 6 0 0 1 6 0Z' },
+      t: { name: 'triangle', d: 'M15 1.2L29.4 28.2L0.6 28.2Z' },
+      x: { name: 'star', d: 'M15 0L18.3 10.5L29.4 10.5L20.4 17.1L23.7 27.3L15 21L6.3 27.3L9.6 17.1L0.6 10.5L11.7 10.5Z' }
     };
   }
   carName(k) { return this.colors()[k[0]].name + ' ' + this.shapes()[k[1]].name; }
-  carCss(k) { return this.shapes()[k[1]].css + ' background: ' + this.colors()[k[0]].hex + ';'; }
+  // A shape in its colour with the --bw-purple-edge (#241a63) outline, so it reaches 3:1 on the white car and the purple tile (decision 3).
+  carSvg(k) { return { d: this.shapes()[k[1]].d, fill: this.colors()[k[0]].hex, edge: '#241a63' }; }
   cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
   // Sample child for the stuck limits: Maya, ages 7 to 8 (brief 3.3: 4 slips, then 50 s with no answer).
   limits() { return { count: 4, secs: 50 }; }
@@ -262,9 +274,9 @@ class Component extends DCLogic {
   levelOf(p) { return ['1', '4', '7', '10'].indexOf(p.level) >= 0 ? parseInt(p.level, 10) : 4; }
   leverKey() {
     var p = this.props || {};
-    return [p.level, p.puzzle, p.moment].join('|');
+    return [p.level, p.puzzle, p.moment, p.sticker].join('|');
   }
-  freshPuzzle() { return { wrongIdx: null, wrongShown: false, wrongTaps: 0, seen: {}, idle: 0, offer: false, note: '', ghost: null, ghostx: 0, fresh: false }; }
+  freshPuzzle() { return { wrongIdx: null, wrongShown: false, wrongTaps: 0, seen: {}, idle: 0, offer: false, cue: false, note: '', ghost: null, ghostx: 0, fresh: false }; }
   fromLever() {
     var p = this.props || {};
     var level = this.levelOf(p);
@@ -272,6 +284,8 @@ class Component extends DCLogic {
     var moment = ['play', 'wrong', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
+    // A new sticker comes when a chapter is finished: Two-car patterns ends at Level 3, where "Train" is earned.
+    if (moment === 'levelDone' && p.sticker === 'new') level = 3;
     var order = [0, 1, 2, 3, 4, 5];
     var P = this.puzzles(level)[order[puzzle - 1]];
     var s = Object.assign(this.freshPuzzle(), { lever: this.leverKey(), level: level, puzzle: puzzle, moment: 'play', order: order, slips: 1 });
@@ -284,6 +298,8 @@ class Component extends DCLogic {
       // Both wrong cars tapped, each twice: 4 taps reach the offer, 2 star slips (a repeated car counts once).
       wrongs.forEach(function (k) { s.seen[k] = true; });
       s.wrongTaps = this.limits().count; s.slips = wrongs.length; s.offer = true;
+      // The still shows the offer's first 2 s, with its ring (decision 8).
+      s.cue = true;
     }
     if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') s.moment = moment;
     return s;
@@ -297,7 +313,16 @@ class Component extends DCLogic {
     return this.pending;
   }
   put(patch) {
-    var next = Object.assign({}, this.st(), patch, { lever: this.leverKey() });
+    var prev = this.st();
+    var next = Object.assign({}, prev, patch, { lever: this.leverKey() });
+    // The offer's cue (decision 8): each new appearance of the offer rings for 2 s (and chimes once in the app).
+    if (next.offer && !prev.offer) {
+      next.cue = true;
+      var self = this;
+      clearTimeout(this.cueT);
+      this.cueT = setTimeout(function () { self.put({ cue: false }); }, 2000);
+    }
+    if (!next.offer) next.cue = false;
     this.pending = next;
     this.setState(next);
   }
@@ -311,7 +336,7 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.goT); clearTimeout(this.inT); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.goT); clearTimeout(this.inT); clearTimeout(this.cueT); }
   say(text) {
     try {
       var u = new SpeechSynthesisUtterance(text);
@@ -324,11 +349,22 @@ class Component extends DCLogic {
   carBoxes(P, solved) {
     var self = this;
     var plain = 'background: #f1eef7; box-shadow: inset 0 -5px 0 #b9b3c9;';
-    var cars = P.cars.map(function (k) { return { box: plain, shape: self.carCss(k) }; });
+    var cars = P.cars.map(function (k) { return { box: plain, shape: self.carSvg(k) }; });
     cars.push(solved
-      ? { box: 'background: #f1eef7; box-shadow: inset 0 -5px 0 #b9b3c9, 0 0 0 3px #ffc21a;', shape: this.carCss(P.answer) }
-      : { box: 'border: 3px dashed #ffc21a; background: rgba(255,194,26,0.08);', shape: 'background: transparent;' });
+      ? { box: 'background: #f1eef7; box-shadow: inset 0 -5px 0 #b9b3c9, 0 0 0 3px #ffc21a;', shape: this.carSvg(P.answer) }
+      : { box: 'border: 3px dashed #ffc21a; background: rgba(255,194,26,0.08);', shape: { d: '', fill: 'none', edge: 'none' } });
     return cars;
+  }
+  // One stud per cell, as the app's Brick with stud 13 draws a mosaic cell.
+  stud1(c1, c0, c2) {
+    return 'background: radial-gradient(circle at 46% 42%, ' + c1 + ' 0 19%, transparent 21%), radial-gradient(circle at 50% 50%, ' + c0 + ' 0 25%, transparent 27%), radial-gradient(circle at 54% 58%, rgba(0,0,0,0.28) 0 26%, transparent 28%), linear-gradient(160deg, ' + c1 + ' -30%, ' + c0 + ' 45%, ' + c2 + ' 140%); box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 0 rgba(0,0,0,0.22);';
+  }
+  // Pattern Train's first sticker, "Train" (p1 in src/screens/logic/stickers.ts), in the brick palette (src/shared/ui/palette.ts).
+  trainSticker() {
+    var self = this;
+    var pal = { o: ['#ffab5e', '#ff7a1a', '#c4500a'], b: ['#7cc0ff', '#2f8cff', '#1557c4'], r: ['#ff7a6e', '#f03a3a', '#b51f27'], g: ['#5fe06e', '#1fb53c', '#0f7a26'] };
+    var art = ['o....', 'o.bbb', 'rrbbb', 'rrrrr', '.g.g.'].join('');
+    return art.split('').map(function (ch) { var c = pal[ch]; return { style: c ? self.stud1(c[0], c[1], c[2]) : '' }; });
   }
   renderVals() {
     var self = this;
@@ -341,6 +377,8 @@ class Component extends DCLogic {
     var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone' || finished;
     var playing = m === 'play';
     var lastLevel = s.level === 12;
+    // The sticker this level earned (decision 19), on the level card when the lever asks for it.
+    var sticker = m === 'levelDone' && this.props.sticker === 'new';
 
     var names = P.cars.map(function (k) { return self.carName(k); });
     var answerName = this.carName(P.answer);
@@ -384,12 +422,18 @@ class Component extends DCLogic {
       cars: finished ? [] : this.carBoxes(P, solvedNow),
       trainLabel: finished ? 'Train: the locomotive on an empty rail.' : 'Train: ' + names.join(', ') + ', ' + (solvedNow ? answerName : 'empty car') + '.',
       trainop: s.fresh ? 0 : 1,
+      // The zoom follows the car count on phone, 0.95 for 4 cars (Levels 1 to 3) and 0.82 for 5, and is 1 on tablet,
+      // whose frame is zoomed 1.4 already (decision 16). The locomotive alone behind the finished card keeps 0.78.
+      trainZoom: finished ? 0.78 : tablet ? 1 : this.spec(s.level, 0).shown === 4 ? 0.95 : 0.82,
       // Train motion on Next: the old train slides out to the right over --bw-base, then the new one fades in over 150 ms.
       showGhost: !!s.ghost,
       ghostCars: s.ghost || [],
       ghostx: s.ghostx,
       help: help,
       showOffer: playing && s.offer,
+      // Ages 3 to 4 (decision 8): a static 4px --bw-accent ring for the offer's first 2 s. Without it nothing is set,
+      // so the keyboard focus ring still shows.
+      offerRing: s.cue ? 'outline: 4px solid #ffc21a; outline-offset: 0;' : '',
       swap: function () {
         var cs = self.st();
         if (cs.moment !== 'play') return;
@@ -402,7 +446,7 @@ class Component extends DCLogic {
         var dim = s.wrongIdx === i;
         var right = solvedNow && k === P.answer;
         return {
-          label: self.carName(k), shape: self.carCss(k),
+          label: self.carName(k), shape: self.carSvg(k),
           off: playing ? 'false' : 'true',
           wrap: dim ? 'opacity: 0.5; transform: translateX(-6px) rotate(-5deg); box-shadow: 0 5px 0 #241a63;'
             : right ? 'opacity: 1; transform: translateY(-6px); box-shadow: 0 0 0 4px #ffc21a, 0 5px 0 #241a63;'
@@ -447,6 +491,10 @@ class Component extends DCLogic {
       showTotal: finished,
       totalText: '32 of 36',
       cardFact: finished || lastLevel ? '12 levels, 32 of 36 stars.' : fact,
+      showSticker: sticker,
+      stickerCells: this.trainSticker(),
+      stickerLine: 'New sticker: Train.',
+      cardDescribedBy: sticker ? 'pat-card-fact pat-card-sticker' : 'pat-card-fact',
       showRule: !finished && !lastLevel,
       showNote: finished,
       showPlayNext: !finished && !lastLevel,
