@@ -22,7 +22,7 @@ import {
   tileForKey,
   usedIds,
 } from './logic';
-import { minViewHeight, slotSize, traySize, type SlotSize, type TraySize } from './sizing';
+import { isShortScreen, matchTraySize, minViewHeight, slotSize, traySize, type SlotSize, type TraySize } from './sizing';
 
 export interface ViewProps<P> {
   prompt: P;
@@ -398,6 +398,9 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
               onTap={() => tap(t.id)}
               onPointerTap={practice ? () => sayOnly(t) : undefined}
               onDrop={practice ? (at) => placeOwnCell(t.id, at) : () => tap(t.id)}
+              // Practice takes a drop wherever the brick sits on the train, and a miss still answers with a sound.
+              dropByOverlap={practice}
+              onMiss={practice ? () => sfx.tap() : undefined}
             />
           ),
         )}
@@ -409,6 +412,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
 /* ---------- Big and small ---------- */
 
 export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<MatchPrompt>) {
+  const layout = useLayout();
   const [s, setS] = useState(newMatch);
   const { wiggling, nonce, wiggle } = useWiggle();
   const hinting = useHint();
@@ -445,7 +449,8 @@ export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintR
     return true;
   };
 
-  const size = traySize(p.upper.length, innerW, 64);
+  // On a short phone (375x667) both trays draw smaller tiles and a closer row gap, so 8 pairs fit with no scrolling.
+  const size = matchTraySize(p.upper.length, innerW, isShortScreen(layout.mode, layout.height));
   // Once solved, Next takes the small letters' well; the matched big letters stay in view.
   const row = (side: 'upper' | 'lower', list: Tile[]) => (
     <Well label={side === 'upper' ? 'Big letters' : 'Small letters'} slot={side === 'lower' ? slot : undefined}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   DEFAULT_PLAYER_NAME,
   HINTS_PER_RUN,
@@ -41,7 +41,7 @@ import {
   swapLine,
 } from './copy';
 import { LEVELS, isSpelling, makePuzzles, type Prompt } from './levels';
-import { LEVEL_RULE, isPracticeLevel } from './logic';
+import { LEVEL_RULE, isPracticeLevel, readyAfter } from './logic';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
@@ -161,6 +161,21 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   /** Where focus goes after the next render: the tray's first tile (after Next or a swap) or the slot's button. */
   const focusNext = useRef<'tray' | 'slot' | null>(null);
   const timer = useRef<number>(0);
+  /**
+   * When Next or Play last appeared in the tray well, and whether a mouse press has started on it since. The
+   * touch that placed the last letter can still send a click to the button that took its place, and a child's
+   * quick second tap or click on that letter lands on the button too: a finger or pen click, or the second
+   * click of a double-click (detail 2), counts only once the button has been up 350 ms. A single mouse click
+   * that began on the button counts at once, and keyboard clicks (detail 0) always count.
+   */
+  const shownAt = useRef(0);
+  const mousePressed = useRef(false);
+  const showSlot = () => {
+    shownAt.current = performance.now();
+    mousePressed.current = false;
+  };
+  const strayClick = (e: MouseEvent) =>
+    e.detail > 0 && !(mousePressed.current && e.detail === 1) && !readyAfter(shownAt.current, performance.now());
 
   const limit = STUCK.letters[band];
   /** The puzzle on screen. It stays put after a solve, while the run's queue already points at the next one. */
@@ -248,12 +263,14 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     if (outcome.kind === 'saved') {
       setRun(outcome.run);
       setMoment('solved');
+      showSlot();
       focusNext.current = 'slot';
       return;
     }
     if (outcome.kind !== 'finished') return;
     setFinish(outcome);
     setMoment('levelDone');
+    showSlot();
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       sfx.win();
@@ -295,6 +312,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
       return;
     }
     // The tray well then holds the same Play button, and focus goes there (brief 10).
+    showSlot();
     focusNext.current = 'slot';
   };
 
@@ -305,7 +323,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   let slot: ReactNode = null;
   if (moment === 'solved') {
     slot = (
-      <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={next}>
+      <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={(e) => strayClick(e) || next()}>
         {nextLabel(spelling)}
       </PressButton>
     );
@@ -316,7 +334,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
           {BACK_TO_GAMES}
         </PressButton>
       ) : (
-        <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={() => playNextLevel(finish.next!)}>
+        <PressButton variant="green" size="lg" icon="play" iconEnd className="lb-next bw-appear" onClick={(e) => strayClick(e) || playNextLevel(finish.next!)}>
           {playLabel(finish.next + 1)}
         </PressButton>
       );
@@ -343,7 +361,11 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     instruction: swapped ? swapLine(spelling) : text,
     helpOverride: offer ? offerLine(spelling) : null,
     offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" onClick={swap} /> : null,
-    slot: slot ? <div ref={slotRef} className="lb-slot-wrap">{slot}</div> : undefined,
+    slot: slot ? (
+      <div ref={slotRef} className="lb-slot-wrap" onPointerDown={(e) => (mousePressed.current = e.pointerType === 'mouse')}>
+        {slot}
+      </div>
+    ) : undefined,
     practice,
   };
 

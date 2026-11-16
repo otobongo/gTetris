@@ -1,6 +1,7 @@
-import { useRef, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useRef, type CSSProperties, type PointerEvent } from 'react';
 import { useLayout } from '../../shared/ui';
 import { letterColor, type BrickColor } from './data';
+import { overlapsDrop } from './logic';
 
 /** A letter brick has the colour of its letter, or white for the small letters in Big and small. */
 export type LetterColor = BrickColor | 'white';
@@ -17,7 +18,9 @@ export interface DropAt {
 /** Tile: a toy-brick letter with two studs on top, sized by the tray's --tw / --th variables (see sizing.ts).
     Slot: the same face without studs, sitting in the answer row, sized by --sw / --sh.
     Tap works everywhere; when `onDrop` is given the tile can also be dragged onto any `[data-drop]` zone.
-    `onPointerTap`, when given, takes a pointer tap on a draggable tile instead of `onTap`; the keyboard still calls `onTap`. */
+    `onPointerTap`, when given, takes a pointer tap on a draggable tile instead of `onTap`; the keyboard still calls `onTap`.
+    `dropByOverlap` (practice) also takes a drop when the dragged brick itself overlaps the zone, and lights the zone
+    (is-over) while it does; `onMiss` hears a drag let go off every zone. */
 export function LetterBrick({
   ch,
   id,
@@ -27,6 +30,8 @@ export function LetterBrick({
   onTap,
   onPointerTap,
   onDrop,
+  dropByOverlap = false,
+  onMiss,
   label,
   rot = 0,
   style,
@@ -40,6 +45,8 @@ export function LetterBrick({
   onTap?: () => void;
   onPointerTap?: () => void;
   onDrop?: (at: DropAt) => void;
+  dropByOverlap?: boolean;
+  onMiss?: () => void;
   label?: string;
   /** Tilt in degrees, so a tray looks tossed, not like a keyboard. */
   rot?: number;
@@ -47,15 +54,63 @@ export function LetterBrick({
   disabled?: boolean;
 }) {
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const ref = useRef<HTMLButtonElement>(null);
+  /** A finger tap was just handled in pointerup, so the click the browser sends after touchend must not land. */
+  const tapHandled = useRef(false);
   const draggable = !!onDrop && !disabled;
   // The tablet frame is scaled with CSS zoom and a translate inside it is scaled again, so the offset is divided by it.
   const { zoom } = useLayout();
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
 
+  // A tap is handled on pointerup, and what it changes (the last letter in: Next takes the tray's place) is drawn
+  // before touchend. The click that follows would then press whatever now sits under the finger. React's own
+  // onTouchEnd never hears it, because React has already swapped this tile for its ghost, but a listener on the
+  // node itself still does, and cancelling touchend there cancels that click. A tile unmounted by its own tap
+  // keeps listening until that touchend arrives.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !draggable) return;
+    let timer = 0;
+    const onEnd = (e: TouchEvent) => {
+      if (!tapHandled.current) return;
+      tapHandled.current = false;
+      if (e.cancelable) e.preventDefault();
+      if (timer) stop();
+    };
+    const stop = () => {
+      window.clearTimeout(timer);
+      el.removeEventListener('touchend', onEnd);
+    };
+    el.addEventListener('touchend', onEnd, { passive: false });
+    return () => {
+      if (tapHandled.current) timer = window.setTimeout(stop, 1000);
+      else stop();
+    };
+  }, [draggable]);
+
+  /** The drop zones the brick is over now: under the finger, or (dropByOverlap) under the brick itself. */
+  const zonesAt = (x: number, y: number, r: DOMRect): Element[] => {
+    const under = new Set(
+      document
+        .elementsFromPoint(x, y)
+        .map((n) => n.closest('[data-drop]'))
+        .filter((n): n is Element => !!n),
+    );
+    if (dropByOverlap) for (const zone of document.querySelectorAll('[data-drop]')) if (overlapsDrop(r, zone.getBoundingClientRect())) under.add(zone);
+    return [...under];
+  };
+
+  /** Practice lights the zone the brick would go into, and only while it is over it (no motion). */
+  const light = (zones: Element[]) => {
+    if (!dropByOverlap) return;
+    for (const zone of document.querySelectorAll('[data-drop]')) zone.classList.toggle('is-over', zones.includes(zone));
+  };
+
   const end = (el: HTMLElement) => {
     el.classList.remove('is-dragging');
     el.style.removeProperty('--dx');
     el.style.removeProperty('--dy');
+    light([]);
   };
 
   const handlers = draggable
@@ -80,6 +135,7 @@ export function LetterBrick({
           el.classList.add('is-dragging');
           el.style.setProperty('--dx', `${dx / z}px`);
           el.style.setProperty('--dy', `${dy / z}px`);
+          if (dropByOverlap) light(zonesAt(e.clientX, e.clientY, el.getBoundingClientRect()));
         },
         onPointerUp: (e: PointerEvent<HTMLButtonElement>) => {
           const d = drag.current;
@@ -88,11 +144,13 @@ export function LetterBrick({
           const el = e.currentTarget;
           // Measured before the brick drops its drag transform, so a flight can start where the child let go.
           const r = el.getBoundingClientRect();
+          const over = d.moved && zonesAt(e.clientX, e.clientY, r).length > 0;
           end(el);
-          if (!d.moved) (onPointerTap ?? onTap)?.();
-          else if (document.elementsFromPoint(e.clientX, e.clientY).some((n) => n.closest('[data-drop]'))) {
-            onDrop?.({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width });
-          }
+          if (!d.moved) {
+            tapHandled.current = e.pointerType === 'touch';
+            (onPointerTap ?? onTap)?.();
+          } else if (over) onDrop?.({ x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width });
+          else onMiss?.();
         },
         onPointerCancel: (e: PointerEvent<HTMLButtonElement>) => {
           drag.current = null;
@@ -103,6 +161,7 @@ export function LetterBrick({
 
   return (
     <button
+      ref={ref}
       type="button"
       className={`lb-brick lb-brick--${shape} ${draggable ? 'is-draggable ' : ''}${className}`}
       data-brick={faceColor(ch, color)}

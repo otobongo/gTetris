@@ -73,6 +73,35 @@ export function placeOwn(p: FillPrompt, s: FillState, tileId: string): { state: 
   return { state: { placed }, result: 'correct', cell };
 }
 
+/** A box on screen, as getBoundingClientRect gives it. */
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Practice: a drop counts by the brick the child sees, not only the finger under it. The dragged brick is
+ * over the answer row when the two overlap at all top to bottom and by at least a quarter of the brick's
+ * width across, so a brick let go a little high (finger on the picture) or a little low still goes in.
+ */
+export function overlapsDrop(brick: Rect, drop: Rect): boolean {
+  const bw = brick.right - brick.left;
+  if (bw <= 0 || brick.bottom <= brick.top || drop.right <= drop.left || drop.bottom <= drop.top) return false;
+  const across = Math.min(brick.right, drop.right) - Math.max(brick.left, drop.left);
+  const down = Math.min(brick.bottom, drop.bottom) - Math.max(brick.top, drop.top);
+  return down > 0 && across >= bw / 4;
+}
+
+/* ---------- Next and Play ---------- */
+
+/** How long Next and Play wait after they appear before a pointer click that did not start on them counts. */
+export const NEXT_READY_MS = 350;
+
+/** True once a button shown at `shownAt` has been up `ms` (both in ms on the same clock). */
+export const readyAfter = (shownAt: number, now: number, ms = NEXT_READY_MS): boolean => now - shownAt >= ms;
+
 /** Keyboard: find a free tray brick showing this letter (case-insensitive), preferring the correct one. */
 export function tileForKey(p: FillPrompt, s: FillState, key: string): string | null {
   const used = usedIds(s);

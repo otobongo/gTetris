@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { AGE_BANDS, type AgeBand } from '../../shared/progress';
 import { rng, shuffle } from '../../shared/rng';
 import { LEVELS, makePuzzles, type FillPrompt, type Tile } from './levels';
-import { fillDone, isPracticeLevel, newFill, nextCell, placeOwn, tapFill, type FillState } from './logic';
+import { NEXT_READY_MS, fillDone, isPracticeLevel, newFill, nextCell, overlapsDrop, placeOwn, readyAfter, tapFill, type FillState, type Rect } from './logic';
 
 const SEEDS = Array.from({ length: 25 }, (_, i) => i * 7919 + 5);
 
@@ -330,5 +330,67 @@ describe('placeOwn: pure', () => {
       expect(JSON.stringify(s)).toBe(before);
       expect(JSON.stringify(p)).toBe(prompt);
     }
+  });
+});
+
+/* ---------- Practice: a drop counts by the brick the child sees, not the finger ---------- */
+
+describe('overlapsDrop: the dragged brick over the answer row', () => {
+  /** The answer row on the 390 phone: 4 slots of 76 with gaps of 12, 84 tall. */
+  const row: Rect = { left: 23, top: 300, right: 367, bottom: 384 };
+  /** A dragged brick 78 wide and 83 tall (70 by 74 drawn 1.12 times), its left edge at `left` and top at `top`. */
+  const brick = (left: number, top: number): Rect => ({ left, top, right: left + 78, bottom: top + 83 });
+
+  it('is false with no vertical overlap, above or below, however much it overlaps across', () => {
+    expect(overlapsDrop(brick(100, 300 - 83), row)).toBe(false);
+    expect(overlapsDrop(brick(100, 384), row)).toBe(false);
+    expect(overlapsDrop(brick(100, 100), row)).toBe(false);
+  });
+
+  it('is true with any vertical overlap and a quarter of the brick across the row', () => {
+    // Finger 30 above the row: the brick dips 11 into it. Finger 20 below: 21 of it is still on the row.
+    expect(overlapsDrop(brick(100, 300 - 72), row)).toBe(true);
+    expect(overlapsDrop(brick(100, 384 - 21), row)).toBe(true);
+    // One px of vertical overlap is enough.
+    expect(overlapsDrop(brick(100, 300 - 82), row)).toBe(true);
+    // Exactly a quarter of the width (19.5 of 78) across the row's left edge.
+    expect(overlapsDrop(brick(23 - 78 + 19.5, 320), row)).toBe(true);
+  });
+
+  it('is false when less than a quarter of the brick is across the row', () => {
+    expect(overlapsDrop(brick(23 - 78 + 19, 320), row)).toBe(false);
+    expect(overlapsDrop(brick(367 - 19, 320), row)).toBe(false);
+    expect(overlapsDrop(brick(400, 320), row)).toBe(false);
+  });
+
+  it('is true when the brick sits fully inside the row, or the row inside a big brick', () => {
+    expect(overlapsDrop({ left: 30, top: 305, right: 90, bottom: 380 }, row)).toBe(true);
+    expect(overlapsDrop({ left: 0, top: 0, right: 500, bottom: 500 }, row)).toBe(true);
+  });
+
+  it('is false for an empty brick or row (nothing measured)', () => {
+    expect(overlapsDrop({ left: 50, top: 320, right: 50, bottom: 320 }, row)).toBe(false);
+    expect(overlapsDrop(brick(100, 320), { left: 0, top: 0, right: 0, bottom: 0 })).toBe(false);
+  });
+});
+
+/* ---------- Next and Play ignore the touch that brought them ---------- */
+
+describe('readyAfter: Next and Play take a tap only once they have been up a moment', () => {
+  it('waits 350 ms', () => {
+    expect(NEXT_READY_MS).toBe(350);
+    expect(readyAfter(1000, 1349, NEXT_READY_MS)).toBe(false);
+    expect(readyAfter(1000, 1350, NEXT_READY_MS)).toBe(true);
+    expect(readyAfter(1000, 5000, NEXT_READY_MS)).toBe(true);
+  });
+
+  it('is false at the moment it appears, and waits 350 ms when no wait is given', () => {
+    expect(readyAfter(1000, 1000, NEXT_READY_MS)).toBe(false);
+    expect(readyAfter(1000, 1349)).toBe(false);
+    expect(readyAfter(1000, 1350)).toBe(true);
+  });
+
+  it('is false when the clock reads earlier than the stamp (a clock that went back)', () => {
+    expect(readyAfter(1000, 900)).toBe(false);
   });
 });

@@ -322,7 +322,8 @@ class Component extends DCLogic {
     var word = this.wordOf(s);
     if (practice) {
       // Mid-puzzle: the last letter is already in its own place while the first is still empty, and a
-      // letter is held up on its way to its own cell. The held one is the free letter (not the first) whose
+      // letter is held just above its own cell, the brick dipping onto the train, so the train's empty places
+      // light up (is-over): let go here and it goes in. The held one is the free letter (not the first) whose
       // cell is farthest across from its tray place, so the drag reads as going to its place, not the yellow one.
       var tl = this.shuffled(word, 0);
       var last = word.length - 1;
@@ -503,12 +504,17 @@ class Component extends DCLogic {
         var done = practice ? !!s.placed[i] : i < s.filled;
         // Level 1 is a guided train: an empty cell shows its letter faintly.
         var ghost = practice && !done;
+        // Practice, a letter held over the train (letters.css .lb-slots.is-over): every empty place turns
+        // solid yellow with a faint yellow fill, colour only and no motion, while the brick is over it.
+        var over = practice && s.dragIdx !== null && playing;
         var box = 'width: ' + z.sw + 'px; height: ' + z.sh + 'px; border-radius: ' + z.sRad + 'px; font-size: ' + z.sFont + 'px; ';
         return {
           ch: done || ghost ? ch : '',
           style: box + (done
             ? self.face(self.colorOf(ch)) + ' color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3);'
-            : 'border: ' + z.sBorder + 'px dashed ' + (i === nextAt ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);' + (ghost ? ' color: rgba(201,194,255,0.5);' : ''))
+            : over
+              ? 'border: ' + z.sBorder + 'px solid #ffc21a; background: color-mix(in srgb, #ffc21a 16%, rgba(0,0,0,0.15)); color: rgba(201,194,255,0.5);'
+              : 'border: ' + z.sBorder + 'px dashed ' + (i === nextAt ? '#ffc21a' : '#5444b8') + '; background: rgba(0,0,0,0.15);' + (ghost ? ' color: rgba(201,194,255,0.5);' : ''))
         };
       }),
       help: helpText,
@@ -541,15 +547,16 @@ class Component extends DCLogic {
         var lit = s.hintIdx === i && !used ? ' outline: 4px solid #ffc21a; outline-offset: 3px;' : '';
         var tilt = i % 2 ? 3 : -3;
         // Practice: the held letter is drawn as the app's dragged brick (letters.css .is-dragging): no tilt,
-        // 1.12 times its size, a deep drop shadow, halfway from its tray place to its own cell.
+        // 1.12 times its size, a deep drop shadow. It sits over its own cell with its centre 20px above the
+        // train's top edge, so the brick overlaps the train (overlapsDrop) though the finger is just above it.
         var held = '';
         if (practice && s.dragIdx === i && !used) {
           var own = word.indexOf(ch);
           var fromX = (z.rowW - z.tw) / -2 + i * (z.tw + z.gap);
           var toX = (z.slotRowW - z.sw) / -2 + own * (z.sw + z.sGap);
           var fromY = IH - 36 - z.th / 2;
-          var toY = 376 + z.sh / 2;
-          held = ' transform: translate(' + Math.round((toX - fromX) / 2) + 'px, ' + Math.round((toY - fromY) / 2) + 'px) scale(1.12); z-index: 3; box-shadow: 0 14px 24px rgba(0,0,0,0.45);';
+          var toY = 376 - 20;
+          held = ' transform: translate(' + Math.round(toX - fromX) + 'px, ' + Math.round(toY - fromY) + 'px) scale(1.12); z-index: 3; box-shadow: 0 14px 24px rgba(0,0,0,0.45);';
         }
         // Practice: a tapped letter hops once in place, keeping its tilt (letters.css .is-bounce).
         var hop = practice && s.hopIdx === i && !used ? ' --rot: ' + tilt + 'deg; animation: bw-hop 400ms cubic-bezier(0.16,1,0.3,1);' : '';
