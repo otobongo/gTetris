@@ -82,13 +82,18 @@
   font-size: var(--bw-fs-helper);
   font-weight: 800;
   cursor: pointer;
-  transition: background-color var(--bw-base) var(--bw-ease);
+  transition:
+    background-color var(--bw-base) var(--bw-ease),
+    transform var(--bw-base) var(--bw-ease),
+    opacity var(--bw-base) var(--bw-ease);
 }
 .mix-slot.is-empty { border: 3px dashed var(--bw-purple-top); }
 .mix-slot.is-filled {
   background: var(--mix-paint);
   box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.18);
 }
+/* A wrong pair: both slots dim and tilt for CHOICE_WRONG_MS, the same cue as .bw-choice.is-wrong. */
+.mix-slot.is-wrong { opacity: 0.5; transform: translateX(-6px) rotate(-5deg); }
 .mix-slot[aria-disabled='true'] { cursor: default; }
 .mix-slot:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
 
@@ -197,7 +202,9 @@
 /* ---------- Reduced motion (brief 9.1): changes crossfade over 150ms, nothing slides ---------- */
 @media (prefers-reduced-motion: reduce) {
   .mix-bowl__liquid { transition: background-color 150ms linear; }
-  .mix-slot { transition: none; }
+  /* The wrong cue keeps its dim and drops the tilt, as .bw-choice.is-wrong does. */
+  .mix-slot { transition: opacity 150ms linear; }
+  .mix-slot.is-wrong { transform: none; }
   .mix-pot:active .mix-swatch { transform: none; }
   .mix-swatch { transition: none; }
 }
