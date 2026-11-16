@@ -38,6 +38,19 @@ export const PAD: readonly { act: Action; icon: IconName; label: string; tone: '
   { act: 'right', icon: 'right', label: 'Right', tone: 'purple' },
 ];
 
+/** The intro sheet's line about the controls, for a keyboard and for a touch screen. */
+export const KEYS_LINE = 'Keys: arrow keys move, Up turns, Space drops, P pauses.';
+export const TOUCH_LINE = 'Tap the board to turn. Swipe down to drop.';
+
+/**
+ * Which controls line the intro sheet shows. The keys when there is a mouse or trackpad (`finePointer`) or once
+ * any key has been pressed (`sawKey`, an iPad with a keyboard); otherwise the board gestures, since swipe down is
+ * the only way to drop a brick at once without Space.
+ */
+export function introControlsLine(finePointer: boolean, sawKey: boolean): string {
+  return finePointer || sawKey ? KEYS_LINE : TOUCH_LINE;
+}
+
 /** The action a key stands for, or null. */
 export function keyAction(key: string): Action | null {
   return Object.prototype.hasOwnProperty.call(KEYS, key) ? KEYS[key] : null;

@@ -51,9 +51,12 @@
 </div></div>
 </sc-if>
 
+<!-- The tiles and the board. Phone and tablet: a row of tiles above the board (this wrapper adds no layout).
+     Short phone (375 x 667, max-height 700px): the tiles stand in a column beside the board, which gets their row's height. -->
+<div style="display: {{mainDisplay}}; flex-direction: row-reverse; width: 100%; flex: 1; min-height: 0; gap: 12px;">
 <sc-if value="{{showInfo}}" hint-placeholder-val="{{ true }}">
-<div style="width: 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: stretch;">
-<div style="padding: 6px 8px; border-radius: 16px; background: #30257a; text-align: center;">
+<div style="flex: none; width: {{tilesW}}; display: grid; grid-template-columns: {{tilesCols}}; gap: 10px; align-items: stretch; align-content: start; padding-top: {{tilesTop}}px; box-sizing: border-box;">
+<div style="padding: {{tilePad}}; border-radius: 16px; background: #30257a; text-align: center;">
 <div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">NEXT</div>
 <div style="position: relative; width: 76px; height: 40px; margin: 2px auto 0;">
 <sc-for list="{{nextCells}}" as="c" hint-placeholder-count="4">
@@ -61,12 +64,13 @@
 </sc-for>
 </div>
 </div>
-<div style="padding: 6px 8px; border-radius: 16px; background: #30257a; text-align: center;">
+<div style="padding: {{tilePad}}; border-radius: 16px; background: #30257a; text-align: center;">
 <div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">ROWS</div>
 <div style="font-size: 30px; font-weight: 800; line-height: 1.1;">{{rows}}<span style="font-size: 16px; color: #c9c2ff;">/6</span></div>
 </div></div>
 </sc-if>
 
+<div style="display: {{areaDisplay}}; flex: 1; min-width: 0; padding: 5px; box-sizing: border-box; justify-content: center; align-items: flex-start;">
 <button onClick="{{turn}}" aria-label="Board, tap to turn the brick" style="border: 0; padding: 6px; cursor: pointer; border-radius: 20px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.5), 0 0 0 4px #3a2d8f; touch-action: none;">
 <div style="position: relative; width: {{bw}}px; height: {{bh}}px; background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px); background-size: {{cell}}px {{cell}}px;">
 <sc-for list="{{cells}}" as="c" hint-placeholder-count="20">
@@ -74,6 +78,8 @@
 </sc-for>
 </div>
 </button>
+</div>
+</div>
 
 <div style="width: 100%; min-height: 62px;">
 <sc-if value="{{showPad}}" hint-placeholder-val="{{ true }}">
@@ -96,7 +102,7 @@
 </div>
 
 <sc-if value="{{showSay}}" hint-placeholder-val="{{ false }}">
-<p role="status" style="position: absolute; left: 0; right: 0; top: 46%; margin: 0; padding: 0 16px; text-align: center; font-size: {{saysize}}px; font-weight: 800; line-height: 1.1; color: #ffe266; text-shadow: 0 4px 0 #6624c9; text-wrap: balance; pointer-events: none;">{{say}}</p>
+<p role="status" style="position: absolute; left: 0; right: 0; top: 46%; margin: 0; padding: 0 {{sayright}}px 0 16px; text-align: center; font-size: {{saysize}}px; font-weight: 800; line-height: 1.1; color: #ffe266; text-shadow: 0 4px 0 #6624c9; text-wrap: balance; pointer-events: none;">{{say}}</p>
 </sc-if>
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
@@ -108,7 +114,7 @@
 <p id="drop-card-line" style="margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Clear 6 rows in each puzzle. Solve 4 to finish the stage.</p>
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{introRule}}</p>
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Running out of time caps the stage at 2 stars.</p>
-<p style="margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: #ffffff; text-wrap: balance;">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
+<p style="margin: 10px 0 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: #ffffff; text-wrap: balance;">Tap the board to turn. Swipe down to drop.</p>
 <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
 <button onClick="{{start}}" style="border: 0; cursor: pointer; font-family: inherit; width: 100%; min-height: 56px; padding: 14px 20px; box-sizing: border-box; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #063510; font-size: 20px; font-weight: 800; line-height: 1.15; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">Start</button>
 </div>
@@ -169,25 +175,30 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = this.fromLever();
   }
+  // Board rows. Phone and tablet draw a short 8 x 12 sample; the short phone (375 x 667) draws Stage 4's real
+  // 8 x 16 well, since a short phone is where the height matters. Sample stacks sit on the floor either way.
+  R() { return this.props && this.props.device === 'short' ? 16 : 12; }
   // Sample: Maya, ages 7 to 8, on Stage 4. Each puzzle clears 6 rows; its clock is 6 rows x 15 s x 1.5 (brief 4.2).
   limit() { return 135; }
   // Stuck after 3 failed tries at ages 7 to 8 (brief 3.1).
   stuckTries() { return 3; }
+  // The device is part of the key: the short phone's board has more rows, so its stacks are built again.
   leverKey() {
     var p = this.props || {};
-    return [p.puzzle, p.moment].join('|');
+    return [p.device, p.puzzle, p.moment].join('|');
   }
   // The starter stack: pre-built rows with brick-shaped holes. A turned T fills the gap and clears two rows.
   // A mirrored copy stands in for the stage's other puzzles on the canvas.
   starter(mirror) {
     var stack = {};
-    var put = function (r, c, color) { stack[r + ',' + (mirror ? 7 - c : c)] = color; };
+    var off = this.R() - 12;
+    var put = function (r, c, color) { stack[(r + off) + ',' + (mirror ? 7 - c : c)] = color; };
     for (var c = 0; c < 8; c++) {
       if (c !== 4) put(11, c, c % 2 ? 'blue' : 'teal');
       if (c < 3 || c > 5) put(10, c, c % 2 ? 'orange' : 'yellow');
@@ -200,14 +211,14 @@ class Component extends DCLogic {
     var stack = {};
     var tops = [4, 2, 3, 0, 5, 2, 3, 4];
     var colors = ['teal', 'blue', 'orange', 'yellow', 'pink', 'green', 'purple', 'red'];
-    for (var c = 0; c < 8; c++) for (var r = tops[c]; r < 12; r++) {
+    for (var c = 0; c < 8; c++) for (var r = tops[c]; r < this.R(); r++) {
       if ((r * 3 + 1) % 8 === c) continue;
       stack[r + ',' + c] = colors[c];
     }
     return stack;
   }
   // What is left after a puzzle is cleared: the starter stack's top row, dropped to the floor.
-  clearedStack() { return { '11,0': 'pink', '11,7': 'pink' }; }
+  clearedStack() { var b = this.R() - 1; var s = {}; s[b + ',0'] = 'pink'; s[b + ',7'] = 'pink'; return s; }
   fresh(mirror) {
     return { stack: this.starter(mirror), mirror: !!mirror, kind: 'T', rot: 0, r: 0, c: 2, queue: ['O', 'I', 'L', 'T', 'S'], rows: 0, tLeft: this.limit(), paused: false, flash: 0, placed: 0, swapped: false };
   }
@@ -257,7 +268,7 @@ class Component extends DCLogic {
     var cells = this.cellsOf(kind, rot);
     for (var i = 0; i < cells.length; i++) {
       var rr = r + cells[i][0], cc = c + cells[i][1];
-      if (cc < 0 || cc >= 8 || rr >= 12) return false;
+      if (cc < 0 || cc >= 8 || rr >= this.R()) return false;
       if (rr >= 0 && stack[rr + ',' + cc]) return false;
     }
     return true;
@@ -299,7 +310,7 @@ class Component extends DCLogic {
     var color = this.shapes()[s.kind].color;
     this.cellsOf(s.kind, s.rot).forEach(function (x) { stack[(atRow + x[0]) + ',' + (s.c + x[1])] = color; });
     var full = [];
-    for (var r = 0; r < 12; r++) {
+    for (var r = 0; r < this.R(); r++) {
       var n = 0;
       for (var c = 0; c < 8; c++) if (stack[r + ',' + c]) n++;
       if (n === 8) full.push(r);
@@ -356,7 +367,9 @@ class Component extends DCLogic {
     var self = this;
     var s = this.st();
     var tablet = this.props.device === 'tablet';
-    var cell = 42;
+    var short = this.props.device === 'short';
+    // Short phone: 25px cells, what the app draws for Stage 4 at 375 x 667 (20px with the tiles in a row above).
+    var cell = short ? 25 : 42;
     var m = s.moment;
     var finished = m === 'gameDone';
     var solvedNow = m === 'solved' || m === 'lastSolved' || m === 'levelDone';
@@ -413,14 +426,18 @@ class Component extends DCLogic {
     var cardKind = m === 'intro' ? 'intro' : m === 'over' || m === 'stuck' ? 'over' : m === 'levelDone' || finished ? 'level' : '';
 
     return {
-      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
+      w: tablet ? 834 : short ? 375 : 390, h: tablet ? 1194 : short ? 667 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : short ? 375 : 390, ih: tablet ? 853 : short ? 667 : 844,
+      // Short phone: the tiles in an 88px column beside the board (the Next picture's 76px box plus side padding), level with its ring.
+      mainDisplay: short ? 'flex' : 'contents', areaDisplay: short ? 'flex' : 'contents',
+      tilesW: short ? '88px' : '100%', tilesCols: short ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+      tilesTop: short ? 1 : 0, tilePad: short ? '8px 6px' : '6px 8px',
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Brick Drop' : 'Stage ' + s.stage,
       showDots: !finished, dots: dots,
       dotsLabel: solvedCount === 4 ? '4 of 4 solved.' : 'Puzzle ' + s.puzzle + ' of 4. ' + solvedCount + ' solved.',
       showPause: m === 'play' || m === 'ready',
       showInfo: !finished,
-      cell: cell, bw: cell * 8, bh: cell * 12,
+      cell: cell, bw: cell * 8, bh: cell * this.R(),
       cells: cells, nextCells: nextCells, rows: s.rows,
       clock: mm + ':' + (ss < 10 ? '0' : '') + ss,
       timepct: Math.round((s.tLeft / limit) * 100),
@@ -431,6 +448,8 @@ class Component extends DCLogic {
       showNext: m === 'solved',
       next: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { puzzle: cs.puzzle + 1, moment: 'ready', tries: 0 })); },
       showSay: !!say, say: say, saysize: m === 'play' ? 40 : 24,
+      // Short phone: the help line centres over the board, clear of the tile column (16px gutter + 88px + 12px gap).
+      sayright: short ? 116 : 16,
       left: function () { self.press(function () { self.tryMove(0, -1, 0); }); },
       right: function () { self.press(function () { self.tryMove(0, 1, 0); }); },
       down: function () { self.press(function () { self.tryMove(1, 0, 0); }); },

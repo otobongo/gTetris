@@ -11,6 +11,7 @@ import {
   dragMoves,
   dragStep,
   gestureAxis,
+  introControlsLine,
   keyAction,
   keyCommand,
   releaseAction,
@@ -227,5 +228,26 @@ describe('Brick Drop keys and gestures: review additions', () => {
     expect(axis).toBe('h');
     expect(moves.reduce((a, b) => a + b, 0)).toBe(2); // 89 px right is two full cells; drifting back 18 px is not a full step left
     expect(releaseAction(axis, 71, 0, 400, 30)).toBeNull();
+  });
+});
+
+describe('Brick Drop intro sheet: the controls line', () => {
+  const TOUCH = 'Tap the board to turn. Swipe down to drop.';
+  const KEYS_LINE = 'Keys: arrow keys move, Up turns, Space drops, P pauses.';
+
+  it('teaches the board gestures on a touch-only screen', () => {
+    expect(introControlsLine(false, false)).toBe(TOUCH);
+  });
+
+  it('lists the keys when a mouse or trackpad is there, or once a key has been pressed', () => {
+    expect(introControlsLine(true, false)).toBe(KEYS_LINE);
+    expect(introControlsLine(false, true)).toBe(KEYS_LINE);
+    expect(introControlsLine(true, true)).toBe(KEYS_LINE);
+  });
+
+  it('never uses an em or en dash in either line', () => {
+    for (const [fine, saw] of [[false, false], [true, false], [false, true]] as const) {
+      expect(introControlsLine(fine, saw)).not.toMatch(/[\u2013\u2014]/);
+    }
   });
 });
