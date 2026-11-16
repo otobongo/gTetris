@@ -13,10 +13,12 @@
  * - `pointercancel` (or a lost capture) drops the drag and nothing counts.
  * - The click the browser sends after a drag is ignored, through a flag the next pointerdown clears;
  *   keyboard clicks (Enter, Space) always count.
+ * - With `takeover`, a new finger replaces a press that has never moved, so a palm resting on one item
+ *   does not block a drag of another. The resting finger's capture is let go, and its lift picks nothing.
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useLayout } from '../../shared/ui/layout';
-import { DRAG_IDLE, capturePointer, dragStep, tapStep, targetAt, type DragEffect, type DragInput, type DragTrack, type Rect } from './dragToTarget';
+import { DRAG_IDLE, capturePointer, dragStep, releasePointer, tapStep, targetAt, type DragEffect, type DragInput, type DragTrack, type Rect } from './dragToTarget';
 
 /** The CSS variables the hook writes on the dragged item, in px of the frame. */
 export const DRAG_X = '--drag-x';
@@ -45,6 +47,12 @@ export interface UseDragToTargetOptions<I extends string, T extends string> {
    * works in screen px, so it is multiplied by the zoom: Shape Sorter's 24 px is 33.6 px on the tablet frame.
    */
   reach?: number;
+  /**
+   * A new finger takes over a press that has never moved (default off). Young children rest a palm or
+   * the other hand on the tray; without this, that still touch blocks every drag until it lifts. The
+   * resting finger's lift and the click after it pick nothing. A drag under way always keeps its finger.
+   */
+  takeover?: boolean;
 }
 
 /** Spread on each item's <button>. */
@@ -150,6 +158,10 @@ export function useDragToTarget<I extends string, T extends string = string>(opt
         case 'cancel':
           endDrag(effect.item);
           return;
+        case 'release':
+          // a new finger took over this still press: let the resting finger's capture go
+          releasePointer(items.current.get(effect.item), effect.pointerId);
+          return;
         default:
           return;
       }
@@ -192,7 +204,7 @@ export function useDragToTarget<I extends string, T extends string = string>(opt
         onPointerDown(e) {
           if (live.current.options.disabled || e.button > 0) return;
           capturePointer(e.currentTarget, e.pointerId);
-          step({ type: 'down', item: id, pointerId: e.pointerId, point: point(e) });
+          step({ type: 'down', item: id, pointerId: e.pointerId, point: point(e), takeover: live.current.options.takeover });
         },
         onPointerMove(e) {
           step({ type: 'move', pointerId: e.pointerId, point: point(e), zoom: live.current.zoom });
@@ -212,7 +224,8 @@ export function useDragToTarget<I extends string, T extends string = string>(opt
           step({ type: 'cancel', pointerId: e.pointerId });
         },
         onClick(e) {
-          if (step({ type: 'click', keyboard: isKeyboardClick(e) }).kind !== 'click') return;
+          // the item rides along, so the click after a resting finger lifts from it is swallowed
+          if (step({ type: 'click', keyboard: isKeyboardClick(e), item: id }).kind !== 'click') return;
           if (live.current.options.disabled) return;
           const tap = tapStep(live.current.picked, { item: id, asTarget: live.current.options.itemsAreTargets });
           if (tap.kind === 'pick') setPick(tap.item);
