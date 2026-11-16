@@ -129,3 +129,70 @@ test('Cancel on the grown-up check reached from Who’s playing goes back to Who
   await expect(page).toHaveURL(/#\/players$/);
   await expect(page.getByRole('heading', { name: "Who's playing?" })).toBeVisible();
 });
+
+/* ---------- Review cases: the check's Back link, the other ways in, and longer journeys ---------- */
+
+test('a tap on Back on the grown-up check reached from Who’s playing goes back to Who’s playing', async ({ page }) => {
+  await seed(page, [
+    { id: 'maya', name: 'Maya', ageBand: '7-8' },
+    { id: 'leo', name: 'Leo', ageBand: '3-4' },
+  ]);
+  await page.goto('/#/players');
+  await expect(page.getByRole('heading', { name: "Who's playing?" })).toBeVisible();
+  await page.getByRole('link', { name: /^Add a child/ }).tap();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(page.locator('.sc-gate__sum')).toBeVisible();
+  await page.getByRole('link', { name: "Back to Who's playing" }).tap();
+  await expect(page).toHaveURL(/#\/players$/);
+  await expect(page.getByRole('heading', { name: "Who's playing?" })).toBeVisible();
+});
+
+test('Cancel and Back on the grown-up check reached from Home go Home', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/');
+  await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(page.getByRole('link', { name: "Back to Who's playing" })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Back to home' })).toHaveAttribute('href', '#/');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
+});
+
+test('Cancel on the grown-up check when Settings is the first page opened goes Home, inside the app', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '9-10' }]);
+  await page.goto('/#/settings');
+  await expect(page.locator('.sc-gate__sum')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Back to home' })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
+});
+
+test('Back on Privacy opened from Support goes to Support, and Back there goes to Settings', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await openSettings(page);
+  await legalLink(page, 'Support').click();
+  await expect(page).toHaveURL(/#\/help$/);
+  await page.getByRole('link', { name: /Privacy policy/ }).click();
+  await expect(page).toHaveURL(/#\/help\/privacy$/);
+  await page.getByRole('link', { name: 'Back to support' }).click();
+  await expect(page).toHaveURL(/#\/help$/);
+  // Support came from Privacy now, which its Back does not return to, so it goes to Settings.
+  await page.getByRole('link', { name: 'Back to settings' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
+});
+
+test('Back on Terms opened from Sign up goes to Sign up', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await openSettings(page);
+  await page.getByRole('link', { name: 'Use email instead' }).click();
+  await page.getByRole('link', { name: 'Create a family account' }).click();
+  await expect(page).toHaveURL(/#\/signup$/);
+  await page.getByRole('link', { name: 'Terms of use', exact: true }).click();
+  await expect(page).toHaveURL(/#\/help\/terms$/);
+  await page.getByRole('link', { name: 'Back to sign up' }).click();
+  await expect(page).toHaveURL(/#\/signup$/);
+  await expect(page.getByRole('heading', { name: 'Create your family account' })).toBeVisible();
+});

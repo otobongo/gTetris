@@ -86,7 +86,13 @@ export default function App() {
   // After a screen change (not the first load), focus moves to the new screen (a11y-cross-6).
   const shown = useRef<string | null>(null);
   useEffect(() => {
-    if (target || shown.current === path) return;
+    if (target) {
+      // App draws nothing while it redirects, so the screen after it is new, even at the path shown
+      // before (a game's own address on its current level). The first load's redirect keeps it first.
+      if (shown.current !== null) shown.current = '';
+      return;
+    }
+    if (shown.current === path) return;
     const first = shown.current === null;
     shown.current = path;
     if (first) return;
@@ -126,7 +132,8 @@ function targetOf(plan: RoutePlan, hasPlayer: boolean): string | null {
  * Runs one frame after a new screen draws. When the screen has placed focus itself (PlayScreen's first
  * control, a level card's Play Level N), it stays there. Otherwise, with focus on the page or outside the
  * screen (the link that opened it is gone), it goes to the screen's h1, so VoiceOver reads the new
- * screen's name. TopBar's h1 already takes focus without a ring; any other h1 is made to here.
+ * screen's name. The h1 is not a control: it is made focusable from script only (tabindex -1) and
+ * takes focus without a ring, here at focus time, so TopBar's markup stays as it is.
  */
 function focusNewScreen() {
   const main = document.querySelector('main');

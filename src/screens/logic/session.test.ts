@@ -292,4 +292,28 @@ describe('Back on the grown-up pages knows the screen it came from before that s
     noteArrival('/settings', null);
     expect(backTarget(['/players'], '/')).toBe('/');
   });
+
+  it('keeps the screen before when the same path is noted twice (the first path, noted again in development)', () => {
+    noteArrival('/players', null);
+    noteArrival('/settings', null);
+    noteArrival('/settings', null);
+    expect(backTarget(['/players'], '/')).toBe('/players');
+  });
+
+  it('keeps the screen before when the path in between redirects to Break or to the path itself', () => {
+    noteArrival('/players', null);
+    noteArrival('/settings', null);
+    noteArrival('/game/pattern/2', '/break');
+    noteArrival('/break', null);
+    expect(backTarget(['/settings', '/game/pattern/2'], '/')).toBe('/settings');
+    noteArrival('/help', null);
+    noteArrival('/help', '/help');
+    expect(backTarget(['/break'], '/')).toBe('/break');
+  });
+
+  it('falls back when the screen before is not one Back returns to', () => {
+    noteArrival('/game/sorter/1', null);
+    noteArrival('/help', null);
+    expect(backTarget(['/settings', '/signin', '/signup'], '/settings')).toBe('/settings');
+  });
 });
