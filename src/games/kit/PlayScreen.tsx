@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { useSettings } from '../../shared/progress';
 import { toHref } from '../../shared/router';
 import { say } from '../../shared/speech';
 import { IconButton, LevelCard, PressButton, PuzzleDots, Screen, TopBar, cx } from '../../shared/ui';
@@ -60,12 +61,18 @@ export interface PlayScreenProps<P> {
  * Everything in `top`, `children` and `controls` is keyed on run.round, so each new puzzle starts from
  * fresh components (ChoiceRow's marks, a game's local state below PlayScreen). The help row is not, so
  * its status region stays and announces each new line.
+ *
+ * Round 2: with Voice off there is no speaker (decision 20), since tapping it would say nothing; the top
+ * bar keeps its empty right cell, so the title stays centred. At ages 3 to 4 the New puzzle button gets
+ * its one chime and 2 s ring when it appears (decision 8, `cue`). The dots show the capped-star mark once
+ * a counted hint caps the level (decision 25, `capped`).
  */
 export function PlayScreen<P>({ run, speaker, line, lineStyle, wrong, hint, top, children, controls, slotClassName, className }: PlayScreenProps<P>) {
   const topRef = useRef<HTMLDivElement>(null);
   const slot = useRef<HTMLDivElement>(null);
   const body = useRef<HTMLDivElement>(null);
   const last = useRef({ round: run.round, phase: run.phase, offer: run.offer, slot: run.slot });
+  const { voice } = useSettings();
 
   useEffect(() => {
     const was = last.current;
@@ -115,8 +122,8 @@ export function PlayScreen<P>({ run, speaker, line, lineStyle, wrong, hint, top,
       <TopBar
         title={levelName(run.level + 1)}
         backLabel={BACK_TO_HOME}
-        below={<PuzzleDots solved={run.dots.solved} puzzle={run.dots.at} />}
-        action={<IconButton icon="speaker" label={run.offer ? READ_HELP_ALOUD : speaker.label} onClick={speak} />}
+        below={<PuzzleDots solved={run.dots.solved} puzzle={run.dots.at} capped={run.hintCapped} />}
+        action={voice ? <IconButton icon="speaker" label={run.offer ? READ_HELP_ALOUD : speaker.label} onClick={speak} /> : undefined}
       />
       {top !== undefined && (
         <div ref={topRef} className="bw-play__top" key={`top-${run.round}`}>
@@ -128,7 +135,7 @@ export function PlayScreen<P>({ run, speaker, line, lineStyle, wrong, hint, top,
         lineStyle={lineStyle}
         wrong={run.shared === null && wrong}
         hint={hint}
-        offer={run.offer ? <IconButton icon="swap" label={OFFER_NAME} variant="green" className="bw-appear" onClick={run.swap} /> : null}
+        offer={run.offer ? <IconButton icon="swap" label={OFFER_NAME} variant="green" className="bw-appear" cue={run.band === '3-4'} onClick={run.swap} /> : null}
       />
       <div ref={body} className="bw-play__body" key={`body-${run.round}`}>
         {children}
