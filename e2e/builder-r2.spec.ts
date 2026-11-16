@@ -8,7 +8,6 @@ import { LEVELS } from '../src/games/builder/puzzles';
 import {
   type Band,
   builderBoard,
-  builderBoardCells,
   builderPicture,
   builderSquare,
   builderSwatch,
@@ -23,6 +22,11 @@ import {
 const help = (page: Page) => page.locator('.bw-helprow__line');
 const matchBar = (page: Page) => page.getByRole('progressbar');
 const pictureTitle = (page: Page) => page.getByRole('heading', { level: 2 });
+/** What the board holds, read from each square's brick (its name can carry ", not right" on a copy level). */
+const boardBricks = (page: Page): Promise<BuilderCell[]> =>
+  builderBoard(page)
+    .locator('[data-cell]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('data-brick') as BuilderCell));
 
 /** Open Picture Builder on `level` (1-based) for a child who has every level before it. */
 async function openBuilderLevel(page: Page, level: number, band: Band = '5-6') {
@@ -131,7 +135,7 @@ async function layBricks(page: Page, count: number): Promise<{ cells: BuilderCel
     await builderSwatch(page, cells[i]!).click();
     await builderSquare(page, size, i).click();
   }
-  const now = await builderBoardCells(page);
+  const now = await boardBricks(page);
   expect(now.filter(Boolean)).toHaveLength(count);
   return { cells: now, size, name: picture.name };
 }
@@ -159,13 +163,13 @@ for (const [level, band] of [
     await homeCard(page, 'Picture Builder').click();
     await expect(page).toHaveURL(new RegExp(`#/game/builder/${level}$`));
     await expect(pictureTitle(page)).toHaveText(`Build the ${built.name}.`);
-    await expect.poll(() => builderBoardCells(page)).toEqual(built.cells);
+    await expect.poll(() => boardBricks(page)).toEqual(built.cells);
     await expect(matchBar(page)).toHaveAttribute('aria-label', bar);
     await expect(help(page)).toHaveText(line!);
 
     await page.reload();
     await expect(pictureTitle(page)).toHaveText(`Build the ${built.name}.`);
-    await expect.poll(() => builderBoardCells(page)).toEqual(built.cells);
+    await expect.poll(() => boardBricks(page)).toEqual(built.cells);
     await expect(matchBar(page)).toHaveAttribute('aria-label', bar);
   });
 }
@@ -177,7 +181,7 @@ test('a new tab starts the puzzle empty', async ({ page, context }) => {
   await other.goto('/#/game/builder');
   await expect(other).toHaveURL(/#\/game\/builder\/1$/);
   await expect(pictureTitle(other)).toHaveText(`Build the ${built.name}.`);
-  expect((await builderBoardCells(other)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(other)).every((c) => c === null)).toBe(true);
   await other.close();
 });
 
@@ -197,7 +201,7 @@ test('another child on the same device does not see the draft', async ({ page })
   }, 'brickwise:v2');
   await page.reload();
   await expect(pictureTitle(page)).toHaveText(`Build the ${built.name}.`);
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
 });
 
 test('solved, the next puzzle starts empty; a swap starts empty, and the swapped-away puzzle is empty when it comes back', { tag: '@phone-only' }, async ({ page }) => {
@@ -212,9 +216,9 @@ test('solved, the next puzzle starts empty; a swap starts empty, and the swapped
   await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
   await page.getByRole('button', { name: 'Next puzzle' }).click();
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
   await page.reload();
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
 
   // Wrong bricks until New puzzle is offered (ages 3 to 4), then a swap.
   const second = await builderPicture(page);
@@ -226,10 +230,10 @@ test('solved, the next puzzle starts empty; a swap starts empty, and the swapped
   await page.getByRole('button', { name: 'New puzzle' }).click();
   const third = await builderPicture(page);
   expect(third.name).not.toBe(second.name);
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
   await page.reload();
   await expect(pictureTitle(page)).toHaveText(`Build the ${third.name}.`);
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
   // Swapping away the rest of the queue brings the second picture back, empty.
   for (let n = 0; n < 6 && (await builderPicture(page)).name !== second.name; n++) {
     const now = await builderPicture(page);
@@ -241,7 +245,7 @@ test('solved, the next puzzle starts empty; a swap starts empty, and the swapped
     await page.getByRole('button', { name: 'New puzzle' }).click();
   }
   await expect(pictureTitle(page)).toHaveText(`Build the ${second.name}.`);
-  expect((await builderBoardCells(page)).every((c) => c === null)).toBe(true);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
 });
 
 test('a memory level restores the board and runs its first look over it, locked', { tag: '@phone-only' }, async ({ page }) => {
@@ -254,16 +258,16 @@ test('a memory level restores the board and runs its first look over it, locked'
   const i = picture.cells.findIndex(Boolean);
   await builderSwatch(page, picture.cells[i]!).click();
   await builderSquare(page, picture.size, i).click();
-  const want = await builderBoardCells(page);
+  const want = await boardBricks(page);
   expect(want.filter(Boolean)).toHaveLength(1);
 
   await page.reload();
   await expect(pictureTitle(page)).toHaveText('Look closely.');
-  await expect.poll(() => builderBoardCells(page)).toEqual(want);
+  await expect.poll(() => boardBricks(page)).toEqual(want);
   await expect(builderSquare(page, picture.size, i)).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('.pb-board')).toHaveClass(/is-looking/);
   await page.clock.runFor(3_000);
   await expect(pictureTitle(page)).toHaveText('Build it from memory.');
   await expect(builderSquare(page, picture.size, i)).not.toHaveAttribute('aria-disabled', 'true');
-  expect(await builderBoardCells(page)).toEqual(want);
+  expect(await boardBricks(page)).toEqual(want);
 });
