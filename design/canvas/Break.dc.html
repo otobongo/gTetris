@@ -100,6 +100,27 @@ That number doesn't match. Try this one instead.
 </section>
 </sc-if>
 
+<sc-if value="{{pinView}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="bw-pin-h" style="width: 100%; max-width: {{colW}}px; box-sizing: border-box; padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+<h2 id="bw-pin-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Grown-up check</h2>
+<sc-if value="{{pinWrong}}" hint-placeholder-val="{{ false }}">
+<div id="bw-pin-err" role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+That PIN is not right.
+</div>
+</sc-if>
+<p style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Enter the family PIN.</p>
+<label for="bw-pin" style="font-size: 14px; font-weight: 800; color: #c9c2ff; margin-bottom: -6px;">Family PIN</label>
+<input id="bw-pin" name="family-pin" type="password" inputmode="numeric" pattern="[0-9][0-9][0-9][0-9]" autocomplete="off" maxlength="4" onKeyDown="{{pinKey}}" aria-invalid="{{pinWrongAttr}}" aria-describedby="{{pinDescribedBy}}" style="width: 160px; height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; letter-spacing: 4px; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; {{pinRing}}">
+<p id="bw-pin-line" role="status" style="margin: 0; min-height: 20px; font-size: 15px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums;">{{pinLine}}</p>
+<div style="display: flex; gap: 8px;">
+<button onClick="{{cancelGate}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{checkPin}}" disabled="{{pinLocked}}" aria-disabled="{{pinLocked}}" style="flex: 2; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26; {{checkDim}}">Check</button>
+</div>
+<button onClick="{{forgotPin}}" style="align-self: center; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Forgot the PIN?</button>
+</section>
+</sc-if>
+
 <sc-if value="{{extendView}}" hint-placeholder-val="{{ false }}">
 <section aria-labelledby="bw-ext-h" style="width: 100%; max-width: {{colW}}px; box-sizing: border-box; padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
 <h2 id="bw-ext-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">{{extendTitle}}</h2>
@@ -120,17 +141,38 @@ That number doesn't match. Try this one instead.
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"leo4"},"state":{"editor":"enum","options":["break","gate","extend"],"default":"break"},"when":{"editor":"enum","options":["betweenLevels","midLevel"],"default":"betweenLevels"},"siblings":{"editor":"enum","options":["1","2"],"default":"2"},"addedToday":{"editor":"enum","options":["no","yes"],"default":"no"},"voice":{"editor":"enum","options":["on","off"],"default":"on"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"kid":{"editor":"enum","options":["leo4","nia6","maya7","theo10"],"default":"leo4"},"state":{"editor":"enum","options":["break","gate","gatePin","gatePinLocked","extend"],"default":"break"},"when":{"editor":"enum","options":["betweenLevels","midLevel"],"default":"betweenLevels"},"siblings":{"editor":"enum","options":["1","2"],"default":"2"},"addedToday":{"editor":"enum","options":["no","yes"],"default":"no"},"voice":{"editor":"enum","options":["on","off"],"default":"on"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { view: null, viewProp: null, amount: 0, answer: '', ask: 0, wrong: false };
+    // pinWrong, fails and lockEnd: the family PIN check (decision 14). The sample PIN is 2580.
+    this.state = { view: null, viewProp: null, amount: 0, answer: '', ask: 0, wrong: false, pinWrong: false, fails: 0, lockEnd: 0 };
   }
   // In the app, ages 3 to 4 with Voice on hear the heading and message read aloud on arrival.
   // On the canvas it reads only when the speaker button is tapped, so boards stay quiet on load.
   componentWillUnmount() {
     clearTimeout(this.focusT);
+    clearInterval(this.lockT);
     try { window.speechSynthesis.cancel(); } catch (e) {}
+  }
+  // 30 s from the third wrong try in a row, doubling to 5 minutes (the app's logic/familyPin.ts).
+  lockSeconds(fails) { return fails < 3 ? 0 : Math.min(300, 30 * Math.pow(2, Math.min(fails - 3, 8))); }
+  // The gatePinLocked moment opens 30 s into a lock after three wrong tries; its end is kept on the instance.
+  lockEndNow() {
+    var s = this.state;
+    if (s.lockEnd || s.fails) return s.lockEnd || 0;
+    if (this.viewOf() !== 'gatePinLocked') return 0;
+    if (!this.momentLockEnd) { this.momentLockEnd = Date.now() + 30000; this.startLockTick(); }
+    return this.momentLockEnd;
+  }
+  lockLeft() { return Math.max(0, this.lockEndNow() - Date.now()); }
+  startLockTick() {
+    var self = this;
+    clearInterval(this.lockT);
+    this.lockT = setInterval(function () {
+      if (self.lockLeft() <= 0) clearInterval(self.lockT);
+      self.setState({ tick: Date.now() });
+    }, 1000);
   }
   pal() {
     return {
@@ -171,7 +213,7 @@ class Component extends DCLogic {
   }
   propView() {
     var v = this.props.state;
-    return v === 'gate' || v === 'extend' ? v : 'break';
+    return v === 'gate' || v === 'gatePin' || v === 'gatePinLocked' || v === 'extend' ? v : 'break';
   }
   viewOf() {
     var s = this.state;
@@ -181,10 +223,10 @@ class Component extends DCLogic {
   go(view, extra) {
     this.setState(Object.assign({ view: view, viewProp: this.propView() }, extra || {}));
   }
-  focusField() {
+  focusField(id) {
     clearTimeout(this.focusT);
     this.focusT = setTimeout(function () {
-      try { var el = document.getElementById('bw-gate-num'); if (el) el.focus(); } catch (e) {}
+      try { var el = document.getElementById(id || 'bw-gate-num'); if (el) el.focus(); } catch (e) {}
     }, 0);
   }
   say(text) {
@@ -235,10 +277,40 @@ class Component extends DCLogic {
         self.focusField();
       }
     };
+    var pinMode = view === 'gatePin' || view === 'gatePinLocked';
+    var lockMs = pinMode ? this.lockLeft() : 0;
+    var locked = lockMs > 0;
+    var lockS = Math.max(1, Math.ceil(lockMs / 1000));
+    // The board reads the PIN field at Check and empties it; nothing typed is kept.
+    var checkPin = function () {
+      if (self.lockLeft() > 0) return;
+      var el = null;
+      try { el = document.getElementById('bw-pin'); } catch (e) {}
+      var v = el ? String(el.value || '') : '';
+      if (el) el.value = '';
+      if (v.trim() === '') { self.setState({ pinEmpty: true, pinWrong: false }); self.focusField('bw-pin'); return; }
+      if (v === '2580') { self.go('extend', { pinWrong: false, pinEmpty: false, fails: 0, lockEnd: 0, amount: 0 }); return; }
+      var fails = (self.state.fails || (self.momentLockEnd ? 3 : 0)) + 1;
+      var lock = self.lockSeconds(fails);
+      self.setState({ fails: fails, lockEnd: lock ? Date.now() + lock * 1000 : 0, pinWrong: true, pinEmpty: false });
+      if (lock) self.startLockTick();
+      self.focusField('bw-pin');
+    };
     return {
       W: tablet ? 834 : 390, H: tablet ? 1194 : 844, Z: tablet ? 1.4 : 1, IW: tablet ? 596 : 390, IH: tablet ? 853 : 844,
       colW: tablet ? 440 : 358,
-      childView: view === 'break', gateView: view === 'gate', extendView: view === 'extend',
+      childView: view === 'break', gateView: view === 'gate', extendView: view === 'extend', pinView: pinMode,
+      pinWrong: s.pinWrong && !locked,
+      pinWrongAttr: s.pinWrong && !locked ? 'true' : 'false',
+      pinDescribedBy: s.pinWrong && !locked ? 'bw-pin-err' : 'bw-pin-line',
+      pinRing: s.pinWrong && !locked ? 'box-shadow: 0 0 0 2px #ff4d5e;' : '',
+      pinLocked: locked,
+      checkDim: locked ? 'opacity: 0.45; cursor: default; box-shadow: none;' : '',
+      pinLine: locked ? 'Too many tries. Try again in ' + lockS + (lockS === 1 ? ' second.' : ' seconds.') : s.pinEmpty ? 'Type the PIN, then tap Check.' : '',
+      pinKey: function (e) { if (e && e.key === 'Enter') checkPin(); },
+      checkPin: checkPin,
+      // Forgot the PIN: the sum check, as in the app; the 10 second hold that then clears the PIN is drawn on Grownups (gate clearHold).
+      forgotPin: function () { self.go('gate', { answer: '', wrong: false, ask: 0, pinWrong: false, pinEmpty: false }); self.focusField(); },
       growTop: view === 'break' ? 1 : 0,
       whoHref: 'Main' + t + '.dc.html',
       settingsHref: 'Grownups' + t + '.dc.html',
@@ -262,13 +334,17 @@ class Component extends DCLogic {
       showChips: view === 'break' && chips.length > 0,
       chips: chips,
       showSwitch: this.props.siblings !== '1',
-      openGate: function () { self.go('gate', { answer: '', wrong: false, ask: 0 }); self.focusField(); },
+      // With a PIN set (the gatePin moments), the check asks for the PIN; otherwise the number.
+      openGate: function () {
+        if (self.propView() === 'gatePin' || self.propView() === 'gatePinLocked') { self.go('gatePin', { pinWrong: false, pinEmpty: false }); self.focusField('bw-pin'); return; }
+        self.go('gate', { answer: '', wrong: false, ask: 0 }); self.focusField();
+      },
       askText: 'Type the number ' + ask[1] + '.',
       answer: s.answer,
       setAnswer: function (e) { self.setState({ answer: e.target.value }); },
       gateKey: function (e) { if (e && e.key === 'Enter') check(); },
       checkGate: check,
-      cancelGate: function () { self.go('break', { answer: '', wrong: false }); },
+      cancelGate: function () { self.go('break', { answer: '', wrong: false, pinWrong: false, pinEmpty: false }); },
       wrong: s.wrong,
       wrongAttr: s.wrong ? 'true' : 'false',
       errId: s.wrong ? 'bw-gate-err' : '',
