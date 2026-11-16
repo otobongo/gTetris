@@ -3,8 +3,11 @@
  * coming back, a grown-up's replay of Level 3 that returns the child to their frontier, and the hint rules over
  * a level (a hint on a board swapped away is forgotten, one on a solved board caps the level).
  */
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { escapeLevelStars } from '../src/games/run';
+import { keyStep } from '../src/games/slide/drag';
+import { DIRS, blockSize, initialState, withMove, type Cell, type Level, type State } from '../src/games/slide/engine';
+import { brickLabel, doorLabel, exitLine, moveLine, slidLine } from '../src/games/slide/labels';
 import type { PuzzleResult } from '../src/shared/progress';
 import {
   dots,
@@ -14,6 +17,8 @@ import {
   homeCard,
   levelCard,
   openSettings,
+  playEscapeBoard,
+  pressEscapeBrick,
   savedGame,
   savedRun,
   seed,
@@ -249,4 +254,290 @@ test('a hint on a board swapped away is forgotten; one on a solved board caps th
   await again.click();
   await expect(page).toHaveURL(/#\/game\/escape\/2$/);
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
+});
+
+/* ---------- Restart can be undone, and the board names every brick and door (usability pass, batch G) ---------- */
+
+/** Where each brick on the board is drawn, in board order. */
+const brickSpots = (page: Page) => page.locator('.esc-brick').evaluateAll((els) => els.map((el) => (el as HTMLElement).style.transform));
+
+test('Restart puzzle can be undone: one Undo brings back the board and the moves', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { escape: { stars: starsUpTo(4) } } }]);
+  await page.goto('/#/game/escape/5');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 5');
+  const moves = page.locator('.esc-status__moves');
+  const undo = page.getByRole('button', { name: 'Undo' });
+
+  // Three moves with the keys, then Restart puzzle.
+  const played = await playEscapeBoard(page, 4, await escapePuzzleOnScreen(page, 4), { stopAfter: 3 });
+  expect(played.moves).toBe(3);
+  await expect(moves).toHaveText('Moves 3');
+  const before = await brickSpots(page);
+
+  await page.getByRole('button', { name: 'Restart puzzle' }).click();
+  await expect(moves).toHaveText('Moves 0');
+  await expect(page.locator('.esc-brick')).toHaveCount(escapeBoard(4, await escapePuzzleOnScreen(page, 4)).blocks.length);
+  expect(await brickSpots(page)).not.toEqual(before);
+  await expect(undo).toBeEnabled();
+
+  // One Undo: every brick back where it was before Restart, and the count with it.
+  await undo.click();
+  await expect(moves).toHaveText('Moves 3');
+  await expect(page.locator('.esc-brick')).toHaveCount(before.length);
+  expect(await brickSpots(page)).toEqual(before);
+});
+
+test('ages 3 to 4: two Restarts still bring New puzzle', async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/escape/1');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 1');
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  const restart = page.getByRole('button', { name: 'Restart puzzle' });
+
+  // A move first, so the first Restart has something to put back (and Undo keeps it).
+  await playEscapeBoard(page, 0, await escapePuzzleOnScreen(page, 0), { stopAfter: 1 });
+  await restart.click();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled();
+  await expect(offer).toHaveCount(0);
+  await restart.click();
+  await expect(offer).toBeVisible();
+});
+
+test('every brick and door has its own name, and each move is read out', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8', games: { escape: { stars: starsUpTo(1) } } }]);
+  await page.goto('/#/game/escape/2');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 2');
+  const puzzle = await escapePuzzleOnScreen(page, 1);
+  const board = escapeBoard(1, puzzle);
+
+  // Two bricks of one colour have different names, and every name says where the brick is.
+  const bricks = page.locator('.esc-brick');
+  await expect(bricks).toHaveCount(board.blocks.length);
+  const names = await bricks.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+  const twin = board.blocks.findIndex((b, i) => board.blocks.some((o, j) => j > i && o.color === b.color));
+  expect(twin, 'Level 2 has two bricks of one colour').toBeGreaterThanOrEqual(0);
+  const other = board.blocks.findIndex((o, j) => j > twin && o.color === board.blocks[twin].color);
+  expect(names[twin]).not.toBe(names[other]);
+  expect(names[twin].startsWith(names[other].split(',')[0])).toBe(true);
+  for (const name of names) {
+    expect(name).toContain('row');
+    expect(name).toContain('column');
+  }
+
+  // Every door says which side of the tray it is on.
+  const doors = await page.locator('.esc-door').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+  expect(doors).toHaveLength(board.gates.length);
+  for (const door of doors) expect(door).toContain('side');
+
+  // The hidden status line starts empty.
+  const status = page.locator('.esc-sr[role="status"]');
+  await expect(status).toHaveAttribute('aria-live', 'polite');
+  await expect(status).toHaveText('');
+
+  // A one-square slide that keeps the brick on the board; a tight board may first need the solver's drags
+  // (each brick that leaves is read out too).
+  const slide = (state: State) =>
+    board.blocks
+      .flatMap((_, block) => Object.values(DIRS).map((dir) => ({ block, dir })))
+      .find(({ block, dir }) => state.pos[block] && keyStep(board, state, block, dir).kind === 'moved');
+  let state = initialState(board);
+  for (let drags = 0; !slide(state); drags++) {
+    expect(drags, 'a brick can slide one square').toBeLessThan(board.par);
+    const left = state.pos.filter(Boolean).length;
+    state = (await playEscapeBoard(page, 1, puzzle, { stopAfter: 1, from: state })).state;
+    if (state.pos.filter(Boolean).length < left) await expect(status).toHaveText(/^\w+ brick is out\.\s?$/);
+  }
+
+  // After one key press it says where the brick slid; the help line on screen does not change.
+  const help = await page.locator('.esc-help').textContent();
+  const move = slide(state)!;
+  await pressEscapeBrick(page, board, state, move.block, move.dir);
+  await expect(status).toHaveText(/slid to (row|column) \d+\./);
+  await expect(page.locator('.esc-help')).toHaveText(help ?? '');
+});
+
+/* ---------- review of batch G: the cases around Restart, Undo and the read-out line ---------- */
+
+/** Stop the clock flowing by itself, so the test moves time on exactly. */
+async function pauseClock(page: Page) {
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+}
+
+const ARROW_KEY: Record<string, string> = { '-1,0': 'ArrowUp', '1,0': 'ArrowDown', '0,-1': 'ArrowLeft', '0,1': 'ArrowRight' };
+
+/** The first one-square arrow press on any brick still on the board that slides it (`moved`) or takes it out (`exit`). */
+const pressOf = (board: Level, state: State, kind: 'moved' | 'exit') =>
+  board.blocks
+    .flatMap((_, block) => Object.values(DIRS).map((dir) => ({ block, dir })))
+    .find(({ block, dir }) => state.pos[block] && keyStep(board, state, block, dir).kind === kind);
+
+/** The button of brick `block`: the bricks still on the board are drawn in block order. */
+const brickButton = (page: Page, state: State, block: number) => page.locator('.esc-brick').nth(state.pos.slice(0, block).filter(Boolean).length);
+
+/** Play the solver's drags with the keys until some brick can slide one square, as a tight board needs. */
+async function untilASlide(page: Page, level: number, puzzle: number, state: State): Promise<State> {
+  const board = escapeBoard(level, puzzle);
+  for (let drags = 0; !pressOf(board, state, 'moved'); drags++) {
+    expect(drags, 'a brick can slide one square').toBeLessThan(board.par);
+    state = (await playEscapeBoard(page, level, puzzle, { stopAfter: 1, from: state })).state;
+  }
+  return state;
+}
+
+/** Press a brick with the mouse and carry it one square toward `dir`, without letting go. */
+async function pullOneSquare(page: Page, board: Level, state: State, block: number, dir: Cell) {
+  const box = (await brickButton(page, state, block).boundingBox())!;
+  const unit = box.width / blockSize(board.blocks[block]).w;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 4; i++) await page.mouse.move(x + (dir[1] * unit * i) / 4, y + (dir[0] * unit * i) / 4);
+}
+
+for (const band of ['3-4', '7-8', '9-10'] as const) {
+  test(`ages ${band}: Restart on a fresh board keeps Undo off, and two Restarts in a row come back with one Undo`, async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band, games: { escape: { stars: starsUpTo(2) } } }]);
+    await page.goto('/#/game/escape/3');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 3');
+    const moves = page.locator('.esc-status__moves');
+    const undo = page.getByRole('button', { name: 'Undo' });
+    const restart = page.getByRole('button', { name: 'Restart puzzle' });
+    const puzzle = await escapePuzzleOnScreen(page, 2);
+    const all = escapeBoard(2, puzzle).blocks.length;
+
+    // Nothing to put back: the board is as it was, and there is still nothing to undo.
+    const start = await brickSpots(page);
+    await restart.click();
+    await expect(moves).toHaveText('Moves 0');
+    await expect(undo).toBeDisabled();
+    expect(await brickSpots(page)).toEqual(start);
+
+    // Two moves, then two curious taps on Restart.
+    const played = await playEscapeBoard(page, 2, puzzle, { stopAfter: 2 });
+    await expect(moves).toHaveText(`Moves ${played.moves}`);
+    const before = await brickSpots(page);
+    await restart.click();
+    await restart.click();
+    await expect(moves).toHaveText('Moves 0');
+    await expect(page.locator('.esc-brick')).toHaveCount(all);
+
+    // The second tap had nothing to put back, so one Undo brings the board and its moves back.
+    await undo.click();
+    await expect(moves).toHaveText(`Moves ${played.moves}`);
+    await expect(page.locator('.esc-brick')).toHaveCount(before.length);
+    expect(await brickSpots(page)).toEqual(before);
+    // And Undo goes on back through the moves made before the Restart.
+    await undo.click();
+    await expect(moves).toHaveText(`Moves ${played.moves - 1}`);
+  });
+}
+
+test('a Restart tap while a brick slides out is ignored: the brick leaves the board it was on', async ({ page }) => {
+  await page.clock.install();
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/escape/1');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 1');
+  const puzzle = await escapePuzzleOnScreen(page, 0);
+  const board = escapeBoard(0, puzzle);
+  const state = initialState(board);
+  const bricks = page.locator('.esc-brick');
+  const moves = page.locator('.esc-status__moves');
+  await expect(bricks).toHaveCount(board.blocks.length);
+
+  // Every board starts with a brick beside its open door; time stops while it slides out (about 320 ms).
+  const out = pressOf(board, state, 'exit')!;
+  await pauseClock(page);
+  await brickButton(page, state, out.block).focus();
+  await page.keyboard.press(ARROW_KEY[`${out.dir[0]},${out.dir[1]}`]);
+  await expect(page.locator('.esc-brick.is-exiting')).toHaveCount(1);
+  await expect(moves).toHaveText('Moves 1');
+
+  await page.getByRole('button', { name: 'Restart puzzle' }).click();
+  await page.clock.runFor(400);
+  // The brick is out of the board it left, the move still counts, and Undo brings it back.
+  await expect(bricks).toHaveCount(board.blocks.length - 1);
+  await expect(moves).toHaveText('Moves 1');
+  await expect(page.locator('.esc-sr[role="status"]')).toHaveText(exitLine(board.blocks[out.block].color));
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(bricks).toHaveCount(board.blocks.length);
+  await expect(moves).toHaveText('Moves 0');
+});
+
+test('the read-out line starts empty on the next puzzle', async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/escape/1');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 1');
+  const status = page.locator('.esc-sr[role="status"]');
+  const puzzle = await escapePuzzleOnScreen(page, 0);
+
+  // The last brick out is read out, then Next puzzle starts the new board with nothing said.
+  await solveEscapeBoard(page, 0, puzzle);
+  await expect(status).toHaveText(/^\w+ brick is out\.$/);
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(page.locator('.esc-status__moves')).toHaveText('Moves 0');
+  await expect(status).toHaveText('');
+});
+
+test('ages 9 to 10: the names follow the bricks, and a drag is read out like a key press', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '9-10', games: { escape: { stars: starsUpTo(4) } } }]);
+  await page.goto('/#/game/escape/5');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 5');
+  const puzzle = await escapePuzzleOnScreen(page, 4);
+  const board = escapeBoard(4, puzzle);
+  const status = page.locator('.esc-sr[role="status"]');
+  const moves = page.locator('.esc-status__moves');
+  const names = () => page.locator('.esc-brick').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+  const doors = () => page.locator('.esc-door').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+  const expected = (s: State) => board.blocks.flatMap((b, i) => (s.pos[i] ? [brickLabel(b, s.pos[i]!)] : []));
+
+  // Each brick and door is named from where it is now, and an iced door still says what melts it.
+  let state = initialState(board);
+  expect(await names()).toEqual(expected(state));
+  expect(await doors()).toEqual(board.gates.map((g) => doorLabel(board, g, state)));
+  if (board.gates.some((g) => g.lock || g.lockColor)) expect((await doors()).some((d) => /^Frozen door, \w+ side, .+, melts /.test(d ?? ''))).toBe(true);
+
+  // A key press: the line names the brick and its new row or column, and the brick's own name follows it.
+  state = await untilASlide(page, 4, puzzle, state);
+  const key = pressOf(board, state, 'moved')!;
+  const keyed = await pressEscapeBrick(page, board, state, key.block, key.dir);
+  const at = keyed.pos[key.block]!;
+  await expect(status).toHaveText(moveLine(board.blocks[key.block].color, key.dir[0] ? 'row' : 'column', key.dir[0] ? at[0] : at[1]));
+  await expect(brickButton(page, keyed, key.block)).toHaveAttribute('aria-label', brickLabel(board.blocks[key.block], at));
+  expect(await names()).toEqual(expected(keyed));
+  expect(await doors()).toEqual(board.gates.map((g) => doorLabel(board, g, keyed)));
+
+  // A drag of one square with the pointer is read out the same way when it lets go.
+  state = await untilASlide(page, 4, puzzle, keyed);
+  const count = Number((await moves.textContent())?.replace(/\D/g, ''));
+  const drag = pressOf(board, state, 'moved')!;
+  const from = state.pos[drag.block]!;
+  const to: Cell = [from[0] + drag.dir[0], from[1] + drag.dir[1]];
+  await pullOneSquare(page, board, state, drag.block, drag.dir);
+  await page.mouse.up();
+  await expect(moves).toHaveText(`Moves ${count + 1}`);
+  await expect(status).toHaveText(slidLine(board.blocks[drag.block].color, from, to));
+  await expect(brickButton(page, withMove(state, drag.block, to), drag.block)).toHaveAttribute('aria-label', brickLabel(board.blocks[drag.block], to));
+});
+
+test('a drag the system cancels after the brick moved is still read out', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8', games: { escape: { stars: starsUpTo(4) } } }]);
+  await page.goto('/#/game/escape/5');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 5');
+  const puzzle = await escapePuzzleOnScreen(page, 4);
+  const board = escapeBoard(4, puzzle);
+  const status = page.locator('.esc-sr[role="status"]');
+
+  const state = await untilASlide(page, 4, puzzle, initialState(board));
+  const drag = pressOf(board, state, 'moved')!;
+  const from = state.pos[drag.block]!;
+  const to: Cell = [from[0] + drag.dir[0], from[1] + drag.dir[1]];
+  await page.evaluate(() => document.addEventListener('pointerdown', (e) => ((window as unknown as { pid: number }).pid = e.pointerId), { capture: true }));
+  await pullOneSquare(page, board, state, drag.block, drag.dir);
+  await expect(brickButton(page, withMove(state, drag.block, to), drag.block)).toHaveAttribute('aria-label', brickLabel(board.blocks[drag.block], to));
+  // A system gesture takes the pointer: the brick stays where the drag left it, and the line says where.
+  const pointerId = await page.evaluate(() => (window as unknown as { pid: number }).pid);
+  await brickButton(page, state, drag.block).dispatchEvent('pointercancel', { pointerId });
+  await page.mouse.up();
+  await expect(status).toHaveText(slidLine(board.blocks[drag.block].color, from, to));
 });
