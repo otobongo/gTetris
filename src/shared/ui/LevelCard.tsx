@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type MouseEvent } from 'react';
+import { Brick } from './Brick';
 import { Icon } from './Icon';
+import type { BrickColor } from './palette';
 import { PressButton } from './PressButton';
 
 /** The level card opens this long after the last dot fills (brief 2.1 step 5, section 8). */
@@ -30,6 +32,11 @@ export interface LevelCardProps {
   cap?: string;
   /** A last line, as the finished state's "A grown-up can pick a level to play again." */
   note?: string;
+  /**
+   * The sticker this level just earned (decision 19): its name and its 25 mosaic cells, row by row, as
+   * stickerCells() gives them. Drawn under the stars, and read with the fact line.
+   */
+  sticker?: LevelCardSticker;
   /** The green button: "Play Level 10", or "Back to games" on the finished card. Focus starts here. */
   primary: LevelCardAction;
   /** The secondary button under it: "Back to games". */
@@ -41,7 +48,14 @@ export interface LevelCardProps {
   onClose: () => void;
 }
 
+export interface LevelCardSticker {
+  name: string;
+  cells: (BrickColor | null)[];
+}
+
 const FOCUSABLE = 'a[href], button:not([disabled])';
+/** The mosaic's cell, in px: 5 cells and 4 one-pixel gaps make it 69px square. */
+const STICKER_CELL = 13;
 
 /**
  * The one card between two levels, and the finished card (brief 2.1, 2.5, 7.1, 8, 10). A modal dialog
@@ -49,7 +63,7 @@ const FOCUSABLE = 'a[href], button:not([disabled])';
  * labelled by its title, described by its fact line, focus starts on the primary button and stays
  * inside. It does not hand focus back on close; the game places it (brief 10).
  */
-export function LevelCard({ title, stars, total, fact, rule, cap, note, primary, secondary, onClose }: LevelCardProps) {
+export function LevelCard({ title, stars, total, fact, rule, cap, note, sticker, primary, secondary, onClose }: LevelCardProps) {
   const id = useId();
   const card = useRef<HTMLDivElement>(null);
 
@@ -87,7 +101,7 @@ export function LevelCard({ title, stars, total, fact, rule, cap, note, primary,
 
   return (
     <div className="bw-levelcard-scrim" onClick={onScrim} onKeyDown={onKeyDown}>
-      <div ref={card} className="bw-levelcard" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={`${id}-fact`}>
+      <div ref={card} className="bw-levelcard" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} aria-describedby={sticker ? `${id}-fact ${id}-sticker` : `${id}-fact`}>
         <h2 id={`${id}-title`} className="bw-levelcard__title">
           {title}
         </h2>
@@ -108,6 +122,17 @@ export function LevelCard({ title, stars, total, fact, rule, cap, note, primary,
             <span className="bw-levelcard__total-count" aria-hidden="true">
               {whole(total.stars)} of {whole(total.max)}
             </span>
+          </div>
+        )}
+        {sticker && (
+          <div className="bw-levelcard__sticker" id={`${id}-sticker`}>
+            <span className="bw-levelcard__mosaic" aria-hidden="true">
+              {Array.from({ length: 25 }, (_, i) => {
+                const c = sticker.cells[i];
+                return c ? <Brick key={i} color={c} stud={STICKER_CELL} radius={2} /> : <span key={i} className="bw-levelcard__cell" />;
+              })}
+            </span>
+            <p className="bw-levelcard__sticker-name">{`New sticker: ${sticker.name}.`}</p>
           </div>
         )}
         <p id={`${id}-fact`} className="bw-levelcard__fact">

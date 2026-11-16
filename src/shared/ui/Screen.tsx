@@ -23,6 +23,8 @@ export interface ScreenProps {
  * The screen frame. Phone: one column up to 430px wide. Tablet: the boards' 596px inner area,
  * scaled up with CSS zoom like the tablet boards (834 x 1194 is zoom 1.4), so tablet screens are
  * the phone design at a larger scale with wider grids where a screen asks for them (useLayout).
+ * Short (under 500px tall, a phone held sideways): the phone column laid out at a 667px floor, and the
+ * screen scrolls instead of clipping the board (ui.css .bw-screen--short).
  */
 export function Screen({ children, padding = 'standard', fit = 'viewport', gap = 12, className }: ScreenProps) {
   const layout = useLayout();
@@ -36,7 +38,7 @@ export function Screen({ children, padding = 'standard', fit = 'viewport', gap =
     else frameStyle.minHeight = h;
   }
   return (
-    <main className={cx('bw-screen', `bw-screen--${layout.mode}`, `bw-screen--fit-${fit}`)}>
+    <main className={cx('bw-screen', `bw-screen--${layout.mode}`, layout.short && 'bw-screen--short', `bw-screen--fit-${fit}`)}>
       <div className={cx('bw-screen__frame', `bw-screen__frame--${padding}`, className)} style={frameStyle}>
         {children}
       </div>

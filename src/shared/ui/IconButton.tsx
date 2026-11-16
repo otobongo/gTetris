@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { sfx } from '../sound';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
@@ -19,14 +19,24 @@ export interface IconButtonProps {
   variant?: PressVariant | 'warm' | 'go';
   /** Toggle buttons only: sets aria-pressed and the pressed look. */
   pressed?: boolean;
+  /**
+   * Ages 3 to 4, the stuck offer's New puzzle button (decision 8): when the button mounts with this on, it
+   * plays one short chime and shows a static ring for CUE_MS. Only the mount counts: turning it on later
+   * does nothing, and each new appearance of the button cues once. It never moves focus or the button.
+   */
+  cue?: boolean;
   className?: string;
 }
+
+/** How long the cue's ring stays on the button. */
+export const CUE_MS = 2000;
 
 const tone = (v: IconButtonProps['variant']): PressVariant => (v === 'warm' ? 'yellow' : v === 'go' ? 'green' : (v ?? 'purple'));
 
 /** 54px raised icon button (radius 16, 26px icon, stroke 2.8), as in every top bar. */
-export function IconButton({ icon, label, href, onClick, badge, disabled, variant, pressed, className }: IconButtonProps) {
-  const classes = cx('bw-iconbtn', pressed && 'is-pressed', className);
+export function IconButton({ icon, label, href, onClick, badge, disabled, variant, pressed, cue, className }: IconButtonProps) {
+  const ring = useCue(cue);
+  const classes = cx('bw-iconbtn', pressed && 'is-pressed', ring && 'is-cue', className);
   const inner = (
     <>
       <Icon name={icon} size={26} strokeWidth={2.8} />
@@ -72,4 +82,24 @@ export function IconButton({ icon, label, href, onClick, badge, disabled, varian
       {inner}
     </button>
   );
+}
+
+/**
+ * The cue, read once at mount: true until CUE_MS has passed. The chime plays once per mount; the ref keeps
+ * StrictMode's second effect run from playing it again (React keeps refs across that run).
+ */
+function useCue(cue: boolean | undefined): boolean {
+  const atMount = useRef(!!cue);
+  const chimed = useRef(false);
+  const [ring, setRing] = useState(atMount.current);
+  useEffect(() => {
+    if (!atMount.current) return;
+    if (!chimed.current) {
+      chimed.current = true;
+      sfx.offer();
+    }
+    const t = setTimeout(() => setRing(false), CUE_MS);
+    return () => clearTimeout(t);
+  }, []);
+  return ring;
 }
