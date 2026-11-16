@@ -3,6 +3,7 @@ import {
   FRAME_PAD,
   MAX_TILE,
   MIN_TILE,
+  SHORT_PHONE,
   WELL_PAD,
   innerWidth,
   isShortScreen,
@@ -101,13 +102,31 @@ describe('Big and small on a short phone (375x667)', () => {
   const BODY_375x667 = 497;
   const BODY_PAD = 6;
 
-  it('counts as short only on a phone under 700px tall', () => {
+  it('counts as short only on a phone under 708px tall, where the 64px board with 8 pairs no longer fits', () => {
+    expect(SHORT_PHONE).toBe(708);
     expect(isShortScreen('phone', 667)).toBe(true);
     expect(isShortScreen('phone', 699)).toBe(true);
-    expect(isShortScreen('phone', 700)).toBe(false);
+    // 700 to 707 used to count as tall, and the 8-pair board was cut off by up to 8px there.
+    expect(isShortScreen('phone', 700)).toBe(true);
+    expect(isShortScreen('phone', 707)).toBe(true);
+    expect(isShortScreen('phone', 708)).toBe(false);
     expect(isShortScreen('phone', 844)).toBe(false);
     // The tablet frame is always drawn 853 tall and zoomed to fit, so its trays never shrink.
     expect(isShortScreen('tablet', 600)).toBe(false);
+  });
+
+  it('a phone is short exactly when the 64px board with 8 pairs would not fit its play area', () => {
+    // The screen around the play area (top bar, dots, player strip and gaps) is 667 - 497 = 170px on a phone.
+    const frame = 667 - BODY_375x667;
+    const tall = matchViewHeight(matchTraySize(8, 375, false)) + BODY_PAD;
+    for (let height = 560; height <= 900; height++) {
+      expect(isShortScreen('phone', height), `at ${height}`).toBe(tall > height - frame);
+      // Whichever size the rule picks, 8 pairs fit from the 375x667 phone up.
+      if (height >= 667) {
+        const t = matchTraySize(8, 375, isShortScreen('phone', height));
+        expect(matchViewHeight(t) + BODY_PAD, `at ${height}`).toBeLessThanOrEqual(height - frame);
+      }
+    }
   });
 
   it('keeps the 64px match tiles and 18px row gap on a tall phone', () => {

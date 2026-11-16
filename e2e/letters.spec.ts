@@ -524,6 +524,106 @@ test('a finger tap on the last letter of a spelling word stops on Next word and 
   expect(under).toBeGreaterThan(0);
 });
 
+// The other bands: ages 3 to 4 tap in order from Level 2 (Level 1 is their drag practice), and ages 9 to 10
+// spell six-letter words, whose tray wraps into two rows.
+for (const [band, level, spelling] of [
+  ['3-4', 2, false],
+  ['9-10', 16, true],
+] as const) {
+  test(`a finger tap on the last letter stops on Next for ages ${band} on Level ${level}`, async ({ page }) => {
+    await fixedRandom(page, 7);
+    const spoken = await recordSpeech(page);
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band, games: { letters: { stars: starsUpTo(level - 1) } } }]);
+    await page.goto('/#/game/letters');
+    await expect(page).toHaveURL(new RegExp(`#/game/letters/${level}$`));
+    await expect(page.locator('.lb-tray button').first()).toBeVisible();
+
+    let under = 0;
+    for (let n = 0; n < 3; n++) if (await tapSolve(page, n, spoken, spelling)) under++;
+    expect(under).toBeGreaterThan(0);
+  });
+}
+
+for (const input of ['finger', 'mouse'] as const) {
+  const twice = input === 'finger' ? 'a quick second finger tap' : 'a double-click';
+  test(`${twice} on the last letter lands on Next or Play as it appears, and does nothing`, async ({ page }) => {
+    // Children often tap or click twice. The page's clock stands still, so the second press comes the instant
+    // the button appears, however busy the machine is; it used to count because it began on the button.
+    await fixedRandom(page, 7);
+    const spoken = await recordSpeech(page);
+    await page.clock.install();
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+    await page.goto('/#/game/letters');
+    await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+    await expect(page.locator('.lb-tray button').first()).toBeVisible();
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+    const press = (el: Locator) => (input === 'finger' ? el.tap() : el.click());
+
+    /** For each puzzle, whether the second press landed on Next (puzzles 1 to 3) or Play Level 2 (puzzle 4). */
+    const under: boolean[] = [];
+    for (let n = 0; n < 4; n++) {
+      const answer = await lettersAnswer(page);
+      const tray = page.locator('.lb-tray');
+      for (const ch of answer.slice(0, -1)) await press(tray.getByRole('button', { name: ch, exact: true }).first());
+      const last = await centreOf(tray.getByRole('button', { name: answer[answer.length - 1], exact: true }).first());
+      if (input === 'finger') {
+        await page.touchscreen.tap(last.x, last.y);
+        await page.touchscreen.tap(last.x, last.y);
+      } else await page.mouse.dblclick(last.x, last.y);
+      const goOn = page.getByRole('button', { name: n < 3 ? 'Next puzzle' : 'Play Level 2' });
+      await expect(goOn).toBeVisible();
+      under.push(inside(last, (await goOn.boundingBox())!));
+
+      // The solved moment holds: its line, and the sound and word that follow the tap by 650 ms.
+      await page.clock.runFor(700);
+      await expect(help(page)).toHaveText(`${answer[0]} to ${answer[answer.length - 1]}, all in order.`);
+      await expect.poll(async () => (await spoken()).filter((s) => s.toLowerCase() === 'choo choo!').length).toBe(n + 1);
+      if (n === 3) break;
+      await expect(dots(page)).toHaveAttribute('aria-label', `Puzzle ${n + 1} of 4. ${n + 1} solved.`);
+      // Once it has been up a moment, a press on Next goes on.
+      await press(goOn);
+      await expect(dots(page)).toHaveAttribute('aria-label', `Puzzle ${n + 2} of 4. ${n + 1} solved.`);
+    }
+    // The last puzzle's second press did not press Play Level 2: the child stays on Level 1 and its card opens.
+    await expect(levelCard(page).getByRole('heading')).toHaveText('You finished Level 1');
+    await expect(page).toHaveURL(/#\/game\/letters\/1$/);
+    // The seed puts a last letter under Next and the last one under Play, so both buttons met the second press.
+    expect(under.slice(0, 3)).toContain(true);
+    expect(under[3]).toBe(true);
+  });
+}
+
+test('a finger tap on Next counts once Next has been up 350 ms, and a mouse click or Enter counts at once', async ({ page }) => {
+  await page.clock.install();
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/letters');
+  await expect(page.locator('.lb-tray button').first()).toBeVisible();
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+  const next = page.getByRole('button', { name: 'Next puzzle' });
+
+  // Puzzle 1: a finger tap 349 ms after Next appears does nothing; one at 350 ms goes on.
+  await solveLettersPuzzle(page);
+  await expect(next).toBeFocused();
+  await page.clock.runFor(349);
+  await next.tap();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 1 solved.');
+  await page.clock.runFor(1);
+  await next.tap();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+
+  // Puzzle 2: a mouse click the instant Next appears goes on (a mouse press is aimed at the button).
+  await solveLettersPuzzle(page);
+  await expect(next).toBeFocused();
+  await next.click();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 3 of 4. 2 solved.');
+
+  // Puzzle 3: so does Enter on the focused Next.
+  await solveLettersPuzzle(page);
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 4 of 4. 3 solved.');
+});
+
 /* ---------- Big and small on the small iPhone ---------- */
 
 test.describe('Big and small on a 375x667 phone', () => {
@@ -551,4 +651,25 @@ test.describe('Big and small on a 375x667 phone', () => {
       }
     });
   }
+});
+
+test.describe('Big and small on a 390x700 phone', () => {
+  // Just over the old 700px line: the 64px board needs 708px of screen, so it used to be cut off by 8px here.
+  test.use({ viewport: { width: 390, height: 700 } });
+
+  test('Level 11 with 8 pairs fits with no scrolling @phone-only', async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '9-10', games: { letters: { stars: starsUpTo(10) } } }]);
+    await page.goto('/#/game/letters');
+    await expect(page).toHaveURL(/#\/game\/letters\/11$/);
+    const bricks = page.locator('.lb-match .lb-brick');
+    await expect(bricks).toHaveCount(16);
+    const body = await page.locator('.lb-body').evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    expect(body.scroll).toBeLessThanOrEqual(body.client + 1);
+    const tiles = await bricks.evaluateAll((els) => els.map((el) => ({ w: (el as HTMLElement).offsetWidth, bottom: el.getBoundingClientRect().bottom })));
+    for (const t of tiles) {
+      // The short phone's 56px tiles: the fit above also holds when the label font falls back to a smaller one.
+      expect(t.w).toBe(56);
+      expect(t.bottom).toBeLessThanOrEqual(700);
+    }
+  });
 });

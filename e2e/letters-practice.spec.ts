@@ -21,6 +21,7 @@ import {
   seed,
   solveLettersPuzzle,
   starsUpTo,
+  STORAGE_KEY,
   type Band,
   type GameSeed,
 } from './app';
@@ -441,7 +442,11 @@ test('ages 3 to 4 on Level 1: the train lights only while the brick is over it, 
   // Nothing is lit before a drag, nor while the letter is still near the tray.
   await expect(slots(page)).not.toHaveClass(/is-over/);
   const b = answer[1];
-  await holdOver(page, b, { x: rowBox.x + rowBox.width / 2, y: rowBox.y + rowBox.height / 2 });
+  const from = (await trayTile(page, b).boundingBox())!;
+  await holdOver(page, b, { x: from.x + from.width / 2 + 10, y: from.y + from.height / 2 - 40 });
+  await expect(trayTile(page, b)).toHaveClass(/is-dragging/);
+  await expect(slots(page)).not.toHaveClass(/is-over/);
+  await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2, { steps: 8 });
   await expect(slots(page)).toHaveClass(/is-over/);
   // Carried on up to the middle of the picture, clear of the train: the light goes off.
   await page.mouse.move(picture.x + picture.width / 2, picture.y + picture.height / 2, { steps: 6 });
@@ -453,6 +458,78 @@ test('ages 3 to 4 on Level 1: the train lights only while the brick is over it, 
   expect(await row(page)).toEqual(empty(answer));
   await expect(help(page)).toHaveText(instruction);
 });
+
+test('ages 3 to 4 on Level 1: a brick held just clear of the train, above or below, does not light it and goes back', async ({ page }) => {
+  // The light and the drop agree at the edge: the brick drawn 4px off the row neither lights it nor goes in.
+  await open(page, '3-4');
+  const answer = await lettersAnswer(page);
+  const rowBox = (await slots(page).boundingBox())!;
+  const x = rowBox.x + rowBox.width / 2;
+  for (const side of ['above', 'below'] as const) {
+    await holdOver(page, answer[0], { x, y: rowBox.y + rowBox.height / 2 });
+    await expect(slots(page)).toHaveClass(/is-over/);
+    // The held brick is drawn bigger than in the tray (and bigger again in the tablet frame); its centre follows the finger.
+    const half = (await page.locator('.lb-brick.is-dragging').boundingBox())!.height / 2;
+    await page.mouse.move(x, side === 'above' ? rowBox.y - half - 4 : rowBox.y + rowBox.height + half + 4, { steps: 4 });
+    await expect(slots(page)).not.toHaveClass(/is-over/);
+    await page.mouse.up();
+    await expect(trayTile(page, answer[0])).toBeVisible();
+    await expect(trayTile(page, answer[0])).not.toHaveClass(/is-dragging/);
+    expect(await row(page)).toEqual(empty(answer));
+  }
+});
+
+/**
+ * Turn the sound on (seed turns it off) and record the pitch of every tone the app plays from here on.
+ * The tap sound (sfx.tap) is the one 520 Hz tone.
+ */
+async function recordTones(page: Page): Promise<() => Promise<number[]>> {
+  await page.addInitScript((key) => {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const state = JSON.parse(raw);
+      state.settings.sound = true;
+      localStorage.setItem(key, JSON.stringify(state));
+    }
+    const tones: number[] = [];
+    (window as unknown as { __tones: number[] }).__tones = tones;
+    const make = AudioContext.prototype.createOscillator;
+    AudioContext.prototype.createOscillator = function (this: AudioContext) {
+      const o = make.call(this);
+      const set = o.frequency.setValueAtTime.bind(o.frequency);
+      o.frequency.setValueAtTime = (value: number, time: number) => {
+        tones.push(value);
+        return set(value, time);
+      };
+      return o;
+    };
+  }, STORAGE_KEY);
+  return () => page.evaluate(() => (window as unknown as { __tones: number[] }).__tones.slice());
+}
+
+const TAP_TONE = 520;
+
+for (const ageBand of ['3-4', '5-6'] as Band[]) {
+  const practice = ageBand === '3-4';
+  test(`ages ${ageBand} on Level 1: a letter let go off the train ${practice ? 'answers with the tap sound' : 'stays quiet, as before'}`, async ({ page }) => {
+    await seed(page, [{ id: 'leo', name: 'Leo', ageBand }]);
+    const tones = await recordTones(page);
+    await page.goto('/#/game/letters');
+    await expect(tray(page).getByRole('button').first()).toBeVisible();
+    const answer = await lettersAnswer(page);
+    const instruction = ((await help(page).textContent()) ?? '').trim();
+    const taps = async () => (await tones()).filter((f) => f === TAP_TONE).length;
+    const before = await taps();
+
+    // Let go over the picture: the brick goes back, and on the practice level the child hears that it answered.
+    await pointerDrag(page, trayTile(page, answer[0]), page.locator('.lb-picture--label'));
+    await expect(trayTile(page, answer[0])).not.toHaveClass(/is-dragging/);
+    await expect.poll(taps).toBe(before + (practice ? 1 : 0));
+    expect(await row(page)).toEqual(empty(answer));
+    // The help line stays as it was.
+    await expect(help(page)).toHaveText(instruction);
+  });
+}
 
 test('ages 5 to 6 on Level 1: a letter let go just above the train is not taken and nothing lights', async ({ page }) => {
   // The overlap rule is practice only: ordered levels keep the finger test.

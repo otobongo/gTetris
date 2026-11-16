@@ -162,17 +162,20 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   const focusNext = useRef<'tray' | 'slot' | null>(null);
   const timer = useRef<number>(0);
   /**
-   * When Next or Play last appeared in the tray well, and whether a press has started on it since. The touch
-   * that placed the last letter can still send a click to the button that took its place: a pointer click
-   * counts only when the press began on the button or once it has been up 350 ms. Keyboard clicks always count.
+   * When Next or Play last appeared in the tray well, and whether a mouse press has started on it since. The
+   * touch that placed the last letter can still send a click to the button that took its place, and a child's
+   * quick second tap or click on that letter lands on the button too: a finger or pen click, or the second
+   * click of a double-click (detail 2), counts only once the button has been up 350 ms. A single mouse click
+   * that began on the button counts at once, and keyboard clicks (detail 0) always count.
    */
   const shownAt = useRef(0);
-  const pressedSlot = useRef(false);
+  const mousePressed = useRef(false);
   const showSlot = () => {
     shownAt.current = performance.now();
-    pressedSlot.current = false;
+    mousePressed.current = false;
   };
-  const strayClick = (e: MouseEvent) => e.detail > 0 && !pressedSlot.current && !readyAfter(shownAt.current, performance.now());
+  const strayClick = (e: MouseEvent) =>
+    e.detail > 0 && !(mousePressed.current && e.detail === 1) && !readyAfter(shownAt.current, performance.now());
 
   const limit = STUCK.letters[band];
   /** The puzzle on screen. It stays put after a solve, while the run's queue already points at the next one. */
@@ -359,7 +362,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     helpOverride: offer ? offerLine(spelling) : null,
     offer: offer ? <IconButton icon="swap" label={offerName(spelling)} variant="green" className="bw-appear" onClick={swap} /> : null,
     slot: slot ? (
-      <div ref={slotRef} className="lb-slot-wrap" onPointerDown={() => (pressedSlot.current = true)}>
+      <div ref={slotRef} className="lb-slot-wrap" onPointerDown={(e) => (mousePressed.current = e.pointerType === 'mouse')}>
         {slot}
       </div>
     ) : undefined,
