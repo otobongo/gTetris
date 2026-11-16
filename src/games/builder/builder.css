@@ -227,12 +227,44 @@
   pointer-events: none;
 }
 
-/* ---------- A short phone: the model panel gives up height first, then the board, never under 54 px squares ---------- */
+/* ---------- A short phone: the model panel gives up height first, then the board; the palette never covers it ----------
+   Under 780 px the board is sized from its stage, the height left between the help row and the palette: the stage
+   is a size container, and the grid is as wide as the stage is tall, less the well's padding and its 4 px ring.
+   So the board shrinks to fit and is never drawn under the controls slot. The palette keeps its 54 px swatches in
+   rows of 4 then 3 (brief 7.8). Under 720 px (375x667, a 390 iPhone in Safari at 664) the picture, the frame's
+   gaps and the well's padding give up more, so 5 by 5 squares stay 44 px or more. Shorter still, the stage keeps a
+   floor of 44 px squares and the play column scrolls instead; the board's touch-action: none keeps a stroke from
+   ever scrolling it. */
 @media (max-height: 820px) {
   .pb-model { zoom: 0.8; }
 }
 @media (max-height: 780px) {
-  .pb-board { zoom: 0.88; }
+  .pb-stage {
+    box-sizing: border-box;
+    padding-block: 4px; /* room for the well's 4 px ring */
+    container-type: size;
+    overflow: hidden;
+  }
+  .pb-grid { width: min(334px, calc(100cqh - 2 * var(--bw-sp-4)), calc(100cqw - 2 * var(--bw-sp-4) - 8px)); }
+}
+@media (max-height: 720px) {
+  /* The picture shrinks, not the Peek cover over it, so "Peek" keeps its 15 px label. */
+  .pb-model { zoom: 1; }
+  .pb-model__grid { zoom: 0.55; }
+  /* PlayScreen sets the frame's 14 px gap inline; on a short phone it is 10 px. */
+  .pb-screen {
+    row-gap: 10px !important;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .pb-board { padding: var(--bw-sp-3); }
+  .pb-grid { width: min(334px, calc(100cqh - 2 * var(--bw-sp-3)), calc(100cqw - 2 * var(--bw-sp-3) - 8px)); }
+  /* The floor: a 5 by 5 grid of 44 px squares (--bw-target, the smallest hit area) and its 4 gaps of 6 px, the
+     well's padding and its ring. Below it the play column scrolls. */
+  .pb-screen .bw-play__body {
+    flex: 1 0 auto;
+    min-height: calc(5 * var(--bw-target) + 4 * 6px + 2 * var(--bw-sp-3) + 8px);
+  }
 }
 
 /* ---------- Reduced motion (brief 9.1): lifts go, the bar jumps, changes crossfade over 150ms ---------- */

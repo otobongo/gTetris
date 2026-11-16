@@ -11,11 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
 <style>body{margin:0}</style>
 </helmet>
-<dc-import name="Builder" level="11" moment="play" hint-size="390px,844px"></dc-import>
+<dc-import name="Builder" device="{{device}}" level="11" moment="play" hint-size="390px,844px"></dc-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","short"],"default":"phone"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
-  renderVals() { return {}; }
+  // short: the same 5 by 5 board on a 375x667 phone, fitted above the palette (see Builder's short device).
+  renderVals() { return { device: this.props.device ?? 'phone' }; }
 }
 </script>
 </body>
