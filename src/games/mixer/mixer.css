@@ -149,6 +149,12 @@
   line-height: 1.1;
   color: var(--bw-text);
 }
+/* Before a mix (no colour made yet) the name is a quiet prompt in the help size and colour, so the help line
+   stays the instruction a child reads first. The block keeps its 64px, so nothing below it moves. */
+.mix-result__name.is-empty {
+  font-size: var(--bw-fs-panel);
+  color: var(--bw-text-2);
+}
 .mix-result__text {
   font-size: var(--bw-fs-body);
   font-weight: 700;
@@ -207,4 +213,7 @@
   .mix-slot.is-wrong { transform: none; }
   .mix-pot:active .mix-swatch { transform: none; }
   .mix-swatch { transition: none; }
+  /* The 150ms fades above beat the global 0.01ms rule in global.css. */
+  .mix-bowl__liquid,
+  .mix-slot { transition-duration: 150ms !important; }
 }
