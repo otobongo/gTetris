@@ -106,7 +106,7 @@ describe('decision 11: the line while paused', () => {
   it('is "Paused. Press any button to play." and fits the 44 character help line', () => {
     expect(PAUSED_LINE).toBe('Paused. Press any button to play.');
     expect(PAUSED_LINE.length).toBeLessThanOrEqual(44);
-    expect(PAUSED_LINE).not.toMatch(/[–—]/);
+    expect(PAUSED_LINE).not.toMatch(/[\u2013\u2014]/);
   });
 
   it('is the help line while paused, and the waiting and solved lines stay as they are', () => {
