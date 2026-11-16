@@ -1,10 +1,12 @@
 /**
  * Brick Escape's four-puzzle levels (brief 2, 4.1, 5, 7.1, 9): the six boards of each level, the run rules
  * the progress store needs, which route plays what, and the lines the play screen and the level card show.
- * Pure: no React, no store writes.
+ * Pure: no React, and no store writes except levelSticker, which writes through the store it is handed.
  */
-import type { PuzzleResult, PuzzleRules } from '../../shared/progress';
-import { capRule } from '../stars';
+import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
+import type { ProgressStore, PuzzleResult, PuzzleRules } from '../../shared/progress';
+import type { BrickColor } from '../../shared/ui/palette';
+import { capRule, levelCaps } from '../stars';
 import { LEVEL_STAR_RULES, escapeLevelStars, escapeSet, levelTotals } from '../run';
 import { type Level, fromSpec } from './engine';
 import { PUZZLE_DATA } from './puzzles.data';
@@ -106,4 +108,35 @@ export function levelCard(
 /** The finished card (2.5, 9.1): "You finished every level!" and "31 levels, 78 of 93 stars." */
 export function finishedCard(totalStars: number, levelCount = PUZZLE_LEVELS.length): CardCopy {
   return { title: 'You finished every level!', fact: `${levelCount} levels, ${totalStars} of ${levelCount * 3} stars.`, primary: 'Back to games', home: true };
+}
+
+/* ---------- the hint cap mark and the level card's sticker (round 2, decisions 25 and 19) ---------- */
+
+/**
+ * A counted hint caps this level: one used on the board on screen, or on any puzzle of the level already
+ * solved. The same rule as the level card's cap line (levelTotals). A hint on a board swapped away is gone
+ * with it (3.3), because the board on screen starts with no hint.
+ */
+export function hintCapped(usedHint: boolean, solved: readonly PuzzleResult[]): boolean {
+  return levelCaps([...solved, { usedHint }]).usedHint;
+}
+
+/** The new sticker on the level card: its name and its 25 mosaic squares, row by row. */
+export interface CardSticker {
+  name: string;
+  cells: (BrickColor | null)[];
+}
+
+/**
+ * When a level finishes: give this game's stickers that are now due to `playerId`, and return the first one
+ * for the level card. Run it once, after the fourth solve is saved; afterwards stickersDue no longer lists
+ * them, so keep what it returns. Other games' stickers stay for Home and the sticker book to give.
+ */
+export function levelSticker(store: Pick<ProgressStore, 'getState' | 'awardSticker'>, playerId: string | null | undefined, game: string = GAME): CardSticker | undefined {
+  const player = playerId ? (store.getState().players.find((p) => p.id === playerId) ?? null) : null;
+  if (!player) return undefined;
+  const mine = stickersDue(player).filter((id) => STICKERS.find((s) => s.id === id)?.game === game);
+  for (const id of mine) store.awardSticker(id, player.id);
+  const first = STICKERS.find((s) => s.id === mine[0]);
+  return first ? { name: first.name, cells: stickerCells(first) } : undefined;
 }

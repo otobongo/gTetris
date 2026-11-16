@@ -52,3 +52,13 @@ export function slidLine(color: Color, from: Cell, to: Cell): string {
   if (from[0] !== to[0] && from[1] !== to[1]) return `${cap(color)} brick slid to row ${to[0] + 1}, column ${to[1] + 1}.`;
   return from[0] !== to[0] ? moveLine(color, 'row', to[0]) : moveLine(color, 'column', to[1]);
 }
+
+/** A tap target (decision 1): 'Slide Red brick to row 2, column 3', where the brick's top left square lands. */
+export function slideTargetLabel(color: Color, at: Cell): string {
+  return `Slide ${cap(color)} brick to row ${at[0] + 1}, column ${at[1] + 1}`;
+}
+
+/** The tap target on a brick's own open door: 'Take Red brick out through its door'. */
+export function exitTargetLabel(color: Color): string {
+  return `Take ${cap(color)} brick out through its door`;
+}

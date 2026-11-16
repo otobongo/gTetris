@@ -1,7 +1,8 @@
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
-import { activePlayer, freshRun, progressStore, runOf, totalStars, useActivePlayer } from '../../shared/progress';
+import { say } from '../../shared/speech';
+import { activePlayer, freshRun, progressStore, runOf, totalStars, useActivePlayer, useSettings } from '../../shared/progress';
 import type { AgeBand, LevelRun, PuzzleResult, TimerMode } from '../../shared/progress';
 import { IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, Brick, TopBar } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
@@ -34,8 +35,12 @@ import {
   withMove,
 } from './engine';
 import { EXIT_PAST, dragStep, keyStep } from './drag';
-import { brickLabel, doorLabel, exitLine, moveLine, slidLine } from './labels';
+import { pastThreshold } from '../kit/dragToTarget';
+import { brickLabel, doorLabel, exitLine, exitTargetLabel, moveLine, slidLine, slideTargetLabel } from './labels';
+import { markFill, markPath, markSize, MARK_MIN, MARKS } from './marks';
+import { NO_MOVE_LINE, SELECT_LINE, type TapTarget, tapButtons, tapMove } from './tap';
 import {
+  type CardSticker,
   FINISHED_NOTE,
   GAME,
   HELP_LINE,
@@ -47,7 +52,9 @@ import {
   clockCaption,
   escapeRules,
   finishedCard,
+  hintCapped,
   levelCard,
+  levelSticker,
   solvedLine,
 } from './puzzles';
 import { solve } from './solver';
@@ -130,6 +137,8 @@ interface Drag {
   moved: boolean;
   /** the brick was pulled into its door at some point in this drag */
   pulled: boolean;
+  /** the pointer travelled 8 px (the kit's drag threshold) at some point: a drag, never a tap */
+  far: boolean;
 }
 
 /** A brick being dragged out through its door: how far it shows past the edge, in squares. */
@@ -152,6 +161,8 @@ interface Finish {
   results: PuzzleResult[];
   next: number | null;
   total: number;
+  /** the sticker this level just earned, taken once when it finished (decision 19) */
+  sticker?: CardSticker;
 }
 
 const HOME = '/';
@@ -208,12 +219,20 @@ export default function SlideGame({ index }: { index: number }) {
   const [exiting, setExiting] = useState<{ block: number; side: Side } | null>(null);
   const [bumped, setBumped] = useState<number | null>(null);
   const [pull, setPull] = useState<Pull | null>(null);
+  /** the brick picked with a tap, waiting for a tap on where it should slide (decision 1) */
+  const [selected, setSelected] = useState<number | null>(null);
+  /** the help line's height when a brick was picked: its line keeps that room, so the board never jumps between the two taps */
+  const [helpHold, setHelpHold] = useState<string | null>(null);
+  const helpEl = useRef<HTMLParagraphElement>(null);
+  const { voice } = useSettings();
   const [tLeft, setTLeft] = useState(clock.seconds);
   /** The hidden status line read out after a move or an exit. `n` counts the lines, so the same words said twice are read twice. */
   const [said, setSaid] = useState({ text: '', n: 0 });
   const announce = useCallback((text: string) => setSaid((s) => ({ text, n: s.n + 1 })), []);
 
   const drag = useRef<Drag | null>(null);
+  /** how the last pointer press on a brick ended, for the click after it: a tap selects, a drag never does */
+  const press = useRef<{ block: number; tap: boolean } | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
   const movesRef = useRef(moves);
@@ -267,6 +286,7 @@ export default function SlideGame({ index }: { index: number }) {
     setExiting(null);
     setBumped(null);
     setPull(null);
+    setSelected(null);
     announce('');
   };
 
@@ -332,10 +352,14 @@ export default function SlideGame({ index }: { index: number }) {
       };
       const outcome = progressStore.recordPuzzle(GAME, index, result, escapeRules(index));
       phaseRef.current = 'solved';
+      setSelected(null);
       sfx.win();
       if (outcome.kind === 'finished') {
-        const total = totalStars(activePlayer(progressStore.getState()), GAME);
-        setFinish({ stars: outcome.stars, results: outcome.results, next: outcome.next, total });
+        const saved = activePlayer(progressStore.getState());
+        const total = totalStars(saved, GAME);
+        // once, now: after the award stickersDue no longer lists it, so the card keeps what this returns
+        const sticker = levelSticker(progressStore, saved?.id);
+        setFinish({ stars: outcome.stars, results: outcome.results, next: outcome.next, total, sticker });
         setPhase('done');
         later(() => setCardOpen(true), LEVEL_CARD_DELAY_MS);
         return;
@@ -367,6 +391,7 @@ export default function SlideGame({ index }: { index: number }) {
       movesRef.current = before.moves + 1;
       setMoves(movesRef.current);
       setHintBlock(null);
+      setSelected(null);
       setNote('');
       setStuck((s) => stuckStep(s, { type: 'moves', moves: movesRef.current, best: levelRef.current.par }, limit));
     },
@@ -379,7 +404,8 @@ export default function SlideGame({ index }: { index: number }) {
       const color = levelRef.current.blocks[block].color;
       setExiting({ block, side: gate.side });
       // keyboard players keep their place: focus moves to another brick when this one leaves
-      const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-brick');
+      const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.matches('.esc-brick, .esc-target');
+      setSelected(null);
       later(() => {
         const ns = withMove(stateRef.current, block, null);
         stateRef.current = ns;
@@ -420,7 +446,8 @@ export default function SlideGame({ index }: { index: number }) {
     }
     const start = stateRef.current.pos[block];
     if (!start) return;
-    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start, before: { state: stateRef.current, moves: movesRef.current }, moved: false, pulled: false };
+    drag.current = { block, pointerId: e.pointerId, x0: e.clientX, y0: e.clientY, start, before: { state: stateRef.current, moves: movesRef.current }, moved: false, pulled: false, far: false };
+    press.current = null;
     keySession.current = null;
   };
 
@@ -430,6 +457,11 @@ export default function SlideGame({ index }: { index: number }) {
    * Returns true when the brick left.
    */
   const follow = (e: PointerEvent<HTMLButtonElement>, d: Drag): boolean => {
+    // past 8 px a press is a drag for good: it lets go of any picked brick and its release is never a tap
+    if (!d.far && pastThreshold(e.clientX - d.x0, e.clientY - d.y0)) {
+      d.far = true;
+      setSelected(null);
+    }
     // pointer distance is in screen px; the tablet frame is zoomed, so measure one square on screen
     const unit = e.currentTarget.getBoundingClientRect().width / ((blockSize(level.blocks[d.block]).w * cell - 4) / cell);
     const s = stateRef.current;
@@ -474,6 +506,7 @@ export default function SlideGame({ index }: { index: number }) {
     const left = follow(e, d);
     drag.current = null;
     setPull(null);
+    press.current = { block: d.block, tap: !left && !d.far && !d.moved && !d.pulled };
     if (!left) sayWhereItWent(d);
     // pushed into a wall or another brick: a small nudge says it can not go there
     if (!left && !d.moved && !d.pulled && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
@@ -511,6 +544,58 @@ export default function SlideGame({ index }: { index: number }) {
     announce(moveLine(level.blocks[block].color, dir[0] ? 'row' : 'column', dir[0] ? res.at[0] : res.at[1]));
   };
 
+  /*
+   * ---------- tap: pick a brick, then tap where it should slide (decision 1) ----------
+   * The click after a press that stayed under 8 px, a mouse click, and the synthetic click VoiceOver and Switch
+   * Control send all pick the brick. A press that became a drag never does. A second tap on the picked brick
+   * lets it go, so a palm resting on the board never moves anything.
+   */
+  const onBrickClick = (block: number) => {
+    const p = press.current;
+    press.current = null;
+    if (busy || (p && (p.block !== block || !p.tap))) return;
+    keySession.current = null;
+    if (selected === null && helpEl.current) setHelpHold(getComputedStyle(helpEl.current).height);
+    setSelected(selected === block ? null : block);
+  };
+
+  /** A tap on a ringed square or the picked brick's door: one move, read out like a drag. */
+  const onTarget = (block: number, target: TapTarget) => {
+    if (busy) return;
+    const from = stateRef.current.pos[block];
+    const res = from ? tapMove(level, stateRef.current, block, target) : null;
+    setSelected(null);
+    if (!from || !res) return;
+    const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-target');
+    keySession.current = null;
+    beginMove({ state: stateRef.current, moves: movesRef.current });
+    if (res.kind === 'exit') {
+      if (res.from[0] !== from[0] || res.from[1] !== from[1]) slideTo(block, res.from);
+      leave(block, level.gates[res.gate]);
+      return;
+    }
+    slideTo(block, res.at);
+    announce(slidLine(level.blocks[block].color, from, res.at));
+    // the target that had focus is gone: keyboard and VoiceOver users stay on the brick they moved
+    if (hadFocus) focusLater(`.esc-brick[data-block="${block}"]`);
+  };
+
+  /** A tap anywhere on the board that is not a brick or a target lets the picked brick go. */
+  const onBoardClick = (e: MouseEvent<HTMLDivElement>) => {
+    if (selected === null || (e.target instanceof Element && e.target.closest('.esc-brick, .esc-target'))) return;
+    setSelected(null);
+  };
+
+  // Escape lets the picked brick go, wherever focus is
+  useEffect(() => {
+    if (selected === null) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected]);
+
   /* ---------- tools ---------- */
   const undo = () => {
     if (!history.length || busy) return;
@@ -521,6 +606,7 @@ export default function SlideGame({ index }: { index: number }) {
     setMoves(last.moves);
     setHistory((h) => h.slice(0, -1));
     setHintBlock(null);
+    setSelected(null);
     setNote('');
     announce('');
     keySession.current = null;
@@ -535,6 +621,7 @@ export default function SlideGame({ index }: { index: number }) {
     if (next === null) return;
     setUsedHint(true);
     setHintBlock(next);
+    setSelected(null);
   };
 
   /** Next puzzle: Break first when the daily limit is used up (2.4), else the next unsolved puzzle. */
@@ -579,9 +666,15 @@ export default function SlideGame({ index }: { index: number }) {
   const timeUp = clock.kind === 'counted' && tLeft <= 0 && playing;
   const lockMsg = lockLine(level, state);
   const offer = playing && stuck.offer;
+  const picked = playing && !exiting && selected !== null && state.pos[selected] ? selected : null;
+  const pickedTargets = picked !== null ? tapButtons(level, state, picked) : [];
   const help = !playing
     ? solvedLine(moves)
-    : offer
+    : picked !== null
+      ? pickedTargets.length
+        ? SELECT_LINE
+        : NO_MOVE_LINE
+      : offer
       ? OFFER_LINE
       : note
         ? note
@@ -602,7 +695,7 @@ export default function SlideGame({ index }: { index: number }) {
       <TopBar
         title={`Level ${index + 1}`}
         backLabel="Back to home"
-        below={<PuzzleDots solved={solvedDots} puzzle={dotOnScreen} />}
+        below={<PuzzleDots solved={solvedDots} puzzle={dotOnScreen} capped={hintCapped(usedHint, finish?.results ?? run.solved)} />}
         action={playing ? <IconButton icon="restart" label="Restart puzzle" onClick={restart} /> : undefined}
       />
 
@@ -633,7 +726,7 @@ export default function SlideGame({ index }: { index: number }) {
       </section>
 
       <div className="esc-stage" ref={stage}>
-        <Tray level={level} cell={cell}>
+        <Tray level={level} cell={cell} onClick={onBoardClick}>
           {level.stone?.flatMap((row, r) =>
             row.map((s, c) =>
               s ? (
@@ -650,13 +743,16 @@ export default function SlideGame({ index }: { index: number }) {
             return (
               <BrickPiece
                 key={`${puzzle}-${b.id}`}
+                index={i}
                 block={b}
                 at={p}
                 cell={cell}
                 exiting={exiting?.block === i ? exiting.side : null}
                 pull={pull?.block === i ? pull : null}
                 hinted={hintBlock === i}
+                selected={picked === i}
                 bumped={bumped === i}
+                onClick={() => onBrickClick(i)}
                 onPointerDown={(e) => onPointerDown(e, i)}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -665,10 +761,14 @@ export default function SlideGame({ index }: { index: number }) {
               />
             );
           })}
+          {picked !== null &&
+            pickedTargets.map((t) => (
+              <Target key={t.kind === 'exit' ? `x${t.gate}` : `s${t.at[0]}-${t.at[1]}`} level={level} block={picked} target={t} cell={cell} onTap={() => onTarget(picked, t)} />
+            ))}
         </Tray>
       </div>
 
-      <p className="esc-help" aria-live="polite">
+      <p className="esc-help" aria-live="polite" ref={helpEl} style={picked !== null && helpHold ? { minHeight: helpHold } : undefined}>
         {help}
       </p>
       {/* VoiceOver hears where each brick went; the line on screen stays the help line */}
@@ -677,7 +777,8 @@ export default function SlideGame({ index }: { index: number }) {
       </span>
 
       <div className="esc-tools">
-        <span aria-hidden="true" />
+        {/* Voice on: a speaker reads the help line on screen now, and only when it is tapped (decisions 17, 20) */}
+        {voice ? <IconButton icon="speaker" label="Hear the help line" className="esc-tool esc-speaker" onClick={() => say(help)} /> : <span aria-hidden="true" />}
         <div className="esc-tools__centre">
           {playing && (
             <>
@@ -696,7 +797,7 @@ export default function SlideGame({ index }: { index: number }) {
             </PressButton>
           )}
         </div>
-        <div className="esc-tools__end">{offer && <IconButton icon="swap" label="New puzzle" onClick={swap} variant="green" className="esc-tool esc-offer bw-appear" />}</div>
+        <div className="esc-tools__end">{offer && <IconButton icon="swap" label="New puzzle" onClick={swap} variant="green" className="esc-tool esc-offer bw-appear" cue={age.band === '3-4'} />}</div>
       </div>
 
       {phase === 'done' && finish && card && cardOpen && (
@@ -706,6 +807,7 @@ export default function SlideGame({ index }: { index: number }) {
           fact={card.fact}
           rule={card.rule}
           cap={card.cap}
+          sticker={finish.sticker}
           primary={card.home ? { label: card.primary, href: toHref(HOME) } : { label: card.primary, onClick: playNextLevel }}
           secondary={card.home ? undefined : { label: 'Back to games', href: toHref(HOME) }}
           onClose={closeCard}
@@ -744,7 +846,7 @@ export function EscapeFinished() {
 }
 
 /** The tray: its frame and wells, with the doors, stones and bricks drawn inside. */
-function Tray({ level, cell, children }: { level: Level; cell: number; children?: ReactNode }) {
+function Tray({ level, cell, children, onClick }: { level: Level; cell: number; children?: ReactNode; onClick?: (e: MouseEvent<HTMLDivElement>) => void }) {
   const gridPx = cell * level.cols;
   const gridPy = cell * level.rows;
   const frames = useMemo(() => {
@@ -769,7 +871,8 @@ function Tray({ level, cell, children }: { level: Level; cell: number; children?
     return out;
   }, [level, cell]);
   return (
-    <div className="esc-board" style={{ width: gridPx + PAD * 2, height: gridPy + PAD * 2 }}>
+    // the click only lets a picked brick go; Escape does the same from the keyboard
+    <div className="esc-board" style={{ width: gridPx + PAD * 2, height: gridPy + PAD * 2 }} onClick={onClick}>
       <div className="esc-board__grid" style={{ left: PAD, top: PAD, width: gridPx, height: gridPy }}>
         {frames.map((f) => (
           <div key={`f${f.key}`} className={`esc-frame${f.bottom ? ' is-bottom' : ''}`} style={f.style} />
@@ -786,22 +889,27 @@ function Tray({ level, cell, children }: { level: Level; cell: number; children?
 /* ---------- pieces ---------- */
 
 function BrickPiece({
+  index,
   block,
   at,
   cell,
   exiting,
   pull,
   hinted,
+  selected,
   bumped,
   ...handlers
 }: {
+  index: number;
   block: BlockDef;
   at: Cell;
   cell: number;
   exiting: Side | null;
   pull: { side: Side; depth: number } | null;
   hinted: boolean;
+  selected: boolean;
   bumped: boolean;
+  onClick: () => void;
   onPointerDown: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (e: PointerEvent<HTMLButtonElement>) => void;
@@ -827,30 +935,54 @@ function BrickPiece({
     <button
       type="button"
       className={cls}
+      data-block={index}
       style={{ width: w * cell - 4, height: h * cell - 4, transform: `translate(${x}px, ${y}px)` }}
       aria-label={brickLabel(block, at)}
+      aria-pressed={selected}
       aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
       {...handlers}
     >
-      <Brick color={block.color} stud={cell} width={w * cell - 4} height={h * cell - 4} radius={9} className="esc-brick__face" />
+      <Brick color={block.color} stud={cell} width={w * cell - 4} height={h * cell - 4} radius={9} className="esc-brick__face">
+        <Mark color={block.color} size={markSize(cell)} />
+      </Brick>
     </button>
+  );
+}
+
+/** A colour's geometric mark (decision 2): a plain shape pressed into the plastic, hidden from VoiceOver (the name has the colour). */
+function Mark({ color, size }: { color: BlockDef['color']; size: number }) {
+  return (
+    <svg className="esc-mark" data-shape={MARKS[color].shape} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d={markPath(color)} fill={markFill(color)} fillRule="evenodd" />
+    </svg>
   );
 }
 
 const ARROW: Record<Side, string> = { right: 'M9 6l6 6-6 6', left: 'M15 6l-6 6 6 6', top: 'M6 15l6-6 6 6', bottom: 'M6 9l6 6 6-6' };
 
-function Door({ level, gate, cell, state }: { level: Level; gate: GateDef; cell: number; state: State }) {
+interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Where a door sits, in the grid's px: in the frame, just outside its squares, 4 px in from each end. */
+function doorBox(level: Level, gate: GateDef, cell: number): Box {
   const d = gateDepth(level, gate);
   const span = gate.len * cell - 8;
   const thick = PAD - 4;
-  const style: CSSProperties =
-    gate.side === 'right'
-      ? { left: (d + 1) * cell + 2, top: gate.at * cell + 4, width: thick, height: span }
-      : gate.side === 'left'
-        ? { left: d * cell - PAD + 2, top: gate.at * cell + 4, width: thick, height: span }
-        : gate.side === 'bottom'
-          ? { left: gate.at * cell + 4, top: (d + 1) * cell + 2, width: span, height: thick }
-          : { left: gate.at * cell + 4, top: d * cell - PAD + 2, width: span, height: thick };
+  return gate.side === 'right'
+    ? { left: (d + 1) * cell + 2, top: gate.at * cell + 4, width: thick, height: span }
+    : gate.side === 'left'
+      ? { left: d * cell - PAD + 2, top: gate.at * cell + 4, width: thick, height: span }
+      : gate.side === 'bottom'
+        ? { left: gate.at * cell + 4, top: (d + 1) * cell + 2, width: span, height: thick }
+        : { left: gate.at * cell + 4, top: d * cell - PAD + 2, width: span, height: thick };
+}
+
+function Door({ level, gate, cell, state }: { level: Level; gate: GateDef; cell: number; state: State }) {
+  const style: CSSProperties = doorBox(level, gate, cell);
   const locked = isLocked(gate, state, level);
   const count = locksLeft(gate, state);
   const upright = gate.side === 'left' || gate.side === 'right';
@@ -862,10 +994,62 @@ function Door({ level, gate, cell, state }: { level: Level; gate: GateDef; cell:
           {count > 0 && <span>{count}</span>}
         </span>
       ) : (
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="esc-door__arrow">
-          <path d={ARROW[gate.side]} />
-        </svg>
+        // the door's mark beside its chevron: side by side on a top or bottom door, stacked on a side door
+        <span className={`esc-door__open${upright ? ' is-upright' : ''}`}>
+          <Mark color={gate.color} size={MARK_MIN} />
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="esc-door__arrow">
+            <path d={ARROW[gate.side]} />
+          </svg>
+        </span>
       )}
     </div>
+  );
+}
+
+/** The least a tap target is across, in the frame's px (HIG 44 pt). */
+const MIN_HIT = 44;
+
+/**
+ * A place the picked brick can slide to (a faint ring in the free squares at its leading edge once there), or
+ * its own open door. The door's button grows outward, away from the squares, and along the door to 44 px, and
+ * reaches into the free squares beside the door, so it never covers a brick.
+ */
+function Target({ level, block, target, cell, onTap }: { level: Level; block: number; target: TapTarget; cell: number; onTap: () => void }) {
+  const color = level.blocks[block].color;
+  const cells = target.kind === 'slide' ? target.cells : target.reach;
+  const rows = cells.map((c) => c[0]);
+  const cols = cells.map((c) => c[1]);
+  const strip: Box | null = cells.length
+    ? {
+        left: Math.min(...cols) * cell,
+        top: Math.min(...rows) * cell,
+        width: (Math.max(...cols) - Math.min(...cols) + 1) * cell,
+        height: (Math.max(...rows) - Math.min(...rows) + 1) * cell,
+      }
+    : null;
+  if (target.kind === 'slide') {
+    return <button type="button" className="esc-target" style={strip ?? undefined} aria-label={slideTargetLabel(color, target.at)} onClick={onTap} />;
+  }
+  const gate = level.gates[target.gate];
+  const door = doorBox(level, gate, cell);
+  const hit = { ...door };
+  const grow = (n: number) => Math.max(0, MIN_HIT - n);
+  if (gate.side === 'left' || gate.side === 'right') {
+    hit.width = door.width + grow(door.width);
+    if (gate.side === 'left') hit.left = door.left - grow(door.width);
+    hit.top = door.top - grow(door.height) / 2;
+    hit.height = door.height + grow(door.height);
+  } else {
+    hit.height = door.height + grow(door.height);
+    if (gate.side === 'top') hit.top = door.top - grow(door.height);
+    hit.left = door.left - grow(door.width) / 2;
+    hit.width = door.width + grow(door.width);
+  }
+  const inside = (b: Box): CSSProperties => ({ left: b.left - hit.left, top: b.top - hit.top, width: b.width, height: b.height });
+  return (
+    <button type="button" className="esc-target is-exit" style={hit} aria-label={exitTargetLabel(color)} onClick={onTap}>
+      <span className="esc-target__door" style={inside(door)} />
+      {strip && <span className="esc-target__reach" style={inside(strip)} />}
+    </button>
   );
 }
