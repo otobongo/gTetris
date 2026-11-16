@@ -131,6 +131,12 @@ div.sort-hole { cursor: default; }
   font-weight: 800;
   line-height: 1;
 }
+/* Before the first placement the badge is an empty slot, sunk into the bar like the tray well; the accent
+   fill is kept for badges the child has earned, so nothing yellow sits there looking like a Hint button. */
+.sort-fact__badge.is-empty {
+  background: var(--bw-well);
+  box-shadow: inset 0 0 0 2px var(--bw-decor);
+}
 .sort-fact__text {
   min-width: 0;
   font-size: var(--bw-fs-body);

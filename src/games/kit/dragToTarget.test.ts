@@ -46,6 +46,8 @@ const up = (target: string | null, pointerId = 1): DragInput<Item> => ({ type: '
 const cancel = (pointerId = 1): DragInput<Item> => ({ type: 'cancel', pointerId });
 const click = (keyboard = false): DragInput<Item> => ({ type: 'click', keyboard });
 
+const kinds = (effects: DragEffect<Item>[]) => effects.map((e) => e.kind);
+
 /** A full drag of `red` from (100, 100) past the threshold, released over `target`. */
 const dragged = (target: string | null) => drive([down('red'), move(120, 100), up(target)]);
 
@@ -425,6 +427,231 @@ describe('the click after a drag', () => {
   it('after a lost drag, the next pointerdown still clears it, so the next tap counts', () => {
     const lost = drive([down('red'), move(120, 100), cancel()]).track;
     expect(drive([down('red'), up(null), click()], lost).last).toEqual({ kind: 'click' });
+  });
+});
+
+/**
+ * A resting palm or a second hand on one tray piece must not block a real drag of another (the
+ * kit drag takeover, found with multi-touch on iPad). With `takeover` on the press, a new finger
+ * replaces a press that has never moved; a drag under way still keeps its finger.
+ */
+describe('a new finger takes over a still press (takeover)', () => {
+  /** A pointerdown that may take over a still press. */
+  const grab = (item: Item, x: number, y: number, pointerId: number): DragInput<Item> => ({ type: 'down', item, pointerId, point: { x, y }, takeover: true });
+  /** A click on an item, as the hook sends it: the item it landed on. */
+  const clickOn = (item: Item): DragInput<Item> => ({ type: 'click', item });
+
+  /** (a) A palm rests on red (pointer 1), then a finger drags blue (pointer 2) onto the circle hole. */
+  const palmThenDrag = () => drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), move(320, 100, 1, 2), up('circle', 2)]);
+
+  it('(a) a still press on one item, then a drag of another, drops the dragged one, exactly once', () => {
+    const r = palmThenDrag();
+    expect(r.effects.filter((e) => e.kind === 'drop')).toEqual([{ kind: 'drop', item: 'blue', target: 'circle' }]);
+    expect(r.effects.filter((e) => e.kind === 'start')).toEqual([{ kind: 'start', item: 'blue', offset: { x: 20, y: 0 } }]);
+    expect(r.track.phase.kind).toBe('idle');
+  });
+
+  it('(a) the takeover tells the hook which pointer to let go of', () => {
+    const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2)]);
+    expect(r.effects[1]).toEqual({ kind: 'release', item: 'red', pointerId: 1 });
+    expect(r.track.phase).toEqual({ kind: 'pressed', item: 'blue', pointerId: 2, start: { x: 300, y: 100 } });
+  });
+
+  it('(a) the resting finger cannot cancel or drop anything, and once the new finger drags it cannot move anything', () => {
+    // a wiggle under the threshold, the lost capture the release sends, then the new finger drags
+    const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), move(104, 102, 1, 1), cancel(1), move(320, 100, 1, 2), move(200, 300, 1, 1)]);
+    expect(kinds(r.effects)).toEqual(['none', 'release', 'none', 'none', 'start', 'none']);
+    expect(r.track.phase).toMatchObject({ kind: 'dragging', item: 'blue', pointerId: 2 });
+    expect(drive([up('circle', 1)], r.track).last).toEqual({ kind: 'none' });
+  });
+
+  it('(b) after the drop, the resting finger’s release does nothing and the click on its item is swallowed', () => {
+    const afterDrop = palmThenDrag().track;
+    const lift = dragStep(afterDrop, up('square', 1));
+    expect(lift.effect).toEqual({ kind: 'none' });
+    expect(lift.track.phase.kind).toBe('idle');
+    expect(dragStep(lift.track, clickOn('red')).effect).toEqual({ kind: 'swallow' });
+  });
+
+  it('(b) the swallow is for the resting item even once the drag’s own click is spent', () => {
+    // the browser's click after the drag lands on blue and uses the drag's flag
+    const spent = drive([clickOn('blue')], palmThenDrag().track);
+    expect(spent.last).toEqual({ kind: 'swallow' });
+    expect(spent.track.swallowClick).toBe(false);
+    const r = drive([up(null, 1), clickOn('red')], spent.track);
+    expect(r.effects).toEqual([{ kind: 'none' }, { kind: 'swallow' }]);
+  });
+
+  it('(b) only that one click is swallowed: the next tap on the item counts', () => {
+    const r = drive([clickOn('blue'), up(null, 1), clickOn('red'), grab('red', 100, 100, 3), up(null, 3), clickOn('red')], palmThenDrag().track);
+    expect(kinds(r.effects)).toEqual(['swallow', 'none', 'swallow', 'none', 'none', 'click']);
+  });
+
+  it('(b) the resting finger lifting while the new finger is still down does nothing to the new press', () => {
+    const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), up(null, 1), clickOn('red')]);
+    expect(kinds(r.effects)).toEqual(['none', 'release', 'none', 'swallow']);
+    expect(r.track.phase).toMatchObject({ kind: 'pressed', item: 'blue', pointerId: 2 });
+    expect(drive([move(320, 100, 1, 2), up('circle', 2)], r.track).last).toEqual({ kind: 'drop', item: 'blue', target: 'circle' });
+  });
+
+  it('(c) two still presses, released in either order, give one tap: the press still tracked', () => {
+    const orders: DragInput<Item>[][] = [
+      [up(null, 1), clickOn('red'), up(null, 2), clickOn('blue')],
+      [up(null, 2), clickOn('blue'), up(null, 1), clickOn('red')],
+      [up(null, 2), up(null, 1), clickOn('blue'), clickOn('red')],
+      [up(null, 1), up(null, 2), clickOn('red'), clickOn('blue')],
+    ];
+    for (const rest of orders) {
+      const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), ...rest]);
+      const name = rest.map((i) => (i.type === 'click' ? `click ${i.item}` : `up ${i.pointerId}`)).join(', ');
+      // the one click that counts is blue's: the click on red is swallowed
+      const counted = rest.filter((_, i) => r.effects[i + 2].kind === 'click');
+      expect(counted, name).toEqual([clickOn('blue')]);
+      expect(r.track.phase.kind, name).toBe('idle');
+    }
+  });
+
+  it('(d) a second finger during a drag is still ignored, takeover or not', () => {
+    const dragging = drive([grab('red', 100, 100, 1), move(120, 100)]).track;
+    const second = dragStep(dragging, grab('blue', 300, 300, 2));
+    expect(second.effect).toEqual({ kind: 'none' });
+    expect(second.track).toBe(dragging);
+    const r = drive([move(350, 300, 1, 2), up('square', 2), cancel(2), move(130, 100), up('circle')], second.track);
+    expect(kinds(r.effects)).toEqual(['none', 'none', 'none', 'move', 'drop']);
+    expect(r.last).toEqual({ kind: 'drop', item: 'red', target: 'circle' });
+  });
+
+  it('(d) the finger ignored during a drag does not have its later click swallowed by a takeover', () => {
+    // pointer 2 came down during the drag: it was ignored, not taken over, so nothing marks it
+    const r = drive([grab('red', 100, 100, 1), move(120, 100), grab('blue', 300, 300, 2), up('circle'), clickOn('red'), up(null, 2), clickOn('blue')]);
+    expect(kinds(r.effects)).toEqual(['none', 'start', 'none', 'drop', 'swallow', 'none', 'click']);
+  });
+
+  it('the same finger pressing again on the same item is a fresh press, not a takeover', () => {
+    const r = drive([grab('red', 100, 100, 1), grab('red', 100, 100, 1)]);
+    expect(kinds(r.effects)).toEqual(['none', 'none']);
+    expect(drive([up(null, 1), clickOn('red')], r.track).last).toEqual({ kind: 'click' });
+  });
+
+  it('a finger that reuses the resting finger’s id later is a new press whose tap counts', () => {
+    // the resting finger's release was lost (no up), then the browser reuses its id for a new touch
+    const afterDrop = palmThenDrag().track;
+    const r = drive([grab('red', 100, 100, 1), up(null, 1), clickOn('red')], afterDrop);
+    expect(kinds(r.effects)).toEqual(['none', 'none', 'click']);
+  });
+
+  it('a new press clears a swallow the browser never used, so a later tap on that item counts', () => {
+    // the resting finger lifts but the browser sends no click for it
+    const lifted = drive([clickOn('blue'), up(null, 1)], palmThenDrag().track).track;
+    const r = drive([grab('blue', 300, 100, 4), up(null, 4), clickOn('blue'), grab('red', 100, 100, 5), up(null, 5), clickOn('red')], lifted);
+    expect(kinds(r.effects)).toEqual(['none', 'none', 'click', 'none', 'none', 'click']);
+  });
+
+  it('a keyboard click on the resting item is never swallowed', () => {
+    const r = drive([clickOn('blue'), up(null, 1), { type: 'click', item: 'red', keyboard: true }], palmThenDrag().track);
+    expect(r.last).toEqual({ kind: 'click' });
+  });
+
+  it('without takeover, a second finger on a still press is ignored as before', () => {
+    const pressed = drive([down('red')]).track;
+    const second = dragStep(pressed, down('blue', 300, 300, 2));
+    expect(second.effect).toEqual({ kind: 'none' });
+    expect(second.track).toBe(pressed);
+  });
+
+  it('never changes the track it is given', () => {
+    const pressed = drive([grab('red', 100, 100, 1)]).track;
+    const copy = JSON.parse(JSON.stringify(pressed));
+    const taken = dragStep(pressed, grab('blue', 300, 100, 2)).track;
+    expect(pressed).toEqual(copy);
+    const takenCopy = JSON.parse(JSON.stringify(taken));
+    dragStep(taken, up(null, 1));
+    dragStep(taken, clickOn('red'));
+    expect(taken).toEqual(takenCopy);
+  });
+});
+
+/**
+ * The other order: the finger presses a piece first and the palm lands still on another before the finger
+ * has moved (the heel of a child's hand settling after the fingertip). The palm takes over the still press,
+ * so the finger that moves first must take the drag back, or the finger drags and nothing follows it.
+ */
+describe('the finger that moves first drags (takeover)', () => {
+  const grab = (item: Item, x: number, y: number, pointerId: number): DragInput<Item> => ({ type: 'down', item, pointerId, point: { x, y }, takeover: true });
+  const clickOn = (item: Item): DragInput<Item> => ({ type: 'click', item });
+
+  /** A finger presses red (pointer 1), a palm lands still on blue (pointer 2), then the finger drags red onto the circle. */
+  const fingerThenPalm = () => drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), cancel(1), move(130, 100, 1, 1), move(150, 300, 1, 1), up('circle', 1)]);
+
+  it('the finger drags its own piece and drops it, exactly once, even after its capture was let go', () => {
+    const r = fingerThenPalm();
+    expect(kinds(r.effects)).toEqual(['none', 'release', 'none', 'start', 'move', 'drop']);
+    expect(r.effects[3]).toEqual({ kind: 'start', item: 'red', offset: { x: 30, y: 0 } });
+    expect(r.effects.filter((e) => e.kind === 'drop')).toEqual([{ kind: 'drop', item: 'red', target: 'circle' }]);
+    expect(r.track.phase.kind).toBe('idle');
+  });
+
+  it('uses the finger’s own start: 7 px stays still, 8 px drags, and the offset has the tablet zoom taken out', () => {
+    const pressed = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2)]).track;
+    const under = drive([move(104, 103, 1.4, 1)], pressed);
+    expect(under.last).toEqual({ kind: 'none' });
+    expect(under.track.phase).toMatchObject({ kind: 'pressed', item: 'blue', pointerId: 2 });
+    const past = drive([move(100, 108, 1.4, 1)], under.track);
+    expect(past.last).toEqual({ kind: 'start', item: 'red', offset: { x: 0, y: 8 / 1.4 } });
+    expect(past.track.phase).toEqual({ kind: 'dragging', item: 'red', pointerId: 1, start: { x: 100, y: 100 } });
+  });
+
+  it('the palm it took the drag back from now rests: its lift and its click pick nothing, and its next real tap counts', () => {
+    // the drag's own click on red, then the palm lifts and the browser clicks blue
+    const r = drive([clickOn('red'), up(null, 2), clickOn('blue'), grab('blue', 300, 100, 3), up(null, 3), clickOn('blue')], fingerThenPalm().track);
+    expect(kinds(r.effects)).toEqual(['swallow', 'none', 'swallow', 'none', 'none', 'click']);
+  });
+
+  it('the palm lifting during the finger’s drag does not end it, and nothing else of the palm’s counts', () => {
+    const dragging = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), move(130, 100, 1, 1)]).track;
+    const r = drive([move(400, 400, 1, 2), cancel(2), up('square', 2), move(150, 300, 1, 1), up('circle', 1)], dragging);
+    expect(kinds(r.effects)).toEqual(['none', 'none', 'none', 'move', 'drop']);
+    expect(r.last).toEqual({ kind: 'drop', item: 'red', target: 'circle' });
+    expect(dragStep(r.track, clickOn('blue')).effect).toEqual({ kind: 'swallow' });
+  });
+
+  it('a finger lifted without moving cannot take anything back', () => {
+    const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), up(null, 1), move(160, 100, 1, 1)]);
+    expect(kinds(r.effects)).toEqual(['none', 'release', 'none', 'none']);
+    expect(r.track.phase).toMatchObject({ kind: 'pressed', item: 'blue', pointerId: 2 });
+  });
+
+  it('once the newer press is over, a palm still resting never starts a drag of its own when it drifts', () => {
+    // after the new finger's drop
+    const afterDrop = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), move(320, 100, 1, 2), up('circle', 2)]).track;
+    const drift = drive([move(160, 140, 1, 1), up('square', 1)], afterDrop);
+    expect(kinds(drift.effects)).toEqual(['none', 'none']);
+    expect(drift.track.phase.kind).toBe('idle');
+    // after the new finger's tap
+    const afterTap = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), up(null, 2), clickOn('blue'), move(160, 140, 1, 1)]);
+    expect(kinds(afterTap.effects)).toEqual(['none', 'release', 'none', 'click', 'none']);
+    expect(afterTap.track.phase.kind).toBe('idle');
+  });
+
+  it('with three fingers down, the one that moves first drags and the two still ones pick nothing', () => {
+    const r = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2), grab('red', 120, 100, 3), move(300, 120, 1, 2), up('square', 2)]);
+    expect(kinds(r.effects)).toEqual(['none', 'release', 'release', 'start', 'drop']);
+    expect(r.last).toEqual({ kind: 'drop', item: 'blue', target: 'square' });
+    const lifts = drive([clickOn('blue'), up(null, 1), up(null, 3), clickOn('red'), clickOn('red'), grab('red', 100, 100, 4), up(null, 4), clickOn('red')], r.track);
+    expect(kinds(lifts.effects)).toEqual(['swallow', 'none', 'none', 'swallow', 'swallow', 'none', 'none', 'click']);
+  });
+
+  it('without takeover a second finger is ignored, so the first finger still drags as before', () => {
+    const r = drive([down('red'), down('blue', 300, 100, 2), move(130, 100), up('circle')]);
+    expect(kinds(r.effects)).toEqual(['none', 'none', 'start', 'drop']);
+  });
+
+  it('never changes the track it is given', () => {
+    const taken = drive([grab('red', 100, 100, 1), grab('blue', 300, 100, 2)]).track;
+    const copy = JSON.parse(JSON.stringify(taken));
+    const back = dragStep(taken, move(130, 100, 1, 1));
+    expect(back.effect.kind).toBe('start');
+    expect(taken).toEqual(copy);
   });
 });
 
