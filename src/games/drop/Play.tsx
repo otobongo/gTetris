@@ -16,7 +16,7 @@ import { sfx } from '../../shared/sound';
 import { Brick, Icon, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, TopBar, type IconName } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
 import { STUCK, STUCK_START, puzzleOnScreen, stuckStep, type StuckState } from '../run';
-import { PAD, REPEAT, dragMoves, dragStep, gestureAxis, keyAction, keyCommand, releaseAction, type Action } from './controls';
+import { PAD, REPEAT, dragMoves, dragStep, gestureAxis, introControlsLine, keyAction, keyCommand, releaseAction, type Action } from './controls';
 import { activeCells, ghostY, type GameEvent, type GameState } from './engine';
 import { MiniPiece } from './MiniPiece';
 import { PIECES } from './pieces';
@@ -65,7 +65,26 @@ function Hourglass() {
   );
 }
 
-/** Size the board's cells from the space left between the tiles and the controls. */
+const FINE_POINTER = '(any-pointer: fine)';
+
+/** True while a mouse or trackpad is connected, so the intro sheet can list the keys instead of the board gestures. */
+function useFinePointer(): boolean {
+  const [fine, setFine] = useState(() => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(FINE_POINTER).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia(FINE_POINTER);
+    const on = () => setFine(mq.matches);
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  return fine;
+}
+
+/**
+ * Size the board's cells from the drop area: the space left between the timer and the controls. On a short phone
+ * (drop.css, max-height 700px) the Next and Rows tiles move beside the well, so the area gets their row's height
+ * and gives up their column's width; the observer re-measures whenever that layout switches.
+ */
 export function useCellSize(areaRef: RefObject<HTMLDivElement | null>, cols: number, rows: number): number {
   const [area, setArea] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
@@ -145,6 +164,9 @@ export default function Play({ index }: { index: number }) {
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClosed, setCardClosed] = useState(false);
   const [focusTo, setFocusTo] = useState<'' | 'board' | 'slot'>('');
+  // The intro sheet lists the keys once a keyboard shows itself (a fine pointer, or any key press).
+  const finePointer = useFinePointer();
+  const [sawKey, setSawKey] = useState(false);
 
   // Seconds on this puzzle's clock, counted only while it is being played.
   const [secs, setSecs] = useState(0);
@@ -371,6 +393,7 @@ export default function Play({ index }: { index: number }) {
   // Keyboard
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      setSawKey(true);
       const cmd = keyCommand(e);
       const ph = roundRef.current!.phase;
       if (cmd === 'pause') {
@@ -553,41 +576,44 @@ export default function Play({ index }: { index: number }) {
           )}
           {plan.kind === 'relaxed' && <SandTimer className="drop-sand" elapsed={secs} total={plan.seconds} />}
 
-          <div className="drop-tiles">
-            <div className="drop-tile">
-              <span className="drop-tile__label">Next</span>
-              <span className="drop-tile__next">{next && <MiniPiece id={next} boxW={76} boxH={40} />}</span>
+          {/* The tiles and the board: a row of tiles above the well, or a column beside it on a short phone (drop.css). */}
+          <div className="drop-main">
+            <div className="drop-tiles">
+              <div className="drop-tile">
+                <span className="drop-tile__label">Next</span>
+                <span className="drop-tile__next">{next && <MiniPiece id={next} boxW={76} boxH={40} />}</span>
+              </div>
+              <div className="drop-tile">
+                <span className="drop-tile__label">Rows</span>
+                <span className="drop-tile__value">
+                  {Math.min(g.lines, goal)}
+                  <small>/{goal}</small>
+                </span>
+              </div>
             </div>
-            <div className="drop-tile">
-              <span className="drop-tile__label">Rows</span>
-              <span className="drop-tile__value">
-                {Math.min(g.lines, goal)}
-                <small>/{goal}</small>
-              </span>
-            </div>
-          </div>
 
-          <div className="drop-area" ref={areaRef}>
-            <Well
-              cols={cols}
-              rows={rows}
-              cell={cell}
-              paused={paused}
-              ref={boardRef}
-              tabIndex={-1}
-              role="group"
-              onPointerDown={onBoardDown}
-              onPointerMove={onBoardMove}
-              onPointerUp={onBoardUp}
-              onPointerCancel={() => (touch.current = null)}
-              onContextMenu={(e) => e.preventDefault()}
-              aria-label="Board. Tap to turn, drag sideways to move, swipe down to drop."
-            >
-              {bricks}
-              {g.clearing.map((y) => (
-                <span key={`f${y}-${g.lines}`} className="drop-flash" style={{ top: y * cell, height: cell }} />
-              ))}
-            </Well>
+            <div className="drop-area" ref={areaRef}>
+              <Well
+                cols={cols}
+                rows={rows}
+                cell={cell}
+                paused={paused}
+                ref={boardRef}
+                tabIndex={-1}
+                role="group"
+                onPointerDown={onBoardDown}
+                onPointerMove={onBoardMove}
+                onPointerUp={onBoardUp}
+                onPointerCancel={() => (touch.current = null)}
+                onContextMenu={(e) => e.preventDefault()}
+                aria-label="Board. Tap to turn, drag sideways to move, swipe down to drop."
+              >
+                {bricks}
+                {g.clearing.map((y) => (
+                  <span key={`f${y}-${g.lines}`} className="drop-flash" style={{ top: y * cell, height: cell }} />
+                ))}
+              </Well>
+            </div>
           </div>
 
           <div className="drop-slot" ref={slotRef}>
@@ -617,7 +643,7 @@ export default function Play({ index }: { index: number }) {
                 {line}
               </p>
             ))}
-            <p className="drop-sheet__keys">Keys: arrow keys move, Up turns, Space drops, P pauses.</p>
+            <p className="drop-sheet__keys">{introControlsLine(finePointer, sawKey)}</p>
           </Sheet>
         )}
 

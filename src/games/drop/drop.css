@@ -63,6 +63,9 @@
   background: var(--bw-panel);
 }
 
+/* The tiles and the board. It adds no layout level of its own, except on a short phone (below). */
+.drop-main { display: contents; }
+
 /* ---------- Next and Rows: two half-width tiles ---------- */
 .drop-tiles {
   width: 100%;
@@ -325,6 +328,37 @@
   text-underline-offset: 0.18em;
 }
 .drop-sheet__link:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+
+/* ---------- Short phones (iPhone SE, 375 x 667): the tiles stand in a column beside the well ----------
+   The board is limited by height there and the space beside it sits empty, so the Next and Rows row moves
+   into that space and the well gets its height back (about 5px more per cell). The timer row, the controls
+   and the tablet layout stay as they are; useCellSize measures the drop area, so it follows the switch. */
+@media (max-height: 700px) {
+  .bw-screen--phone .drop-main {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    gap: var(--bw-sp-5);
+  }
+  .bw-screen--phone .drop-main > .drop-area {
+    width: auto;
+    min-width: 0;
+    /* the well sits at the top, level with the tiles; any spare height goes below it */
+    align-items: flex-start;
+  }
+  .bw-screen--phone .drop-main > .drop-tiles {
+    order: 1;
+    flex: none;
+    /* the Next picture's 76px box plus the tile's side padding */
+    width: 88px;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    /* level with the well's ring: the area's 5px padding less the 4px ring */
+    padding-top: 1px;
+  }
+  .bw-screen--phone .drop-main .drop-tile { padding: var(--bw-sp-3) var(--bw-sp-2); }
+}
 
 /* The board takes focus after Next, Try again and New puzzle, so keys work at once. */
 .drop-well:focus { outline: none; }
