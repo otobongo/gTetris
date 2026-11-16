@@ -515,3 +515,153 @@ test('a palm that lands on a tray piece after the finger pressed another does no
   await sorterPiece(page, second).tap();
   await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'true');
 });
+
+/* ---------- A hole tapped with nothing picked (sorter-numbers-9) ---------- */
+
+const PICK_FIRST = 'First pick a shape in the tray.';
+
+/** A new child aged 3 to 4 on Level 1, with the tray on screen. */
+async function openLevel1Young(page: Page) {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/sorter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+  await expect(sorterTray(page).getByRole('button').first()).toBeVisible();
+}
+
+/** Each tray piece's classes, its rest look (--bw-drag-rest) and its computed transform, plus the tray's classes. */
+async function trayNow(page: Page) {
+  return sorterTray(page).evaluate((tray) => ({
+    tray: tray.className,
+    pieces: [...tray.querySelectorAll<HTMLElement>('.sort-piece')].map((el) => ({
+      cls: el.className,
+      rest: getComputedStyle(el).getPropertyValue('--bw-drag-rest').trim(),
+      transform: getComputedStyle(el).transform,
+    })),
+  }));
+}
+
+/** The help line's text every time it changes, from now on. */
+async function watchHelp(page: Page) {
+  await help(page).evaluate((el) => {
+    const w = window as unknown as { __helpSeen: string[] };
+    w.__helpSeen = [el.textContent ?? ''];
+    new MutationObserver(() => w.__helpSeen.push(el.textContent ?? '')).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+  return () => page.evaluate(() => (window as unknown as { __helpSeen: string[] }).__helpSeen);
+}
+
+test.describe('a hole tapped with nothing picked, with motion on', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  test('(a) the line asks for a shape, the whole tray lifts as one, no piece is singled out and no hole is wrong', async ({ page }) => {
+    await openLevel1Young(page);
+    const [first] = await sorterPieces(page);
+    const before = await trayNow(page);
+    await expect(help(page)).toHaveText('Drag each shape into its hole.');
+
+    await sorterHole(page, first).click();
+    const after = await trayNow(page);
+    await expect(help(page)).toHaveText(PICK_FIRST);
+    // One shared lift on the tray: every piece moves up the same 6 px and keeps its own tilt.
+    expect(after.tray).toMatch(/\bis-nudge\b/);
+    expect(after.pieces.map((p) => p.cls), 'no piece gets a class of its own').toEqual(before.pieces.map((p) => p.cls));
+    expect(after.pieces.map((p) => p.rest)).toEqual(before.pieces.map((p) => `translateY(-6px) ${p.rest}`));
+    await expect(sorterTray(page).locator('[aria-pressed="true"]')).toHaveCount(0);
+    await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(0);
+    await expect(help(page)).not.toHaveClass(/is-wrong/);
+
+    // The lift is short; the line stays until the child picks.
+    await expect(sorterTray(page)).not.toHaveClass(/is-nudge/);
+    expect((await trayNow(page)).pieces.map((p) => p.rest)).toEqual(before.pieces.map((p) => p.rest));
+    await expect(help(page)).toHaveText(PICK_FIRST);
+  });
+
+  test('(d) a drag into a hole, right or wrong, never asks to pick first and never lifts the tray', async ({ page }) => {
+    await openLevel1Young(page);
+    const [first, second] = await sorterPieces(page);
+    const seen = await watchHelp(page);
+    await sorterTray(page).evaluate((tray) => {
+      const w = window as unknown as { __nudged: boolean };
+      w.__nudged = false;
+      new MutationObserver(() => (w.__nudged ||= tray.classList.contains('is-nudge'))).observe(tray, { attributes: true, attributeFilter: ['class'] });
+    });
+
+    await pointerDrag(page, sorterPiece(page, first), sorterHole(page, second));
+    await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(1);
+    await pointerDrag(page, sorterPiece(page, first), sorterHole(page, first));
+    await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+
+    expect(await seen()).not.toContain(PICK_FIRST);
+    expect(await page.evaluate(() => (window as unknown as { __nudged: boolean }).__nudged)).toBe(false);
+  });
+});
+
+test('(b) tapping holes with nothing picked is never a slip: three taps bring no stuck offer', async ({ page }) => {
+  await openLevel1Young(page);
+  const [first, second] = await sorterPieces(page);
+  for (const name of [first, second, first]) {
+    await sorterHole(page, name).click();
+    await expect(help(page)).toHaveText(PICK_FIRST);
+  }
+  await expect(page.getByRole('button', { name: 'New puzzle' })).toHaveCount(0);
+  await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(0);
+  await sortShapes(page, 'drag');
+  await expectSlips(page, 0, 0);
+});
+
+test('(c) after a hole tapped first, tapping a piece picks it and the line moves on', async ({ page }) => {
+  await openLevel1Young(page);
+  const [first] = await sorterPieces(page);
+  await sorterHole(page, first).click();
+  await expect(help(page)).toHaveText(PICK_FIRST);
+  await sorterPiece(page, first).click();
+  await expect(sorterPiece(page, first)).toHaveAttribute('aria-pressed', 'true');
+  await expect(help(page)).toHaveText(`Now tap the ${first} hole.`);
+  // the tap path still works from here
+  await sorterHole(page, first).click();
+  await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+  await expect(help(page)).not.toHaveText(PICK_FIRST);
+});
+
+test('(c) a hole tapped first then a drag: the line follows the drag', async ({ page }) => {
+  await openLevel1Young(page);
+  const [first] = await sorterPieces(page);
+  await sorterHole(page, first).click();
+  await expect(help(page)).toHaveText(PICK_FIRST);
+  const seen = await watchHelp(page);
+  await pointerDrag(page, sorterPiece(page, first), sorterHole(page, first));
+  await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+  expect(await seen()).toContain(`Drop the ${first} in its hole.`);
+  await expect(help(page)).not.toHaveText(PICK_FIRST);
+});
+
+test('(f) with reduced motion, a hole tapped first moves no piece and rings the tray well until a pick', async ({ page }) => {
+  // the config's default: reducedMotion 'reduce'
+  await openLevel1Young(page);
+  const [first] = await sorterPieces(page);
+  const ring = `${await tokenColour(page, '--bw-accent')} 0px 0px 0px 4px`;
+  const wellRing = () => page.locator('.sort-well').evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(await wellRing()).not.toContain(ring);
+
+  await sorterHole(page, first).click();
+  await expect(help(page)).toHaveText(PICK_FIRST);
+  expect((await trayNow(page)).pieces.map((p) => p.transform).every((t) => t === 'none')).toBe(true);
+  expect(await wellRing()).toContain(ring);
+  // still there after the lift would have ended: the ring is static
+  await page.waitForTimeout(450);
+  expect((await trayNow(page)).pieces.map((p) => p.transform).every((t) => t === 'none')).toBe(true);
+  expect(await wellRing()).toContain(ring);
+
+  await sorterPiece(page, first).click();
+  await expect(help(page)).toHaveText(`Now tap the ${first} hole.`);
+  await expect.poll(wellRing).not.toContain(ring);
+});
+
+test('a hole tapped first by keyboard (Enter) asks for a shape too, and is no slip', { tag: '@phone-only' }, async ({ page }) => {
+  await openLevel1Young(page);
+  const [first] = await sorterPieces(page);
+  await sorterHole(page, first).focus();
+  await page.keyboard.press('Enter');
+  await expect(help(page)).toHaveText(PICK_FIRST);
+  await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(0);
+});

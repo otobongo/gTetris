@@ -190,6 +190,11 @@ div.sort-hole { cursor: default; }
   filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.45));
 }
 .sort-piece[style*='--drag-x'] { filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.45)); }
+/* A hole tapped with nothing picked: the whole tray lifts 6px together for a moment (Play.tsx's NUDGE_MS),
+   through the kit's rest transform and its transition, so each piece keeps its tilt and none is singled out:
+   Sorter has no hint. */
+.sort-tray.is-nudge .sort-piece { --bw-drag-rest: translateY(-6px) rotate(-8deg); }
+.sort-tray.is-nudge .sort-piece.is-odd { --bw-drag-rest: translateY(-6px) rotate(8deg); }
 /* A placed piece leaves a faint ghost in its place (Letter Builder's .lb-ghost). */
 .sort-ghost {
   width: 64px;
@@ -201,7 +206,8 @@ div.sort-hole { cursor: default; }
 }
 
 /* ---------- Reduced motion (brief 9.1) ---------- */
-/* Shakes, tilts and lifts go; the ring on a wrong hole and a ring on the picked piece stay. */
+/* Shakes, tilts and lifts go; the ring on a wrong hole and a ring on the picked piece stay. The tray's lift
+   after a hole tapped first becomes a still ring on the tray well, kept until the child picks or drags. */
 @media (prefers-reduced-motion: reduce) {
   .sort-hole { transition: background 150ms linear, box-shadow 150ms linear; }
   .sort-hole.is-shake-a,
@@ -209,5 +215,10 @@ div.sort-hole { cursor: default; }
   .sort-piece[aria-pressed='true'] {
     border-radius: 18px;
     box-shadow: var(--bw-ring);
+  }
+  .sort-well.is-pick-first {
+    box-shadow:
+      var(--bw-ring),
+      inset 0 4px 10px rgb(0 0 0 / 0.45);
   }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { sfx } from '../../shared/sound';
 import { say } from '../../shared/speech';
 import { cx, useLayout } from '../../shared/ui';
@@ -6,6 +6,7 @@ import { PlayScreen } from '../kit/PlayScreen';
 import { useDragToTarget } from '../kit/useDragToTarget';
 import { useLevelRun } from '../kit/useLevelRun';
 import {
+  HELP_PICK_FIRST,
   HELP_SOLVED,
   HOLES_LABEL,
   SPEAKER_NAME,
@@ -27,6 +28,8 @@ import { SHAPE_STYLE } from './shapes';
 
 /** The hole's red ring stays this long after a wrong placement; the help line stays until the next move. */
 const WRONG_RING_MS = 660;
+/** A hole tapped with nothing picked lifts the whole tray this long (motion on). */
+const NUDGE_MS = 300;
 /**
  * The catch area around each hole, in the frame's px (brief 7.4, after play-testing): a piece let go within
  * this of a hole's edge drops in the nearest such hole, right or wrong. A release inside a hole still wins.
@@ -63,9 +66,31 @@ interface Ui {
   wrongHole: string | null;
   /** Counts wrong placements, so the shake restarts on the same hole. */
   wrongSeq: number;
+  /**
+   * A hole was tapped with nothing picked: the help line asks for a shape from the tray (and, with reduced
+   * motion, the tray well shows a ring) until the next pick, drag or placement. Never a slip.
+   */
+  pickFirst: boolean;
+  /** The whole tray's short shared lift after such a tap, cleared after NUDGE_MS. */
+  nudging: boolean;
+  /** Counts those taps, so each one starts its lift's timer again. */
+  nudgeSeq: number;
 }
 
-const fresh = (round: number): Ui => ({ round, placed: [], last: null, wrongLine: null, wrongHole: null, wrongSeq: 0 });
+const fresh = (round: number): Ui => ({
+  round,
+  placed: [],
+  last: null,
+  wrongLine: null,
+  wrongHole: null,
+  wrongSeq: 0,
+  pickFirst: false,
+  nudging: false,
+  nudgeSeq: 0,
+});
+
+/** What a pick, a drag or a placement clears: the wrong line and ring, and the ask to pick first. */
+const CLEARED = { wrongLine: null, wrongHole: null, pickFirst: false, nudging: false } as const;
 
 /** Narrow a lookup to an element that can take focus. */
 const focusable = (el: Element | null): el is HTMLElement => el instanceof HTMLElement;
@@ -105,7 +130,7 @@ export function Play({ level }: { level: number }) {
     // A palm or the other hand resting still on one tray piece never blocks a drag of another.
     takeover: true,
     onPick(id) {
-      commit({ wrongLine: null, wrongHole: null });
+      commit(CLEARED);
       if (id === null) return;
       sfx.tap();
       const active = document.activeElement;
@@ -119,7 +144,7 @@ export function Play({ level }: { level: number }) {
     },
     onDragStart() {
       sfx.tap();
-      commit({ wrongLine: null, wrongHole: null });
+      commit(CLEARED);
     },
     onDrop(pieceId, holeId) {
       const cur = ref.current.round === run.round ? ref.current : fresh(run.round);
@@ -129,14 +154,14 @@ export function Play({ level }: { level: number }) {
       if (!piece || !hole) return;
       if (!fits(piece, hole, cm)) {
         // A wrong placement: the piece goes back (the hook already returned it), the hole shakes, the line names what matched.
-        commit({ wrongLine: helpWrong(hole, compare(piece, hole), cm), wrongHole: hole.id, wrongSeq: cur.wrongSeq + 1 });
+        commit({ ...CLEARED, wrongLine: helpWrong(hole, compare(piece, hole), cm), wrongHole: hole.id, wrongSeq: cur.wrongSeq + 1 });
         run.slip(slipKey(piece.id, hole.id));
         // The pick is cleared, so a keyboard child lands back on the piece to try again.
         focusPiece.current = piece.id;
         return;
       }
       const placed = [...cur.placed, piece.id];
-      commit({ placed, last: piece.id, wrongLine: null, wrongHole: null });
+      commit({ ...CLEARED, placed, last: piece.id });
       say(spokenOnPlace(piece, cm));
       if (placed.length === pieces.length) {
         run.solve();
@@ -167,6 +192,40 @@ export function Play({ level }: { level: number }) {
     const id = window.setTimeout(() => commit({ wrongHole: null }), WRONG_RING_MS);
     return () => window.clearTimeout(id);
   }, [ui.wrongSeq, ui.wrongHole]);
+
+  // The tray's shared lift after a hole tapped first is short; the help line stays until the next pick.
+  useEffect(() => {
+    if (!ui.nudging) return;
+    const id = window.setTimeout(() => commit({ nudging: false }), NUDGE_MS);
+    return () => window.clearTimeout(id);
+  }, [ui.nudgeSeq, ui.nudging]);
+
+  /** The hole a finger or the mouse last pressed: a click with no press on that hole (one after a drag) is not a tap on it. */
+  const holePress = useRef<string | null>(null);
+
+  /**
+   * A hole's props: the kit's target, plus an answer when the hole is tapped with nothing picked. The tap
+   * plays the tap sound, lifts the whole tray once (no piece singled out, as Sorter has no hint) and asks for
+   * a shape. It is no slip. A drag dropped on a hole never gets here as a tap: its click has no press on the hole.
+   */
+  const holeProps = (id: string) => {
+    const target = drag.target(id);
+    return {
+      ...target,
+      onPointerDown() {
+        holePress.current = id;
+      },
+      onClick(e: MouseEvent<HTMLElement>) {
+        const tapped = e.detail === 0 || holePress.current === id;
+        holePress.current = null;
+        if (tapped && playing && drag.picked === null && drag.dragging === null) {
+          sfx.tap();
+          commit({ wrongLine: null, pickFirst: true, nudging: true, nudgeSeq: ref.current.nudgeSeq + 1 });
+        }
+        target.onClick(e);
+      },
+    };
+  };
 
   // Focus moves after the screen has drawn: to the next piece after a placement, to the first open hole after a keyboard pick.
   useEffect(() => {
@@ -202,7 +261,13 @@ export function Play({ level }: { level: number }) {
   const line = solved
     ? HELP_SOLVED
     : (ui.wrongLine ??
-      (dragging ? helpDragging(pieceName(dragging, cm)) : picked ? helpPicked(pieceName(picked, cm)) : helpStart(cm)));
+      (dragging
+        ? helpDragging(pieceName(dragging, cm))
+        : picked
+          ? helpPicked(pieceName(picked, cm))
+          : ui.pickFirst
+            ? HELP_PICK_FIRST
+            : helpStart(cm)));
   const fact = last ? factFor(last) : null;
   const factText = fact ? fact.text : factStart(cm);
 
@@ -213,7 +278,7 @@ export function Play({ level }: { level: number }) {
   const tray = (
     <div
       ref={trayRef}
-      className={cx('sort-tray', cols === 8 && 'is-tight')}
+      className={cx('sort-tray', cols === 8 && 'is-tight', ui.nudging && 'is-nudge')}
       style={{ '--sort-cols': cols } as CSSProperties}
       role="group"
       aria-label={TRAY_LABEL}
@@ -249,7 +314,7 @@ export function Play({ level }: { level: number }) {
       lineStyle="prompt"
       wrong={ui.wrongLine !== null && !solved}
       className={cx('sort', `sort--rows-${rows}`)}
-      slotClassName="sort-well"
+      slotClassName={cx('sort-well', ui.pickFirst && !solved && 'is-pick-first')}
       controls={tray}
     >
       <div className="sort-holes">
@@ -272,7 +337,7 @@ export function Play({ level }: { level: number }) {
               <button
                 key={h.id}
                 type="button"
-                {...drag.target(h.id)}
+                {...holeProps(h.id)}
                 className={cx('sort-hole', ui.wrongHole === h.id && 'is-wrong', ui.wrongHole === h.id && (ui.wrongSeq % 2 ? 'is-shake-a' : 'is-shake-b'))}
                 data-hole={h.id}
                 aria-label={holeLabel(h, cm)}

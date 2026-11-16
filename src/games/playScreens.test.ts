@@ -1671,10 +1671,12 @@ describe('Shape Sorter: a shape level (Level 1)', () => {
     tap(b);
     expect(pressed(b)).toBe('false');
     expect(helpLine()).toBe('Drag each shape into its hole.');
-    // A hole with nothing picked does nothing: no slip, no sound.
+    // A hole with nothing picked is no slip: it answers with the tap sound and asks for a shape from the tray
+    // (sorter-numbers-9), naming no shape, so it never points at the piece that fits.
     tap(openHoles()[0]);
-    expect(sounds).toEqual(['tap', 'tap']);
-    expect(helpLine()).toBe('Drag each shape into its hole.');
+    expect(sounds).toEqual(['tap', 'tap', 'tap']);
+    expect(helpLine()).toBe('First pick a shape in the tray.');
+    expect(doc.body.querySelector('[role="status"]')!.className).not.toContain('is-wrong');
   });
 
   it('a wrong hole shakes red, names the shape it is for, sends the piece back and clears the pick (board: wrong)', () => {

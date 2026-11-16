@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .sort-piece[data-drag="false"] { transform: none !important; transition: opacity 150ms linear !important; } .sort-hole { transform: none !important; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .sort-piece[data-drag="false"] { transform: none !important; transition: opacity 150ms linear !important; } .sort-hole { transform: none !important; } .sort-well[data-pick-first="true"] { box-shadow: 0 0 0 4px #ffc21a, inset 0 4px 10px rgba(0,0,0,0.45) !important; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
@@ -84,7 +84,7 @@
 <div aria-hidden="true" style="width: 100%; height: 56px; flex-shrink: 0;"></div>
 </sc-if>
 
-<div style="width: 100%; box-sizing: border-box; padding: 18px 10px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
+<div class="sort-well" data-pick-first="{{pickFirstFlag}}" style="width: 100%; box-sizing: border-box; padding: 18px 10px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
 <div role="group" aria-label="Shapes to place" style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; {{traybox}}">
 <sc-if value="{{showTray}}" hint-placeholder-val="{{ true }}">
 <sc-for list="{{tray}}" as="t" hint-placeholder-count="5">
@@ -141,7 +141,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","3","5","7","9"],"default":"3"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","picked","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","3","5","7","9"],"default":"3"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","pickFirst","picked","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -224,7 +224,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     return [p.level, p.puzzle, p.moment].join('|');
   }
-  freshPuzzle() { return { picked: null, placed: {}, wrongHole: null, shake: 0, last: null, drag: null, wrongLine: null, seen: {}, wrongTaps: 0, idle: 0, offer: false, note: '' }; }
+  freshPuzzle() { return { picked: null, placed: {}, wrongHole: null, shake: 0, last: null, drag: null, wrongLine: null, seen: {}, wrongTaps: 0, idle: 0, offer: false, note: '', pickFirst: false, nudge: false }; }
   name(pc, colorMatters) { return colorMatters ? pc.color + ' ' + pc.shape : pc.shape; }
   // The wrong line names what matched (brief 8.3).
   wrongLineFor(pc, hole, colorMatters) {
@@ -237,7 +237,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     var level = this.levelOf(p);
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
-    var moment = ['play', 'picked', 'wrong', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    var moment = ['play', 'pickFirst', 'picked', 'wrong', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var order = [0, 1, 2, 3, 4, 5];
@@ -248,6 +248,9 @@ class Component extends DCLogic {
     var first = roomy ? B.tray[0] : null, second = roomy ? B.tray[1] : B.tray[0];
     if (roomy && (moment === 'picked' || moment === 'wrong' || moment === 'stuck')) { s.placed[first.id] = true; s.last = first.id; }
     if (moment === 'picked') s.picked = second.id;
+    // A hole tapped with nothing picked: the line asks for a shape (with reduced motion, the tray well rings).
+    // The tray's 6px shared lift lasts 300ms, so this still frame shows the tray at rest; tap a hole to see it.
+    if (moment === 'pickFirst') s.pickFirst = true;
     if (moment === 'wrong') {
       // On colour levels the sample tries the hole of a same-shape piece; otherwise the next open hole.
       var open = B.holes.filter(function (h) { return h.id !== second.id && !s.placed[h.id]; });
@@ -288,7 +291,7 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); (this.shakeT || []).forEach(clearTimeout); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.nudgeT); (this.shakeT || []).forEach(clearTimeout); }
   say(text) {
     try {
       var u = new SpeechSynthesisUtterance(text);
@@ -310,7 +313,7 @@ class Component extends DCLogic {
       var placed = Object.assign({}, cs.placed);
       placed[holeId] = true;
       var done = B.pieces.every(function (x) { return placed[x.id]; });
-      var patch = { placed: placed, picked: null, last: id, drag: null, wrongLine: null, wrongHole: null, idle: 0, offer: false, note: '' };
+      var patch = { placed: placed, picked: null, last: id, drag: null, wrongLine: null, wrongHole: null, idle: 0, offer: false, note: '', pickFirst: false, nudge: false };
       if (done) {
         patch.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
         if (cs.puzzle === 4) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
@@ -326,7 +329,7 @@ class Component extends DCLogic {
     seen[key] = true;
     var wrongTaps = cs.wrongTaps + 1;
     this.put({
-      wrongHole: holeId, drag: null, picked: null, note: '',
+      wrongHole: holeId, drag: null, picked: null, note: '', pickFirst: false, nudge: false,
       wrongLine: this.wrongLineFor(pc, hole, B.colorMatters),
       seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count
     });
@@ -358,6 +361,7 @@ class Component extends DCLogic {
       : s.wrongLine ? s.wrongLine
       : dragging ? 'Drop the ' + this.name(byId[dragging], cm) + ' in its hole.'
       : s.picked ? 'Now tap the ' + this.name(byId[s.picked], cm) + ' hole.'
+      : s.pickFirst ? 'First pick a shape in the tray.'
       : cm ? 'Match the shape and the color.' : 'Drag each shape into its hole.';
     var fact = last ? S[last.shape].fact : cm ? 'Look closely: each hole has a color too.' : 'Every shape has a home. Look at the corners.';
 
@@ -421,12 +425,22 @@ class Component extends DCLogic {
             : filled ? 'background: rgba(0,0,0,0.12); box-shadow: 0 0 0 3px rgba(255,255,255,0.6);' : 'background: rgba(0,0,0,0.12);',
           // A hole is drawn in its own colour, sunk in so it still reads as empty.
           style: filled ? pieceLook(pc) : S[pc.shape].clip + ' background: ' + hex + '; box-shadow: inset 0 10px 14px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.25);',
-          tap: function () { var cs = self.st(); if (!cs.picked || cs.placed[pc.id]) return; self.tryPlace(cs.picked, pc.id); }
+          tap: function () {
+            var cs = self.st();
+            if (cs.moment !== 'play' || cs.placed[pc.id]) return;
+            if (cs.picked) { self.tryPlace(cs.picked, pc.id); return; }
+            // Nothing picked: the whole tray lifts 6px together for 300ms and the line asks for a shape.
+            // No piece is singled out (Sorter has no hint), and it is no slip.
+            self.put({ pickFirst: true, nudge: true, wrongLine: null, note: '' });
+            clearTimeout(self.nudgeT);
+            self.nudgeT = setTimeout(function () { self.put({ nudge: false }); }, 300);
+          }
         };
       }),
       showBadge: !!last, badge: last ? S[last.shape].badge : '', badgeName: last ? S[last.shape].badgeName : '',
       // Before the first placement the badge is an empty slot; the yellow fill is for earned badges only.
       showEmptyBadge: !last,
+      pickFirstFlag: s.pickFirst && playing ? 'true' : 'false',
       fact: fact,
       traybox: 'width: ' + (rowLen * 64 + (rowLen - 1) * 8) + 'px; min-height: ' + (finished ? 76 : trayMinH) + 'px;',
       showTray: !solvedNow,
@@ -437,7 +451,7 @@ class Component extends DCLogic {
         var isDrag = dragging === pc.id;
         var wrap;
         if (isDrag) wrap = 'z-index: 20; transition: none; transform: translate(' + (s.drag.dx / Z) + 'px, ' + (s.drag.dy / Z) + 'px) scale(1.18); cursor: grabbing;';
-        else wrap = 'transition: transform 200ms cubic-bezier(0.16,1,0.3,1); transform: ' + (on ? 'translateY(-12px) scale(1.12)' : 'rotate(' + (i % 2 ? 8 : -8) + 'deg)') + ';';
+        else wrap = 'transition: transform 200ms cubic-bezier(0.16,1,0.3,1); transform: ' + (on ? 'translateY(-12px) scale(1.12)' : (s.nudge ? 'translateY(-6px) ' : '') + 'rotate(' + (i % 2 ? 8 : -8) + 'deg)') + ';';
         return {
           live: !gone, ghost: gone,
           label: self.name(pc, cm), on: on ? 'true' : 'false', dragging: isDrag ? 'true' : 'false', wrap: wrap,
@@ -454,7 +468,7 @@ class Component extends DCLogic {
             if (!d || d.pid !== e.pointerId) return;
             var dx = e.clientX - d.x0, dy = e.clientY - d.y0;
             var moved = d.moved || Math.abs(dx) + Math.abs(dy) > 8;
-            self.put(Object.assign({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: moved }) }, moved && !d.moved ? { wrongLine: null, picked: null } : {}));
+            self.put(Object.assign({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: moved }) }, moved && !d.moved ? { wrongLine: null, picked: null, pickFirst: false, nudge: false } : {}));
           },
           up: function (e) {
             var d = self.st().drag;
@@ -487,7 +501,7 @@ class Component extends DCLogic {
             if (self.justDragged) { self.justDragged = false; return; }
             var cs = self.st();
             if (cs.moment !== 'play' || cs.placed[pc.id]) return;
-            self.put({ picked: cs.picked === pc.id ? null : pc.id, wrongLine: null, note: '' });
+            self.put({ picked: cs.picked === pc.id ? null : pc.id, wrongLine: null, note: '', pickFirst: false, nudge: false });
           }
         };
       }),

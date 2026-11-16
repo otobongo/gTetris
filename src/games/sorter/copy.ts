@@ -19,6 +19,12 @@ export const helpPicked = (name: string): string => `Now tap the ${name} hole.`;
 /** Help line while a piece is dragged: "Drop the red circle in its hole." */
 export const helpDragging = (name: string): string => `Drop the ${name} in its hole.`;
 
+/**
+ * Help line when a hole is tapped with nothing picked. It names no shape: Sorter has no hint, so nothing may
+ * point at the piece that fits.
+ */
+export const HELP_PICK_FIRST = 'First pick a shape in the tray.';
+
 /** Help line when every hole is filled. */
 export const HELP_SOLVED = 'Every shape is home.';
 

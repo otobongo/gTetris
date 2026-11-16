@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HELP_MAX_CHARS,
+  HELP_PICK_FIRST,
   HELP_SOLVED,
   HOLES_LABEL,
   SPEAKER_NAME,
@@ -35,6 +36,7 @@ const EVERY_HELP_LINE: string[] = [
   helpStart(false),
   helpStart(true),
   HELP_SOLVED,
+  HELP_PICK_FIRST,
   ...EVERY_PIECE.flatMap((p) =>
     [false, true].flatMap((cm) => [helpPicked(pieceName(p, cm)), helpDragging(pieceName(p, cm)), ...MATCHES.map((m) => helpWrong(p, m, cm))]),
   ),
@@ -274,5 +276,20 @@ describe('copy rules (8, 8.9, 10.2)', () => {
       'at all',
     ];
     for (const line of EVERY_LINE) for (const gone of GONE) expect(line, `"${line}" holds "${gone}"`).not.toContain(gone);
+  });
+});
+
+describe('a hole tapped with nothing picked (sorter-numbers-9)', () => {
+  it('asks for a shape from the tray, word for word', () => {
+    expect(HELP_PICK_FIRST).toBe('First pick a shape in the tray.');
+  });
+
+  it('fits the 44-character help row and has no em or en dash, and no hyphen standing in for one', () => {
+    expect(HELP_PICK_FIRST.length).toBeLessThanOrEqual(HELP_MAX_CHARS);
+    expect(HELP_PICK_FIRST).not.toMatch(/[–—]| - /);
+  });
+
+  it('names no shape and no colour, so it never points at the piece that fits (Sorter has no hint)', () => {
+    for (const word of [...SHAPES, ...SORTER_COLORS]) expect(HELP_PICK_FIRST.toLowerCase()).not.toMatch(new RegExp(`\\b${word}\\b`));
   });
 });
