@@ -358,6 +358,8 @@
     padding-top: 1px;
   }
   .bw-screen--phone .drop-main .drop-tile { padding: var(--bw-sp-3) var(--bw-sp-2); }
+  /* The help line stays centred over the well, clear of the tile column, instead of over the whole screen. */
+  .bw-screen--phone .drop-say { padding-right: calc(var(--bw-gutter) + 88px + var(--bw-sp-5)); }
 }
 
 /* The board takes focus after Next, Try again and New puzzle, so keys work at once. */

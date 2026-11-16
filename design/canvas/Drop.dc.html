@@ -102,7 +102,7 @@
 </div>
 
 <sc-if value="{{showSay}}" hint-placeholder-val="{{ false }}">
-<p role="status" style="position: absolute; left: 0; right: 0; top: 46%; margin: 0; padding: 0 16px; text-align: center; font-size: {{saysize}}px; font-weight: 800; line-height: 1.1; color: #ffe266; text-shadow: 0 4px 0 #6624c9; text-wrap: balance; pointer-events: none;">{{say}}</p>
+<p role="status" style="position: absolute; left: 0; right: 0; top: 46%; margin: 0; padding: 0 {{sayright}}px 0 16px; text-align: center; font-size: {{saysize}}px; font-weight: 800; line-height: 1.1; color: #ffe266; text-shadow: 0 4px 0 #6624c9; text-wrap: balance; pointer-events: none;">{{say}}</p>
 </sc-if>
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
@@ -447,6 +447,8 @@ class Component extends DCLogic {
       showNext: m === 'solved',
       next: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { puzzle: cs.puzzle + 1, moment: 'ready', tries: 0 })); },
       showSay: !!say, say: say, saysize: m === 'play' ? 40 : 24,
+      // Short phone: the help line centres over the board, clear of the tile column (16px gutter + 88px + 12px gap).
+      sayright: short ? 116 : 16,
       left: function () { self.press(function () { self.tryMove(0, -1, 0); }); },
       right: function () { self.press(function () { self.tryMove(0, 1, 0); }); },
       down: function () { self.press(function () { self.tryMove(1, 0, 0); }); },
