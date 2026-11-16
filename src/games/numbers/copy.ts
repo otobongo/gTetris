@@ -20,6 +20,9 @@ export const START_LINE = 'Drag or tap two towers to swap them.';
 /** Help line while a tower is picked (lifted). */
 export const PICKED_LINE = 'Now tap where it should go.';
 
+/** Help line after a swap that moved the row further from the goal (a slip), in the wrong style. It stays until the next pick, hint or swap. */
+export const SLIP_LINE = 'That swap moved them further from the goal.';
+
 /** Hint line: `value` is the tower that belongs in spot `to` (0-based). It stays until the next swap. */
 export function hintLine(value: number, to: number): string {
   return `${value} belongs in the ${SPOTS[to] ?? SPOTS[0]} spot. Swap them.`;

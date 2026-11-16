@@ -75,6 +75,8 @@ export interface TowerProps {
    * from), then it slides home. Null when it is not jumping.
    */
   shift: number | null;
+  /** One of a slip's two towers: a red ring round its stack for a moment, with no shake. */
+  wrong: boolean;
   /** Part of the swap on screen (under reduced motion it fades in instead of sliding). */
   moved: boolean;
   /** The first tower takes focus after Next (brief 9.1). */
@@ -83,12 +85,12 @@ export interface TowerProps {
 }
 
 /** One tower: a button the full column high, the number face at the base and its stud bricks above. */
-export function Tower({ value, color, studs, spot, right, picked, locked, lit, arrow, shift, moved, first, drag }: TowerProps) {
+export function Tower({ value, color, studs, spot, right, picked, locked, lit, arrow, shift, wrong, moved, first, drag }: TowerProps) {
   const marker = first ? { [FIRST_CONTROL]: '' } : {};
   return (
     <button
       type="button"
-      className={cx('num-tower', 'bw-drag', picked && 'is-picked', shift !== null && 'is-jump', moved && 'is-moved')}
+      className={cx('num-tower', 'bw-drag', picked && 'is-picked', shift !== null && 'is-jump', moved && 'is-moved', wrong && 'is-wrong')}
       style={shift !== null ? ({ '--num-shift': shift } as CSSProperties) : undefined}
       aria-label={towerName(value, spot, right)}
       aria-pressed={picked}

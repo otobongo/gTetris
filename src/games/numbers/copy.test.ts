@@ -6,6 +6,7 @@ import * as copy from './copy';
 import {
   LEGEND,
   PICKED_LINE,
+  SLIP_LINE,
   SPEAKER_NAME,
   SPOTS,
   START_LINE,
@@ -67,6 +68,12 @@ describe('lines word for word from 8.4', () => {
   it('gives the start and picked help lines', () => {
     expect(START_LINE).toBe('Drag or tap two towers to swap them.');
     expect(PICKED_LINE).toBe('Now tap where it should go.');
+  });
+
+  it('gives the slip line a swap that made the row worse shows, within 44 characters and with no dashes', () => {
+    expect(SLIP_LINE).toBe('That swap moved them further from the goal.');
+    expect(SLIP_LINE.length).toBeLessThanOrEqual(HELP_LIMIT);
+    expect(SLIP_LINE).not.toMatch(/[-–—]/);
   });
 
   it('names the hint’s tower and spot, first to sixth', () => {

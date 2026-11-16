@@ -187,3 +187,114 @@ test('an age change on Level 9 keeps the solved puzzles, and the next one takes 
   await expect(dialog.getByRole('heading')).toHaveText('You finished Level 9');
   await expect(dialog).toContainText('4 puzzles, no slips.');
 });
+
+/* ---------- A slip shows on screen (usability batch J) ---------- */
+
+/** The line a swap that moved the row further from the goal shows (copy.ts SLIP_LINE). */
+const SLIP = 'That swap moved them further from the goal.';
+
+/** Pairs of towers standing the wrong way round for the order: a slip raises this count. */
+function inversionsOf(row: readonly number[], up: boolean): number {
+  let count = 0;
+  for (let i = 0; i < row.length; i++) for (let j = i + 1; j < row.length; j++) if (up ? row[i] > row[j] : row[i] < row[j]) count++;
+  return count;
+}
+
+/** Two spots whose swap raises the inversion count of the row on screen, worked out here from the towers' names. */
+async function slipPair(page: Page): Promise<[number, number]> {
+  const row = await numbersRow(page);
+  const up = /smallest first/.test((await page.locator('.num-goal__text').textContent()) ?? '');
+  const now = inversionsOf(row, up);
+  for (let a = 0; a < row.length; a++)
+    for (let b = a + 1; b < row.length; b++) {
+      const after = [...row];
+      [after[a], after[b]] = [after[b], after[a]];
+      if (inversionsOf(after, up) > now) return [a, b];
+    }
+  throw new Error(`No swap makes this row worse: ${row.join(',')}`);
+}
+
+const ringed = (page: Page) => page.locator('.num-tower.is-wrong');
+
+test('a swap that makes the row worse says so and rings the two towers, with Sound off', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+  // Sound is off in the seed: sfx.wrong says nothing, so the screen has to.
+  const saved = (await savedState(page)) as unknown as { settings: { sound: boolean } };
+  expect(saved.settings.sound).toBe(false);
+
+  const [a, b] = await slipPair(page);
+  await numbersTower(page, a).click();
+  await numbersTower(page, b).click();
+  const swapped = Date.now();
+
+  // Within 200 ms: the line, in the wrong style, and a ring on both swapped towers (and no others).
+  await expect(help(page)).toHaveText(SLIP, { timeout: 200 });
+  await expect(help(page)).toHaveClass(/\bis-wrong\b/, { timeout: 200 });
+  await expect(numbersTower(page, a)).toHaveClass(/\bis-wrong\b/, { timeout: 200 });
+  await expect(numbersTower(page, b)).toHaveClass(/\bis-wrong\b/, { timeout: 200 });
+  await expect(ringed(page)).toHaveCount(2);
+  // The ring is drawn in the error colour round the tower's stack. Reduced motion is on: the ring stays, nothing shakes.
+  const ring = await numbersTower(page, a).locator('.num-stack').evaluate((el) => getComputedStyle(el).boxShadow);
+  expect(ring).toContain('rgb(255, 77, 94)');
+  expect(await numbersTower(page, a).evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+
+  // After 900 ms the rings are gone and the line stays.
+  await page.waitForTimeout(Math.max(0, 900 - (Date.now() - swapped)));
+  await expect(ringed(page)).toHaveCount(0, { timeout: 100 });
+  await expect(help(page)).toHaveText(SLIP);
+  await expect(help(page)).toHaveClass(/\bis-wrong\b/);
+
+  // The next pick puts the normal line back, out of the wrong style; putting the tower down shows the start line.
+  await numbersTower(page, 0).click();
+  await expect(help(page)).toHaveText('Now tap where it should go.');
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await numbersTower(page, 0).click();
+  await expect(help(page)).toHaveText('Drag or tap two towers to swap them.');
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+});
+
+test('a swap that makes the row better shows no slip line and rings nothing', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+
+  const step = (await numbersNextSwap(page))!;
+  await swapTowers(page, step[0], step[1]);
+  await page.waitForTimeout(200);
+  await expect(help(page)).not.toHaveText(SLIP);
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(0);
+
+  // A slip, then a good swap: the good swap takes the slip line and the rings away.
+  const [a, b] = await slipPair(page);
+  await swapTowers(page, a, b);
+  await expect(help(page)).toHaveText(SLIP);
+  const next = (await numbersNextSwap(page))!;
+  await swapTowers(page, next[0], next[1]);
+  await expect(help(page)).not.toHaveText(SLIP);
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(0);
+});
+
+test('a hint takes the slip line away, and with motion on the ringed towers do not shake', { tag: '@phone-only' }, async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+
+  const [a, b] = await slipPair(page);
+  await swapTowers(page, a, b);
+  await expect(help(page)).toHaveText(SLIP);
+  await expect(ringed(page)).toHaveCount(2);
+  for (const spot of [a, b]) {
+    expect(await numbersTower(page, spot).evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+    expect(await numbersTower(page, spot).locator('.num-stack').evaluate((el) => getComputedStyle(el).animationName)).toBe('none');
+  }
+
+  await hint(page).click();
+  await expect(help(page)).toHaveText(/ belongs in the .* spot\. Swap them\.$/);
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(0);
+});
