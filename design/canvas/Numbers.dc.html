@@ -51,7 +51,7 @@
 
 <sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; min-height: 54px; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
-<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: #ffffff; text-align: center; text-wrap: balance;">{{help}}</p>
+<p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: {{helpColor}}; text-align: center; text-wrap: balance;">{{help}}</p>
 <button onClick="{{hint}}" aria-label="Hint, {{hintsLeft}} left" aria-disabled="{{hintOff}}" style="grid-column: 3; grid-row: 1; position: relative; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #5a3500; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00; opacity: {{hintopacity}};">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
 <span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 8px; background: #d92f45; border: 2px solid #ffffff; color: #ffffff; font-size: 13px; line-height: 20px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums;">{{hintsLeft}}</span>
@@ -138,7 +138,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["up","down","big"],"default":"up"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","picked","hint","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["up","down","big"],"default":"up"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","picked","hint","slip","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -253,7 +253,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     return [p.level, p.puzzle, p.moment].join('|');
   }
-  freshPuzzle(row) { return { row: row.slice(), picked: null, drag: null, anim: null, hintStep: null, hintOnPuzzle: false, wrongTaps: 0, idle: 0, offer: false, note: '' }; }
+  freshPuzzle(row) { return { row: row.slice(), picked: null, drag: null, anim: null, hintStep: null, hintOnPuzzle: false, wrongTaps: 0, idle: 0, offer: false, note: '', slip: null }; }
   // The hint: the tower that belongs in the first wrong spot, and the tower standing there.
   hintStep(row) {
     for (var i = 0; i < row.length; i++) {
@@ -270,7 +270,7 @@ class Component extends DCLogic {
     var level = this.levelOf(lever);
     var band = this.bandOf(lever);
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
-    var moment = ['play', 'picked', 'hint', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    var moment = ['play', 'picked', 'hint', 'slip', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var order = [0, 1, 2, 3, 4, 5];
@@ -278,6 +278,17 @@ class Component extends DCLogic {
     var s = Object.assign(this.freshPuzzle(row), { lever: this.leverKey(), level: level, band: band, puzzle: puzzle, moment: 'play', order: order, slips: 1, hintsLeft: 3, capped: false });
     if (moment === 'picked') s.picked = 0;
     if (moment === 'hint') { s.hintStep = this.hintStep(s.row); s.hintsLeft = 2; s.hintOnPuzzle = true; }
+    // The slip moment: the first two neighbours already in order, swapped. The line turns to the error colour
+    // and both towers carry the error ring (held here; in play it goes after 660 ms and the line stays).
+    if (moment === 'slip') {
+      for (var k = 0; k + 1 < s.row.length; k++) {
+        if (s.row[k].t < s.row[k + 1].t) {
+          var r2 = s.row.slice(); var t2 = r2[k]; r2[k] = r2[k + 1]; r2[k + 1] = t2;
+          s.row = r2; s.slip = { i: k, j: k + 1, ring: true }; s.slips = 2; s.wrongTaps = 1;
+          break;
+        }
+      }
+    }
     if (moment === 'stuck') { s.wrongTaps = this.limits(band).count; s.slips = this.limits(band).count; s.offer = true; }
     if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
       s.row = row.slice().sort(function (a, b) { return a.t - b.t; });
@@ -310,7 +321,7 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.limits(s.band).secs });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.animT); clearTimeout(this.animEndT); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.slipT); clearTimeout(this.cardT); clearTimeout(this.animT); clearTimeout(this.animEndT); }
   say(text) {
     try {
       var u = new SpeechSynthesisUtterance(text);
@@ -328,9 +339,16 @@ class Component extends DCLogic {
     var before = this.invOf(row);
     var tmp = row[i]; row[i] = row[j]; row[j] = tmp;
     var after = this.invOf(row);
-    var patch = { row: row, picked: null, drag: null, hintStep: null, note: '', anim: fromDrag ? null : { i: i, j: j, go: false } };
+    var patch = { row: row, picked: null, drag: null, hintStep: null, note: '', slip: null, anim: fromDrag ? null : { i: i, j: j, go: false } };
     if (after < before) { patch.idle = 0; patch.offer = false; }
     else {
+      // A slip shows on screen as well as in sound: the slip line in the error colour, and a ring on both towers for 660 ms.
+      if (after > 0) {
+        patch.slip = { i: i, j: j, ring: true, id: Date.now() };
+        clearTimeout(this.slipT);
+        var slipId = patch.slip.id;
+        this.slipT = setTimeout(function () { var sl = self.st().slip; if (sl && sl.id === slipId) self.put({ slip: Object.assign({}, sl, { ring: false }) }); }, 660);
+      }
       var wrongTaps = cs.wrongTaps + 1;
       patch.slips = cs.slips + 1;
       patch.wrongTaps = wrongTaps;
@@ -376,7 +394,9 @@ class Component extends DCLogic {
       : s.note ? s.note
       : hs ? row[hs.from].v + ' belongs in the ' + spots[hs.to] + ' spot. Swap them.'
       : s.picked !== null ? 'Now tap where it should go.'
+      : s.slip ? 'That swap moved them further from the goal.'
       : 'Drag or tap two towers to swap them.';
+    var slipLine = !solvedNow && !s.offer && !s.note && !hs && s.picked === null && !!s.slip;
     var goalText = S.big ? (S.dir === 'up' ? 'Line up the numbers, smallest first.' : 'Line up the numbers, biggest first.')
       : S.dir === 'up' ? 'Line up 1 to 6, smallest first, so the towers make stairs going up.' : 'Line up 6 to 1, biggest first, so the stairs go down.';
     var canHint = playing && s.hintsLeft > 0;
@@ -413,6 +433,8 @@ class Component extends DCLogic {
       }),
       goalText: goalText,
       help: help,
+      // The slip line takes the prompt style's wrong colour (--bw-error-text), as Shape Sorter's wrong line does.
+      helpColor: slipLine ? '#ff9fd4' : '#ffffff',
       hintsLeft: s.hintsLeft,
       hintOff: canHint ? 'false' : 'true',
       hintopacity: canHint ? 1 : 0.45,
@@ -420,7 +442,7 @@ class Component extends DCLogic {
         var cs = self.st();
         if (cs.moment !== 'play' || cs.hintsLeft <= 0) return;
         // Spent at once; a hint clears a pick and stays until the next swap.
-        self.put({ hintStep: self.hintStep(cs.row), hintsLeft: cs.hintsLeft - 1, hintOnPuzzle: true, picked: null, note: '' });
+        self.put({ hintStep: self.hintStep(cs.row), hintsLeft: cs.hintsLeft - 1, hintOnPuzzle: true, picked: null, note: '', slip: null });
       },
       showOffer: playing && s.offer,
       swap: function () {
@@ -445,12 +467,14 @@ class Component extends DCLogic {
         if (!S.big) for (var k = 0; k < x.v - 1; k++) studs.push({ style: self.face(x.color, true) });
         var ink = self.ink(x.color);
         var lit = hs && (hs.from === i || hs.to === i);
+        var slipRing = playing && s.slip && s.slip.ring && (s.slip.i === i || s.slip.j === i);
         return {
           n: x.v, slot: String(i), on: s.picked === i ? 'true' : 'false', off: playing ? 'false' : 'true',
           dragging: isDrag ? 'true' : 'false',
           label: 'Tower of ' + x.v + ', spot ' + (i + 1) + ' of 6, ' + (right ? 'in the right spot' : 'not in the right spot'),
           wrap: wrap,
-          ring: lit ? 'box-shadow: 0 0 0 4px #ffc21a;' : '',
+          // The hint's yellow ring, or a slip's red one (--bw-error-border), with no shake.
+          ring: lit ? 'box-shadow: 0 0 0 4px #ffc21a;' : slipRing ? 'box-shadow: 0 0 0 4px #ff4d5e;' : 'transition: box-shadow 200ms ease-out;',
           arrow: !!(hs && hs.from === i),
           face: self.face(x.color, false) + ' color: ' + ink + ';' + (ink === '#ffffff' ? ' text-shadow: 0 2px 0 rgba(0,0,0,0.3);' : ''),
           studs: studs,
@@ -459,7 +483,7 @@ class Component extends DCLogic {
             self.justDragged = false;
             if (self.st().moment !== 'play') return;
             try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
-            self.put({ drag: { i: i, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false } });
+            self.put({ drag: { i: i, id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moved: false }, slip: null });
           },
           move: function (e) {
             var d = self.st().drag;
@@ -487,7 +511,8 @@ class Component extends DCLogic {
             var cs = self.st();
             if (cs.moment !== 'play') return;
             // A new tap cuts a swap animation short.
-            if (cs.picked === null) self.put({ picked: i, anim: null, note: '' });
+            // A new pick puts the normal line back after a slip.
+            if (cs.picked === null) self.put({ picked: i, anim: null, note: '', slip: null });
             else if (cs.picked === i) self.put({ picked: null, anim: null });
             else self.swap(cs.picked, i);
           }
