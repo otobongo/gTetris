@@ -99,27 +99,33 @@ function fades(css: string): [string, string, string][] {
 describe('tablet frame padding keeps clear of the safe areas', () => {
   const zoomed = (side: string) => new RegExp(`env\\(safe-area-inset-${side}\\)\\s*/\\s*var\\(--bw-zoom`);
 
+  // The tablet frame is centred, and env() measures from the screen's edge, so a side inset is already
+  // inside the frame's margin: adding it to the frame again would narrow the board for nothing.
   it.each([
     ['standard', ['20px', '16px', '18px', '16px']],
     ['roomy', ['24px', '20px', '22px', '20px']],
-  ])('the %s frame takes the larger of its own padding and each inset, scaled back by the zoom', (name, mins) => {
+  ])('the %s frame takes the larger of its own padding and the top and bottom insets, scaled back by the zoom', (name, mins) => {
     const padding = declaration(ruleBody(UI, `.bw-screen--tablet .bw-screen__frame--${name}`), 'padding');
     const each = sides(padding);
     expect(each).toHaveLength(4);
-    ['top', 'right', 'bottom', 'left'].forEach((side, i) => {
+    ['top', 'bottom'].forEach((side) => {
+      const i = side === 'top' ? 0 : 2;
       expect(each[i], side).toMatch(zoomed(side));
       expect(each[i], side).toMatch(new RegExp(`^max\\(${mins[i]},`));
     });
+    expect(each[1], 'right').toBe(mins[1]);
+    expect(each[3], 'left').toBe(mins[3]);
   });
 
-  it('the home frame does the same on the top and sides and keeps the bottom at 0 for the list to scroll into', () => {
+  it('the home frame does the same on the top, keeps its sides and keeps the bottom at 0 for the list to scroll into', () => {
     const padding = declaration(ruleBody(UI, '.bw-screen--tablet .bw-screen__frame--home'), 'padding');
     const each = sides(padding);
     expect(each).toHaveLength(4);
     expect(each[0]).toMatch(zoomed('top'));
-    expect(each[1]).toMatch(zoomed('right'));
+    expect(each[0]).toMatch(/^max\(22px,/);
+    expect(each[1]).toBe('16px');
     expect(each[2]).toBe('0');
-    expect(each[3]).toMatch(zoomed('left'));
+    expect(each[3]).toBe('16px');
   });
 
   it("Home's list ends clear of the home indicator", () => {
@@ -135,8 +141,10 @@ describe('tablet frame padding keeps clear of the safe areas', () => {
 });
 
 describe('a double tap anywhere is a tap, not a zoom', () => {
-  it('the whole page uses touch-action: manipulation', () => {
-    expect(declaration(ruleBody(GLOBAL, 'html'), 'touch-action')).toBe('manipulation');
+  it('the whole page, and every element in it, uses touch-action: manipulation at no specificity', () => {
+    // Not only html: a scroller (Home's list, Letter Builder's play area) starts its own touch-action chain,
+    // so `*` says it on each element, and any class rule (a board's none) still beats it.
+    expect(declaration(ruleBody(GLOBAL, '*'), 'touch-action')).toBe('manipulation');
   });
 
   it('pinch zoom is not switched off in the viewport meta', () => {

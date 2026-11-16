@@ -56,9 +56,11 @@ button { font-family: inherit; color: inherit; }
 
 /* Pinch zoom stays on for everyone (no user-scalable=no). Double-tap zoom is off on the whole page,
    so a child drumming on the help line or the gaps between tiles never zooms it, and a quick second
-   tap on a control is a tap. Boards and drag areas set touch-action: none on their own classes, and
-   the browser takes the stricter of the two. */
-html { touch-action: manipulation; }
+   tap on a control is a tap. Every element says so itself: a scroller (Home's list, Letter Builder's
+   play area) starts its own touch-action chain in Safari, so a rule on html alone would stop there.
+   `*` has no specificity, so boards and drag areas that set touch-action: none on their own classes
+   still win, and the browser takes the stricter of the two. */
+* { touch-action: manipulation; }
 button,
 a,
 [role="button"],

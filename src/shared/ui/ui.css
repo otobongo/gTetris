@@ -30,28 +30,32 @@
 .bw-screen--phone .bw-screen__frame--standard { padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
 .bw-screen--phone .bw-screen__frame--roomy { padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(22px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
 .bw-screen--phone .bw-screen__frame--home { padding: max(22px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
-/* Tablets (and phones turned sideways) too. The frame is zoomed and env() is in screen px, so each inset
-   is divided by the zoom Screen hands down as --bw-zoom. Home keeps 0 at the bottom: its list pads itself. */
+/* Tablets (and phones turned sideways) too, at the top and bottom, where the frame meets the screen's
+   edge. The frame is zoomed and env() is in screen px, so each inset is divided by the zoom Screen hands
+   down as --bw-zoom. The sides keep their own padding: env() measures from the screen's edge, and the
+   centred frame's margins (74px or more at zoom 1) already clear any side inset (62px at most, a phone
+   held sideways); a frame that fills the width is an iPad in portrait, which has none. Home keeps 0 at
+   the bottom: its list pads itself. */
 .bw-screen--tablet .bw-screen__frame--standard {
   padding:
     max(20px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
-    max(16px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    16px
     max(18px, calc(env(safe-area-inset-bottom) / var(--bw-zoom, 1)))
-    max(16px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+    16px;
 }
 .bw-screen--tablet .bw-screen__frame--roomy {
   padding:
     max(24px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
-    max(20px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    20px
     max(22px, calc(env(safe-area-inset-bottom) / var(--bw-zoom, 1)))
-    max(20px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+    20px;
 }
 .bw-screen--tablet .bw-screen__frame--home {
   padding:
     max(22px, calc(env(safe-area-inset-top) / var(--bw-zoom, 1)))
-    max(16px, calc(env(safe-area-inset-right) / var(--bw-zoom, 1)))
+    16px
     0
-    max(16px, calc(env(safe-area-inset-left) / var(--bw-zoom, 1)));
+    16px;
 }
 
 /* ---------- Brick ---------- */
