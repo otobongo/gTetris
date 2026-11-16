@@ -15,6 +15,7 @@
  *   keyboard clicks (Enter, Space) always count.
  * - With `takeover`, a new finger replaces a press that has never moved, so a palm resting on one item
  *   does not block a drag of another. The resting finger's capture is let go, and its lift picks nothing.
+ *   The finger that moves first drags, so a palm that lands just after the finger pressed does not block it.
  */
 import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useLayout } from '../../shared/ui/layout';
@@ -50,7 +51,8 @@ export interface UseDragToTargetOptions<I extends string, T extends string> {
   /**
    * A new finger takes over a press that has never moved (default off). Young children rest a palm or
    * the other hand on the tray; without this, that still touch blocks every drag until it lifts. The
-   * resting finger's lift and the click after it pick nothing. A drag under way always keeps its finger.
+   * finger that moves first drags, whichever came down first; a still finger's lift and the click after
+   * it pick nothing. A drag under way always keeps its finger.
    */
   takeover?: boolean;
 }
@@ -207,7 +209,9 @@ export function useDragToTarget<I extends string, T extends string = string>(opt
           step({ type: 'down', item: id, pointerId: e.pointerId, point: point(e), takeover: live.current.options.takeover });
         },
         onPointerMove(e) {
-          step({ type: 'move', pointerId: e.pointerId, point: point(e), zoom: live.current.zoom });
+          const effect = step({ type: 'move', pointerId: e.pointerId, point: point(e), zoom: live.current.zoom });
+          // a drag holds its finger: one that takes the drag back (takeover) had its capture let go
+          if (effect.kind === 'start') capturePointer(items.current.get(effect.item), e.pointerId);
         },
         onPointerUp(e) {
           if (live.current.options.disabled) {

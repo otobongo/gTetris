@@ -203,6 +203,37 @@ describe('takeover: a resting palm on one piece', () => {
     expect(b.log).toEqual(['pick blue', 'pick null', 'drop blue on square by tap']);
   });
 
+  it('a finger on red, then a palm landing on blue: the finger still drags red home, holding its pointer again', () => {
+    const b = board();
+    b.down('red', 25, 25, 1);
+    b.down('blue', 125, 25, 2);
+    // the palm took over the still press, so the finger's capture was let go and its lost capture arrives
+    expect(b.els.red.captured.has(1)).toBe(false);
+    b.lost('red', 1);
+    b.move('red', 25, 125, 1);
+    expect(b.api().dragging).toBe('red');
+    expect(b.els.red.vars.get(DRAG_X)).toBe('0px');
+    // the drag holds its finger again, so it keeps following off the piece
+    expect(b.els.red.captured.has(1)).toBe(true);
+    b.move('red', 25, 225, 1);
+    b.up('red', 25, 225, 1);
+    expect(b.log).toEqual(['start red', 'drop red on circle by drag']);
+    expect(b.api().dragging).toBeNull();
+  });
+
+  it('after the finger takes the drag back, the palm’s lift and the click after it pick nothing', () => {
+    const b = board();
+    b.down('red', 25, 25, 1);
+    b.down('blue', 125, 25, 2);
+    b.move('red', 25, 125, 1);
+    b.up('blue', 125, 25, 2);
+    b.click('blue');
+    b.up('red', 25, 225, 1);
+    b.click('red'); // the browser's click after the drag
+    expect(b.log).toEqual(['start red', 'drop red on circle by drag']);
+    expect(b.api().picked).toBeNull();
+  });
+
   it('off by default: a second finger on a still press is ignored, as every other caller has it', () => {
     const b = board({ takeover: undefined });
     b.down('red', 25, 25, 1);

@@ -471,3 +471,47 @@ test('before the first placement the fact badge is an empty slot; a placement fi
   await expect(badge).not.toHaveAttribute('aria-hidden', 'true');
   await expect.poll(() => badge.evaluate((el) => `${el.className} ${getComputedStyle(el).backgroundColor}`)).toBe(`sort-fact__badge ${accent}`);
 });
+
+/**
+ * Multi-touch the other way round: a finger presses `piece` first, then a palm lands still on `rest` before the
+ * finger has moved (the heel of the hand settling after the fingertip), and the finger drags `piece` to `to` and
+ * lifts. The palm stays down until `lift` is called.
+ */
+async function fingerThenPalm(page: Page, piece: Locator, rest: Locator, to: Locator) {
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', touchPoints: { x: number; y: number; id: number }[]) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+  const a = await middleOf(piece);
+  const p = await middleOf(rest);
+  const b = await middleOf(to);
+  const palm = { ...p, id: 2 };
+  await touch('touchStart', [{ ...a, id: 1 }]);
+  await touch('touchStart', [{ ...a, id: 1 }, palm]);
+  for (let i = 1; i <= 10; i++) await touch('touchMove', [{ x: a.x + ((b.x - a.x) * i) / 10, y: a.y + ((b.y - a.y) * i) / 10, id: 1 }, palm]);
+  await touch('touchEnd', [{ ...b, id: 1 }]);
+  return {
+    lift: async () => {
+      await touch('touchEnd', [palm]);
+      await cdp.detach();
+    },
+  };
+}
+
+test('a palm that lands on a tray piece after the finger pressed another does not stop that drag, and its lift picks nothing', async ({ page }) => {
+  await openLevel1(page);
+  const [first, second] = await sorterPieces(page);
+  expect(second, 'Level 1 has a second piece to rest a palm on').toBeTruthy();
+
+  const palm = await fingerThenPalm(page, sorterPiece(page, first), sorterPiece(page, second), sorterHole(page, first));
+  await expect(page.getByRole('img', { name: `Filled ${first} hole`, exact: true })).toBeVisible();
+  await expect(sorterPiece(page, first)).toHaveCount(0);
+
+  await palm.lift();
+  // the piece the palm lay on was never picked, before or after it lifted
+  await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'false');
+  await expect(help(page)).not.toHaveText(/^Now tap/);
+
+  // and a real tap on it still picks it
+  await sorterPiece(page, second).tap();
+  await expect(sorterPiece(page, second)).toHaveAttribute('aria-pressed', 'true');
+});

@@ -6,8 +6,9 @@
  *
  * The pointer handling copies Brick Escape's (SlideGame.tsx): pointer capture as a nicety, offsets
  * divided by the zoom of the tablet frame, and a lost pointer (pointercancel) never counts. With
- * `takeover`, a new finger replaces a still press (a resting palm), and the resting finger's lift
- * and the click after it count for nothing.
+ * `takeover`, a still finger never blocks another: a new finger replaces a press that has never moved
+ * (a resting palm), the finger that moves first drags, and a still finger's lift and the click after
+ * it count for nothing.
  */
 
 /** Travel, x plus y in screen px, before a press becomes a drag (7.2). */
@@ -97,10 +98,11 @@ export type DragPhase<I extends string> =
   /** Past the threshold: the item follows the pointer. */
   | { kind: 'dragging'; item: I; pointerId: number; start: Point };
 
-/** A still press a new finger took over (a resting palm, say): the pointer and the item it rests on. */
+/** A still press a new finger took over (a resting palm, say): the pointer, the item it rests on and where it came down. */
 export interface RestingPress<I extends string> {
   pointerId: number;
   item: I;
+  start: Point;
 }
 
 export interface DragTrack<I extends string> {
@@ -112,9 +114,10 @@ export interface DragTrack<I extends string> {
    */
   swallowClick: boolean;
   /**
-   * Presses a new finger took over (`takeover` on its pointerdown). They can no longer move, drop or
-   * cancel anything; when one lifts, the click the browser sends on its item is swallowed. Left out
-   * when there are none.
+   * Presses a new finger took over (`takeover` on its pointerdown). They cannot drop or cancel anything;
+   * while the press that took over is still still, the first of them to travel the threshold takes the
+   * drag back. When one lifts, the click the browser sends on its item is swallowed. Left out when there
+   * are none.
    */
   resting?: readonly RestingPress<I>[];
   /**
@@ -130,7 +133,8 @@ export const DRAG_IDLE: DragTrack<never> = Object.freeze({ phase: Object.freeze(
 export type DragInput<I extends string> =
   /**
    * `takeover`: this press may replace a press that has never moved, so a palm or a second hand
-   * resting on one item does not block a real drag of another. A drag under way always keeps its finger.
+   * resting on one item does not block a real drag of another; the finger that moves first drags. A
+   * drag under way always keeps its finger.
    */
   | { type: 'down'; item: I; pointerId: number; point: Point; takeover?: boolean }
   | { type: 'move'; pointerId: number; point: Point; zoom?: number }
@@ -181,6 +185,25 @@ function lift<I extends string>(track: DragTrack<I>, pointerId: number): { track
   };
 }
 
+/**
+ * A resting finger moved while the press that took it over has not: the finger that moves first drags,
+ * so a palm that lands just after the finger pressed never stops the finger's drag. The still press
+ * rests in its place, and its lift picks nothing. Under the threshold, or for any other pointer, nothing.
+ */
+function retake<I extends string>(
+  track: DragTrack<I>,
+  p: Extract<DragPhase<I>, { kind: 'pressed' }>,
+  input: Extract<DragInput<I>, { type: 'move' }>,
+): { track: DragTrack<I>; effect: DragEffect<I> } {
+  const rest = track.resting?.find((r) => r.pointerId === input.pointerId);
+  if (!rest || !pastThreshold(input.point.x - rest.start.x, input.point.y - rest.start.y)) return { track, effect: NONE };
+  const resting = [...track.resting!.filter((r) => r !== rest), { pointerId: p.pointerId, item: p.item, start: p.start }];
+  return {
+    track: { phase: { kind: 'dragging', item: rest.item, pointerId: rest.pointerId, start: rest.start }, swallowClick: track.swallowClick, ...lists(resting, track.swallowItems) },
+    effect: { kind: 'start', item: rest.item, offset: dragOffset(rest.start, input.point, input.zoom) },
+  };
+}
+
 /** One pointer event in, the drag's next state and what to do about it out. Pure. */
 export function dragStep<I extends string>(track: DragTrack<I>, input: DragInput<I>): { track: DragTrack<I>; effect: DragEffect<I> } {
   const p = track.phase;
@@ -193,7 +216,7 @@ export function dragStep<I extends string>(track: DragTrack<I>, input: DragInput
       if (p.kind === 'idle') return { track: { phase: pressed, swallowClick: false, ...lists(resting, undefined) }, effect: NONE };
       // a new finger may take over a press that never moved (a resting palm); the old finger stays down, resting
       if (input.takeover && p.kind === 'pressed' && p.pointerId !== input.pointerId) {
-        const took: RestingPress<I> = { pointerId: p.pointerId, item: p.item };
+        const took: RestingPress<I> = { pointerId: p.pointerId, item: p.item, start: p.start };
         return {
           track: { phase: pressed, swallowClick: false, ...lists([...(resting ?? []), took], undefined) },
           effect: { kind: 'release', item: p.item, pointerId: p.pointerId },
@@ -203,7 +226,9 @@ export function dragStep<I extends string>(track: DragTrack<I>, input: DragInput
       return { track, effect: NONE };
     }
     case 'move': {
-      if (p.kind === 'idle' || p.pointerId !== input.pointerId) return { track, effect: NONE };
+      if (p.kind === 'idle') return { track, effect: NONE };
+      // another finger: a resting one may take back a press that never moved; a drag under way keeps its finger
+      if (p.pointerId !== input.pointerId) return p.kind === 'pressed' ? retake(track, p, input) : { track, effect: NONE };
       const offset = dragOffset(p.start, input.point, input.zoom);
       if (p.kind === 'dragging') return { track, effect: { kind: 'move', item: p.item, offset } };
       if (!pastThreshold(input.point.x - p.start.x, input.point.y - p.start.y)) return { track, effect: NONE };
