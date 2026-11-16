@@ -59,6 +59,12 @@ describe('short screens get the phone frame at a 667px floor (decision 4)', () =
     expect(body(FRAME)).not.toMatch(/overflow\s*:\s*hidden/);
   });
 
+  it('the frame is never a scroller of its own there, so a finger off a board scrolls the screen', () => {
+    // Picture Builder's short-phone rule makes its frame a scroller with overscroll contained, which would
+    // swallow every page scroll; this selector outranks a game's one-class rule.
+    expect(value(FRAME, 'overflow')).toBe('visible');
+  });
+
   it('the screen itself is the vertical scroller and never scrolls sideways', () => {
     expect(value(MAIN, 'overflow-y')).toBe('auto');
     expect(value(MAIN, 'overflow-x')).toBe('hidden');
@@ -79,6 +85,6 @@ describe('short screens get the phone frame at a 667px floor (decision 4)', () =
 
   it('no short rule touches touch-action (boards keep none, so a stroke never scrolls) and none uses a dash in its comments', () => {
     for (const [s, b] of rules(UI)) if (s.includes('bw-screen--short')) expect(b, s).not.toMatch(/touch-action/);
-    expect(readFileSync(new URL('./ui.css', import.meta.url), 'utf8')).not.toMatch(/[–—]/);
+    expect(readFileSync(new URL('./ui.css', import.meta.url), 'utf8')).not.toMatch(/[\u2013\u2014]/);
   });
 });

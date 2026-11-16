@@ -64,7 +64,9 @@
    drag on them never scrolls; pinch zoom is untouched. Home keeps the viewport height: its list scrolls. */
 .bw-screen--short { --bw-short-floor: 667px; }
 .bw-screen--short.bw-screen--fit-viewport { overflow-x: hidden; overflow-y: auto; }
-.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame { height: auto; min-height: max(100dvh, var(--bw-short-floor)); }
+/* The frame never scrolls itself here (a game's short-phone rule may make it a scroller): one scroller,
+   the screen, so a finger anywhere off a board scrolls the page. */
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame { height: auto; min-height: max(100dvh, var(--bw-short-floor)); overflow: visible; }
 .bw-screen--short.bw-screen--fit-viewport .bw-screen__frame--home { height: 100dvh; min-height: 0; }
 /* The column is centred in a wide screen, so its margin already clears a side inset (a notch); the
    frame adds only what the margin leaves. 100% here is the screen's width, min(...) the column's. */

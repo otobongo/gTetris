@@ -309,8 +309,8 @@ describe('PuzzleDots capped (decision 25)', () => {
   });
 
   it('the label has no dashes and is plain', () => {
-    expect(LABEL).not.toMatch(/[-–—]/);
-    expect(dots({ solved: 2, capped: true })).not.toMatch(/[–—]/);
+    expect(LABEL).not.toMatch(/[-\u2013\u2014]/);
+    expect(dots({ solved: 2, capped: true })).not.toMatch(/[\u2013\u2014]/);
   });
 
   it('the mark is styled from tokens: 2px stroke and the 11px numeral in --bw-text-2, and it is static', () => {
