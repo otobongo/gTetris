@@ -9,6 +9,7 @@ import {
   runOf,
   totalStars,
   useActivePlayer,
+  useSettings,
   type AgeBand,
   type LevelRun,
   type Player,
@@ -132,6 +133,7 @@ type Finish = Extract<PuzzleOutcome, { kind: 'finished' }>;
 
 function Play({ level, player }: { level: number; player: Player | null }) {
   const layout = useLayout();
+  const { voice } = useSettings();
   // The band the puzzle on screen started with: a band changed later applies from the next puzzle (2.3, D2).
   const [band, setBand] = useState<AgeBand>(() => player?.ageBand ?? '5-6');
   const spelling = isSpelling(level);
@@ -186,6 +188,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   const { text, speech } = promptText(prompt, practice);
   const playing = moment === 'play';
   const offer = playing && stuck.offer;
+  /** What the top bar speaker says now, and a tap on the help line too: the offer line while it shows. */
+  const spoken = offer ? offerLine(spelling) : speech;
   const levelCount = LEVELS.length;
   const playerId = () => player?.id ?? progressStore.ensureActivePlayer();
   const stuckOn = (e: StuckEvent) => setStuck((s) => stuckStep(s, e, limit));
@@ -297,7 +301,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
     // The level's 3 hints are a budget, saved at once: a hint used on a puzzle swapped away stays spent (3.3).
     const left = player ? progressStore.spendHint(GAME, level, player.id) : null;
     setHintsLeft(left ?? Math.max(0, hintsLeft - 1));
-    usedHintRef.current = true;
+    // The practice level is never wrong, so its hint glows and spends but never caps the stars (decision 22).
+    if (!practice) usedHintRef.current = true;
   };
 
   const playNextLevel = (to: number) => {
@@ -367,6 +372,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
       </div>
     ) : undefined,
     practice,
+    helpSpeech: voice ? spoken : null,
   };
 
   const solvedNow = moment !== 'play';
@@ -409,11 +415,12 @@ function Play({ level, player }: { level: number; player: Player | null }) {
         backLabel="Back to home"
         below={dots}
         action={
-          offer ? (
+          // With Voice off there is nothing to hear, so the right cell is the empty slot (decision 20).
+          !voice ? undefined : offer ? (
             // While the offer shows, the speaker reads the offer line (brief 10).
-            <IconButton icon="speaker" label="Read the help line aloud" onClick={() => say(offerLine(spelling))} />
+            <IconButton icon="speaker" label="Read the help line aloud" onClick={() => say(spoken)} />
           ) : (
-            <IconButton icon="speaker" label={spelling ? 'Say the word' : 'Hear it again'} onClick={() => say(speech)} />
+            <IconButton icon="speaker" label={spelling ? 'Say the word' : 'Hear it again'} onClick={() => say(spoken)} />
           )
         }
       />

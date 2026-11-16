@@ -47,6 +47,7 @@
   width: calc(100% + 12px);
 }
 .lb-view {
+  position: relative;
   flex: 1 1 0;
   min-height: var(--lb-min, auto);
   display: flex;
@@ -153,6 +154,20 @@ button.lb-picture:active { transform: translateY(var(--bw-press-shift)); box-sha
 .lb-helprow > .lb-help { grid-column: 2; grid-row: 1; }
 .lb-helprow__hint { grid-column: 3; grid-row: 1; display: grid; }
 .lb-helprow__offer { grid-column: 1; grid-row: 1; display: grid; }
+/* Decision 21: a clear button over the line's whole cell, so a tap on the line reads it aloud. Only the cursor shows it. */
+.lb-help-tap {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 .lb-help {
   margin: 0;
   min-height: 24px;
@@ -250,6 +265,26 @@ button.lb-brick:active:not(.is-dragging) { transform: rotate(var(--rot)) transla
 .lb-brick.is-matched { opacity: 0.28; transform: scale(0.86); pointer-events: none; }
 .lb-brick.is-tried { opacity: 0.35; }
 .lb-brick.is-right { transform: scale(1.12); outline: 5px solid var(--bw-success); outline-offset: 3px; }
+
+/* Practice demo (decision 5): a see-through brick that glides from the tray to its place (Views.tsx DragDemo
+   animates it), or under Reduce Motion a still arrow. Neither takes a tap. */
+.lb-demo { position: absolute; inset: 0; pointer-events: none; z-index: var(--bw-z-drag); }
+.lb-demo-glide {
+  position: absolute;
+  margin: 0;
+  opacity: 0.5;
+  pointer-events: none;
+  transition: none;
+  box-shadow: none;
+}
+.lb-demo-arrow { position: absolute; overflow: visible; pointer-events: none; }
+.lb-demo-arrow path {
+  fill: none;
+  stroke: var(--bw-accent);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
 /* ---------- Tray ---------- */
 .lb-well {

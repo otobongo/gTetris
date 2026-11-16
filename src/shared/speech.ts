@@ -8,13 +8,17 @@ try {
   /* no speech support */
 }
 
-/** Read letters and words aloud with the browser's built-in voice (Web Speech API). Silently no-ops where unsupported. */
-export function say(text: string, rate = 0.85) {
+/**
+ * Read letters and words aloud with the browser's built-in voice (Web Speech API). Silently no-ops where unsupported.
+ * A new line stops the one speaking, unless `queue` is set: then it plays after it (Letter Builder's practice
+ * tap says the letter, then the drag note).
+ */
+export function say(text: string, rate = 0.85, opts: { queue?: boolean } = {}) {
   if (!getProgress().settings.voice) return;
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
-    synth.cancel();
+    if (!opts.queue) synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.rate = rate;
     u.pitch = 1.1;
