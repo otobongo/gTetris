@@ -115,7 +115,7 @@ export interface DragTrack<I extends string> {
   swallowClick: boolean;
   /**
    * Presses a new finger took over (`takeover` on its pointerdown). They cannot drop or cancel anything;
-   * while the press that took over is still still, the first of them to travel the threshold takes the
+   * while the press that took over has not moved, the first of them to travel the threshold takes the
    * drag back. When one lifts, the click the browser sends on its item is swallowed. Left out when there
    * are none.
    */
