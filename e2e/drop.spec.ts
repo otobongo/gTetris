@@ -136,16 +136,46 @@ test('the intro sheet teaches the board gestures on a touch screen, and the keys
   await expect(sheet.getByRole('button', { name: 'Start' })).toBeFocused();
 });
 
+test('once a key has been pressed, the next intro sheet lists the keys from the start', async ({ page }) => {
+  await openStage(page, 9, '7-8');
+  const sheet = page.getByRole('dialog');
+  await page.keyboard.press('ArrowLeft');
+  await expect(sheet).toContainText(KEYS_LINE);
+
+  // Out to Home and into the stage again, with no reload: the keyboard is still there, so the new sheet says so at once.
+  await sheet.getByRole('button', { name: 'Start' }).click();
+  await page.getByRole('link', { name: 'Back to home' }).click();
+  await homeCard(page, 'Brick Drop').click();
+  await expect(page).toHaveURL(/#\/game\/drop\/9$/);
+  await expect(sheet).toContainText(KEYS_LINE);
+  await expect(sheet).not.toContainText(TOUCH_LINE);
+});
+
+test.describe('with a mouse or trackpad and no touch screen', () => {
+  test.use({ hasTouch: false, isMobile: false });
+
+  test('the intro sheet lists the keys from the start @phone-only', async ({ page }) => {
+    await openStage(page, 9, '7-8');
+    const sheet = page.getByRole('dialog');
+    await expect(sheet).toContainText(KEYS_LINE);
+    await expect(sheet).not.toContainText(TOUCH_LINE);
+  });
+});
+
 /*
  * Cell sizes before this change, measured on the intro sheet (Stage 3 is 7 x 14, Stage 9 is 10 x 18). They are the
  * same on both projects, since the tablet frame is the phone design zoomed: phone 390 x 844, tablet 834 x 1194.
+ * Ages 3 to 4 have the taller sand timer row; ages 5 and up have the countdown row.
  */
-const TODAY: Record<'3-4' | '7-8', Record<3 | 9, number>> = {
+const TODAY: Record<Band, Record<3 | 9, number>> = {
   '3-4': { 3: 35, 9: 27 },
+  '5-6': { 3: 36, 9: 28 },
   '7-8': { 3: 36, 9: 28 },
+  '9-10': { 3: 36, 9: 28 },
 };
+const BANDS: readonly Band[] = ['3-4', '5-6', '7-8', '9-10'];
 
-for (const band of ['3-4', '7-8'] as const) {
+for (const band of BANDS) {
   for (const stage of [3, 9] as const) {
     test(`Stage ${stage} at ages ${band} keeps its cell size on the phone and the tablet`, async ({ page }) => {
       await openStage(page, stage, band);
@@ -154,18 +184,80 @@ for (const band of ['3-4', '7-8'] as const) {
   }
 }
 
+test.describe('an iPad in landscape (1194 x 834)', () => {
+  test.use({ viewport: { width: 1194, height: 834 } });
+  /** Cell sizes before this change: the 596 px frame at zoom 1 there, so one px less than in portrait. */
+  const LANDSCAPE: Record<Band, Record<3 | 9, number>> = {
+    '3-4': { 3: 34, 9: 26 },
+    '5-6': { 3: 35, 9: 27 },
+    '7-8': { 3: 35, 9: 27 },
+    '9-10': { 3: 35, 9: 27 },
+  };
+
+  for (const band of BANDS) {
+    for (const stage of [3, 9] as const) {
+      test(`ages ${band}: Stage ${stage} keeps its cell size, with the tiles in a row above the well @phone-only`, async ({ page }) => {
+        await openStage(page, stage, band);
+        expect(Math.abs((await cellSize(page, stage)) - LANDSCAPE[band][stage])).toBeLessThanOrEqual(1);
+        const well = (await page.getByRole('group', { name: /^Board\./ }).boundingBox())!;
+        const next = (await page.locator('.drop-tile').filter({ hasText: 'Next' }).boundingBox())!;
+        expect(next.y + next.height).toBeLessThanOrEqual(well.y - 4);
+      });
+    }
+  }
+});
+
+type Box = { x: number; y: number; width: number; height: number };
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+test('the tiles move beside the well at 700 px tall or less, and the board re-measures when the height crosses it @phone-only', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 701 });
+  await openStage(page, 3, '5-6');
+  const board = page.getByRole('group', { name: /^Board\./ });
+  const next = page.locator('.drop-tile').filter({ hasText: 'Next' });
+
+  // 701 px tall: the tiles stay in their row above the well.
+  let well = (await board.boundingBox())!;
+  let tile = (await next.boundingBox())!;
+  expect(tile.y + tile.height).toBeLessThanOrEqual(well.y - 4);
+  const tall = await cellSize(page, 3);
+
+  // 700 px: the tiles stand beside the well, to the right of its ring, and the cells grow with no reload.
+  await page.setViewportSize({ width: 375, height: 700 });
+  await expect.poll(() => cellSize(page, 3)).toBeGreaterThanOrEqual(tall + 3);
+  well = (await board.boundingBox())!;
+  tile = (await next.boundingBox())!;
+  expect(tile.x).toBeGreaterThanOrEqual(well.x + well.width + 4);
+  expect(tile.y).toBeLessThan(well.y + well.height);
+
+  // And back: the row returns and the cells are what they were.
+  await page.setViewportSize({ width: 375, height: 701 });
+  await expect.poll(() => cellSize(page, 3)).toBe(tall);
+});
+
 test.describe('a short phone (375 x 667)', () => {
   test.use({ viewport: { width: 375, height: 667 } });
   const VW = 375;
   const VH = 667;
 
-  /** Stage 3 cells at 375 x 667 before this change: 22px at ages 3 to 4 (the sand timer row is taller), 23px at 7 to 8. */
-  const STAGE3_BEFORE: Record<'3-4' | '7-8', number> = { '3-4': 22, '7-8': 23 };
+  /** Stage 3 cells at 375 x 667 before this change: 22px at ages 3 to 4 (the sand timer row is taller), 23px at 5 and up. */
+  const STAGE3_BEFORE: Record<Band, number> = { '3-4': 22, '5-6': 23, '7-8': 23, '9-10': 23 };
 
-  type Box = { x: number; y: number; width: number; height: number };
-  const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  for (const [stage, band] of [[1, '3-4'], [9, '5-6']] as const) {
+    test(`Stage ${stage} at ages ${band}: the help line sits centred over the well, clear of the tiles @phone-only`, async ({ page }) => {
+      await openStage(page, stage, band);
+      await page.getByRole('dialog').getByRole('button', { name: 'Start' }).click();
+      const line = page.locator('.drop-say__line').first();
+      await expect(line).toHaveText('Press any button to start.');
+      const box = (await line.boundingBox())!;
+      const well = (await page.getByRole('group', { name: /^Board\./ }).boundingBox())!;
+      const tiles = (await page.locator('.drop-tiles').boundingBox())!;
+      expect(Math.abs(box.x + box.width / 2 - (well.x + well.width / 2))).toBeLessThanOrEqual(1);
+      expect(box.x + box.width).toBeLessThanOrEqual(tiles.x);
+    });
+  }
 
-  for (const band of ['3-4', '7-8'] as const) {
+  for (const band of BANDS) {
     test(`ages ${band}: Stage 9 cells are at least 21px, with the Next and Rows tiles beside the well @phone-only`, async ({ page }) => {
       await openStage(page, 9, band);
       expect(await cellSize(page, 9)).toBeGreaterThanOrEqual(21);
@@ -191,6 +283,12 @@ test.describe('a short phone (375 x 667)', () => {
       expect(ring.x + ring.width).toBeLessThanOrEqual(VW);
       expect(pad.y + pad.height).toBeLessThanOrEqual(VH);
       expect(overlaps(ring, pad)).toBe(false);
+      // The timer row above keeps its place: the well's ring and the tiles start below it.
+      const timer = (await page.locator('.drop-timer, .drop-sand').boundingBox())!;
+      expect(ring.y).toBeGreaterThanOrEqual(timer.y + timer.height);
+      for (const name of ['Next', 'Rows']) {
+        expect((await page.locator('.drop-tile').filter({ hasText: name }).boundingBox())!.y).toBeGreaterThanOrEqual(timer.y + timer.height);
+      }
       const scroll = await page.evaluate(() => ({ w: document.documentElement.scrollWidth, h: document.documentElement.scrollHeight }));
       expect(scroll.w).toBeLessThanOrEqual(VW);
       expect(scroll.h).toBeLessThanOrEqual(VH);

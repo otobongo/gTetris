@@ -56,6 +56,12 @@ const HOME = toHref('/');
  */
 let startedFromCard: number | null = null;
 
+/**
+ * Set by the first key press on a board. It holds until the page reloads, so once a keyboard has shown itself
+ * (an iPad with a keyboard case) every later intro sheet lists the keys at once, not only the one it was pressed on.
+ */
+let keyboardSeen = false;
+
 /** The hourglass of the timer row (canvas glyph, stroke 2.6). */
 function Hourglass() {
   return (
@@ -166,7 +172,7 @@ export default function Play({ index }: { index: number }) {
   const [focusTo, setFocusTo] = useState<'' | 'board' | 'slot'>('');
   // The intro sheet lists the keys once a keyboard shows itself (a fine pointer, or any key press).
   const finePointer = useFinePointer();
-  const [sawKey, setSawKey] = useState(false);
+  const [sawKey, setSawKey] = useState(() => keyboardSeen);
 
   // Seconds on this puzzle's clock, counted only while it is being played.
   const [secs, setSecs] = useState(0);
@@ -393,6 +399,7 @@ export default function Play({ index }: { index: number }) {
   // Keyboard
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      keyboardSeen = true;
       setSawKey(true);
       const cmd = keyCommand(e);
       const ph = roundRef.current!.phase;

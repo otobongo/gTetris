@@ -188,9 +188,10 @@ class Component extends DCLogic {
   limit() { return 135; }
   // Stuck after 3 failed tries at ages 7 to 8 (brief 3.1).
   stuckTries() { return 3; }
+  // The device is part of the key: the short phone's board has more rows, so its stacks are built again.
   leverKey() {
     var p = this.props || {};
-    return [p.puzzle, p.moment].join('|');
+    return [p.device, p.puzzle, p.moment].join('|');
   }
   // The starter stack: pre-built rows with brick-shaped holes. A turned T fills the gap and clears two rows.
   // A mirrored copy stands in for the stage's other puzzles on the canvas.
@@ -367,7 +368,7 @@ class Component extends DCLogic {
     var s = this.st();
     var tablet = this.props.device === 'tablet';
     var short = this.props.device === 'short';
-    // Short phone: 25px cells, what the app draws for Stage 4 at 375 x 667 (21px with the tiles in a row above).
+    // Short phone: 25px cells, what the app draws for Stage 4 at 375 x 667 (20px with the tiles in a row above).
     var cell = short ? 25 : 42;
     var m = s.moment;
     var finished = m === 'gameDone';
