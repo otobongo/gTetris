@@ -123,7 +123,8 @@
 }
 .num-tower[aria-disabled='true'] { cursor: default; }
 
-/* The stack: number face at the base, stud bricks above. The hint's ring goes round it. */
+/* The stack: number face at the base, stud bricks above. The hint's ring and a slip's ring go round it,
+   and fade out as Shape Sorter's hole rings do. */
 .num-stack {
   flex-shrink: 0;
   display: flex;
@@ -132,11 +133,11 @@
   gap: 2px;
   padding: 2px;
   border-radius: 14px;
+  transition: box-shadow var(--bw-base) var(--bw-ease);
 }
 .num-stack.is-lit { box-shadow: var(--bw-ring); }
-/* A slip: Shape Sorter's wrong ring (4 px of --bw-error-border) round both swapped towers for 660 ms, then it
-   fades. No shake: the towers have just slid, and the line in the help row says what went wrong. */
-.num-stack { transition: box-shadow var(--bw-base) ease-out; }
+/* A slip: Shape Sorter's wrong ring (4 px of --bw-error-border) round both swapped towers for 660 ms, on at
+   once. No shake: the towers have just slid, and the line in the help row says what went wrong. */
 .num-tower.is-wrong .num-stack { box-shadow: 0 0 0 4px var(--bw-error-border); transition: none; }
 
 .num-face.bw-brick {

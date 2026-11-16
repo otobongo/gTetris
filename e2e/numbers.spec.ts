@@ -16,6 +16,7 @@ import {
   numbersRow,
   numbersTower,
   pointerDrag,
+  recordSpeech,
   savedGame,
   savedRun,
   savedState,
@@ -297,4 +298,250 @@ test('a hint takes the slip line away, and with motion on the ringed towers do n
   await expect(help(page)).toHaveText(/ belongs in the .* spot\. Swap them\.$/);
   await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
   await expect(ringed(page)).toHaveCount(0);
+});
+
+/* ---------- A slip shows on screen: the review's extra cases (usability batch J) ---------- */
+
+/** The tower row after swapping spots a and b, worked out here. */
+const swapped = (row: readonly number[], a: number, b: number): number[] => {
+  const out = [...row];
+  [out[a], out[b]] = [out[b], out[a]];
+  return out;
+};
+
+/** The first pair of spots whose swap raises the inversion count of `row` (a slip), for a row the test already knows. */
+function slipPairOf(row: readonly number[], up: boolean): [number, number] {
+  const now = inversionsOf(row, up);
+  for (let a = 0; a < row.length; a++) for (let b = a + 1; b < row.length; b++) if (inversionsOf(swapped(row, a, b), up) > now) return [a, b];
+  throw new Error(`No swap makes this row worse: ${row.join(',')}`);
+}
+
+/**
+ * Record, in the page, every frame's ringed spots and the time of every tap on a tower, so the ring's timing is read
+ * from the page's own clock rather than from how fast the test runner gets round to looking.
+ */
+async function watchRings(page: Page): Promise<() => Promise<{ frames: [number, string][]; taps: number[] }>> {
+  await page.evaluate(() => {
+    const w = window as unknown as { __frames: [number, string][]; __taps: number[] };
+    w.__frames = [];
+    w.__taps = [];
+    document.addEventListener('click', (e) => (e.target as Element).closest('.num-tower') && w.__taps.push(performance.now()), true);
+    const tick = () => {
+      const spots = [...document.querySelectorAll('.num-tower')].flatMap((el, i) => (el.classList.contains('is-wrong') ? [i] : []));
+      w.__frames.push([performance.now(), spots.join(',')]);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+  return () =>
+    page.evaluate(() => {
+      const w = window as unknown as { __frames: [number, string][]; __taps: number[] };
+      return { frames: w.__frames.slice(), taps: w.__taps.slice() };
+    });
+}
+
+/** From `from` on (page clock), when the ring on `spots` first showed and when it last showed before it went. */
+function ringSpan(frames: [number, string][], from: number, spots: readonly number[]): { first: number; last: number } {
+  const want = [...spots].sort((x, y) => x - y).join(',');
+  const after = frames.filter(([t]) => t >= from);
+  const start = after.findIndex(([, s]) => s === want);
+  if (start < 0) throw new Error(`No ring on ${want} after ${from}`);
+  let end = start;
+  while (end + 1 < after.length && after[end + 1][1] === want) end++;
+  return { first: after[start][0] - from, last: after[end][0] - from };
+}
+
+test('a tower dragged onto one it should not swap with is a slip too, a new drag takes the line away, and the slip counts once', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+
+  // The drag lands on the wrong tower (the finger let go over the neighbour of the one meant): a slip.
+  const before = await numbersRow(page);
+  const [a, b] = await slipPair(page);
+  await pointerDrag(page, numbersTower(page, a), numbersTower(page, b));
+  await expect.poll(() => numbersRow(page)).toEqual(swapped(before, a, b));
+  await expect(help(page)).toHaveText(SLIP);
+  await expect(help(page)).toHaveClass(/\bis-wrong\b/);
+  await expect(numbersTower(page, a)).toHaveClass(/\bis-wrong\b/);
+  await expect(numbersTower(page, b)).toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(2);
+
+  // Lifting a tower again, by dragging it, puts the normal line back; let go over empty space, nothing swaps.
+  const now = await numbersRow(page);
+  const box = await page.locator('.num-goal').boundingBox();
+  await pointerDrag(page, numbersTower(page, 0), { x: box!.x + 6, y: box!.y + box!.height / 2 });
+  await expect.poll(() => numbersRow(page)).toEqual(now);
+  await expect(help(page)).toHaveText('Drag or tap two towers to swap them.');
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(0);
+
+  // The slip counts once toward the stars, as before the fix; the missed drag counts nothing.
+  await solveNumbersPuzzle(page);
+  expect((await savedRun(page, 'numbers', 0)).solved).toEqual([{ puzzle: 0, count: 1, usedHint: false, outOfTime: false }]);
+});
+
+/** One level per age band, so a slip is shown in both orders and with the bands' bigger numbers (up to 999 at ages 9 to 10). */
+const BAND_LEVELS = [
+  { band: '3-4', level: 5, goal: 'Line up 6 to 1, biggest first, so the stairs go down.' },
+  { band: '5-6', level: 9, goal: 'Line up the numbers, smallest first.' },
+  { band: '7-8', level: 12, goal: 'Line up the numbers, biggest first.' },
+  { band: '9-10', level: 10, goal: 'Line up the numbers, biggest first.' },
+] as const;
+
+for (const { band, level, goal } of BAND_LEVELS) {
+  test(`at ages ${band} on Level ${level} a slip shows the line and the two rings, and a good swap takes them away`, async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band, games: { numbers: { stars: starsUpTo(level - 1) } } }]);
+    await page.goto(`/#/game/numbers/${level}`);
+    await expect(page).toHaveURL(new RegExp(`#/game/numbers/${level}$`));
+    await expect(page.locator('.num-goal__text')).toHaveText(goal);
+    const before = await numbersRow(page);
+    if (band === '9-10') expect(Math.max(...before)).toBeGreaterThan(20);
+
+    const [a, b] = await slipPair(page);
+    await swapTowers(page, a, b);
+    await expect(help(page)).toHaveText(SLIP);
+    await expect(help(page)).toHaveClass(/\bis-wrong\b/);
+    await expect(ringed(page)).toHaveCount(2);
+    await expect(numbersTower(page, a)).toHaveClass(/\bis-wrong\b/);
+    await expect(numbersTower(page, b)).toHaveClass(/\bis-wrong\b/);
+    // The towers keep their names (numbersRow reads every one); the ring is drawn, not spoken.
+    expect(await numbersRow(page)).toEqual(swapped(before, a, b));
+
+    const step = (await numbersNextSwap(page))!;
+    await swapTowers(page, step[0], step[1]);
+    await expect(help(page)).not.toHaveText(SLIP);
+    await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+    await expect(ringed(page)).toHaveCount(0);
+  });
+}
+
+test('the ring stays 660 ms from the swap, a pick takes it away, and a second slip rings only its own two towers for its own 660 ms', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+  const read = await watchRings(page);
+
+  // A slip on its own: the ring shows at once and goes after about 660 ms, with nothing done in between.
+  const row = await numbersRow(page);
+  const [a, b] = await slipPair(page);
+  await swapTowers(page, a, b);
+  await page.waitForTimeout(1000);
+  let log = await read();
+  const one = ringSpan(log.frames, log.taps[1], [a, b]);
+  expect(one.first).toBeLessThan(200);
+  expect(one.last).toBeGreaterThanOrEqual(600);
+  expect(one.last).toBeLessThan(850);
+  expect(log.frames.filter(([t, s]) => t > log.taps[1] + 900 && s !== '')).toEqual([]);
+  await expect(help(page)).toHaveText(SLIP);
+
+  // Two slips 100 ms apart: the pick takes the first ring away at once, and the second pair keeps its ring 660 ms from its own swap.
+  const second = swapped(row, a, b);
+  const [c, d] = slipPairOf(second, true);
+  const [e, f] = slipPairOf(swapped(second, c, d), true);
+  await swapTowers(page, c, d);
+  await page.waitForTimeout(100);
+  await swapTowers(page, e, f);
+  await page.waitForTimeout(1000);
+  log = await read();
+  const [pickE, slipF] = [log.taps[4], log.taps[5]];
+  expect(slipF - log.taps[3]).toBeLessThan(660);
+  // The first of the two rang until the pick, not until its timer.
+  const mid = ringSpan(log.frames, log.taps[3], [c, d]);
+  expect(mid.first).toBeLessThan(200);
+  expect(mid.last).toBeLessThan(pickE - log.taps[3] + 50);
+  // Between the pick and the second swap no tower is ringed.
+  expect(log.frames.filter(([t, s]) => t > pickE + 50 && t < slipF && s !== '')).toEqual([]);
+  const two = ringSpan(log.frames, slipF, [e, f]);
+  expect(two.first).toBeLessThan(200);
+  expect(two.last).toBeGreaterThanOrEqual(600);
+  expect(two.last).toBeLessThan(850);
+  await expect(help(page)).toHaveText(SLIP);
+});
+
+test('a slip made from the keyboard is announced in the status line, and the speaker reads it after the goal', { tag: '@phone-only' }, async ({ page }) => {
+  const spoken = await recordSpeech(page);
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+  const goal = (await page.locator('.num-goal__text').textContent())!;
+
+  const [a, b] = await slipPair(page);
+  await numbersTower(page, a).focus();
+  await page.keyboard.press('Enter');
+  await expect(numbersTower(page, a)).toHaveAttribute('aria-pressed', 'true');
+  await numbersTower(page, b).focus();
+  await page.keyboard.press('Space');
+  await expect(help(page)).toHaveAttribute('role', 'status');
+  await expect(help(page)).toHaveText(SLIP);
+  await expect(help(page)).toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(2);
+
+  await page.getByRole('button', { name: 'Hear the help line' }).click();
+  await expect.poll(async () => (await spoken()).at(-1)).toBe(`${goal} ${SLIP}`);
+});
+
+test('at ages 3 to 4 the third slip brings the offer: its line is not in the wrong style, and the two towers still ring', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '3-4' }]);
+  await page.goto('/#/game/numbers');
+  await expect(page).toHaveURL(/#\/game\/numbers\/1$/);
+
+  for (let n = 1; n <= 2; n++) {
+    const [a, b] = await slipPair(page);
+    await swapTowers(page, a, b);
+    await expect(help(page)).toHaveText(SLIP);
+    await expect(help(page)).toHaveClass(/\bis-wrong\b/);
+  }
+  // The stuck limit at ages 3 to 4 is 3 slips (run.ts STUCK): the kit's offer line takes the help row.
+  const [a, b] = await slipPair(page);
+  await swapTowers(page, a, b);
+  await expect(help(page)).toHaveText('This one is tricky. Want a different puzzle?');
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(numbersTower(page, a)).toHaveClass(/\bis-wrong\b/);
+  await expect(numbersTower(page, b)).toHaveClass(/\bis-wrong\b/);
+
+  // A different puzzle starts clean: no slip line, no rings.
+  await page.getByRole('button', { name: 'New puzzle' }).click();
+  await expect(help(page)).toHaveText('Here is a different puzzle.');
+  await expect(help(page)).not.toHaveClass(/\bis-wrong\b/);
+  await expect(ringed(page)).toHaveCount(0);
+});
+
+/** The four screens the finding names: both phones and the iPad both ways (834 x 1194 draws the frame at zoom 1.4). */
+const SLIP_SIZES = [
+  { width: 390, height: 844 },
+  { width: 375, height: 667 },
+  { width: 834, height: 1194 },
+  { width: 1194, height: 834 },
+] as const;
+
+test('the slip line keeps to two lines and moves nothing on both phones and the iPad both ways', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+  for (const size of SLIP_SIZES) {
+    await page.setViewportSize(size);
+    await page.goto('/#/game/numbers/1');
+    await page.reload();
+    await expect(help(page)).toHaveText('Drag or tap two towers to swap them.');
+    const place = () =>
+      page.evaluate(() => {
+        const line = document.querySelector('.bw-helprow__line')!;
+        const zoom = Number(getComputedStyle(document.querySelector('.bw-play')!).zoom) || 1;
+        return {
+          row: document.querySelector('.bw-helprow')!.getBoundingClientRect().height,
+          well: document.querySelector('.num-well')!.getBoundingClientRect().top,
+          lines: Math.round(line.getBoundingClientRect().height / (parseFloat(getComputedStyle(line).lineHeight) * zoom)),
+          wide: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        };
+      });
+    const start = await place();
+    const [a, b] = await slipPair(page);
+    await swapTowers(page, a, b);
+    await expect(help(page)).toHaveText(SLIP);
+    await expect(ringed(page)).toHaveCount(2);
+    const slip = await place();
+    expect(slip.lines, `${size.width} x ${size.height}`).toBeLessThanOrEqual(2);
+    expect(slip.row, `${size.width} x ${size.height}`).toBe(start.row);
+    expect(slip.well, `${size.width} x ${size.height}`).toBe(start.well);
+    expect(slip.wide, `${size.width} x ${size.height}`).toBe(false);
+  }
 });
