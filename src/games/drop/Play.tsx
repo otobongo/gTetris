@@ -6,6 +6,7 @@ import {
   runOf,
   totalStars,
   useActivePlayer,
+  useSettings,
   type AgeBand,
   type LevelRun,
   type PuzzleOutcome,
@@ -13,6 +14,7 @@ import {
 } from '../../shared/progress';
 import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
+import { say as speak } from '../../shared/speech';
 import { Brick, Icon, IconButton, LEVEL_CARD_DELAY_MS, LevelCard, PressButton, PuzzleDots, SandTimer, Screen, TopBar, type IconName } from '../../shared/ui';
 import { breakBefore } from '../../screens/logic/session';
 import { STUCK, STUCK_START, puzzleOnScreen, stuckStep, type StuckState } from '../run';
@@ -24,18 +26,21 @@ import {
   RUN_INIT,
   STUCK_LINE,
   gameDoneCard,
+  helpLines,
   introLines,
+  introSpoken,
   newRound,
   overLine,
+  playSpoken,
   pressRound,
   puzzleGoalRows,
   puzzleResult,
-  readyLines,
   retryRound,
   runRules,
-  solvedLine,
   stageCard,
+  stageSticker,
   tickRound,
+  type CardSticker,
   type Phase,
   type Round,
 } from './puzzles';
@@ -140,6 +145,8 @@ export default function Play({ index }: { index: number }) {
   const stage = STAGES[index];
   const goal = puzzleGoalRows(index);
   const player = useActivePlayer();
+  // Voice off hides both speakers (decision 20).
+  const voice = useSettings().voice;
   const [age, setAge] = useState<PuzzleAge>(ageNow);
   const plan = timerPlan({ goalRows: goal }, age.mode, age.band);
   const planRef = useRef(plan);
@@ -156,7 +163,7 @@ export default function Play({ index }: { index: number }) {
   runRef.current = run;
 
   const roundRef = useRef<Round | null>(null);
-  if (roundRef.current === null) roundRef.current = newRound(index, puzzleOnScreen(run), fromCard ? 'ready' : 'intro');
+  if (roundRef.current === null) roundRef.current = newRound(index, puzzleOnScreen(run), fromCard ? 'ready' : 'intro', age.band);
   const [, redraw] = useReducer((n: number) => n + 1, 0);
   const [phase, setPhaseState] = useState<Phase>(roundRef.current.phase);
   const held = useRef(new Map<Action, number>());
@@ -167,6 +174,8 @@ export default function Play({ index }: { index: number }) {
   const [offer, setOffer] = useState(false);
   const [swapped, setSwapped] = useState(false);
   const [done, setDone] = useState<Finished | null>(null);
+  // The sticker this stage's finish gave, taken once when it was given (decision 19).
+  const [sticker, setSticker] = useState<CardSticker | undefined>(undefined);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardClosed, setCardClosed] = useState(false);
   const [focusTo, setFocusTo] = useState<'' | 'board' | 'slot'>('');
@@ -200,7 +209,7 @@ export default function Play({ index }: { index: number }) {
     setRun(saved);
     const r = roundRef.current!;
     if (r.puzzle !== puzzleOnScreen(saved) && (r.phase === 'intro' || r.phase === 'ready')) {
-      roundRef.current = newRound(index, puzzleOnScreen(saved), r.phase);
+      roundRef.current = newRound(index, puzzleOnScreen(saved), r.phase, r.band);
       redraw();
     }
   }, [index]);
@@ -229,7 +238,8 @@ export default function Play({ index }: { index: number }) {
   function solved(r: Round) {
     const outOfTime = ranOut(planRef.current, r.elapsedMs / 1000);
     const result = puzzleResult(index, r.puzzle, r.game, outOfTime);
-    const outcome = progressStore.recordPuzzle(GAME, index, result, runRules(), progressStore.ensureActivePlayer());
+    const playerId = progressStore.ensureActivePlayer();
+    const outcome = progressStore.recordPuzzle(GAME, index, result, runRules(), playerId);
     setFlash('');
     setPhase('solved');
     if (outcome.kind === 'saved') {
@@ -237,6 +247,8 @@ export default function Play({ index }: { index: number }) {
       setFocusTo('slot');
     } else if (outcome.kind === 'finished') {
       setDone(outcome);
+      // the stage's stars are saved now, so a chapter it completes gives its sticker, once
+      setSticker(stageSticker(progressStore, playerId));
       window.clearTimeout(cardTimer.current);
       cardTimer.current = window.setTimeout(() => setCardOpen(true), LEVEL_CARD_DELAY_MS);
     } else setFocusTo('slot');
@@ -276,6 +288,11 @@ export default function Play({ index }: { index: number }) {
 
   function press(a: Action) {
     const ph = roundRef.current!.phase;
+    // Paused: any press only carries on (decision 11); the brick does not move.
+    if (ph === 'paused') {
+      setPhase('playing');
+      return;
+    }
     if (ph !== 'playing' && ph !== 'ready') return;
     act(a);
     const r = REPEAT[a];
@@ -312,7 +329,7 @@ export default function Play({ index }: { index: number }) {
       setAge(a);
       limitRef.current = STUCK.drop[a.band];
       planRef.current = timerPlan({ goalRows: goal }, a.mode, a.band);
-      roundRef.current = newRound(index, puzzle, 'ready');
+      roundRef.current = newRound(index, puzzle, 'ready', a.band);
     }
     setSecs(Math.floor(roundRef.current.elapsedMs / 1000));
     setPhaseState('ready');
@@ -409,7 +426,7 @@ export default function Play({ index }: { index: number }) {
         if (!e.repeat) togglePause();
         return;
       }
-      if (!cmd || (ph !== 'playing' && ph !== 'ready')) return;
+      if (!cmd || (ph !== 'playing' && ph !== 'ready' && ph !== 'paused')) return;
       e.preventDefault();
       if (!e.repeat) press(cmd);
     };
@@ -447,6 +464,12 @@ export default function Play({ index }: { index: number }) {
     return ph === 'playing' || ph === 'ready';
   };
   const onBoardDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    // Paused: a tap on the board only carries on, with no turn (decision 11).
+    if (roundRef.current!.phase === 'paused') {
+      touch.current = null;
+      setPhase('playing');
+      return;
+    }
     if (!live()) return;
     e.currentTarget.setPointerCapture?.(e.pointerId);
     touch.current = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), sx: e.clientX, axis: '' };
@@ -520,9 +543,12 @@ export default function Play({ index }: { index: number }) {
   const solvedCount = done ? done.results.length : run.solved.length;
   const dotAt = phase === 'solved' ? solvedCount : undefined;
 
-  // The help line: the waiting brick, the result, or the words that pop up when rows clear.
-  const message: string[] = phase === 'ready' ? readyLines(index, swapped) : phase === 'solved' ? [solvedLine(g.placed)] : [];
+  // The help line: the waiting brick, paused, the result, or the words that pop up when rows clear.
+  const message: string[] = helpLines(phase, index, swapped, g.placed);
   const say = message.length ? message : flash ? [flash] : [];
+  // The controls line, for touch or keys, as the intro card shows it.
+  const controls = introControlsLine(finePointer, sawKey);
+  const clockCounts = plan.kind === 'countdown';
 
   // Timer row
   const left = plan.kind === 'countdown' ? plan.seconds - secs : 0;
@@ -585,7 +611,7 @@ export default function Play({ index }: { index: number }) {
 
           {/* The tiles and the board: a row of tiles above the well, or a column beside it on a short phone (drop.css). */}
           <div className="drop-main">
-            <div className="drop-tiles">
+            <div className={`drop-tiles${voice ? ' has-speaker' : ''}`}>
               <div className="drop-tile">
                 <span className="drop-tile__label">Next</span>
                 <span className="drop-tile__next">{next && <MiniPiece id={next} boxW={76} boxH={40} />}</span>
@@ -597,6 +623,7 @@ export default function Play({ index }: { index: number }) {
                   <small>/{goal}</small>
                 </span>
               </div>
+              {voice && <IconButton icon="speaker" label="Hear the help line" className="drop-tiles__speaker" onClick={() => speak(playSpoken(say, goal, controls))} />}
             </div>
 
             <div className="drop-area" ref={areaRef}>
@@ -639,18 +666,19 @@ export default function Play({ index }: { index: number }) {
         {phase === 'intro' && (
           <Sheet
             title={stage.name}
+            action={voice ? <IconButton icon="speaker" label="Hear the goal" onClick={() => speak(introSpoken(index, clockCounts, controls))} /> : undefined}
             actions={
               <PressButton variant="green" size="lg" block data-autofocus onClick={() => startPuzzle(round.puzzle, { swapped: false })}>
                 Start
               </PressButton>
             }
           >
-            {introLines(index, plan.kind === 'countdown').map((line, i) => (
+            {introLines(index, clockCounts).map((line, i) => (
               <p key={line} className={i === 0 ? 'drop-sheet__line' : 'drop-sheet__note'}>
                 {line}
               </p>
             ))}
-            <p className="drop-sheet__keys">{introControlsLine(finePointer, sawKey)}</p>
+            <p className="drop-sheet__keys">{controls}</p>
           </Sheet>
         )}
 
@@ -694,6 +722,7 @@ export default function Play({ index }: { index: number }) {
             fact={card.fact}
             rule={card.rule}
             cap={card.cap}
+            sticker={sticker}
             primary={done.next === null ? { label: 'Back to games', href: HOME } : { label: playLabel, onClick: () => playStage(done.next!) }}
             secondary={done.next === null ? undefined : { label: 'Back to games', href: HOME }}
             onClose={() => {
