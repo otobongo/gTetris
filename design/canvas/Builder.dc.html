@@ -12,7 +12,7 @@
 <style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } .pb-square { transition: background 100ms cubic-bezier(0.16,1,0.3,1), box-shadow 100ms cubic-bezier(0.16,1,0.3,1); } .pb-board { transition: opacity 200ms cubic-bezier(0.16,1,0.3,1); } .pb-swatch { transition: transform 100ms cubic-bezier(0.16,1,0.3,1); } .pb-fill { transition: width 350ms cubic-bezier(0.16,1,0.3,1); } .pb-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .pb-swatch { transform: none !important; transition: none; } .pb-fill { transition: none; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
-<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;">
+<div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: {{fgap}}px; position: relative;">
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
@@ -39,7 +39,7 @@
 
 <div style="width: 100%; display: flex; align-items: center; gap: 14px;">
 <div style="flex-shrink: 0; padding: 8px; border-radius: 18px; background: #30257a; position: relative;">
-<div role="img" aria-label="{{modelLabel}}" style="display: grid; grid-template-columns: {{modelcols}}; gap: 2px; width: 128px;">
+<div role="img" aria-label="{{modelLabel}}" style="display: grid; grid-template-columns: {{modelcols}}; gap: 2px; width: 128px; zoom: {{mz}};">
 <sc-for list="{{model}}" as="m" hint-placeholder-count="16">
 <span aria-hidden="true" style="aspect-ratio: 1 / 1; border-radius: 6px; {{m.style}}"></span>
 </sc-for>
@@ -79,8 +79,8 @@ Peek
 </sc-if>
 
 <div style="flex: 1; min-height: 0; width: 100%; display: grid; place-items: center;">
-<div class="pb-board" onPointerDown="{{paintDown}}" onPointerMove="{{paintMove}}" onPointerUp="{{paintUp}}" onPointerCancel="{{paintUp}}" onKeyDown="{{gridKey}}" style="padding: 10px; border-radius: 24px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45), 0 0 0 4px #3a2d8f; touch-action: none; opacity: {{boardop}};">
-<div role="group" aria-label="Board" style="display: grid; grid-template-columns: {{gridcols}}; gap: 6px; width: 334px;">
+<div class="pb-board" onPointerDown="{{paintDown}}" onPointerMove="{{paintMove}}" onPointerUp="{{paintUp}}" onPointerCancel="{{paintUp}}" onKeyDown="{{gridKey}}" style="padding: {{bp}}px; border-radius: 24px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45), 0 0 0 4px #3a2d8f; touch-action: none; opacity: {{boardop}};">
+<div role="group" aria-label="Board" style="display: grid; grid-template-columns: {{gridcols}}; gap: 6px; width: {{gw}}px;">
 <sc-for list="{{board}}" as="b" hint-placeholder-count="16">
 <button class="pb-square" data-cell="{{b.i}}" tabindex="{{b.tab}}" onClick="{{b.key}}" aria-label="{{b.label}}" aria-disabled="{{b.off}}" style="border: 0; padding: 0; cursor: pointer; height: {{sq}}px; border-radius: 14px; {{b.style}}"></button>
 </sc-for>
@@ -142,7 +142,7 @@ Peek
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","4","8","11"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","look","hidden","peek","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"level":{"editor":"enum","options":["1","4","8","11"],"default":"4"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","look","hidden","peek","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -363,6 +363,10 @@ class Component extends DCLogic {
     var self = this;
     var s = this.st();
     var tablet = this.props.device === 'tablet';
+    // A short phone (375x667, or a 390 iPhone in Safari with its toolbars): the board fits the height left between
+    // the help row and the palette, never under it. The picture shrinks to 0.55, the frame's gaps to 10 px and the
+    // well's padding to 8 px, so 5 by 5 squares stay 46 px; the palette keeps 54 px swatches in rows of 4 then 3.
+    var short = this.props.device === 'short';
     var L = this.levelSpec(s.level);
     var n = L.n;
     var pic = this.pictures(s.level)[s.order[s.puzzle - 1]];
@@ -409,7 +413,8 @@ class Component extends DCLogic {
     var showModel = !finished && !hidden;
 
     return {
-      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
+      w: tablet ? 834 : short ? 375 : 390, h: tablet ? 1194 : short ? 667 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : short ? 375 : 390, ih: tablet ? 853 : short ? 667 : 844,
+      fgap: short ? 10 : 12, mz: short ? 0.55 : 1, bp: short ? 8 : 10, gw: short ? 254 : 334,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Picture Builder' : 'Level ' + s.level,
       showDots: !finished, dots: dots,
@@ -454,7 +459,7 @@ class Component extends DCLogic {
       // The board locks during the first look and each Peek, and after the solve.
       boardop: looking ? 0.5 : 1,
       gridcols: 'repeat(' + n + ', minmax(0, 1fr))',
-      sq: n === 3 ? 107 : n === 4 ? 79 : 62,
+      sq: short ? Math.floor((254 - 6 * (n - 1)) / n) : n === 3 ? 107 : n === 4 ? 79 : 62,
       board: s.cells.map(function (c, i) {
         var row = Math.floor(i / n) + 1, col = (i % n) + 1;
         return {
