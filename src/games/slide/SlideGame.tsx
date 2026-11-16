@@ -34,6 +34,7 @@ import {
   withMove,
 } from './engine';
 import { EXIT_PAST, dragStep, keyStep } from './drag';
+import { brickLabel, doorLabel, exitLine, moveLine, slidLine } from './labels';
 import {
   FINISHED_NOTE,
   GAME,
@@ -107,8 +108,6 @@ function useCell(level: Level) {
 
 /* ---------- copy ---------- */
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 function lockLine(level: Level, state: State): string {
   for (const g of level.gates) {
     if (!isLocked(g, state, level)) continue;
@@ -117,13 +116,6 @@ function lockLine(level: Level, state: State): string {
     return `An icy door melts after ${n} more ${n === 1 ? 'brick leaves' : 'bricks leave'}.`;
   }
   return '';
-}
-
-function doorLabel(level: Level, g: GateDef, state: State): string {
-  if (!isLocked(g, state, level)) return `${cap(g.color)} door`;
-  if (g.lockColor && locksLeft(g, state) === 0) return `Frozen door, melts when every ${g.lockColor} brick is out`;
-  const n = locksLeft(g, state);
-  return `Frozen door, melts after ${n} more ${n === 1 ? 'brick leaves' : 'bricks leave'}`;
 }
 
 /* ---------- the play screen ---------- */
@@ -217,6 +209,9 @@ export default function SlideGame({ index }: { index: number }) {
   const [bumped, setBumped] = useState<number | null>(null);
   const [pull, setPull] = useState<Pull | null>(null);
   const [tLeft, setTLeft] = useState(clock.seconds);
+  /** The hidden status line read out after a move or an exit. `n` counts the lines, so the same words said twice are read twice. */
+  const [said, setSaid] = useState({ text: '', n: 0 });
+  const announce = useCallback((text: string) => setSaid((s) => ({ text, n: s.n + 1 })), []);
 
   const drag = useRef<Drag | null>(null);
   const stateRef = useRef(state);
@@ -272,6 +267,7 @@ export default function SlideGame({ index }: { index: number }) {
     setExiting(null);
     setBumped(null);
     setPull(null);
+    announce('');
   };
 
   /** Put puzzle `p` of this level on the board (after Next or a swap): its own clock, at the band played now. */
@@ -295,11 +291,16 @@ export default function SlideGame({ index }: { index: number }) {
   /**
    * Restart puzzle only puts the bricks back (user decision D1): a hint used on this board, or a counted
    * clock that ran out, still caps the level. It checks the daily limit first, like every puzzle boundary (2.4).
+   * It can be undone: the board before it goes on the Undo list as one step, with its moves, so one Undo brings
+   * it all back. A board already at its start keeps the Undo list it has. Not while a brick is sliding out,
+   * which would land on the fresh board.
    */
   const restart = () => {
-    if (phaseRef.current !== 'play') return;
+    if (phaseRef.current !== 'play' || exiting) return;
     if (breakBefore(path)) return;
+    const before: Snapshot = { state: stateRef.current, moves: movesRef.current };
     bricksBack(levelRef.current);
+    setHistory(before.moves > 0 ? [...history, before] : history);
     stuckEvent({ type: 'restart' });
     setNote('');
   };
@@ -375,6 +376,7 @@ export default function SlideGame({ index }: { index: number }) {
   const leave = useCallback(
     (block: number, gate: GateDef) => {
       sfx.exit();
+      const color = levelRef.current.blocks[block].color;
       setExiting({ block, side: gate.side });
       // keyboard players keep their place: focus moves to another brick when this one leaves
       const hadFocus = document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-brick');
@@ -383,12 +385,13 @@ export default function SlideGame({ index }: { index: number }) {
         stateRef.current = ns;
         setExiting(null);
         setState(ns);
+        announce(exitLine(color));
         setStuck((s) => stuckStep(s, { type: 'progress' }, limit));
         finishIfSolved(ns);
         if (hadFocus && !isSolved(ns)) later(() => document.querySelector<HTMLElement>('.esc-brick:not(.is-exiting)')?.focus(), 0);
       }, 320);
     },
-    [finishIfSolved, limit],
+    [finishIfSolved, limit, announce],
   );
 
   /** Slide `block` to a legal spot on the board (never off it: leaving is `leave`). */
@@ -465,6 +468,8 @@ export default function SlideGame({ index }: { index: number }) {
     const left = follow(e, d);
     drag.current = null;
     setPull(null);
+    const end = stateRef.current.pos[d.block];
+    if (!left && end && (end[0] !== d.start[0] || end[1] !== d.start[1])) announce(slidLine(level.blocks[d.block].color, d.start, end));
     // pushed into a wall or another brick: a small nudge says it can not go there
     if (!left && !d.moved && !d.pulled && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
   };
@@ -496,6 +501,7 @@ export default function SlideGame({ index }: { index: number }) {
       return;
     }
     slideTo(block, res.at);
+    announce(moveLine(level.blocks[block].color, dir[0] ? 'row' : 'column', dir[0] ? res.at[0] : res.at[1]));
   };
 
   /* ---------- tools ---------- */
@@ -509,6 +515,7 @@ export default function SlideGame({ index }: { index: number }) {
     setHistory((h) => h.slice(0, -1));
     setHintBlock(null);
     setNote('');
+    announce('');
     keySession.current = null;
   };
 
@@ -657,6 +664,10 @@ export default function SlideGame({ index }: { index: number }) {
       <p className="esc-help" aria-live="polite">
         {help}
       </p>
+      {/* VoiceOver hears where each brick went; the line on screen stays the help line */}
+      <span className="esc-sr" role="status" aria-live="polite">
+        {said.text && `${said.text}${said.n % 2 ? '\u00a0' : ''}`}
+      </span>
 
       <div className="esc-tools">
         <span aria-hidden="true" />
@@ -810,7 +821,7 @@ function BrickPiece({
       type="button"
       className={cls}
       style={{ width: w * cell - 4, height: h * cell - 4, transform: `translate(${x}px, ${y}px)` }}
-      aria-label={`${cap(block.color)} brick`}
+      aria-label={brickLabel(block, at)}
       aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
       {...handlers}
     >

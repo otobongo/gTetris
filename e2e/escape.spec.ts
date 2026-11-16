@@ -3,8 +3,10 @@
  * coming back, a grown-up's replay of Level 3 that returns the child to their frontier, and the hint rules over
  * a level (a hint on a board swapped away is forgotten, one on a solved board caps the level).
  */
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { escapeLevelStars } from '../src/games/run';
+import { keyStep } from '../src/games/slide/drag';
+import { DIRS, initialState, type State } from '../src/games/slide/engine';
 import type { PuzzleResult } from '../src/shared/progress';
 import {
   dots,
@@ -14,6 +16,8 @@ import {
   homeCard,
   levelCard,
   openSettings,
+  playEscapeBoard,
+  pressEscapeBrick,
   savedGame,
   savedRun,
   seed,
@@ -249,4 +253,104 @@ test('a hint on a board swapped away is forgotten; one on a solved board caps th
   await again.click();
   await expect(page).toHaveURL(/#\/game\/escape\/2$/);
   await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
+});
+
+/* ---------- Restart can be undone, and the board names every brick and door (usability pass, batch G) ---------- */
+
+/** Where each brick on the board is drawn, in board order. */
+const brickSpots = (page: Page) => page.locator('.esc-brick').evaluateAll((els) => els.map((el) => (el as HTMLElement).style.transform));
+
+test('Restart puzzle can be undone: one Undo brings back the board and the moves', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { escape: { stars: starsUpTo(4) } } }]);
+  await page.goto('/#/game/escape/5');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 5');
+  const moves = page.locator('.esc-status__moves');
+  const undo = page.getByRole('button', { name: 'Undo' });
+
+  // Three moves with the keys, then Restart puzzle.
+  const played = await playEscapeBoard(page, 4, await escapePuzzleOnScreen(page, 4), { stopAfter: 3 });
+  expect(played.moves).toBe(3);
+  await expect(moves).toHaveText('Moves 3');
+  const before = await brickSpots(page);
+
+  await page.getByRole('button', { name: 'Restart puzzle' }).click();
+  await expect(moves).toHaveText('Moves 0');
+  await expect(page.locator('.esc-brick')).toHaveCount(escapeBoard(4, await escapePuzzleOnScreen(page, 4)).blocks.length);
+  expect(await brickSpots(page)).not.toEqual(before);
+  await expect(undo).toBeEnabled();
+
+  // One Undo: every brick back where it was before Restart, and the count with it.
+  await undo.click();
+  await expect(moves).toHaveText('Moves 3');
+  await expect(page.locator('.esc-brick')).toHaveCount(before.length);
+  expect(await brickSpots(page)).toEqual(before);
+});
+
+test('ages 3 to 4: two Restarts still bring New puzzle', async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/escape/1');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 1');
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  const restart = page.getByRole('button', { name: 'Restart puzzle' });
+
+  // A move first, so the first Restart has something to put back (and Undo keeps it).
+  await playEscapeBoard(page, 0, await escapePuzzleOnScreen(page, 0), { stopAfter: 1 });
+  await restart.click();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled();
+  await expect(offer).toHaveCount(0);
+  await restart.click();
+  await expect(offer).toBeVisible();
+});
+
+test('every brick and door has its own name, and each move is read out', async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8', games: { escape: { stars: starsUpTo(1) } } }]);
+  await page.goto('/#/game/escape/2');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Level 2');
+  const puzzle = await escapePuzzleOnScreen(page, 1);
+  const board = escapeBoard(1, puzzle);
+
+  // Two bricks of one colour have different names, and every name says where the brick is.
+  const bricks = page.locator('.esc-brick');
+  await expect(bricks).toHaveCount(board.blocks.length);
+  const names = await bricks.evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+  const twin = board.blocks.findIndex((b, i) => board.blocks.some((o, j) => j > i && o.color === b.color));
+  expect(twin, 'Level 2 has two bricks of one colour').toBeGreaterThanOrEqual(0);
+  const other = board.blocks.findIndex((o, j) => j > twin && o.color === board.blocks[twin].color);
+  expect(names[twin]).not.toBe(names[other]);
+  expect(names[twin].startsWith(names[other].split(',')[0])).toBe(true);
+  for (const name of names) {
+    expect(name).toContain('row');
+    expect(name).toContain('column');
+  }
+
+  // Every door says which side of the tray it is on.
+  const doors = await page.locator('.esc-door').evaluateAll((els) => els.map((el) => el.getAttribute('aria-label') ?? ''));
+  expect(doors).toHaveLength(board.gates.length);
+  for (const door of doors) expect(door).toContain('side');
+
+  // The hidden status line starts empty.
+  const status = page.locator('.esc-sr[role="status"]');
+  await expect(status).toHaveAttribute('aria-live', 'polite');
+  await expect(status).toHaveText('');
+
+  // A one-square slide that keeps the brick on the board; a tight board may first need the solver's drags
+  // (each brick that leaves is read out too).
+  const slide = (state: State) =>
+    board.blocks
+      .flatMap((_, block) => Object.values(DIRS).map((dir) => ({ block, dir })))
+      .find(({ block, dir }) => state.pos[block] && keyStep(board, state, block, dir).kind === 'moved');
+  let state = initialState(board);
+  for (let drags = 0; !slide(state); drags++) {
+    expect(drags, 'a brick can slide one square').toBeLessThan(board.par);
+    const left = state.pos.filter(Boolean).length;
+    state = (await playEscapeBoard(page, 1, puzzle, { stopAfter: 1, from: state })).state;
+    if (state.pos.filter(Boolean).length < left) await expect(status).toHaveText(/^\w+ brick is out\.\s?$/);
+  }
+
+  // After one key press it says where the brick slid; the help line on screen does not change.
+  const help = await page.locator('.esc-help').textContent();
+  const move = slide(state)!;
+  await pressEscapeBrick(page, board, state, move.block, move.dir);
+  await expect(status).toHaveText(/slid to (row|column) \d+\./);
+  await expect(page.locator('.esc-help')).toHaveText(help ?? '');
 });
