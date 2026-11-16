@@ -2,9 +2,9 @@
    parts. The tap rules live in play.ts; this file keeps the two slots in local state (one set per
    puzzle), feeds the kit's slip, progress and solve, and draws the result. Sounds follow Letter Builder:
    the kit plays the slip and the solve, this file plays tap and good. Speech only follows the speaker. */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sfx } from '../../shared/sound';
-import { ChoiceRow } from '../kit/ChoiceRow';
+import { CHOICE_WRONG_MS, ChoiceRow } from '../kit/ChoiceRow';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
 import { Bowl, Slot, Swatch, paintStyle } from './Board';
@@ -46,14 +46,28 @@ export function MixerPlay({ level }: { level: number }) {
     setHeld(latest.current);
   };
 
+  /* The wrong cue (brief 7.2, as a wrong choice): after a wrong pair both filled slots dim and tilt for
+     CHOICE_WRONG_MS, then come back. It is the round it was set in, so a new puzzle never shows it. */
+  const [wrongCue, setWrongCue] = useState<number | null>(null);
+  const cueTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(cueTimer.current), []);
+  const cue = (on: boolean) => {
+    window.clearTimeout(cueTimer.current);
+    setWrongCue(on ? run.round : null);
+    if (on) cueTimer.current = window.setTimeout(() => setWrongCue(null), CHOICE_WRONG_MS);
+  };
+  const showWrong = wrongCue === run.round;
+
   const onPaint = (paint: PaintId) => {
     if (!playing) return;
     const cur = current();
-    // In Finish a tap on the pot that is already in slot 2 changes nothing, so it is not asked twice.
-    if (p.form === 'finish' && cur.slots[1] === paint) return;
     const step = tapPaint(p, cur, paint);
+    // In Finish a tap on the pot already in slot 2 is the same wrong pair again. It changes nothing and
+    // is no new slip (no sound, no stuck count), but the slots take the wrong cue again, so it is answered.
+    if (p.form === 'finish' && cur.slots[1] === paint) return void cue(step.outcome.kind === 'slip');
     if (step.state === cur) return;
     commit(step.state);
+    cue(step.outcome.kind === 'slip');
     if (step.outcome.kind === 'solved') return void run.solve();
     if (step.outcome.kind === 'slip') return void run.slip(step.outcome.key);
     // Make it: a paint of the goal's pair going in is progress, so the time signal starts over.
@@ -72,6 +86,7 @@ export function MixerPlay({ level }: { level: number }) {
     const next = tapSlot(p, cur, slot);
     if (next === cur) return;
     commit(next);
+    cue(false);
     sfx.tap();
   };
 
@@ -90,6 +105,7 @@ export function MixerPlay({ level }: { level: number }) {
       label: EMPTY_SLOT_LABEL[i],
       name: slotName(i, paint, given),
       active: playing && !given && paint !== null,
+      wrong: showWrong,
       onTap: () => onSlot(i),
     };
   };

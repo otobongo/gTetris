@@ -277,3 +277,93 @@ test('the last Color Mixer level ends on the finished card, and later visits sho
   await expect(page).toHaveURL(/#\/$/);
   expect(hashOf(page)).toBe('#/');
 });
+
+/* ---------- The wrong mix cue (usability pass, mixer-pattern-3 and mixer-pattern-5) ---------- */
+
+const wrongSlots = (page: Page) => page.locator('.mix-slot.is-wrong');
+
+/** Starts recording whether any slot ever carries the wrong cue; the returned function reads the record. */
+async function watchWrongCue(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __mixWrong: boolean; __mixWatch?: MutationObserver };
+    w.__mixWrong = !!document.querySelector('.mix-slot.is-wrong');
+    w.__mixWatch?.disconnect();
+    w.__mixWatch = new MutationObserver(() => {
+      if (document.querySelector('.mix-slot.is-wrong')) w.__mixWrong = true;
+    });
+    w.__mixWatch.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'], childList: true });
+  });
+  return () => page.evaluate(() => (window as unknown as { __mixWrong: boolean }).__mixWrong);
+}
+
+test('a wrong pair in Make it dims and tilts both slots for half a second, and a right pair never does', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4', games: { mixer: { stars: starsUpTo(2) } } }]);
+  await page.goto('/#/game/mixer/3');
+  await expect(page).toHaveURL(/#\/game\/mixer\/3$/);
+  const p = await mixerOnScreen(page);
+  if (p.form !== 'make') throw new Error('Level 3 is Make it');
+  const odd = p.shelf.find((x) => !p.pair.includes(x))!;
+
+  // A wrong pair: both filled slots take the cue at once, tilted, then come back.
+  await mixerPot(page, odd).click();
+  await expect(wrongSlots(page)).toHaveCount(0);
+  await mixerPot(page, p.pair[0]).click();
+  await expect(wrongSlots(page)).toHaveCount(2, { timeout: 150 });
+  await expect(wrongSlots(page).first()).not.toHaveCSS('transform', 'none');
+  await page.waitForTimeout(700);
+  await expect(wrongSlots(page)).toHaveCount(0, { timeout: 0 });
+
+  // The right pair: a third tap starts a new pair, and nothing is marked wrong on the way to the solve.
+  const sawWrong = await watchWrongCue(page);
+  await mixerPot(page, p.pair[0]).click();
+  await mixerPot(page, p.pair[1]).click();
+  await expect(page.getByRole('button', { name: 'Next puzzle' })).toBeVisible();
+  await page.waitForTimeout(600);
+  expect(await sawWrong()).toBe(false);
+});
+
+test('with reduced motion the wrong cue only dims the slots', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/mixer');
+  await expect(page).toHaveURL(/#\/game\/mixer\/1$/);
+  const p = await mixerOnScreen(page);
+  if (p.form !== 'finish') throw new Error('Level 1 is Finish the mix');
+
+  await mixerPot(page, p.wrong[0]).click();
+  await expect(wrongSlots(page)).toHaveCount(2);
+  for (const slot of [wrongSlots(page).first(), wrongSlots(page).last()]) {
+    await expect(slot).toHaveCSS('transform', 'none');
+    await expect(slot).toHaveCSS('opacity', '0.5');
+  }
+});
+
+test('tapping the same wrong pot again replays the wrong cue each time and stays one slip', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '3-4' }]);
+  await page.goto('/#/game/mixer');
+  await expect(page).toHaveURL(/#\/game\/mixer\/1$/);
+  const p = await mixerOnScreen(page);
+  if (p.form !== 'finish') throw new Error('Level 1 is Finish the mix');
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+
+  // Every tap is answered: the slots dim and tilt again. Only the first is a slip, so 3 taps (the offer's
+  // count for ages 3 to 4) bring no offer.
+  for (let i = 0; i < 3; i++) {
+    await expect(wrongSlots(page)).toHaveCount(0);
+    await mixerPot(page, p.wrong[0]).click();
+    await expect(wrongSlots(page)).toHaveCount(2);
+    await expect(mixerSlot(page, 2)).toHaveAccessibleName(`Paint 2: ${colorWord(p.wrong[0])}`);
+    await expect(help(page)).toHaveText(`Not ${colorWord(p.goal)} yet. Try another paint.`);
+  }
+  await expect(wrongSlots(page)).toHaveCount(0);
+  await expect(offer).toHaveCount(0);
+
+  // The child finds the right paint after all: the three wrong taps were one slip on the card.
+  await mixerPot(page, p.right).click();
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  for (let n = 1; n < 4; n++) await solveAndGoOn(page, n);
+  const dialog = levelCard(page);
+  await expect(dialog.getByRole('heading')).toHaveText('You finished Level 1');
+  await expect(dialog).toContainText('4 puzzles, 1 slip.');
+});

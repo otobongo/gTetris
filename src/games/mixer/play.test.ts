@@ -122,6 +122,16 @@ describe('Finish the mix (4.1)', () => {
     expect(new Set(keys(steps)).size).toBe(1);
   });
 
+  it('judges a repeat tap on the wrong pot in slot 2 as the same slip, and changes nothing on screen', () => {
+    const first = tapPaint(FINISH, startState(FINISH), 'red');
+    const again = tapPaint(FINISH, first.state, 'red');
+    expect(again.outcome).toEqual(first.outcome);
+    expect(again.state).toEqual(first.state);
+    expect(viewOf(FINISH, again.state)).toEqual(viewOf(FINISH, first.state));
+    // The right pot after it still solves, and a right pot is never a slip.
+    expect(tapPaint(FINISH, again.state, 'yellow').outcome).toEqual({ kind: 'solved' });
+  });
+
   it('does nothing on a tap on the given slot or on the empty slot', () => {
     const s = startState(FINISH);
     expect(tapSlot(FINISH, s, 0)).toBe(s);

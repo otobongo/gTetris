@@ -232,7 +232,7 @@ class Component extends DCLogic {
     return {
       a: P.form === 'finish' ? P.given : P.form === 'guess' ? P.pa : null,
       b: P.form === 'guess' ? P.pb : null,
-      wrongShown: false, wrongIdx: null, wrongTaps: 0, seen: {}, idle: 0, offer: false, note: ''
+      wrongShown: false, wrongIdx: null, slotWrong: false, wrongTaps: 0, seen: {}, idle: 0, offer: false, note: ''
     };
   }
   // A wrong answer the lever states show: the given paint with a wrong pot, or a wrong pair, or the first wrong colour.
@@ -267,7 +267,8 @@ class Component extends DCLogic {
       if (w.b) s.b = w.b;
       s.seen = {};
       s.seen[w.key] = true;
-      if (moment === 'slip') { s.wrongShown = true; s.wrongIdx = w.wrongIdx === undefined ? null : w.wrongIdx; s.wrongTaps = 1; s.slips = 1; }
+      // The slip board holds the wrong cue's frame: in Finish and Make it both slots dimmed and tilted.
+      if (moment === 'slip') { s.wrongShown = true; s.wrongIdx = w.wrongIdx === undefined ? null : w.wrongIdx; s.slotWrong = P.form !== 'guess'; s.wrongTaps = 1; s.slips = 1; }
       else { s.wrongShown = P.form !== 'guess'; s.wrongTaps = this.limits().count; s.slips = this.limits().count; s.offer = true; }
     }
     if (moment === 'solved' || moment === 'levelDone' || moment === 'gameDone') {
@@ -301,7 +302,15 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.slotT); }
+  // A wrong pair (Finish, Make it): both slots dim and tilt for 500 ms, as a wrong Guess colour does (CHOICE_WRONG_MS).
+  // A repeat tap on the wrong pot in Finish replays it, with no new slip.
+  flashSlots() {
+    var self = this;
+    clearTimeout(this.slotT);
+    this.put({ slotWrong: true });
+    this.slotT = setTimeout(function () { self.put({ slotWrong: false }); }, 500);
+  }
   say(text) {
     try {
       var u = new SpeechSynthesisUtterance(text);
@@ -326,7 +335,7 @@ class Component extends DCLogic {
   }
   // Finish and Make it: what the two slots hold now.
   evaluate(cs, P, a, b) {
-    var patch = { a: a, b: b, wrongShown: false };
+    var patch = { a: a, b: b, wrongShown: false, slotWrong: false };
     if (!a || !b) return patch;
     if (a === b) return patch;
     var r = this.recipe(a, b);
@@ -374,8 +383,10 @@ class Component extends DCLogic {
       : P.form === 'finish' ? 'Tap the paint that makes ' + goal.low + '.' : P.form === 'make' ? 'Tap two paints to mix them.' : 'Tap the color they make.';
     var question = guess ? 'What do ' + P.pa + ' and ' + P.pb + ' make?' : 'Can you make ' + goal.low + '?';
 
+    // A filled slot takes the wrong cue (opacity 0.5, translateX(-6px) rotate(-5deg)) while slotWrong is on.
     var slotStyle = function (c) {
-      return c ? 'background: ' + PA[c].hex + '; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.18);' : 'border: 3px dashed #5444b8; color: #c9c2ff;';
+      var cue = s.slotWrong ? ' opacity: 0.5; transform: translateX(-6px) rotate(-5deg);' : ' opacity: 1; transform: none;';
+      return c ? 'background: ' + PA[c].hex + '; box-shadow: inset 0 -5px 0 rgba(0,0,0,0.18); transition: opacity 200ms ease-out, transform 200ms ease-out;' + cue : 'border: 3px dashed #5444b8; color: #c9c2ff;';
     };
     var givenA = P.form === 'finish' || guess, givenB = guess;
     var slotLabel = function (n, c, given) { return 'Paint ' + n + ': ' + (c ? c + (given ? ', given' : '') : 'empty'); };
@@ -414,8 +425,8 @@ class Component extends DCLogic {
       slotAOff: givenA || !a || !playing ? 'true' : 'false',
       slotBOff: givenB || !b || !playing ? 'true' : 'false',
       // A tap on a filled slot empties it; a given or empty slot does nothing.
-      tapSlotA: function () { var cs = self.st(); if (givenA || !cs.a || cs.moment !== 'play') return; self.put({ a: null, wrongShown: false }); },
-      tapSlotB: function () { var cs = self.st(); if (givenB || !cs.b || cs.moment !== 'play') return; self.put({ b: null, wrongShown: false }); },
+      tapSlotA: function () { var cs = self.st(); if (givenA || !cs.a || cs.moment !== 'play') return; self.put({ a: null, wrongShown: false, slotWrong: false }); },
+      tapSlotB: function () { var cs = self.st(); if (givenB || !cs.b || cs.moment !== 'play') return; self.put({ b: null, wrongShown: false, slotWrong: false }); },
       liquid: liquid,
       bowlLabel: 'Bowl: ' + bowl,
       resultName: resultName, resultText: resultText,
@@ -440,14 +451,18 @@ class Component extends DCLogic {
             var gp = self.results()[CP.goal].pair;
             var progress = CP.form === 'make' && gp.indexOf(k) >= 0 ? { idle: 0, offer: false } : {};
             if (CP.form === 'finish') {
-              if (cs.b === k) return;
-              self.put(Object.assign(progress, self.evaluate(cs, CP, cs.a, k)));
+              if (cs.b === k) { if (cs.wrongShown) self.flashSlots(); return; }
+              var fp = self.evaluate(cs, CP, cs.a, k);
+              self.put(Object.assign(progress, fp));
+              if (fp.wrongShown) self.flashSlots();
               return;
             }
             // Make it: fill the empty slot; a third tap starts a new pair with that paint.
-            if (cs.a && cs.b) { self.put(Object.assign(progress, { a: k, b: null, wrongShown: false })); return; }
+            if (cs.a && cs.b) { self.put(Object.assign(progress, { a: k, b: null, wrongShown: false, slotWrong: false })); return; }
             var na = cs.a || k, nb = cs.a ? k : cs.b;
-            self.put(Object.assign(progress, self.evaluate(cs, CP, na, nb)));
+            var mp = self.evaluate(cs, CP, na, nb);
+            self.put(Object.assign(progress, mp));
+            if (mp.wrongShown) self.flashSlots();
           }
         };
       }),

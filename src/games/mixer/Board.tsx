@@ -16,15 +16,17 @@ export interface SlotProps {
   name: string;
   /** True when a tap would empty the slot. */
   active?: boolean;
+  /** True for CHOICE_WRONG_MS after a wrong pair: the slot dims and tilts as a wrong choice does. */
+  wrong?: boolean;
   onTap?: () => void;
 }
 
 /** One of the two 64 px slots: dashed with its label when empty, the paint's colour when filled. */
-export function Slot({ paint, label, name, active = false, onTap }: SlotProps) {
+export function Slot({ paint, label, name, active = false, wrong = false, onTap }: SlotProps) {
   return (
     <button
       type="button"
-      className={cx('mix-slot', paint ? 'is-filled' : 'is-empty')}
+      className={cx('mix-slot', paint ? 'is-filled' : 'is-empty', wrong && paint !== null && 'is-wrong')}
       style={paint ? paintStyle(paint) : undefined}
       aria-label={name}
       aria-disabled={active ? undefined : true}
