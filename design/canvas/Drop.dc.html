@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @keyframes bw-sticker-settle { from { opacity: 0; transform: scale(0.92); } } .bw-sticker-in { animation: bw-sticker-settle 320ms ease-out; } @media (prefers-reduced-motion: reduce) { .bw-sticker-in { animation: bw-fade 150ms linear; } .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative;">
@@ -67,7 +67,14 @@
 <div style="padding: {{tilePad}}; border-radius: 16px; background: #30257a; text-align: center;">
 <div style="font-size: 13px; font-weight: 800; color: #c9c2ff; letter-spacing: 0.5px;">ROWS</div>
 <div style="font-size: 30px; font-weight: 800; line-height: 1.1;">{{rows}}<span style="font-size: 16px; color: #c9c2ff;">/6</span></div>
-</div></div>
+</div>
+<!-- Decisions 17 and 20: the speaker after Next and Rows (under Rows in the short phone's column), only while Voice is on. -->
+<sc-if value="{{voiceOn}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{speakHelp}}" aria-label="Hear the help line" style="align-self: center; justify-self: center; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</sc-if>
+</div>
 </sc-if>
 
 <div style="display: {{areaDisplay}}; flex: 1; min-width: 0; padding: 5px; box-sizing: border-box; justify-content: center; align-items: flex-start;">
@@ -107,8 +114,20 @@
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="drop-card-title" aria-describedby="drop-card-line" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="drop-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<sc-if value="{{introHead}}" hint-placeholder-val="{{ false }}">
+<!-- Decision 17: the intro card's speaker at the end of the title row; an empty cell of the same width at the start keeps the title centred. -->
+<div style="display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 8px;">
+<span></span>
+<h2 id="drop-card-title" style="margin: 0; min-width: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+<button onClick="{{speakGoal}}" aria-label="Hear the goal" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
+</button>
+</div>
+</sc-if>
+<sc-if value="{{plainHead}}" hint-placeholder-val="{{ true }}">
 <h2 id="drop-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
+</sc-if>
 
 <sc-if value="{{isIntro}}" hint-placeholder-val="{{ false }}">
 <p id="drop-card-line" style="margin: 10px 0 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">Clear 6 rows in each puzzle. Solve 4 to finish the stage.</p>
@@ -147,6 +166,17 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<!-- Decision 19: the new sticker, between the stars and the fact line: a 5 x 5 mosaic 69px square (13px cells, 1px gaps) and its line. -->
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="drop-card-sticker" class="bw-sticker-in" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 10px;">
+<div aria-hidden="true" style="flex: none; width: 69px; height: 69px; display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px;">
+<sc-for list="{{stickerCells}}" as="c" hint-placeholder-count="25">
+<span style="display: block; width: 13px; height: 13px; border-radius: 2px; {{c.style}}"></span>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.2; text-align: start; color: #ffffff;">New sticker: {{stickerName}}.</p>
+</div>
+</sc-if>
 <p id="drop-card-line" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardRule}}</p>
@@ -175,7 +205,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet","short"],"default":"phone"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","paused","solved","over","stuck","levelDone","gameDone"],"default":"play"},"voice":{"editor":"enum","options":["on","off"],"default":"on"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -191,7 +221,7 @@ class Component extends DCLogic {
   // The device is part of the key: the short phone's board has more rows, so its stacks are built again.
   leverKey() {
     var p = this.props || {};
-    return [p.device, p.puzzle, p.moment].join('|');
+    return [p.device, p.puzzle, p.moment, p.voice, p.sticker].join('|');
   }
   // The starter stack: pre-built rows with brick-shaped holes. A turned T fills the gap and clears two rows.
   // A mirrored copy stands in for the stage's other puzzles on the canvas.
@@ -225,12 +255,15 @@ class Component extends DCLogic {
   fromLever() {
     var p = this.props || {};
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
-    var moment = ['intro', 'ready', 'play', 'solved', 'over', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    var moment = ['intro', 'ready', 'play', 'paused', 'solved', 'over', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    // Paused is the play moment with the game paused (decision 11).
+    var paused = moment === 'paused';
+    if (paused) moment = 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var s = Object.assign(this.fresh(puzzle % 2 === 0), { lever: this.leverKey(), puzzle: puzzle, moment: moment, stage: 4, tries: 0, ranOut: false });
     // Sample values for each moment.
-    if (moment === 'play') { s.r = 3; s.tLeft = 98; }
+    if (moment === 'play') { s.r = 3; s.tLeft = 98; s.paused = paused; }
     if (moment === 'solved' || moment === 'levelDone') { s.stack = this.clearedStack(); s.rows = 6; s.placed = moment === 'solved' ? 14 : 16; s.tLeft = 41; }
     if (moment === 'over' || moment === 'stuck') { s.stack = this.overStack(); s.rows = 2; s.placed = 21; s.tLeft = 52; s.tries = moment === 'stuck' ? this.stuckTries() : 1; }
     if (moment === 'gameDone') { s.stack = {}; s.rows = 0; }
@@ -297,11 +330,23 @@ class Component extends DCLogic {
     return false;
   }
   // Any of the four controls, or a tap on the board, starts a waiting puzzle and does its own action.
+  // While paused, the same press only carries on: the brick does not move or turn (decision 11).
   press(act) {
     var s = this.st();
     if (s.moment === 'ready') { this.put({ moment: 'play', swapped: false }); act(); return; }
-    if (s.moment === 'play' && !s.paused) act();
+    if (s.moment === 'play' && s.paused) { this.put({ paused: false }); return; }
+    if (s.moment === 'play') act();
   }
+  say(text) {
+    try {
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.85;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  // Drop's chapter 1 sticker (src/screens/logic/stickers.ts, d1): its name and 5 x 5 art, k for pink.
+  sticker() { return { name: 'Tiny tower', art: ['..k..', '.kkk.', '.kkk.', '.kkk.', 'kkkkk'] }; }
   fall() { if (!this.tryMove(1, 0, 0)) this.lock(this.st().r); }
   lock(atRow) {
     var self = this;
@@ -421,15 +466,26 @@ class Component extends DCLogic {
     var starsWon = finished ? 3 : s.ranOut ? Math.min(2, base) : base;
 
     var say = m === 'ready' ? (s.swapped ? 'Here is a different puzzle. Press any button to start.' : 'Press any button to start.')
+      : m === 'play' && s.paused ? 'Paused. Press any button to play.'
       : m === 'solved' || m === 'lastSolved' ? 'Cleared with ' + s.placed + ' bricks.'
       : m === 'play' && s.flash > 0 ? (s.flash > 1 ? 'Double rows!' : 'Nice row!') : '';
+    // The row-clear words are the big pop-up; every other line is a 24px message.
+    var popUp = m === 'play' && !s.paused && s.flash > 0;
+    var voiceOn = this.props.voice !== 'off';
+    var touchLine = 'Tap the board to turn. Swipe down to drop.';
+    var introSay = 'Clear 6 rows in each puzzle. Solve 4 to finish the stage. 3 stars: ' + 4 * 14 + ' bricks or fewer over the 4 puzzles. Running out of time caps the stage at 2 stars. ' + touchLine;
+    var showSticker = this.props.sticker === 'new' && m === 'levelDone';
+    var stk = this.sticker();
+    var mosaic = { k: 'pink' };
+    var stickerCells = stk.art.join('').split('').map(function (ch) { return { style: mosaic[ch] ? self.brick(mosaic[ch], 13) : 'background: transparent;' }; });
     var cardKind = m === 'intro' ? 'intro' : m === 'over' || m === 'stuck' ? 'over' : m === 'levelDone' || finished ? 'level' : '';
 
     return {
       w: tablet ? 834 : short ? 375 : 390, h: tablet ? 1194 : short ? 667 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : short ? 375 : 390, ih: tablet ? 853 : short ? 667 : 844,
       // Short phone: the tiles in an 88px column beside the board (the Next picture's 76px box plus side padding), level with its ring.
       mainDisplay: short ? 'flex' : 'contents', areaDisplay: short ? 'flex' : 'contents',
-      tilesW: short ? '88px' : '100%', tilesCols: short ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+      // With Voice on the row gets a third 54px cell for the speaker (decisions 17 and 20).
+      tilesW: short ? '88px' : '100%', tilesCols: short ? 'minmax(0, 1fr)' : voiceOn ? 'minmax(0, 1fr) minmax(0, 1fr) 54px' : 'repeat(2, minmax(0, 1fr))',
       tilesTop: short ? 1 : 0, tilePad: short ? '8px 6px' : '6px 8px',
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Brick Drop' : 'Stage ' + s.stage,
@@ -447,7 +503,15 @@ class Component extends DCLogic {
       showPad: !finished && !solvedNow,
       showNext: m === 'solved',
       next: function () { var cs = self.st(); self.put(Object.assign(self.fresh(!cs.mirror), { puzzle: cs.puzzle + 1, moment: 'ready', tries: 0 })); },
-      showSay: !!say, say: say, saysize: m === 'play' ? 40 : 24,
+      showSay: !!say, say: say, saysize: popUp ? 40 : 24,
+      voiceOn: voiceOn,
+      // Speech only after a tap: the lines on screen, or with none, the goal and the controls line.
+      speakHelp: function () { self.say(say || 'Clear 6 rows. ' + touchLine); },
+      speakGoal: function () { self.say(introSay); },
+      introHead: cardKind === 'intro' && voiceOn,
+      plainHead: !(cardKind === 'intro' && voiceOn),
+      showSticker: showSticker, stickerName: stk.name, stickerCells: stickerCells,
+      cardDescribedBy: showSticker ? 'drop-card-line drop-card-sticker' : 'drop-card-line',
       // Short phone: the help line centres over the board, clear of the tile column (16px gutter + 88px + 12px gap).
       sayright: short ? 116 : 16,
       left: function () { self.press(function () { self.tryMove(0, -1, 0); }); },

@@ -66,7 +66,7 @@
 /* The tiles and the board. It adds no layout level of its own, except on a short phone (below). */
 .drop-main { display: contents; }
 
-/* ---------- Next and Rows: two half-width tiles ---------- */
+/* ---------- Next and Rows: two half-width tiles, and the speaker after them while Voice is on ---------- */
 .drop-tiles {
   width: 100%;
   display: grid;
@@ -74,6 +74,9 @@
   gap: var(--bw-sp-4);
   align-items: stretch;
 }
+.drop-tiles.has-speaker { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 54px; }
+/* the 54pt speaker keeps its square; the tiles set the row's height */
+.drop-tiles__speaker { align-self: center; justify-self: center; }
 .drop-tile {
   min-width: 0;
   box-sizing: border-box;
@@ -280,11 +283,21 @@
 }
 .drop-sheet__title {
   margin: 0;
+  min-width: 0;
   font-size: var(--bw-fs-display);
   font-weight: var(--bw-fw-display);
   line-height: var(--bw-lh-display);
   text-wrap: balance;
 }
+/* The intro card's title row (decision 17): the speaker at its end, and an empty cell of the same width at its
+   start, so the title stays centred over the lines below it. Every stage name fits in two lines there. */
+.drop-sheet__head {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 54px;
+  align-items: center;
+  gap: var(--bw-sp-3);
+}
+.drop-sheet__head::before { content: ''; }
 .drop-sheet__line {
   margin: var(--bw-sp-4) 0 0;
   font-size: var(--bw-fs-body);
@@ -372,4 +385,8 @@
   .drop-cell.is-clearing { animation: none; opacity: 0.3; }
   .drop-flash { animation: drop-fade 0.15s linear forwards; transform: none; }
   .drop-say:not(:empty), .drop-scrim { animation: drop-fade 0.15s linear; }
+  /* The global 0.01ms rule (global.css) would erase these fades too, so they take their 150ms back. */
+  .drop-flash,
+  .drop-say:not(:empty),
+  .drop-scrim { animation-duration: 150ms !important; }
 }

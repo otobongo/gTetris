@@ -13,7 +13,7 @@
 </helmet>
 <dc-import name="Drop" device="tablet" puzzle="{{puzzle}}" moment="{{moment}}" hint-size="834px,1194px"></dc-import>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":834,"height":1194}}'>
+<script type="text/x-dc" data-dc-script data-props='{"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["intro","ready","play","paused","solved","over","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":834,"height":1194}}'>
 class Component extends DCLogic {
   renderVals() { return { puzzle: this.props.puzzle ?? '3', moment: this.props.moment ?? 'play' }; }
 }
