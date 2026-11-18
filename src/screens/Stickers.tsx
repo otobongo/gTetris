@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { progressStore, useActivePlayer, useSettings } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { say } from '../shared/speech';
-import { Icon, IconButton, PressButton, Screen, TopBar, useLayout } from '../shared/ui';
+import { Icon, IconButton, PressButton, Screen, TopBar, cx, useLayout } from '../shared/ui';
 import { STICKERS, earnedCount, stickerSource, stickersDue, type Sticker, type StickerPage } from './logic/stickers';
 import { Mosaic } from './parts/Art';
 import { Overlay } from './parts/Controls';
@@ -22,6 +22,16 @@ export function howToGet(st: Sticker): { line: string; cta: string | null; href:
   if (!src) return { line: DISCOVERY_HOW, cta: null, href: '/', play: false, from: "From Today's discovery" };
   if (!src.playable) return { line: `${src.game} is coming soon. Its stickers come with it.`, cta: 'Back to games', href: '/', play: false, from: `From ${src.game}` };
   return { line: `Finish ${src.chapter} in ${src.game} to get this sticker.`, cta: `Play ${src.game}`, href: src.route, play: true, from: `From ${src.game} · ${src.chapter}` };
+}
+
+/**
+ * The line above a page of stickers. A Discoveries page with none on it says they are coming soon, also
+ * for a child with game stickers: "0 of 12" would promise stickers nothing awards (decision 29).
+ */
+export function stickerPageLine(page: StickerPage, total: number, gotOnPage: number, pageSize: number): string {
+  if (page === 'discoveries' && gotOnPage === 0) return DISCOVERY_HOW;
+  if (total === 0) return 'Each game chapter you finish adds a sticker here.';
+  return gotOnPage === pageSize ? 'You found every sticker on this page.' : `${gotOnPage} of ${pageSize} on this page`;
 }
 
 /** Sticker book (design/canvas/Stickers.dc.html, brief 3.3): two pages, earned stickers and outlines for the rest. */
@@ -59,13 +69,7 @@ export default function Stickers() {
   const empty = total === 0;
   const allFound = total === STICKERS.length;
   const pageDone = !empty && gotOnPage === onPage.length;
-  const pageLine = empty
-    ? tab === 'games'
-      ? 'Each game chapter you finish adds a sticker here.'
-      : DISCOVERY_HOW
-    : pageDone
-      ? 'You found every sticker on this page.'
-      : `${gotOnPage} of ${onPage.length} on this page`;
+  const pageLine = stickerPageLine(tab, total, gotOnPage, onPage.length);
   const open = STICKERS.find((s) => s.id === openId) ?? null;
 
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
@@ -212,7 +216,8 @@ export function StickerCard({ sticker, got, young, voice, onClose }: { sticker: 
               </span>
             </button>
           )}
-          <button type="button" className="sc-btn sc-btn--secondary sc-btn--fixed" data-autofocus={voice ? undefined : true} onClick={onClose}>
+          {/* Beside Say the name, Close keeps its own width; alone, it fills the row like every other card's Close. */}
+          <button type="button" className={cx('sc-btn sc-btn--secondary', voice && 'sc-btn--fixed')} data-autofocus={voice ? undefined : true} onClick={onClose}>
             Close
           </button>
         </div>

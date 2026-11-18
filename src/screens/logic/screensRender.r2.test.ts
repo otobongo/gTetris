@@ -4,14 +4,15 @@
  * Sign up, and the rule that holds a Home game card after Play as. Rendered on the server, as in
  * screensRender.test.ts.
  */
-import { createElement } from 'react';
+import { createElement, type RefObject } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
 import { emptyState, progressStore, type Player } from '../../shared/progress';
 import { CARD_GUARD_MS, holdCardTap } from '../Home';
-import { StickerCard, howToGet } from '../Stickers';
-import { SOON } from './auth';
+import { answerNotice, pointAtSoon } from '../Signin';
+import { StickerCard, howToGet, stickerPageLine } from '../Stickers';
+import { SOON, authNotice } from './auth';
 import { grownUpGate, setResumePath } from './session';
 import { STICKERS } from './stickers';
 
@@ -134,6 +135,28 @@ describe('decision 29: Discoveries say Discovery stickers are coming soon.', () 
   });
 });
 
+describe('decision 29: the line above a sticker page', () => {
+  const COMING = 'Discovery stickers are coming soon.';
+
+  it('Discoveries with none earned say coming soon, in an empty book and in a book with game stickers', () => {
+    expect(stickerPageLine('discoveries', 0, 0, 12)).toBe(COMING);
+    expect(stickerPageLine('discoveries', 1, 0, 12)).toBe(COMING);
+    expect(stickerPageLine('discoveries', 28, 0, 12)).toBe(COMING);
+  });
+
+  it('a discovery sticker from old saved data still counts on its page', () => {
+    expect(stickerPageLine('discoveries', 1, 1, 12)).toBe('1 of 12 on this page');
+    expect(stickerPageLine('discoveries', 12, 12, 12)).toBe('You found every sticker on this page.');
+  });
+
+  it('the Games page keeps its lines: empty book, some found, every one found', () => {
+    expect(stickerPageLine('games', 0, 0, 28)).toBe('Each game chapter you finish adds a sticker here.');
+    expect(stickerPageLine('games', 3, 0, 28)).toBe('0 of 28 on this page');
+    expect(stickerPageLine('games', 3, 3, 28)).toBe('3 of 28 on this page');
+    expect(stickerPageLine('games', 28, 28, 28)).toBe('You found every sticker on this page.');
+  });
+});
+
 describe('decision 31: Sign in and Sign up open with the coming-soon notice while accounts are off', () => {
   const notices = (html: string) => html.split(SOON.title).length - 1;
 
@@ -156,6 +179,32 @@ describe('decision 31: Sign in and Sign up open with the coming-soon notice whil
     expect(at).toBeGreaterThan(html.indexOf('<h1>Create your family account</h1>'));
     expect(at).toBeLessThan(html.indexOf('<input'));
     expect(at).toBeLessThan(html.indexOf('Continue with Apple'));
+  });
+
+  it('an answer that is the coming-soon note adds no second copy; errors, offline and no answer pass through', () => {
+    expect(answerNotice(SOON)).toBeNull();
+    expect(answerNotice(authNotice('not-enabled', 'apple'))).toBeNull();
+    expect(answerNotice(null)).toBeNull();
+    for (const reason of ['offline', 'wrong-credentials', 'too-many-tries', 'cancelled', 'provider-failed', 'unknown'] as const) {
+      const notice = authNotice(reason, 'google');
+      expect(answerNotice(notice), reason).toBe(notice);
+    }
+  });
+
+  it('a coming-soon answer moves focus to the top notice; a success or any other answer leaves focus where it is', () => {
+    const top = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    const at = { current: top } as unknown as RefObject<HTMLDivElement>;
+    pointAtSoon(at, 'email', { ok: false, reason: 'not-enabled' });
+    expect(top.focus).toHaveBeenCalledTimes(1);
+    expect(top.scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    for (const provider of ['apple', 'google', 'facebook'] as const) pointAtSoon(at, provider, { ok: false, reason: 'not-enabled' });
+    expect(top.focus).toHaveBeenCalledTimes(4);
+    pointAtSoon(at, 'email', { ok: true, value: null });
+    pointAtSoon(at, 'google', { ok: false, reason: 'offline' });
+    pointAtSoon(at, 'apple', { ok: false, reason: 'provider-failed' });
+    expect(top.focus).toHaveBeenCalledTimes(4);
+    // No notice on screen (the ref is empty): nothing to point at, and nothing throws.
+    expect(() => pointAtSoon({ current: null }, 'email', { ok: false, reason: 'not-enabled' })).not.toThrow();
   });
 });
 

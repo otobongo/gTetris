@@ -39,17 +39,28 @@ const middle = async (el: Locator) => {
 
 const MAYA: PlayerSeed[] = [{ id: 'maya', name: 'Maya', ageBand: '7-8' }];
 
-/** Who's playing, ready to tap Play as Maya; returns the middle of that button. */
+/**
+ * The hold reads the page clock, so each case freezes it (page.clock.setFixedTime) before Home opens
+ * and moves it on by hand: a tap lands 250 or 800 ms after Home opened however slowly a busy machine
+ * draws the screen. Real waits only let the page settle. Returns the setter for "ms after now".
+ */
+async function freezeClock(page: Page) {
+  const t0 = Date.now();
+  await page.clock.setFixedTime(t0);
+  return (ms: number) => page.clock.setFixedTime(t0 + ms);
+}
+
+/** Who's playing, ready to tap Play as Maya: the middle of that button, and the frozen clock's setter. */
 async function atPlayAs(page: Page) {
   await seed(page, MAYA);
   await page.goto('/#/players');
   const play = page.getByRole('link', { name: 'Play as Maya' });
   await expect(play).toBeVisible();
   await fontReady(page);
-  return middle(play);
+  return { ...(await middle(play)), after: await freezeClock(page) };
 }
 
-/** The Home card or discovery link under a screen point, or null. */
+/** The Home card or discovery link under a screen point, or null (also null off screen). */
 const cardAt = (page: Page, x: number, y: number) =>
   page.evaluate(([px, py]) => {
     const el = document.elementFromPoint(px, py)?.closest('.sc-gamecard, .sc-discovery');
@@ -63,31 +74,39 @@ const cardMiddleAt = (page: Page, x: number, y: number) =>
     return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
   }, [x, y] as const);
 
+/** A finger tap on the middle of a Home link, once it is on screen and the spot is on that link. */
+async function tapLink(page: Page, link: Locator) {
+  await link.scrollIntoViewIfNeeded();
+  const { x, y } = await middle(link);
+  expect(await cardAt(page, x, y), 'the tap lands on a card').not.toBeNull();
+  await page.touchscreen.tap(x, y);
+}
+
+const hello = (page: Page) => page.getByRole('heading', { name: 'Hi Maya!' });
+
 function doubleTapCases() {
   test('a second finger tap 250 ms after Play as, at the same spot, stays on Home', async ({ page }) => {
-    const { x, y } = await atPlayAs(page);
+    const { x, y, after } = await atPlayAs(page);
     await page.touchscreen.tap(x, y);
-    await page.waitForTimeout(250);
+    await expect(hello(page)).toBeVisible();
+    await after(250);
     expect(hashOf(page)).toBe('#/');
-    // At 390x844 the spot lands on a game card, so without the hold this tap would open a game. At
-    // 375x667 it sits a fraction of a pixel above a card and on the tablet between cards; the next case
-    // taps the middle of a card there.
+    // On phones in portrait the spot lands on a game card, so without the hold this tap would open a
+    // game. On wider screens it falls between cards; the next case taps the middle of a card there.
     if (page.viewportSize()!.width < 768) expect(await cardAt(page, x, y)).not.toBeNull();
     await page.touchscreen.tap(x, y);
     await page.waitForTimeout(1000);
     expect(hashOf(page)).toBe('#/');
-    await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
+    await expect(hello(page)).toBeVisible();
   });
 
   test('a finger tap on any card or Today’s discovery 250 ms after Play as stays on Home', async ({ page }) => {
     for (const target of ['card', 'discovery'] as const) {
       const at = await atPlayAs(page);
       await page.touchscreen.tap(at.x, at.y);
-      await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
-      const link = target === 'card' ? homeCard(page, 'Brick Escape') : page.locator('.sc-discovery');
-      const { x, y } = await middle(link);
-      await page.waitForTimeout(150);
-      await page.touchscreen.tap(x, y);
+      await expect(hello(page)).toBeVisible();
+      await at.after(250);
+      await tapLink(page, target === 'card' ? homeCard(page, 'Brick Escape') : page.locator('.sc-discovery'));
       await page.waitForTimeout(1000);
       expect(hashOf(page), target).toBe('#/');
     }
@@ -96,13 +115,28 @@ function doubleTapCases() {
   test('a finger tap 800 ms after Play as opens the game', async ({ page }) => {
     const at = await atPlayAs(page);
     await page.touchscreen.tap(at.x, at.y);
-    await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
-    await page.waitForTimeout(800);
+    await expect(hello(page)).toBeVisible();
+    await at.after(800);
     // The middle of the card under the Play as spot (phones), else of Brick Escape's card. The middle,
     // because at 375x667 the spot sits a fraction of a pixel above a card's top edge.
-    const { x, y } = (await cardMiddleAt(page, at.x, at.y)) ?? (await middle(homeCard(page, 'Brick Escape')));
-    await page.touchscreen.tap(x, y);
+    const under = await cardMiddleAt(page, at.x, at.y);
+    if (under) await page.touchscreen.tap(under.x, under.y);
+    else await tapLink(page, homeCard(page, 'Brick Escape'));
     await expect(page).toHaveURL(/#\/game\//);
+  });
+
+  test('the hold ends at 700 ms: a finger tap at 699 ms stays on Home, the next at 700 ms opens the game', async ({ page }) => {
+    const at = await atPlayAs(page);
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(hello(page)).toBeVisible();
+    const card = homeCard(page, 'Brick Escape');
+    await at.after(699);
+    await tapLink(page, card);
+    await page.waitForTimeout(1000);
+    expect(hashOf(page)).toBe('#/');
+    await at.after(700);
+    await tapLink(page, card);
+    await expect(page).toHaveURL(/#\/game\/escape\/1$/);
   });
 
   test('arriving at Home from Settings or a game, a finger tap at 250 ms opens the game', async ({ page }) => {
@@ -110,11 +144,11 @@ function doubleTapCases() {
     for (const from of ['/#/settings', '/#/game/sorter/1']) {
       await page.goto(from);
       await expect(page.locator('main')).toBeVisible();
+      const after = await freezeClock(page);
       await page.evaluate(() => (location.hash = '#/'));
-      await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
-      const { x, y } = await middle(homeCard(page, 'Brick Escape'));
-      await page.waitForTimeout(250);
-      await page.touchscreen.tap(x, y);
+      await expect(hello(page)).toBeVisible();
+      await after(250);
+      await tapLink(page, homeCard(page, 'Brick Escape'));
       await expect(page, from).toHaveURL(/#\/game\/escape\/1$/);
     }
   });
@@ -122,31 +156,67 @@ function doubleTapCases() {
   test('a mouse click 100 ms after Play as opens the game', async ({ page }) => {
     const at = await atPlayAs(page);
     await page.mouse.click(at.x, at.y);
-    await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
-    const { x, y } = await middle(homeCard(page, 'Brick Escape'));
-    await page.waitForTimeout(100);
+    await expect(hello(page)).toBeVisible();
+    const card = homeCard(page, 'Brick Escape');
+    await card.scrollIntoViewIfNeeded();
+    const { x, y } = await middle(card);
+    await at.after(100);
     await page.mouse.click(x, y);
     await expect(page).toHaveURL(/#\/game\/escape\/1$/);
   });
 
   test('Enter on a focused card straight after Play as opens it at once', async ({ page }) => {
-    const { x, y } = await atPlayAs(page);
-    await page.touchscreen.tap(x, y);
-    await expect(page.getByRole('heading', { name: 'Hi Maya!' })).toBeVisible();
+    const at = await atPlayAs(page);
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(hello(page)).toBeVisible();
+    await at.after(100);
     await homeCard(page, 'Shape Sorter').focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+  });
+
+  test('Enter opens a card at once even when a finger tap on it was just held', async ({ page }) => {
+    const at = await atPlayAs(page);
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(hello(page)).toBeVisible();
+    await at.after(100);
+    const card = homeCard(page, 'Shape Sorter');
+    await tapLink(page, card);
+    await page.waitForTimeout(500);
+    expect(hashOf(page)).toBe('#/');
+    await card.focus();
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
   });
 }
 
+test('Enter opens a card at once after a finger touched it and slid away with no tap', async ({ page }) => {
+  const at = await atPlayAs(page);
+  await page.touchscreen.tap(at.x, at.y);
+  await expect(hello(page)).toBeVisible();
+  await at.after(100);
+  const card = homeCard(page, 'Shape Sorter');
+  // A touch that turns into a scroll leaves a pointerdown with no click behind it.
+  await card.evaluate((el) => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' })));
+  await card.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+});
+
 test.describe('decision 35 at the project size', () => {
   doubleTapCases();
 });
 
-test.describe('decision 35 at 375x667', () => {
-  test.use({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
-  doubleTapCases();
-});
+for (const viewport of [
+  { width: 375, height: 667 },
+  { width: 1194, height: 834 },
+  { width: 844, height: 390 },
+]) {
+  test.describe(`decision 35 at ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true });
+    doubleTapCases();
+  });
+}
 
 /* ---------- Decision 20: speakers are hidden while Voice is off ---------- */
 
@@ -198,6 +268,43 @@ test('with Voice off, the sticker book has no speakers and its title stays in th
   await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
 });
 
+/** With Voice off, an earned sticker's card keeps one button, Close, and it sits in the middle of the card, not at its left edge. */
+function earnedCardCases() {
+  test('with Voice off, an earned sticker’s Close is centred in its card', async ({ page }) => {
+    await seed(page, LEO);
+    await voiceOff(page);
+    await page.goto('/#/stickers');
+    await expect(page.getByRole('heading', { level: 1, name: 'Sticker book' })).toBeVisible();
+    await fontReady(page);
+    await page.getByRole('button', { name: 'Open door' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button')).toHaveText(['Close']);
+    await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
+    const { close, title } = await dialog.evaluate((d) => {
+      const box = (el: Element | null) => el!.getBoundingClientRect();
+      const c = box(d.querySelector('.sc-overlay__actions button'));
+      const t = box(d.querySelector('.sc-overlay__title'));
+      return { close: c.x + c.width / 2, title: t.x + t.width / 2 };
+    });
+    expect(Math.abs(close - title)).toBeLessThanOrEqual(1);
+  });
+}
+
+earnedCardCases();
+
+test.describe('the earned sticker card at 375x667, 1194x834 and 844x390', () => {
+  for (const viewport of [
+    { width: 375, height: 667 },
+    { width: 1194, height: 834 },
+    { width: 844, height: 390 },
+  ]) {
+    test.describe(`${viewport.width}x${viewport.height}`, () => {
+      test.use({ viewport, isMobile: true, hasTouch: true });
+      earnedCardCases();
+    });
+  }
+});
+
 test('with Voice off, Break has no Read it aloud and its heading stays in place', async ({ page, browser }) => {
   const TIRED: PlayerSeed[] = [{ id: 'leo', name: 'Leo', ageBand: '5-6', dailyLimit: 20, minutesToday: 20 }];
   const headingTop = async (p: Page) => {
@@ -243,14 +350,41 @@ function discoveryCases() {
     }
     await expect(page.getByText('Go to Home')).toHaveCount(0);
   });
+
+  test('a child with game stickers reads the coming-soon line on Discoveries, not 0 of 12', async ({ page }) => {
+    await seed(page, LEO);
+    await page.goto('/#/stickers');
+    await expect(page.locator('.sc-album__line')).toHaveText(/^\d+ of 28 on this page$/);
+    await page.getByRole('tab', { name: 'Discoveries' }).click();
+    await expect(page.locator('.sc-album__line')).toHaveText(DISCOVERY);
+  });
+
+  test('a discovery sticker in old saved data still counts on its page and opens with where it came from', async ({ page }) => {
+    await seed(page, MAYA);
+    await page.addInitScript((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      state.players[0].stickers.x1 = { earnedAt: 1, seen: true };
+      localStorage.setItem(key, JSON.stringify(state));
+    }, STORAGE_KEY);
+    await page.goto('/#/stickers');
+    await page.getByRole('tab', { name: 'Discoveries' }).click();
+    await expect(page.locator('.sc-album__line')).toHaveText('1 of 12 on this page');
+    await page.locator('.sc-slot').first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText("From Today's discovery");
+    await expect(dialog).not.toContainText(DISCOVERY);
+  });
 }
 
 discoveryCases();
 
-test.describe('decision 29 at 375x667 and 1194x834', () => {
+test.describe('decision 29 at 375x667, 1194x834 and 844x390', () => {
   for (const viewport of [
     { width: 375, height: 667 },
     { width: 1194, height: 834 },
+    { width: 844, height: 390 },
   ]) {
     test.describe(`${viewport.width}x${viewport.height}`, () => {
       test.use({ viewport, isMobile: true, hasTouch: true });
@@ -280,6 +414,7 @@ test('the sticker book link is a kid-sized target and stays clear of Today’s d
     { width: 375, height: 667, min: 54 },
     { width: 1194, height: 834, min: 54 },
     { width: 834, height: 1194, min: 75 },
+    { width: 844, height: 390, min: 54 },
   ]) {
     const at = `${size.width}x${size.height}`;
     await page.setViewportSize(size);
@@ -321,22 +456,47 @@ async function noticePlace(page: Page) {
 }
 
 function accountCases() {
+  for (const path of ['/signin', '/signup'] as const) {
+    test(`${path}: a finger tap on a provider rings the notice at the top, and the ring goes when the grown-up moves on`, async ({ page }) => {
+      await seed(page, MAYA);
+      await openAccountScreen(page, path);
+      if (path === '/signup') await page.getByRole('checkbox', { name: /I am a parent or guardian/ }).check();
+      const soon = page.locator('.sc-auth__soon');
+      const ring = () => soon.evaluate((el) => getComputedStyle(el).outlineStyle);
+      expect(await ring()).toBe('none');
+      await page.getByRole('button', { name: 'Continue with Google' }).tap();
+      // A finger leaves no focus ring by default and no second notice appears: without this ring the tap looks dead.
+      await expect(soon).toBeFocused();
+      expect(await ring()).toBe('solid');
+      await expect(soon).toBeInViewport();
+      await page.getByLabel('Email').tap();
+      await expect(soon).not.toBeFocused();
+      expect(await ring()).toBe('none');
+    });
+  }
+
   test('Sign in opens with one compact coming-soon notice under the heading, and a provider or Sign in adds no second', async ({ page }) => {
     await seed(page, MAYA);
     await openAccountScreen(page, '/signin');
     expect(await noticePlace(page)).toEqual({ count: 1, afterHeading: true, beforeFields: true, compact: true });
     const top = page.locator('.sc-notice').first();
+    const soon = page.locator('.sc-auth__soon');
     await expect(top).toBeInViewport();
+    await expect(soon).not.toBeFocused();
     await page.getByRole('button', { name: 'Continue with Google' }).click();
     await page.waitForTimeout(300);
     expect((await noticePlace(page)).count).toBe(1);
+    // The answer moves focus to the notice already there, so a screen reader reads it out again.
+    await expect(soon).toBeFocused();
     await page.getByLabel('Email').fill('sam@example.com');
     await page.getByLabel('Password', { exact: true }).fill('a-long-password');
+    await expect(soon).not.toBeFocused();
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await page.waitForTimeout(300);
     expect((await noticePlace(page)).count).toBe(1);
     // The answer points at the notice that is already there.
     await expect(top).toBeInViewport();
+    await expect(soon).toBeFocused();
   });
 
   test('Sign up opens with one compact coming-soon notice under the heading, and Create account adds no second', async ({ page }) => {
@@ -347,17 +507,23 @@ function accountCases() {
     await page.getByRole('button', { name: 'Continue with Apple' }).click();
     await expect(page.getByText('Tick the box above to create the account.')).toBeVisible();
     await page.getByRole('checkbox', { name: /I am a parent or guardian/ }).check();
+    const soon = page.locator('.sc-auth__soon');
+    await expect(soon).not.toBeFocused();
     await page.getByRole('button', { name: 'Continue with Apple' }).click();
     await page.waitForTimeout(300);
     expect((await noticePlace(page)).count).toBe(1);
+    await expect(soon).toBeFocused();
     await page.getByLabel('Email').fill('sam@example.com');
     await page.getByLabel('Password').fill('a-long-password');
     await page.locator('.sc-auth__body').evaluate((e) => e.scrollTo(0, e.scrollHeight));
     const create = page.getByRole('button', { name: 'Create account' });
     await expect(create).toBeInViewport({ ratio: 1 });
+    await expect(soon).not.toBeFocused();
     await create.click();
     await page.waitForTimeout(300);
     expect((await noticePlace(page)).count).toBe(1);
+    // Focus, and the screen, go back up to the notice, even from the bottom of a short screen.
+    await expect(soon).toBeFocused();
     await expect(page.locator('.sc-notice').first()).toBeInViewport();
     await expect(page.getByRole('heading', { name: 'Create your family account' })).toBeVisible();
   });
@@ -365,10 +531,11 @@ function accountCases() {
 
 accountCases();
 
-test.describe('decision 31 at 375x667 and 1194x834', () => {
+test.describe('decision 31 at 375x667, 1194x834 and 844x390', () => {
   for (const viewport of [
     { width: 375, height: 667 },
     { width: 1194, height: 834 },
+    { width: 844, height: 390 },
   ]) {
     test.describe(`${viewport.width}x${viewport.height}`, () => {
       test.use({ viewport, isMobile: true, hasTouch: true });

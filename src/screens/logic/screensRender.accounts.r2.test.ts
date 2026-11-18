@@ -3,7 +3,7 @@
  * coming-soon notice. ACCOUNTS_ACTIVE is a build-time flag, so this file swaps the account module's flag
  * for true and keeps everything else.
  */
-import { createElement } from 'react';
+import { createElement, type RefObject } from 'react';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -11,7 +11,8 @@ vi.mock('../../shared/account', async (importOriginal) => ({ ...(await importOri
 
 import App from '../../App';
 import { emptyState, progressStore } from '../../shared/progress';
-import { SOON } from './auth';
+import { answerNotice, pointAtSoon } from '../Signin';
+import { SOON, authNotice } from './auth';
 import { grownUpGate } from './session';
 
 function renderAt(hash: string): string {
@@ -47,5 +48,14 @@ describe('decision 31 with accounts on', () => {
     const signup = renderAt('#/signup');
     expect(signup).toContain('Create your family account');
     expect(signup).not.toContain(SOON.title);
+  });
+
+  it('an answer that is the coming-soon note still shows, since no notice sits at the top, and focus stays put', () => {
+    expect(answerNotice(SOON)).toBe(SOON);
+    const offline = authNotice('offline', 'google');
+    expect(answerNotice(offline)).toBe(offline);
+    const top = { focus: vi.fn(), scrollIntoView: vi.fn() };
+    pointAtSoon({ current: top } as unknown as RefObject<HTMLDivElement>, 'apple', { ok: false, reason: 'not-enabled' });
+    expect(top.focus).not.toHaveBeenCalled();
   });
 });

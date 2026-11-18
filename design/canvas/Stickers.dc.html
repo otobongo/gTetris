@@ -380,7 +380,9 @@ class Component extends DCLogic {
 
     var tabDefs = [['games', 'Games'], ['discoveries', 'Discoveries']];
     var pageLine;
-    if (mode === 'empty') pageLine = tab === 'games' ? 'Each game chapter you finish adds a sticker here.' : 'Discovery stickers are coming soon.';
+    // A Discoveries page with none on it says they are coming soon, also for a child with game stickers (decision 29, 2026-11-16).
+    if (tab === 'discoveries' && gotOnPage === 0) pageLine = 'Discovery stickers are coming soon.';
+    else if (mode === 'empty') pageLine = 'Each game chapter you finish adds a sticker here.';
     else if (pageDone) pageLine = 'You found every sticker on this page.';
     else pageLine = gotOnPage + ' of ' + onPage.length + ' on this page';
 

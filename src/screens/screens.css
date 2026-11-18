@@ -670,9 +670,12 @@ button.sc-tile { cursor: pointer; }
 .sc-notice--error { box-shadow: inset 0 0 0 2px var(--bw-error-border); }
 .sc-notice--error .sc-glyph { color: var(--bw-error-text); }
 .sc-notice--compact { padding: var(--bw-sp-4) var(--bw-sp-5); background: var(--bw-well); }
-/* The coming-soon notice under the Sign in and Sign up headings (decision 31); a repeat answer moves focus here. */
+/*
+ * The coming-soon notice under the Sign in and Sign up headings (decision 31). A repeat answer moves focus
+ * here. The ring shows for a finger too (:focus, not :focus-visible): it is the only sign the tap was heard.
+ */
 .sc-auth__soon { border-radius: var(--bw-r-lg); }
-.sc-auth__soon:focus-visible { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
+.sc-auth__soon:focus { outline: var(--bw-focus); outline-offset: var(--bw-focus-offset); }
 .sc-notice__text { display: flex; flex-direction: column; line-height: 1.3; text-align: left; }
 .sc-notice__title { font-size: var(--bw-fs-body); font-weight: 800; }
 .sc-notice__body { font-size: var(--bw-fs-sub); font-weight: 700; color: var(--bw-text-2); }
