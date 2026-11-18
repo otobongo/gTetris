@@ -4,13 +4,15 @@
    plays the slip (sfx.wrong) and the solve (sfx.win); a pick here is always one of the two, so nothing else plays.
    Speech only follows the speaker button. */
 import { useState } from 'react';
+import { useLayout } from '../../shared/ui';
 import { ChoiceRow } from '../kit/ChoiceRow';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
 import type { Car } from './cars';
 import { PROMPT, PROMPT_SOLVED, SPEAKER_NAME, TRAY_LABEL, choiceName, trainName } from './copy';
 import { GAME } from './game';
-import { helpLine, judge, spokenFor, trainSlots, type TrainSlot } from './play';
+import { levelDef } from './levels';
+import { helpLine, judge, spokenFor, trainSlots, trainZoom, type TrainSlot } from './play';
 import { Shape, Train } from './Train';
 import './pattern.css';
 
@@ -24,6 +26,8 @@ export function PatternPlay({ level }: { level: number }) {
   const run = useLevelRun(GAME, level);
   const p = run.puzzle;
   const solved = run.phase !== 'play';
+  // Bigger on phone when fewer cars show, 1 on the zoomed tablet frame (decision 16).
+  const zoom = trainZoom(useLayout(), levelDef(run.level).shown);
 
   /** The puzzle (round) that had a wrong tap: the wrong line shows for that puzzle only, so a new puzzle starts clean. */
   const [wrongRound, setWrongRound] = useState<number | null>(null);
@@ -52,8 +56,11 @@ export function PatternPlay({ level }: { level: number }) {
 
   const top = (
     <>
-      <p className="pat-prompt">{solved ? PROMPT_SOLVED : PROMPT}</p>
-      <Train slots={trainSlots(p, solved)} label={trainName(p.cars, solved ? p.answer : null)} ghost={ghost} />
+      {/* data-reserve keeps the question's height once the shorter solved line shows, so the train holds still (pattern.css). */}
+      <p className="pat-prompt" data-reserve={PROMPT}>
+        <span>{solved ? PROMPT_SOLVED : PROMPT}</span>
+      </p>
+      <Train slots={trainSlots(p, solved)} label={trainName(p.cars, solved ? p.answer : null)} ghost={ghost} zoom={zoom} />
     </>
   );
 

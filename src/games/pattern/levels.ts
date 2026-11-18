@@ -29,7 +29,7 @@ export interface LevelDef {
   /** One pattern, or two of the same length (Levels 9 and 12): each shows 3 times in the level's 6 puzzles. */
   patterns: readonly PatternId[];
   change: Change;
-  /** Cars shown before the empty one: 4 on Levels 1 to 3, 5 on the rest (a sixth car does not fit 358 px at the board's 0.78 zoom). */
+  /** Cars shown before the empty one: 4 on Levels 1 to 3, 5 on the rest (a sixth car does not fit 358 px at the train's 0.82 zoom). */
   shown: number;
 }
 

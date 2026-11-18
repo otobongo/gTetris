@@ -3,9 +3,27 @@
    Board sizes are px, as slide.css and letters.css keep theirs. The play frame, help row, controls slot and
    choice behaviour come from the kit (kit.css). */
 
+/* ---------- Prompt, train and help row: one group in the middle of the space above the tray ---------- */
+/* The auto margins share the free height above and below the group, so the tray stays where it was. The kit's body
+   holds nothing in this game: it keeps its place with no height, and its margin takes back the frame's 14px gap, so
+   the two spaces come out equal. */
+.pat .pat-prompt { margin-top: auto; }
+.pat .bw-helprow { margin-bottom: auto; }
+.pat .bw-play__body:empty { flex: 0 0 0; margin-top: -14px; }
+/* A phone held sideways scrolls the screen (ui.css .bw-screen--short). This frame needs no 667px floor: without the
+   free height the train and the tray fit one screen, so the pattern stays in sight while the child picks a car. */
+.bw-screen--short .pat { --bw-short-floor: 0px; }
+/* On the narrowest phones some help lines take 3 lines and others 2. The row keeps the taller height, so the group
+   does not hop when the line changes. */
+@media (max-width: 339px) {
+  .pat .bw-helprow { min-height: calc(3 * 1.25 * var(--bw-fs-body)); }
+}
+
 /* ---------- Prompt line ---------- */
 .pat-prompt {
   flex-shrink: 0;
+  display: grid;
+  align-items: center;
   margin: 0;
   font-size: var(--bw-fs-section);
   font-weight: 800;
@@ -13,37 +31,51 @@
   text-align: center;
   text-wrap: balance;
 }
+/* On a narrow phone the question takes 2 lines and the solved line 1. The question stays in the row, unseen, so the
+   group keeps its height and the train does not hop when the last car fills. */
+.pat-prompt::before { content: attr(data-reserve); visibility: hidden; }
+.pat-prompt::before, .pat-prompt > span { grid-area: 1 / 1; }
 
 /* ---------- Shapes: one look on the rail and on the choices ---------- */
+/* An SVG in a 30 unit box (Train.tsx), filled in its colour with a --bw-purple-edge outline, so every shape reaches
+   3:1 on the white car body and on the purple choice (WCAG 1.4.11). The outline is 2.5 units drawn under the fill,
+   so 1.25 shows outside the shape and the shape keeps its size; overflow lets that edge show past the box. */
 .pat-shape {
   display: block;
   flex-shrink: 0;
   width: var(--pat-shape, 30px);
   height: var(--pat-shape, 30px);
-  background: var(--pat-c);
+  overflow: visible;
+  fill: var(--pat-c);
+  stroke: var(--bw-purple-edge);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  paint-order: stroke;
 }
 .pat-shape[data-color='red'] { --pat-c: var(--brick-red); }
 .pat-shape[data-color='blue'] { --pat-c: var(--brick-blue); }
 .pat-shape[data-color='yellow'] { --pat-c: var(--brick-yellow); }
 .pat-shape[data-color='green'] { --pat-c: var(--brick-green); }
 .pat-shape[data-color='pink'] { --pat-c: var(--brick-pink); }
-.pat-shape[data-shape='circle'] { border-radius: 50%; }
-.pat-shape[data-shape='square'] { border-radius: 6px; }
-.pat-shape[data-shape='triangle'] { clip-path: polygon(50% 4%, 98% 94%, 2% 94%); }
-.pat-shape[data-shape='star'] { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
 
 /* ---------- Train on its rail ---------- */
-/* The wrap clips the ghost as it leaves; 10px above the cars keeps the smoke stack and the lift of the arrival inside it. */
+/* The wrap clips the ghost as it leaves; 10px above the cars keeps the smoke stack and the lift of the arrival inside it.
+   Its clip sits 3px out in the frame's gutter, so a train that fills a narrow phone keeps the answer car's whole 3px ring. */
 .pat-rail-wrap {
+  --pat-ring-room: 3px;
   position: relative;
-  width: 100%;
+  width: calc(100% + 2 * var(--pat-ring-room));
+  margin-inline: calc(-1 * var(--pat-ring-room));
   flex-shrink: 0;
   box-sizing: border-box;
   padding-top: var(--bw-sp-4);
+  padding-inline: var(--pat-ring-room);
   overflow: hidden;
 }
+/* The zoom comes from the car count (PatternPlay sets --pat-train-zoom: 0.95 for 4 cars, 0.82 for 5, 1 on tablet);
+   0.78 stays for the locomotive alone behind the finished card. */
 .pat-train {
-  zoom: 0.78;
+  zoom: var(--pat-train-zoom, 0.78);
   display: flex;
   justify-content: center;
   align-items: flex-end;
@@ -95,7 +127,7 @@
 .pat-wheel--loco { width: 20px; height: 20px; }
 .pat-wheel--left { left: 6px; }
 .pat-wheel--right { right: 6px; }
-/* Car 56x86: a 56x46 white body, the shape 30x30 in it, two wheels. */
+/* Car 56x86: a 56x46 white body, the shape 36x36 in it (inside the 5px edge at its foot), two wheels. */
 .pat-car {
   position: relative;
   flex-shrink: 0;
@@ -103,12 +135,15 @@
   height: 86px;
 }
 .pat-car__body {
+  --pat-shape: 36px;
   position: absolute;
   left: 0;
   top: 22px;
   box-sizing: border-box;
   width: 56px;
   height: 46px;
+  /* The shape centres on the face above the 5px edge, not on the whole body. */
+  padding-bottom: 5px;
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -138,11 +173,12 @@
 @keyframes pat-arrive {
   from { opacity: 0; }
 }
+/* The ghost's zoom scales its own top as well, so the offset is divided by it: it leaves from the height the train stood at. */
 .pat-ghost {
   position: absolute;
   left: 0;
   right: 0;
-  top: var(--bw-sp-4);
+  top: calc(var(--bw-sp-4) / var(--pat-train-zoom, 0.78));
   pointer-events: none;
   animation: pat-leave var(--bw-base) var(--bw-ease) forwards;
 }
@@ -196,5 +232,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pat-ghost { display: none; }
   .pat-train.is-arriving { animation: pat-arrive 150ms linear backwards; }
+  /* The global 0.01ms rule (global.css) would erase the fade; Reduce Motion keeps a fade, not a cut (brief 9.1). */
+  .pat-train.is-arriving { animation-duration: 150ms !important; }
   .bw-choice.pat-choice:active:not([aria-disabled='true']) { transform: none; }
 }
