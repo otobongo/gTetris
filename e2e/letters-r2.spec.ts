@@ -747,6 +747,8 @@ function demoCases() {
     await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
     expect(await demo.seen()).toHaveLength(1);
 
+    // A child's next tap comes a moment after Next (a new tray may ignore a finger for its first 350 ms, decision 35).
+    await page.waitForTimeout(400);
     const second = await lettersAnswer(page);
     await trayTile(page, second[0]).tap();
     await expect(help(page)).toHaveText(DRAG_NOTE);
