@@ -40,4 +40,6 @@ export const sfx = {
   line: (n = 1) => { for (let i = 0; i < n + 1; i++) tone(520 + i * 160, 0.12, 'triangle', 0.12, i * 0.06); },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, i * 0.11)),
   lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'sine', 0.12, i * 0.14)),
+  /** The stuck offer appearing at ages 3 to 4 (decision 8): two soft rising notes, after the slip's own sound. */
+  offer: () => { tone(988, 0.16, 'sine', 0.11, 0.3); tone(1319, 0.24, 'sine', 0.09, 0.42); },
 };

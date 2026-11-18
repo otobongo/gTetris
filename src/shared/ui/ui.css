@@ -58,6 +58,39 @@
     16px;
 }
 
+/* Short screens (under 500px tall: a phone held sideways, layout.ts). The phone column is laid out as a
+   portrait phone of the shortest height every game is measured at, 667px, and the screen scrolls, so no
+   board, tray or hole is clipped or covered. Boards keep their own touch-action: none, so a stroke or a
+   drag on them never scrolls; pinch zoom is untouched. Home keeps the viewport height: its list scrolls. */
+.bw-screen--short { --bw-short-floor: 667px; }
+/* Positioned, so a visually hidden line stays inside the screen and never gives the page behind it a scroll. */
+.bw-screen--short.bw-screen--fit-viewport { position: relative; overflow-x: hidden; overflow-y: auto; }
+/* The frame never scrolls itself here (a game's short-phone rule may make it a scroller): one scroller,
+   the screen, so a finger anywhere off a board scrolls the page. max-content, because auto would stretch it
+   to exactly the floor in the screen's row and a taller board would run out past its bottom padding. */
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame { height: max-content; min-height: max(100dvh, var(--bw-short-floor)); overflow: visible; }
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame--home { height: 100dvh; min-height: 0; }
+/* Picture Builder sizes its board from its stage's height (a container query), which needs a frame of a set
+   height; its board already fits the floor. */
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame.pb-screen { height: var(--bw-short-floor); }
+/* A play area keeps its full height and the frame grows past the floor, so a board never runs under the
+   controls below it. */
+.bw-screen--short .bw-play__body { flex-shrink: 0; }
+/* A list inside the frame passes a finger's swipe on to the screen at its end, so the part of the frame below
+   the phone's edge can be reached from anywhere on the list. */
+.bw-screen--short .sc-scroll { overscroll-behavior: auto; }
+/* The column is centred in a wide screen, so its margin already clears a side inset (a notch); the
+   frame adds only what the margin leaves. 100% here is the screen's width, min(...) the column's. */
+.bw-screen--short .bw-screen__frame--standard,
+.bw-screen--short .bw-screen__frame--home {
+  padding-right: max(16px, calc(env(safe-area-inset-right) - (100% - min(100%, var(--bw-phone-max))) / 2));
+  padding-left: max(16px, calc(env(safe-area-inset-left) - (100% - min(100%, var(--bw-phone-max))) / 2));
+}
+.bw-screen--short .bw-screen__frame--roomy {
+  padding-right: max(20px, calc(env(safe-area-inset-right) - (100% - min(100%, var(--bw-phone-max))) / 2));
+  padding-left: max(20px, calc(env(safe-area-inset-left) - (100% - min(100%, var(--bw-phone-max))) / 2));
+}
+
 /* ---------- Brick ---------- */
 .bw-brick {
   position: relative;
@@ -108,6 +141,13 @@
 .bw-iconbtn.is-pressed {
   transform: translateY(var(--bw-press-shift));
   box-shadow: 0 var(--bw-raise-pressed) 0 var(--tone-edge);
+}
+/* The stuck offer's cue at ages 3 to 4 (IconButton cue, decision 8): a static ring for its first 2s, with
+   nothing that moves, so Reduce Motion needs no other rule. Before focus-visible, so a focus ring wins. */
+.bw-iconbtn.is-cue {
+  outline: 4px solid var(--bw-accent);
+  outline-offset: 0;
+  scroll-margin: var(--bw-sp-4); /* a phone held sideways brings the button into view with its ring */
 }
 .bw-press:focus-visible,
 .bw-iconbtn:focus-visible {
@@ -314,6 +354,36 @@
 }
 .bw-dot.is-solved .bw-dot__fill { transform: scaleX(1); opacity: 1; }
 
+/* The capped-star mark (PuzzleDots capped, decision 25): an outline star with a 2, 8px right of the last
+   dot. Its margins cancel its own 28px of width and 10px of extra height, so the row still centres the
+   dots alone under the title and keeps the dots' height. Static. */
+.bw-dots-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--bw-sp-1);
+}
+.bw-dots-row > .bw-dots { margin-top: 0; }
+.bw-dots__cap {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin: -5px calc(-1 * (20px + var(--bw-sp-3))) -5px var(--bw-sp-3);
+  color: var(--bw-text-2);
+}
+.bw-dots__cap svg { position: absolute; inset: 0; }
+.bw-dots__cap-n {
+  position: relative;
+  padding-top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---------- Appearing controls: Next and the stuck offer fade in over 150ms (brief 8) ---------- */
 @keyframes bw-fade-in { from { opacity: 0; } }
 .bw-appear { animation: bw-fade-in 150ms linear; }
@@ -328,6 +398,10 @@
   place-items: center;
   padding: var(--bw-gutter);
   background: var(--bw-scrim);
+  /* A card taller than the screen (a phone held sideways) scrolls inside the scrim; margin: auto on the
+     card centres it when it fits and starts it at the top when it does not, so no button is cut off. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .bw-levelcard {
   width: 100%;
@@ -340,6 +414,7 @@
   box-shadow: var(--bw-card-shadow);
   color: var(--bw-text);
   animation: bw-card-in var(--bw-base) var(--bw-ease);
+  margin: auto;
 }
 .bw-levelcard__title {
   margin: 0;
@@ -374,6 +449,34 @@
   line-height: var(--bw-lh-body);
   text-wrap: balance;
 }
+/* The sticker the level just earned (LevelCard sticker, decision 19): its 69px mosaic beside its name,
+   settling in once as the card opens. */
+@keyframes bw-sticker-in { from { opacity: 0; transform: scale(0.92); } }
+.bw-levelcard__sticker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--bw-sp-5);
+  margin: 0 0 var(--bw-sp-5);
+  text-align: start;
+  animation: bw-sticker-in 320ms ease-out;
+}
+.bw-levelcard__mosaic {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 13px);
+  grid-auto-rows: 13px;
+  gap: 1px;
+}
+.bw-levelcard__sticker-name {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--bw-fs-panel);
+  font-weight: 800;
+  line-height: var(--bw-lh-panel);
+  color: var(--bw-text);
+  text-wrap: balance;
+}
 .bw-levelcard__actions { display: flex; flex-direction: column; gap: var(--bw-sp-4); margin-top: var(--bw-sp-6); }
 .bw-levelcard .bw-levelcard__secondary { --tone-top: var(--bw-secondary-top); --tone-bottom: var(--bw-secondary); }
 
@@ -391,4 +494,7 @@
      so only the designed fades come back and everything else stays instant. */
   .bw-dot__fill { transition-duration: 150ms !important; }
   .bw-levelcard, .bw-appear { animation-duration: 150ms !important; }
+  /* The sticker's settle becomes a fade alone: no scale. */
+  .bw-levelcard__sticker { animation: bw-fade-in 150ms linear; }
+  .bw-levelcard__sticker { animation-duration: 150ms !important; }
 }
