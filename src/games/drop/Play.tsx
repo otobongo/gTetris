@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ComponentProps, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ComponentProps, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import {
   activePlayer,
   freshRun,
@@ -418,6 +418,8 @@ export default function Play({ index }: { index: number }) {
     const down = (e: KeyboardEvent) => {
       keyboardSeen = true;
       setSawKey(true);
+      // Space on the focused speaker presses the speaker, as on any button; it does not drop the brick.
+      if (e.key === ' ' && (e.target as Element | null)?.closest?.('.drop-tiles__speaker')) return;
       const cmd = keyCommand(e);
       const ph = roundRef.current!.phase;
       if (cmd === 'pause') {
@@ -549,6 +551,11 @@ export default function Play({ index }: { index: number }) {
   // The controls line, for touch or keys, as the intro card shows it.
   const controls = introControlsLine(finePointer, sawKey);
   const clockCounts = plan.kind === 'countdown';
+  const hearHelp = (e: ReactMouseEvent<HTMLElement>) => {
+    speak(playSpoken(say, goal, controls));
+    // A finger or mouse hands the keys straight back to the board; a keyboard or VoiceOver press (detail 0) stays here.
+    if (e.detail > 0 && phase !== 'solved') boardRef.current?.focus({ preventScroll: true });
+  };
 
   // Timer row
   const left = plan.kind === 'countdown' ? plan.seconds - secs : 0;
@@ -623,7 +630,7 @@ export default function Play({ index }: { index: number }) {
                   <small>/{goal}</small>
                 </span>
               </div>
-              {voice && <IconButton icon="speaker" label="Hear the help line" className="drop-tiles__speaker" onClick={() => speak(playSpoken(say, goal, controls))} />}
+              {voice && <IconButton icon="speaker" label="Hear the help line" className="drop-tiles__speaker" onClick={hearHelp} />}
             </div>
 
             <div className="drop-area" ref={areaRef}>
@@ -742,7 +749,7 @@ export default function Play({ index }: { index: number }) {
   );
 }
 
-/** One control of the row: icon over label, 62px tall. Pressing and holding repeats; Enter works from the keyboard. */
+/** One control of the row: icon over label, 62px tall. Pressing and holding repeats; Enter and assistive tech each give one press. */
 function PadButton({
   act,
   icon,
@@ -777,8 +784,15 @@ function PadButton({
       onPointerCancel={up}
       onLostPointerCapture={up}
       onKeyDown={(e) => {
-        if (e.key !== 'Enter' || e.repeat) return;
+        if (e.key !== 'Enter') return;
         e.preventDefault();
+        if (e.repeat) return;
+        press(act);
+        release(act);
+      }}
+      // VoiceOver and Switch Control send a click with no pointer and no key: one press.
+      onClick={(e) => {
+        if (e.detail !== 0) return;
         press(act);
         release(act);
       }}

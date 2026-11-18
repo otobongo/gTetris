@@ -10,7 +10,7 @@
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { STAGES } from '../src/games/drop/stages';
-import { dots, editSavedInAnotherTab, levelCard, planDropPuzzle, playDropPuzzle, recordSpeech, savedRun, savedState, seed, starsUpTo, type Band } from './app';
+import { STORAGE_KEY, dots, editSavedInAnotherTab, levelCard, planDropPuzzle, playDropPuzzle, recordSpeech, savedRun, savedState, seed, starsUpTo, type Band } from './app';
 
 const PAUSED = 'Paused. Press any button to play.';
 const TOUCH_LINE = 'Tap the board to turn. Swipe down to drop.';
@@ -385,3 +385,257 @@ test('decision 38: under Reduce Motion the scrim, the help line and the row flas
   }
   expect(seen, 'a row cleared').toBe(true);
 });
+
+/* ---------- independent review: keys, VoiceOver and Switch Control ---------- */
+
+const helpSpeaker = (page: Page): Locator => page.getByRole('button', { name: 'Hear the help line', exact: true });
+const focusName = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName);
+const settledBricks = (page: Page) => page.locator('.drop-grid .drop-cell:not(.is-active)').count();
+
+test.describe('the speaker from the keyboard', () => {
+  test('Space on the focused speaker reads the line, and the waiting brick keeps waiting @phone-only', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await openStage(page, 3, '7-8', { clock: true });
+    await start(page);
+    const waiting = (await say(page).textContent())!;
+    const before = await brick(page, 3);
+    const settled = await settledBricks(page);
+
+    await helpSpeaker(page).focus();
+    await page.keyboard.press(' ');
+    await expect.poll(spoken).toEqual(['Press any button to start. New brick: Corner.']);
+    await page.clock.runFor(2000);
+    await expect(say(page)).toHaveText(waiting);
+    expect(await brick(page, 3)).toEqual(before);
+    expect(await settledBricks(page)).toBe(settled);
+    expect(await focusName(page)).toBe('Hear the help line');
+  });
+
+  test('while playing, Space and Enter on it read the line and never drop the brick; arrow keys still play @phone-only', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await openStage(page, 3, '7-8', { clock: true });
+    await start(page);
+    await page.keyboard.press('ArrowDown');
+    const before = await brick(page, 3);
+    const settled = await settledBricks(page);
+
+    await helpSpeaker(page).focus();
+    await page.keyboard.press(' ');
+    await expect.poll(async () => (await spoken()).length).toBe(1);
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await spoken()).length).toBe(2);
+    expect(await settledBricks(page)).toBe(settled);
+    expect((await brick(page, 3)).y).toBe(before.y);
+
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => (await brick(page, 3)).x).toBe(before.x - 1);
+  });
+
+  test('while paused, Space on it reads the paused line and the game stays paused @phone-only', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await openStage(page, 3, '7-8', { clock: true });
+    await start(page);
+    await page.keyboard.press('ArrowDown');
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await helpSpeaker(page).focus();
+    await page.keyboard.press(' ');
+    await expect.poll(spoken).toEqual([PAUSED]);
+    await expect(say(page)).toHaveText(PAUSED);
+    await expect(page.getByRole('button', { name: 'Keep playing', exact: true })).toBeVisible();
+  });
+
+  test('a mouse press on it hands the keys back to the board, so Space drops the brick at once @phone-only', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await openStage(page, 3, '7-8', { clock: true });
+    await start(page);
+    await page.keyboard.press('ArrowDown');
+    const settled = await settledBricks(page);
+
+    await helpSpeaker(page).click();
+    await expect.poll(async () => (await spoken()).length).toBe(1);
+    await page.keyboard.press(' ');
+    await expect.poll(() => settledBricks(page)).toBeGreaterThan(settled);
+    expect((await spoken()).length).toBe(1);
+  });
+
+  test('a mouse press after a solve does not pull the focus onto the finished board @phone-only', async ({ page }) => {
+    await recordSpeech(page);
+    await openStage(page, 1, '7-8', { clock: true });
+    await start(page);
+    const puzzle = (await savedRun(page, 'drop', 0)).queue[0];
+    await playDropPuzzle(page, planDropPuzzle(0, puzzle));
+    await expect(page.getByRole('button', { name: 'Next puzzle' })).toBeFocused();
+    await helpSpeaker(page).click();
+    await expect(board(page)).not.toBeFocused();
+  });
+});
+
+test.describe('a pad press from VoiceOver or Switch Control (a click with no pointer)', () => {
+  const assistivePress = (page: Page, name: 'Left' | 'Right') => padButton(page, name).evaluate((b: HTMLElement) => b.click());
+
+  test('while paused it only carries on, and the next one moves the brick by one column @phone-only', async ({ page }) => {
+    await openStage(page, 1, '7-8', { clock: true });
+    await start(page);
+    await page.keyboard.press('ArrowDown');
+    await page.getByRole('button', { name: 'Pause', exact: true }).click();
+    await expect(say(page)).toHaveText(PAUSED);
+    const before = await brick(page, 1);
+
+    await assistivePress(page, 'Left');
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+    await expect(say(page)).toHaveText('');
+    expect((await brick(page, 1)).x).toBe(before.x);
+
+    await assistivePress(page, 'Left');
+    await expect.poll(async () => (await brick(page, 1)).x).toBe(before.x - 1);
+  });
+
+  test('a finger, a mouse and the Enter key each still move the brick by exactly one column', async ({ page }) => {
+    await openStage(page, 1, '7-8', { clock: true });
+    await start(page);
+    await page.keyboard.press('ArrowDown');
+    const from = (await brick(page, 1)).x;
+
+    await padButton(page, 'Left').tap();
+    await expect.poll(async () => (await brick(page, 1)).x).toBe(from - 1);
+    await padButton(page, 'Right').click();
+    await expect.poll(async () => (await brick(page, 1)).x).toBe(from);
+
+    // Holding Enter is one press: the key's repeats do nothing.
+    await padButton(page, 'Left').focus();
+    await page.keyboard.down('Enter');
+    await page.keyboard.down('Enter');
+    await page.keyboard.down('Enter');
+    await page.keyboard.up('Enter');
+    await expect.poll(async () => (await brick(page, 1)).x).toBe(from - 1);
+    await page.clock.runFor(16);
+    expect((await brick(page, 1)).x).toBe(from - 1);
+  });
+});
+
+/* ---------- independent review: every band, and the puzzle boundaries of decision 9 ---------- */
+
+test('decision 9: ages 9 to 10 fall at the stage’s own speed @phone-only', async ({ page }) => {
+  await openStage(page, 1, '9-10', { clock: true });
+  await start(page);
+  await fallsAfter(page, 1, 1000);
+});
+
+/** Stack bricks in the middle until the Out of room sheet is up. */
+async function fillToTheTop(page: Page) {
+  const sheet = page.getByRole('dialog');
+  for (let n = 0; n < 80 && !(await sheet.isVisible()); n++) {
+    await page.keyboard.press(' ');
+    await page.clock.runFor(800);
+  }
+  await expect(sheet.getByRole('heading')).toHaveText('Out of room');
+}
+
+test('decision 9: Try again keeps the puzzle’s speed after a band change, and New puzzle takes the new band @phone-only', async ({ page }) => {
+  await openStage(page, 1, '7-8', { clock: true });
+  await start(page);
+  await page.keyboard.press('ArrowDown');
+  await editSavedInAnotherTab(page, (s) => {
+    (s as unknown as { players: { ageBand: Band }[] }).players[0].ageBand = '3-4';
+  });
+  const keep = page.getByRole('button', { name: 'Keep playing' });
+  if (await keep.isVisible()) await keep.click();
+
+  // The band of the puzzle holds through every retry of that puzzle.
+  await fillToTheTop(page);
+  await page.getByRole('dialog').getByRole('button', { name: 'Try again' }).click();
+  await expect(say(page)).toContainText('Press any button to start.');
+  await fallsAfter(page, 1, 1000);
+
+  // Enough failed tries bring the offer: a new puzzle is the next puzzle, so it falls at the new band's speed.
+  const offer = page.getByRole('dialog').getByRole('button', { name: 'New puzzle' });
+  for (let n = 0; n < 12; n++) {
+    await fillToTheTop(page);
+    if (await offer.isVisible()) break;
+    await page.getByRole('dialog').getByRole('button', { name: 'Try again' }).click();
+    await expect(say(page)).toContainText('Press any button to start.');
+  }
+  await offer.click();
+  await expect(say(page)).toContainText('Press any button to start.');
+  await fallsAfter(page, 1, 1600);
+});
+
+test('decision 9: Play Stage 2 from the level card falls at the child’s speed, also when that stage’s saved run moves to a new set @phone-only', async ({ page }) => {
+  await page.clock.install();
+  await seed(page, [{ id: 'kai', name: 'Kai', ageBand: '3-4' }]);
+  // Stage 2 was left on an older puzzle set, so the screen swaps its first puzzle as it opens.
+  await page.addInitScript((key) => {
+    if (sessionStorage.getItem('old-run')) return;
+    sessionStorage.setItem('old-run', '1');
+    const state = JSON.parse(localStorage.getItem(key)!);
+    state.players[0].games.drop = { unlocked: 1, stars: {}, best: {}, runs: { 1: { set: 'drop-old', seed: 0, queue: [2, 3, 0, 1, 4, 5], solved: [], updatedAt: 1 } } };
+    localStorage.setItem(key, JSON.stringify(state));
+  }, STORAGE_KEY);
+  await page.goto('/#/game/drop/1');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+  await start(page);
+  for (let n = 1; n <= 4; n++) {
+    if (n > 1) {
+      await page.getByRole('button', { name: 'Next puzzle' }).click();
+      await expect(say(page)).toContainText('Press any button to start.');
+    }
+    await playDropPuzzle(page, planDropPuzzle(0, (await savedRun(page, 'drop', 0)).queue[0]));
+  }
+  await expect(dots(page)).toHaveAttribute('aria-label', '4 of 4 solved.');
+  await page.clock.runFor(700);
+  await levelCard(page).getByRole('button', { name: 'Play Stage 2' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Stage 2' })).toBeVisible();
+  await expect(say(page)).toContainText('Press any button to start.');
+  expect((await savedRun(page, 'drop', 1)).queue[0]).toBe(0);
+  // Stage 2 falls a row every 950 ms: 1520 ms at ages 3 to 4.
+  await fallsAfter(page, 2, 1520);
+});
+
+test('decision 11: a board tap while paused never turns the brick, and the next tap does', async ({ page }) => {
+  await openStage(page, 3, '7-8', { clock: true });
+  await start(page);
+  await padButton(page, 'Down').tap();
+  const pause = page.getByRole('button', { name: 'Pause', exact: true });
+  await pause.click();
+  await expect(say(page)).toHaveText(PAUSED);
+  const still = await brick(page, 3);
+
+  await board(page).tap();
+  await expect(pause).toBeVisible();
+  await page.clock.runFor(16);
+  expect((await brick(page, 3)).cells).toBe(still.cells);
+
+  await board(page).tap();
+  await expect.poll(async () => (await brick(page, 3)).cells).not.toBe(still.cells);
+});
+
+/* ---------- independent review: the intro card's title row ---------- */
+
+for (const [stage, name] of [[4, 'Squares and Sticks'], [6, 'Hooks and Boots'], [12, 'Master Builder']] as const) {
+  test(`the long name "${name}" stays centred on the intro card, in two lines at most, with both speakers exactly 54 pt`, async ({ page }) => {
+    await openStage(page, stage, '7-8');
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.fonts.check('800 16px "Baloo 2"'))).toBe(true);
+    const zoom = await zoomOf(page);
+    const sheet = page.getByRole('dialog');
+    const heading = sheet.getByRole('heading');
+    await expect(heading).toHaveText(name);
+
+    const title = (await heading.boundingBox())!;
+    const card = (await sheet.boundingBox())!;
+    expect(Math.abs(title.x + title.width / 2 - (card.x + card.width / 2))).toBeLessThanOrEqual(1);
+    const line = await heading.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
+    expect(title.height).toBeLessThanOrEqual(2 * line * zoom + 1);
+    expect(await heading.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+
+    const goal = (await sheet.getByRole('button', { name: 'Hear the goal', exact: true }).boundingBox())!;
+    expect(Math.abs(goal.width - 54 * zoom)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(goal.height - 54 * zoom)).toBeLessThanOrEqual(0.5);
+    await start(page);
+    const help = (await helpSpeaker(page).boundingBox())!;
+    expect(Math.abs(help.width - 54 * zoom)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(help.height - 54 * zoom)).toBeLessThanOrEqual(0.5);
+  });
+}

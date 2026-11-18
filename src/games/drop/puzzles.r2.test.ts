@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
-import { createProgressStore, type AgeBand } from '../../shared/progress';
+import { STORAGE_KEY, createProgressStore, type AgeBand } from '../../shared/progress';
 import { getGame } from '../registry';
 import { KEYS_LINE, TOUCH_LINE } from './controls';
 import {
@@ -190,6 +190,38 @@ describe('decision 19: the sticker a finished stage earns', () => {
     const { store, id } = storeWith({ drop: [...chapter(0), ...chapter(1)] });
     expect(stageSticker(store, id)?.name).toBe('Tiny tower');
     expect(Object.keys(store.getState().players[0].stickers).sort()).toEqual(['d1', 'd2']);
+  });
+
+  it('works on old saved data: a record with no stickers field gives the sticker, keeps it over a reload and never gives it twice', () => {
+    const stars = Object.fromEntries(chapter(0).map((lv) => [lv, 2]));
+    const old = {
+      version: 3,
+      players: [{ id: 'kai', name: 'Kai', ageBand: '5-6', color: 'green', games: { drop: { unlocked: 3, stars, best: {} } } }],
+      activePlayerId: 'kai',
+      settings: {},
+    };
+    const saved = new Map([[STORAGE_KEY, JSON.stringify(old)]]);
+    const storage = { getItem: (k: string) => saved.get(k) ?? null, setItem: (k: string, v: string) => void saved.set(k, v), removeItem: (k: string) => void saved.delete(k) };
+    const open = () => createProgressStore({ storage, now: () => NOON, newId: () => 'x', events: null });
+
+    const store = open();
+    expect(store.getState().players[0].stickers).toEqual({});
+    expect(stageSticker(store, 'kai')?.name).toBe('Tiny tower');
+    const earned = store.getState().players[0].stickers.d1;
+    expect(earned).toEqual({ earnedAt: NOON, seen: false });
+
+    const again = open();
+    expect(again.getState().players[0].stickers.d1).toEqual(earned);
+    expect(stageSticker(again, 'kai')).toBeUndefined();
+    expect(again.getState().players[0].stickers.d1).toEqual(earned);
+  });
+
+  it('leaves a sticker the child already has as it was', () => {
+    const { store, id } = storeWith({ drop: chapter(0) });
+    store.awardSticker('d1', id);
+    const earned = store.getState().players[0].stickers.d1;
+    expect(stageSticker(store, id)).toBeUndefined();
+    expect(store.getState().players[0].stickers.d1).toBe(earned);
   });
 
   it('gives nothing with no player to save to', () => {
