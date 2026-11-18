@@ -5,10 +5,14 @@
 
 /* ---------- Prompt, train and help row: one group in the middle of the space above the tray ---------- */
 /* The auto margins share the free height above and below the group, so the tray stays where it was. The kit's body
-   holds nothing in this game, so it leaves the column with its gap and the two spaces come out equal. */
+   holds nothing in this game: it keeps its place with no height, and its margin takes back the frame's 14px gap, so
+   the two spaces come out equal. */
 .pat .pat-prompt { margin-top: auto; }
 .pat .bw-helprow { margin-bottom: auto; }
-.pat .bw-play__body:empty { display: none; }
+.pat .bw-play__body:empty { flex: 0 0 0; margin-top: -14px; }
+/* A phone held sideways scrolls the screen (ui.css .bw-screen--short). This frame needs no 667px floor: without the
+   free height the train and the tray fit one screen, so the pattern stays in sight while the child picks a car. */
+.bw-screen--short .pat { --bw-short-floor: 0px; }
 /* On the narrowest phones some help lines take 3 lines and others 2. The row keeps the taller height, so the group
    does not hop when the line changes. */
 @media (max-width: 339px) {

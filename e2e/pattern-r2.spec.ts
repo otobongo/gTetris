@@ -46,6 +46,30 @@ function layout(page: Page) {
   });
 }
 
+/** Tap Next and read the rail in the frame the ghost is added, since it is gone 200 ms later. */
+async function nextWithGhost(page: Page) {
+  const seen = page.evaluate(
+    () =>
+      new Promise<{ top: number; overflow: string; zooms: string[]; arrival: string }>((done) => {
+        const look = new MutationObserver(() => {
+          const ghost = document.querySelector('.pat-rail-wrap > .pat-ghost');
+          if (!ghost) return;
+          look.disconnect();
+          const wrap = ghost.parentElement!;
+          done({
+            top: ghost.getBoundingClientRect().top,
+            overflow: getComputedStyle(wrap).overflow,
+            zooms: [...wrap.querySelectorAll(':scope > .pat-train')].map((e) => getComputedStyle(e).zoom),
+            arrival: getComputedStyle(wrap.querySelector('.pat-train.is-arriving')!).animationDuration,
+          });
+        });
+        look.observe(document.body, { childList: true, subtree: true });
+      }),
+  );
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  return seen;
+}
+
 /* ---------- Decision 38: the arriving train fades over 150 ms under Reduce Motion ---------- */
 
 test('under Reduce Motion the arriving train fades over 0.15s and the ghost stays hidden', async ({ page }) => {
@@ -68,15 +92,13 @@ test.describe('with motion on', () => {
   test('the ghost leaves and the new train arrives inside the rail wrap, which clips them', async ({ page }) => {
     await openLevel(page, 1);
     await solvePatternPuzzle(page);
-    await page.getByRole('button', { name: 'Next puzzle' }).click();
-    const ghost = page.locator('.pat-rail-wrap > .pat-ghost');
-    await expect(ghost).toHaveCount(1);
-    expect(await page.locator('.pat-rail-wrap').evaluate((el) => getComputedStyle(el).overflow)).toBe('hidden');
+    const m = await nextWithGhost(page);
+    expect(m.overflow).toBe('hidden');
     // The ghost has the same zoom as the train it was, so it leaves from where it stood.
-    const zooms = await page.locator('.pat-rail-wrap > .pat-train').evaluateAll((els) => els.map((e) => getComputedStyle(e).zoom));
-    expect(new Set(zooms).size).toBe(1);
-    await expect(page.locator('.pat-train.is-arriving')).toHaveCSS('animation-duration', '0.15s');
-    await expect(ghost).toHaveCount(0);
+    expect(m.zooms).toHaveLength(2);
+    expect(new Set(m.zooms).size).toBe(1);
+    expect(m.arrival).toBe('0.15s');
+    await expect(page.locator('.pat-rail-wrap > .pat-ghost')).toHaveCount(0);
   });
 });
 
@@ -271,24 +293,21 @@ test.describe('with motion on, the leaving train', () => {
         await openLevel(page, level);
         await solvePatternPuzzle(page);
         const stood = await page.locator('.pat-train').evaluate((el) => el.getBoundingClientRect().top);
-        // Read in the frame the ghost is added, since it is gone 200 ms later.
-        const seen = page.evaluate(
-          () =>
-            new Promise<number>((done) => {
-              const look = new MutationObserver(() => {
-                const ghost = document.querySelector('.pat-ghost');
-                if (!ghost) return;
-                look.disconnect();
-                done(ghost.getBoundingClientRect().top);
-              });
-              look.observe(document.body, { childList: true, subtree: true });
-            }),
-        );
-        await page.getByRole('button', { name: 'Next puzzle' }).click();
-        expect(Math.abs((await seen) - stood)).toBeLessThanOrEqual(0.25);
+        const { top } = await nextWithGhost(page);
+        expect(Math.abs(top - stood)).toBeLessThanOrEqual(0.25);
       });
     });
   }
+});
+
+test("the kit's empty body keeps its place in the page, with no height, above the tray", async ({ page }) => {
+  await openLevel(page, 1);
+  // The short frame's journeys measure this box on a phone held sideways (frame-short.spec.ts).
+  const body = await page.locator('.bw-play__body').boundingBox();
+  const tray = await page.locator('.pat-tray').boundingBox();
+  expect(body, 'the body is laid out').not.toBeNull();
+  expect(body!.height).toBe(0);
+  expect(body!.y).toBeLessThanOrEqual(tray!.y);
 });
 
 test('the shape sits on the car face above its 5 px foot, with the whole edge inside the body', async ({ page }) => {
