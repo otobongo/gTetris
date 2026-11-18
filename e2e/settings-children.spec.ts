@@ -4,7 +4,7 @@
  * Voice only. Runs at 390x844 and 834x1194 (the projects), plus 375x667 and 1194x834.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { STORAGE_KEY, openSettings, seed } from './app';
+import { STORAGE_KEY, openSettings, passGrownUpCheck, seed } from './app';
 
 /** What the app saved, with the fields these journeys read. */
 interface Saved {
@@ -168,6 +168,90 @@ const journeys = () => {
     await expectTall(nameField(page), 'Name field');
     await expectTall(page.getByRole('button', { name: 'Remove Maya' }), 'Remove Maya');
     await expectNoSidewaysScroll(page);
+  });
+
+  test('a name typed and left with the device Back is still saved', async ({ page }) => {
+    await seed(page, FAMILY, 'leo');
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await passGrownUpCheck(page);
+    await chip(page, 'Leo').click();
+    await nameField(page).fill('Leon');
+    await page.goBack();
+    await expect(page.getByRole('heading', { name: 'Hi Leon!' })).toBeVisible();
+    expect((await savedState(page)).players.find((p) => p.id === 'leo')?.name).toBe('Leon');
+  });
+
+  test('a name typed and left by picking another child goes to the first child only', async ({ page }) => {
+    await seed(page, FAMILY, 'leo');
+    await openSettings(page);
+    await chip(page, 'Leo').click();
+    await nameField(page).fill('Leon');
+    await chip(page, 'Maya').click();
+    await expect(nameField(page)).toHaveValue('Maya');
+    const names = (await savedState(page)).players.map((p) => p.name);
+    expect(names).toEqual(['Maya', 'Leon']);
+  });
+
+  test('a child saved without a name loses the unnamed mark when named, and keeps it when the field is only visited', async ({ page }) => {
+    await seed(page, FAMILY);
+    await page.addInitScript((key) => {
+      if (sessionStorage.getItem('e2e-unnamed-seeded')) return;
+      sessionStorage.setItem('e2e-unnamed-seeded', '1');
+      const raw = JSON.parse(localStorage.getItem(key) ?? 'null');
+      raw.players[1].name = 'Player 2';
+      raw.players[1].unnamed = true;
+      localStorage.setItem(key, JSON.stringify(raw));
+    }, STORAGE_KEY);
+    await openSettings(page);
+    await chip(page, 'Player 2').click();
+    await nameField(page).focus();
+    await nameField(page).blur();
+    const unnamed = async () => (await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).players[1].unnamed, STORAGE_KEY)) as boolean;
+    expect(await unnamed()).toBe(true);
+    await nameField(page).fill('Leo');
+    await nameField(page).press('Enter');
+    await expect(chip(page, 'Leo')).toBeVisible();
+    expect(await unnamed()).toBe(false);
+  });
+
+  test('after a child is removed, a child added with no name never repeats a name in use', async ({ page }) => {
+    await seed(page, [
+      { id: 'a', name: 'Player 1', ageBand: '7-8' },
+      { id: 'b', name: 'Player 2', ageBand: '5-6' },
+      { id: 'c', name: 'Player 3', ageBand: '5-6' },
+    ]);
+    await openSettings(page);
+    await page.getByRole('button', { name: 'Remove Player 1' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true }).click();
+    await page.getByRole('button', { name: 'Add a child' }).click();
+    await page.getByRole('button', { name: 'Add child', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Player 4 was added. You can change the name under Name.' })).toBeVisible();
+    expect((await savedState(page)).players.map((p) => p.name)).toEqual(['Player 2', 'Player 3', 'Player 4']);
+  });
+
+  test('the longest name stays inside the Remove card and the page, with both answers on screen', async ({ page }) => {
+    const longest = 'W'.repeat(24);
+    await seed(page, [FAMILY[0], { id: 'long', name: longest, ageBand: '5-6' }]);
+    await openSettings(page);
+    await expectRealFont(page);
+    await expectNoSidewaysScroll(page);
+    await chip(page, longest).click();
+    await expectNoSidewaysScroll(page);
+    await page.getByRole('button', { name: `Remove ${longest}` }).click();
+    const dialog = page.getByRole('alertdialog');
+    await expect(dialog).toBeVisible();
+    const card = (await dialog.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(card.x).toBeGreaterThanOrEqual(0);
+    expect(card.x + card.width).toBeLessThanOrEqual(viewport.width);
+    for (const el of [dialog.getByRole('heading'), dialog.getByRole('button', { name: `Keep ${longest}` }), dialog.getByRole('button', { name: 'Remove', exact: true })]) {
+      const box = (await el.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(card.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(card.x + card.width);
+      expect(await el.evaluate((n) => n.scrollWidth - n.clientWidth)).toBeLessThanOrEqual(0);
+    }
+    await expectTall(dialog.getByRole('button', { name: `Keep ${longest}` }), 'Keep');
   });
 
   test('Sound and alerts shows Sounds and Voice only', async ({ page }) => {

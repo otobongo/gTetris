@@ -123,14 +123,31 @@ export function GrownUpCheck({
   pin?: FamilyPin;
 }) {
   const [mode, setMode] = useState<'sum' | 'pin' | 'forgot' | 'hold'>(() => (pin.status().set ? 'pin' : 'sum'));
-  if (mode === 'pin') return <PinCheck pin={pin} onPass={onPass} onCancel={onCancel} intro={intro} onForgot={() => setMode('forgot')} />;
+  if (mode === 'pin') return <PinCheck pin={pin} onPass={onPass} onCancel={onCancel} intro={intro} onForgot={() => setMode('forgot')} onGone={() => setMode('sum')} />;
   if (mode === 'forgot') return <SumCheck onPass={() => setMode('hold')} onCancel={onCancel} intro={intro} random={random} />;
   if (mode === 'hold') return <ClearPinHold pin={pin} onDone={onPass} onCancel={onCancel} />;
   return <SumCheck onPass={onPass} onCancel={onCancel} intro={intro} random={random} />;
 }
 
-/** The family PIN in one secure field. The typed PIN is read from the field at Check and never kept in state. */
-function PinCheck({ pin, onPass, onCancel, intro, onForgot }: { pin: FamilyPin; onPass: () => void; onCancel?: () => void; intro?: ReactNode; onForgot: () => void }) {
+/**
+ * The family PIN in one secure field. The typed PIN is read from the field at Check and never kept in state.
+ * `onGone` runs when the PIN was turned off elsewhere (another tab) while this check was open.
+ */
+function PinCheck({
+  pin,
+  onPass,
+  onCancel,
+  intro,
+  onForgot,
+  onGone,
+}: {
+  pin: FamilyPin;
+  onPass: () => void;
+  onCancel?: () => void;
+  intro?: ReactNode;
+  onForgot: () => void;
+  onGone: () => void;
+}) {
   const [wrong, setWrong] = useState(false);
   const [empty, setEmpty] = useState(false);
   // Moves on once a second while the check is locked, so the line counts down and Check comes back on time.
@@ -172,6 +189,10 @@ function PinCheck({ pin, onPass, onCancel, intro, onForgot }: { pin: FamilyPin; 
       onPass();
       return;
     }
+    if (!pin.status().set) {
+      onGone();
+      return;
+    }
     setEmpty(result === 'empty');
     // The third wrong try in a row starts a lock: the lock line says so, in place of the error.
     setWrong(result === 'wrong' && pin.status().lockedForMs === 0);
@@ -187,8 +208,9 @@ function PinCheck({ pin, onPass, onCancel, intro, onForgot }: { pin: FamilyPin; 
         Grown-up check
       </h2>
       {intro}
+      {/* Keyed by the try: a second wrong PIN has the same words, and only a new alert is read out again. */}
       {wrong && !locked && (
-        <p id={`${id}-err`} role="alert" className="sc-error">
+        <p key={tick} id={`${id}-err`} role="alert" className="sc-error">
           <Glyph name="alert" size={20} />
           That PIN is not right.
         </p>
@@ -255,6 +277,7 @@ function ClearPinHold({ pin, onDone, onCancel }: { pin: FamilyPin; onDone: () =>
   const [cleared, setCleared] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const startedAt = useRef<number | null>(null);
+  const byKey = useRef(false);
   const reduced = useRef(false);
   const timer = useRef<number | undefined>(undefined);
   const done = useRef<number | undefined>(undefined);
@@ -276,8 +299,9 @@ function ClearPinHold({ pin, onDone, onCancel }: { pin: FamilyPin; onDone: () =>
     setCleared(true);
     done.current = window.setTimeout(onDone, CLEARED_MS);
   };
-  const start = () => {
+  const start = (withKey: boolean) => {
     if (cleared || startedAt.current !== null) return;
+    byKey.current = withKey;
     reduced.current = prefersReducedMotion();
     startedAt.current = Date.now();
     setHolding(true);
@@ -321,21 +345,24 @@ function ClearPinHold({ pin, onDone, onCancel }: { pin: FamilyPin; onDone: () =>
         aria-label="Hold to clear the PIN for 10 seconds"
         aria-describedby={`${id}-status`}
         aria-disabled={cleared || undefined}
-        onPointerDown={start}
+        onPointerDown={() => start(false)}
         onPointerUp={end}
         onPointerLeave={end}
         onPointerCancel={end}
         onKeyDown={(e) => {
           if (!isHoldKey(e)) return;
           e.preventDefault();
-          if (!e.repeat) start();
+          if (!e.repeat) start(true);
         }}
         onKeyUp={(e) => {
           if (!isHoldKey(e)) return;
           e.preventDefault();
           end();
         }}
-        onBlur={end}
+        // Only a key hold ends here, as its key-up would go elsewhere. Safari takes focus off a button when it is pressed.
+        onBlur={() => {
+          if (byKey.current) end();
+        }}
         onContextMenu={(e) => e.preventDefault()}
       >
         <span className="sc-hold__layer" aria-hidden="true">

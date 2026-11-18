@@ -321,7 +321,7 @@ export default function Settings() {
           <p id="set-confirm-body" className="sc-sub">
             {confirmCopy.body}
           </p>
-          <div className="sc-overlay__actions">
+          <div className="sc-overlay__actions sc-pin-names">
             <button type="button" className="sc-btn sc-btn--flat sc-btn--md" data-autofocus onClick={() => setConfirm(null)}>
               {confirmCopy.keep}
             </button>
@@ -338,9 +338,9 @@ export default function Settings() {
 /**
  * The child's name (decision 15) and age band (user decision D2). The name saves when the field is left or on
  * Enter, through the same cleaning as Add a child (trimmed, single spaces, 24 letters at most); an empty
- * name puts the saved one back. A new band applies from the next puzzle in every game: the puzzle on screen
- * keeps its clock, and solved puzzles stay solved. Settings keys this panel by child, so the field starts
- * from each child's own name.
+ * name puts the saved one back. Leaving the screen with the device Back saves it too: no blur comes then.
+ * A new band applies from the next puzzle in every game: the puzzle on screen keeps its clock, and solved
+ * puzzles stay solved. Settings keys this panel by child, so the field starts from each child's own name.
  */
 function KidAge({ kid }: { kid: Player }) {
   const [draft, setDraft] = useState(kid.name);
@@ -356,6 +356,11 @@ function KidAge({ kid }: { kid: Player }) {
     // Naming a player also clears its "unnamed" mark (the store does it with any real name).
     if (name !== kid.name) progressStore.updatePlayer(kid.id, { name });
   };
+  const latestCommit = useRef(commit);
+  useEffect(() => {
+    latestCommit.current = commit;
+  });
+  useEffect(() => () => latestCommit.current(), []);
   return (
     <section className="sc-panel" aria-labelledby="set-age">
       <h2 id="set-age" className="sc-panel__title sc-panel__title--sm">
@@ -402,6 +407,8 @@ function PinSection({ onSaved }: { onSaved: (text: string) => void }) {
   const [missing] = useState(() => familyPin.unavailable());
   const [form, setForm] = useState<{ error: PinError | null } | null>(null);
   const [saving, setSaving] = useState(false);
+  // Counts the Saves: the same mistake twice has the same words, and only a new alert is read out again.
+  const [attempt, setAttempt] = useState(0);
   const [asking, setAsking] = useState(false);
   const [focus, setFocus] = useState<'set' | 'change' | 'first' | null>(null);
   const first = useRef<HTMLInputElement>(null);
@@ -426,6 +433,7 @@ function PinSection({ onSaved }: { onSaved: (text: string) => void }) {
   };
   const save = async () => {
     if (saving) return;
+    setAttempt((n) => n + 1);
     const a = first.current?.value ?? '';
     const b = second.current?.value ?? '';
     if (!isPinShape(a)) {
@@ -487,7 +495,7 @@ function PinSection({ onSaved }: { onSaved: (text: string) => void }) {
             <Field {...pinField} inputRef={second} label="Type it again" name="new-pin-again" invalid={error === 'match'} aria-describedby={error ? 'set-pin-error' : undefined} />
           </div>
           {error && (
-            <p id="set-pin-error" role="alert" className="sc-error">
+            <p key={attempt} id="set-pin-error" role="alert" className="sc-error">
               <Glyph name="alert" size={20} />
               {PIN_ERRORS[error]}
             </p>

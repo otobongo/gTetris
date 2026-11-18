@@ -333,6 +333,22 @@ describe('family PIN: broken or missing pieces', () => {
     }
   });
 
+  it('reads a cleared date no calendar can show as no date, so Settings can still draw it', () => {
+    for (const clearedAt of [1e20, -1e20, 8.64e15 + 1]) {
+      const storage = memoryStorage({ [PIN_ITEM]: JSON.stringify({ v: 1, fails: 0, lockUntil: 0, clearedAt }) });
+      const pin = createFamilyPin({ storage, now: () => 0, subtle });
+      expect(pin.status().clearedAt, String(clearedAt)).toBeNull();
+    }
+  });
+
+  it('keeps a real cleared date, up to the last day a date can hold', () => {
+    for (const clearedAt of [0, Date.UTC(2026, 10, 16), 8.64e15]) {
+      const storage = memoryStorage({ [PIN_ITEM]: JSON.stringify({ v: 1, fails: 0, lockUntil: 0, clearedAt }) });
+      const pin = createFamilyPin({ storage, now: () => 0, subtle });
+      expect(pin.status().clearedAt, String(clearedAt)).toBe(clearedAt);
+    }
+  });
+
   it('reads broken counters as zero', async () => {
     const good = setup();
     await good.pin.setPin('2580');

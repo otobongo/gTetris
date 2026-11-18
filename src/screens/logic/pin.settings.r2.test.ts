@@ -9,6 +9,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
 import { emptyState, progressStore } from '../../shared/progress';
+import { unusedPlayerName } from '../parts/AddChild';
 import { PIN_ITEM, familyPin } from './familyPin';
 import { grownUpGate, settingsReturn } from './session';
 
@@ -139,5 +140,23 @@ describe('Settings: renaming and removing a child (decision 15)', () => {
     expect(reset).toBeGreaterThan(0);
     expect(remove).toBeGreaterThan(reset);
     expect(progress).toMatch(/<button type="button" class="sc-btn sc-btn--outline-danger">Remove Maya<\/button>/);
+  });
+});
+
+describe('the name a child gets when none is typed', () => {
+  const named = (...names: string[]) => names.map((name) => ({ name }));
+
+  it('counts on from the children there are', () => {
+    expect(unusedPlayerName([])).toBe('Player 1');
+    expect(unusedPlayerName(named('Maya', 'Leo'))).toBe('Player 3');
+  });
+
+  it('never repeats a name still in use after a child was removed', () => {
+    expect(unusedPlayerName(named('Player 2', 'Player 3'))).toBe('Player 4');
+    expect(unusedPlayerName(named('Player 2', 'Player 3', 'Player 4', 'Player 5'))).toBe('Player 6');
+  });
+
+  it('takes the usual number when only a higher one is in use', () => {
+    expect(unusedPlayerName(named('Maya', 'Player 9'))).toBe('Player 3');
   });
 });

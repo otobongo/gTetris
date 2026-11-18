@@ -25,6 +25,8 @@ const MAX_ITERATIONS = 2_000_000;
 const LOCK_AFTER = 3;
 const LOCK_FIRST_S = 30;
 const LOCK_MAX_S = 300;
+/** The furthest time a Date can hold: a stored cleared date past it cannot be shown as a day. */
+const MAX_DATE_MS = 8.64e15;
 
 export type PinCheck = 'right' | 'wrong' | 'locked' | 'empty';
 export type PinClear = 'forgot' | 'off' | 'delete';
@@ -132,7 +134,7 @@ function parseRecord(raw: string | null): PinRecord | null {
     rec.hash = r.hash as string;
     rec.iterations = iterations;
   }
-  if (typeof r.clearedAt === 'number' && Number.isFinite(r.clearedAt)) rec.clearedAt = r.clearedAt;
+  if (typeof r.clearedAt === 'number' && Math.abs(r.clearedAt) <= MAX_DATE_MS) rec.clearedAt = r.clearedAt;
   return rec;
 }
 

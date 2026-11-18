@@ -293,6 +293,71 @@ test.describe('wrong tries', () => {
   });
 });
 
+test.describe('the check stays honest', () => {
+  test('every wrong PIN is announced, also the second in a row with the same words', async ({ page }) => {
+    await seed(page, FAMILY);
+    await seedPin(page, '2580');
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await enterPin(page, '1111');
+    await expect(page.getByRole('alert')).toHaveText('That PIN is not right.');
+    await page.evaluate(() => {
+      const w = window as unknown as { alertsAdded: number };
+      w.alertsAdded = 0;
+      new MutationObserver((records) => {
+        for (const r of records) for (const n of r.addedNodes) if (n instanceof HTMLElement && n.matches('[role="alert"]')) w.alertsAdded++;
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+    await enterPin(page, '2222');
+    await expect.poll(async () => (await storedPin(page)).fails).toBe(2);
+    await expect(page.getByRole('alert')).toHaveText('That PIN is not right.');
+    expect(await page.evaluate(() => (window as unknown as { alertsAdded: number }).alertsAdded)).toBe(1);
+  });
+
+  test('the form announces the same mistake again on a second Save', async ({ page }) => {
+    await seed(page, FAMILY);
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await passGrownUpCheck(page);
+    const section = page.getByRole('region', { name: 'Grown-up PIN' });
+    await section.getByRole('button', { name: 'Set a PIN' }).click();
+    await section.getByLabel('New PIN', { exact: true }).fill('25');
+    await section.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(section.getByRole('alert')).toHaveText('Use 4 numbers.');
+    const first = await section.getByRole('alert').elementHandle();
+    await section.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(section.getByRole('alert')).toHaveText('Use 4 numbers.');
+    expect(await first!.evaluate((el) => el.isConnected)).toBe(false);
+  });
+
+  test('a PIN turned off in another tab: the check goes back to the sum instead of refusing the right PIN', async ({ page }) => {
+    await seed(page, FAMILY);
+    await seedPin(page, '2580');
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await expectPinCheck(page);
+    await page.evaluate((key) => localStorage.removeItem(key), PIN_ITEM);
+    await enterPin(page, '2580');
+    await expect(page.locator('.sc-gate__sum')).toBeVisible();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(page.getByLabel(/^Answer for \d+ plus \d+$/)).toBeFocused();
+    await passGrownUpCheck(page);
+    await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
+  });
+
+  test('a stored cleared date that is not a real date still opens Settings', async ({ page }) => {
+    await seed(page, FAMILY);
+    await page.addInitScript((key) => localStorage.setItem(key, '{"v":1,"fails":0,"lockUntil":0,"clearedAt":1e20}'), PIN_ITEM);
+    await page.goto('/#/');
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await passGrownUpCheck(page);
+    await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeVisible();
+    const section = page.getByRole('region', { name: 'Grown-up PIN' });
+    await expect(section.getByRole('button', { name: 'Set a PIN' })).toBeVisible();
+    await expect(section.getByText(/was cleared/)).toHaveCount(0);
+  });
+});
+
 test.describe('Forgot the PIN', () => {
   test('a wrong sum stays on the sum; a right sum shows the hold; 9 s clears nothing; 10 s clears the PIN and opens Settings', async ({ page }) => {
     await page.clock.install({ time: START });
@@ -372,6 +437,60 @@ test.describe('Forgot the PIN', () => {
     await page.clock.runFor(2_000);
     await expect(page.getByRole('heading', { name: 'Add time for Maya today' })).toBeVisible();
     expect((await storedPin(page)).hash).toBeUndefined();
+  });
+});
+
+test.describe('Forgot the PIN: what ends a hold', () => {
+  async function openHold(page: Page) {
+    await page.clock.install({ time: START });
+    await seed(page, FAMILY);
+    await seedPin(page, '2580');
+    await page.goto('/#/');
+    await pauseClock(page);
+    await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+    await page.getByRole('button', { name: 'Forgot the PIN?' }).click();
+    await passGrownUpCheck(page);
+    return page.getByRole('button', { name: /^Hold to clear the PIN/ });
+  }
+
+  test('a finger or mouse keeps holding when the button loses focus, as it does on a press in Safari', async ({ page }) => {
+    const hold = await openHold(page);
+    const box = (await hold.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.clock.runFor(1_000);
+    await hold.evaluate((el) => (el as HTMLElement).blur());
+    await page.clock.runFor(2_000);
+    await expect(page.getByText('Keep holding: 7')).toBeVisible();
+    await page.clock.runFor(7_000);
+    await page.mouse.up();
+    await expect(page.getByRole('status').filter({ hasText: 'PIN cleared. The sum check is back.' })).toBeVisible();
+  });
+
+  test('a key hold ends when the button loses focus, because the key can no longer be seen letting go', async ({ page }) => {
+    const hold = await openHold(page);
+    await hold.focus();
+    await page.keyboard.down('Space');
+    await page.clock.runFor(2_000);
+    await expect(page.getByText('Keep holding: 8')).toBeVisible();
+    await hold.evaluate((el) => (el as HTMLElement).blur());
+    await expect(page.getByText('Keep holding for 10 seconds.')).toBeVisible();
+    await page.clock.runFor(10_000);
+    await page.keyboard.up('Space');
+    expect((await storedPin(page)).hash).toBeTruthy();
+  });
+
+  test('sliding the mouse off the button lets go', async ({ page }) => {
+    const hold = await openHold(page);
+    const box = (await hold.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.clock.runFor(2_000);
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height + 120);
+    await expect(page.getByText('Keep holding for 10 seconds.')).toBeVisible();
+    await page.clock.runFor(10_000);
+    await page.mouse.up();
+    expect((await storedPin(page)).hash).toBeTruthy();
   });
 });
 

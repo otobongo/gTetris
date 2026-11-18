@@ -4,7 +4,7 @@
 /* The check asks in a sentence where the sum mode shows the sum. */
 .sc-gate__prompt { font-size: var(--bw-fs-panel); font-weight: 800; line-height: var(--bw-lh-panel); }
 /* The empty hint and the lock line: the lock counts down, so its digits keep their width. */
-.sc-gate__line { font-size: var(--bw-fs-sub); font-weight: 800; color: var(--bw-text); font-variant-numeric: tabular-nums; }
+.sc-helper.sc-gate__line { font-size: var(--bw-fs-sub); font-weight: 800; color: var(--bw-text); font-variant-numeric: tabular-nums; }
 
 /* Forgot the PIN: the hold button fills the panel's width, like Support's hold. */
 .sc-pin-hold { width: 100%; }
@@ -19,3 +19,14 @@
 .sc-pin__actions { flex-wrap: wrap; }
 .sc-pin__actions > .sc-btn { flex: 1 1 0; min-width: max-content; }
 .sc-pin__set { align-self: flex-start; padding-inline: var(--bw-sp-7); }
+
+/* Settings, a child's name: up to 24 letters with no space to break at, so every place that shows it wraps. */
+.sc-overlay__title,
+.sc-toast,
+.sc-panel__title,
+.sc-chip-btn__name,
+.sc-btn--outline-danger { overflow-wrap: anywhere; }
+.sc-chip-btn { max-width: 100%; box-sizing: border-box; text-align: left; }
+.sc-chip-btn__text { min-width: 0; }
+/* The confirm's answers: side by side when they fit, else each takes the card's width and wraps. */
+.sc-pin-names > .sc-btn { flex: 1 1 auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
