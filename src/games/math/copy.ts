@@ -1,7 +1,7 @@
 /* Brick Calculator's child-facing lines, word for word from brief section 8.6 (accessible names from 9.2).
    The shared lines (offer, swap, level card, game finished) are the kit's (8.1).
    Every line uses the help style: 54 characters at most, the longest numbers filled in (7.2). */
-import type { KeyId } from './entry';
+import type { HelpKind, KeyId } from './entry';
 import type { Op, Pair } from './puzzles';
 
 /** Help line at the start of a puzzle. */
@@ -43,8 +43,24 @@ export const questionText = (p: Pair): string => `${sumWords(p)}. How many?`;
 /** What the speaker reads once solved, and what a right = says: "3 plus 4 makes 7." */
 export const spokenSolved = solvedLine;
 
-/** What the speaker reads: the question, or once solved the solved line. */
+/** The sum on its own: the question, or once solved the solved line. The speaker button reads `spokenHelp`. */
 export const spokenText = (p: Pair & { answer: number }, solved: boolean): string => (solved ? solvedLine(p) : questionText(p));
+
+/** The third-digit line as the speaker says it: the = key is the green one (calc.css .calc-key--equals). */
+export const SPOKEN_FULL_LINE = 'Press the green key to check, or C to clear.';
+
+/**
+ * What the speaker button reads (decision 7): the sum, then the help line on screen in spoken form.
+ * Solved: the solved line. After a wrong answer: "Not quite. Count the bricks again. 3 plus 4. How many?"
+ * After an ignored third digit: "3 plus 4. How many? Press the green key to check, or C to clear."
+ * At the start: the question only, as spokenText says it.
+ */
+export const spokenHelp = (p: Pair & { answer: number }, solved: boolean, help: HelpKind): string => {
+  if (solved) return solvedLine(p);
+  if (help === 'slip') return `${SLIP_LINE} ${questionText(p)}`;
+  if (help === 'full') return `${questionText(p)} ${SPOKEN_FULL_LINE}`;
+  return questionText(p);
+};
 
 /** What a digit tap says straight after the tap: the number now typed, "15". '07' is said as 7. */
 export const spokenEntry = (value: number): string => String(value);

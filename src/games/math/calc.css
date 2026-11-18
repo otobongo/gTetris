@@ -31,6 +31,8 @@
 }
 .calc-eq__a { color: var(--brick-blue-light); }
 .calc-eq__b { color: var(--brick-orange-light); }
+/* A take away's second number is blue, like the faded blue bricks it takes away (decision 28): 9.4:1 on --bw-display. */
+.calc-eq[data-op='minus'] .calc-eq__b { color: var(--brick-blue-light); }
 .calc-eq__sign { color: var(--bw-text-2); }
 /* Two digits wide from the start, so the sum does not shift as the child types. */
 .calc-eq__answer {
