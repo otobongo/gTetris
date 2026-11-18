@@ -125,6 +125,24 @@ for (const [band, level] of [
   });
 }
 
+test('a hint spent on practice does not cap the level when the child then moves up to ages 5 to 6 @phone-only', async ({ page }) => {
+  await open(page, '3-4');
+  await hint(page, 3).click();
+  await expect(hint(page, 2)).toBeVisible();
+  await solveLettersPuzzle(page);
+  await editSavedInAnotherTab(page, (state) => {
+    (state as unknown as { players: { ageBand: Band }[] }).players[0].ageBand = '5-6';
+  });
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(dots(page)).toHaveAttribute('aria-label', /^Puzzle 2 of 4\./);
+  for (let n = 1; n < 4; n++) await buildAndGoOn(page, n);
+
+  const card = levelCard(page);
+  await expect(card.getByRole('img', { name: '3 of 3 stars' })).toBeVisible();
+  await expect(card).not.toContainText('Using a hint caps');
+  expect((await savedGame(page, 'letters'))?.stars['0']).toBe(3);
+});
+
 /** Put a solved first puzzle with a hint into the saved run, as a version from before decision 22 saved it, and load it. */
 async function loadHintSavedByAnOlderVersion(page: Page) {
   const run = await savedRun(page, 'letters', 0);
@@ -327,6 +345,8 @@ function helpLineCases() {
       expect(box.height).toBeGreaterThanOrEqual(44);
       const cell = (await page.locator('.lb-helprow').boundingBox())!;
       expect(Math.abs(box.height - cell.height)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.x - line.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - line.width)).toBeLessThanOrEqual(1);
       expect(box.x).toBeLessThanOrEqual(line.x + 0.5);
       expect(box.x + box.width).toBeGreaterThanOrEqual(line.x + line.width - 0.5);
       expect(box.y).toBeLessThanOrEqual(line.y + 0.5);
@@ -591,6 +611,7 @@ function demoCases() {
       const demo = await watchDemo(page);
       const answer = await lettersAnswer(page);
       await trayTile(page, answer[0]).tap();
+      await demo.hold(true);
       await trayTile(page, answer[1]).tap();
       await expect(page.locator('.lb-demo-glide')).toHaveCount(1);
       // A press and drag on a letter stops the glide at once.
@@ -604,6 +625,24 @@ function demoCases() {
       await page.mouse.up();
       expect((await demo.seen()).filter((s) => s.cls === 'glide')).toHaveLength(1);
     });
+
+    for (const how of ['Enter', 'its letter key'] as const) {
+      test(`practice Level 1: placing a letter with ${how} takes the glide away at once`, async ({ page }) => {
+        await open(page, '3-4');
+        const demo = await watchDemo(page);
+        const answer = await lettersAnswer(page);
+        await trayTile(page, answer[0]).tap();
+        await demo.hold(true);
+        await trayTile(page, answer[1]).tap();
+        await expect(page.locator('.lb-demo-glide')).toHaveCount(1);
+        if (how === 'Enter') {
+          await trayTile(page, answer[2]).focus();
+          await page.keyboard.press('Enter');
+        } else await page.keyboard.press(answer[2]);
+        await expect.poll(async () => (await row(page))[2]).toBe(answer[2]);
+        await expect(page.locator('.lb-demo-glide')).toHaveCount(0);
+      });
+    }
 
     test('practice Level 1: a tap during the glide starts it again from the newly tapped letter', async ({ page }) => {
       await open(page, '3-4');
@@ -699,20 +738,23 @@ function demoCases() {
 
   test('practice Level 1: each new puzzle starts over, so its first tap shows no demo and its second does', async ({ page }) => {
     await open(page, '3-4');
+    const demo = await watchDemo(page);
     const first = await lettersAnswer(page);
     await trayTile(page, first[0]).tap();
     await trayTile(page, first[1]).tap();
     await expect(page.locator('.lb-demo-arrow')).toBeVisible();
     await buildAndGoOn(page, 0);
     await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+    expect(await demo.seen()).toHaveLength(1);
 
     const second = await lettersAnswer(page);
     await trayTile(page, second[0]).tap();
     await expect(help(page)).toHaveText(DRAG_NOTE);
     await page.waitForTimeout(150);
-    await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+    expect(await demo.seen()).toHaveLength(1);
     await trayTile(page, second[1]).tap();
     await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+    expect(await demo.seen()).toHaveLength(2);
   });
 
   test('practice Level 1 with Voice off: the taps say nothing, and the second still shows the demo', async ({ page }) => {

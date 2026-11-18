@@ -29,11 +29,20 @@ test('ages 3 to 4 on Level 2: the offer button rings for its first 2 s and then 
   await expect(offer(page)).not.toHaveClass(/is-cue/, { timeout: 4_000 });
 });
 
-test('ages 5 to 6 on Level 1: the offer button has no ring', async ({ page }) => {
+test('ages 5 to 6 on Level 1: the offer button never rings', async ({ page }) => {
+  // The ring lasts 2 s, so the page keeps its own record of whether it ever showed.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __rang: boolean };
+    w.__rang = false;
+    new MutationObserver(() => {
+      if (document.querySelector('.is-cue')) w.__rang = true;
+    }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  });
   await open(page, '5-6');
   for (let i = 0; i < 3; i++) await lettersWrongTap(page);
   await expect(offer(page)).toBeVisible();
-  await expect(offer(page)).not.toHaveClass(/is-cue/);
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => (window as unknown as { __rang: boolean }).__rang)).toBe(false);
 });
 
 /* ---------- Decision 19: the new sticker on the level card ---------- */
