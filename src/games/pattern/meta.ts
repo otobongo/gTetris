@@ -6,4 +6,6 @@ import { CHAPTERS, LEVEL_COUNT } from './levels';
 export const meta: GameMeta = {
   levelCount: LEVEL_COUNT,
   chapters: CHAPTERS.map((c) => ({ title: c.title, note: c.note, start: c.start, count: c.count })),
+  // A new 9-10 child starts at Level 4, Three-car patterns (usability decision 10).
+  bandStart: { '9-10': 3 },
 };

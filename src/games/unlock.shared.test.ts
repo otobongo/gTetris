@@ -65,7 +65,7 @@ describe('every game opens exactly the levels the shared rule opens', () => {
           const game = playAs(id, band, setup);
           for (let i = -1; i <= meta.levelCount; i++) {
             const where = `${id} ${band} ${JSON.stringify(setup)} level ${i + 1}`;
-            const want = CURRENT_ONLY.has(id) ? i === currentLevel(meta, game) : isLevelOpen(meta, game, band, i);
+            const want = CURRENT_ONLY.has(id) ? i === currentLevel(meta, game, band) : isLevelOpen(meta, game, band, i);
             expect(opens(App, i + 1), where).toBe(want);
           }
         }
@@ -126,7 +126,7 @@ describe('currentLevel: where Play goes', () => {
         for (const setup of SETUPS) {
           const g = playAs(id, band, setup);
           const plan = planLevels(meta, g, band);
-          expect(currentLevel(meta, g), `${id} ${band} ${JSON.stringify(setup)}`).toBe(plan.current);
+          expect(currentLevel(meta, g, band), `${id} ${band} ${JSON.stringify(setup)}`).toBe(plan.current);
         }
       }
     }

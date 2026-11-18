@@ -6,6 +6,8 @@ import { CHAPTERS, LEVELS, puzzle } from './puzzles';
 export const meta: GameMeta = {
   levelCount: LEVELS.length,
   chapters: CHAPTERS.map((c) => ({ title: c.title, note: c.note, start: c.start, count: c.count })),
+  // A new 9-10 child starts at Level 9, Bigger numbers (usability decision 10).
+  bandStart: { '9-10': 8 },
 };
 
 /**

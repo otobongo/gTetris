@@ -6,4 +6,6 @@ import { CHAPTERS, LEVEL_COUNT } from './puzzles';
 export const meta: GameMeta = {
   levelCount: LEVEL_COUNT,
   chapters: CHAPTERS.map((c) => ({ title: c.title, note: c.note, start: c.start, count: c.count })),
+  // New 7-8 and 9-10 children start at Level 3, the first 4 by 4 pictures (usability decision 10).
+  bandStart: { '7-8': 2, '9-10': 2 },
 };

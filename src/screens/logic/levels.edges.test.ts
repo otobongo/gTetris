@@ -82,19 +82,23 @@ describe('level select on the real games', () => {
     const meta = g.meta!;
     const n = meta.levelCount;
 
-    it(`${g.title}: a new player sees one current tile, level 1, and the rest locked (ages 3 to 8)`, () => {
+    // Usability decision 10: a new player's current tile is the band's start level (Level 1 when the
+    // game has none for that band); Level 1 stays open before it and the rest stay locked.
+    it(`${g.title}: a new player sees one current tile, the band's start level, and the rest locked (ages 3 to 8)`, () => {
       for (const band of ['3-4', '5-6', '7-8'] as const) {
+        const start = meta.bandStart?.[band] ?? 0;
         const plan = planLevels(meta, emptyGame(), band);
-        expect(states(plan), band).toEqual(['current', ...Array(n - 1).fill('locked')]);
-        expect(plan).toMatchObject({ current: 0, complete: false, stars: 0, maxStars: n * 3, levelCount: n });
+        expect(states(plan), band).toEqual(Array.from({ length: n }, (_, i) => (i === start ? 'current' : i === 0 ? 'open' : 'locked')));
+        expect(plan).toMatchObject({ current: start, complete: false, stars: 0, maxStars: n * 3, levelCount: n });
       }
     });
 
     it(`${g.title}: ages 9 to 10 also start every chapter's first level open`, () => {
+      const start = meta.bandStart?.['9-10'] ?? 0;
       const plan = planLevels(meta, emptyGame(), '9-10');
       const starts = new Set(meta.chapters.filter((c) => c.count > 0).map((c) => c.start));
       tiles(plan).forEach((t) => {
-        const want: TileState = t.index === 0 ? 'current' : starts.has(t.index) ? 'open' : 'locked';
+        const want: TileState = t.index === start ? 'current' : t.index === 0 || starts.has(t.index) ? 'open' : 'locked';
         expect(t.state, `level ${t.n}`).toBe(want);
       });
     });
@@ -199,8 +203,10 @@ describe('level select: what a locked tile says', () => {
 });
 
 describe('Home pill', () => {
-  it('shows the first level for a new player of any age, in the game’s own word', () => {
-    for (const g of PLAYABLE) for (const band of AGE_BANDS) expect(homePill(g.meta, emptyGame(), band, g.noun)).toBe(`${g.noun} 1`);
+  // Usability decision 10: the band's start level, Level 1 when the game has none for that band.
+  it('shows the band’s start level for a new player of any age, in the game’s own word', () => {
+    for (const g of PLAYABLE)
+      for (const band of AGE_BANDS) expect(homePill(g.meta, emptyGame(), band, g.noun)).toBe(`${g.noun} ${(g.meta!.bandStart?.[band] ?? 0) + 1}`);
   });
 
   it('shows Coming soon for every game that is not built yet', () => {

@@ -83,9 +83,10 @@ describe('chapterOf', () => {
 });
 
 describe('the shared level rules on Shape Sorter’s chapters', () => {
-  it('opens only Level 1 for a new child at ages 3 to 8', () => {
+  // Usability decision 10: ages 7 to 8 start at Level 4, which is open for them.
+  it('opens only Level 1 for a new child at ages 3 to 6, and Levels 1 and 4 at ages 7 to 8', () => {
     for (const band of ['3-4', '5-6', '7-8'] as const)
-      for (let l = 0; l < LEVEL_COUNT; l++) expect(isLevelOpen(meta, fresh(), band, l), `${band} level ${l + 1}`).toBe(l === 0);
+      for (let l = 0; l < LEVEL_COUNT; l++) expect(isLevelOpen(meta, fresh(), band, l), `${band} level ${l + 1}`).toBe(l === 0 || (band === '7-8' && l === 3));
   });
 
   it('opens the first level of every chapter for a new child at ages 9 to 10', () => {

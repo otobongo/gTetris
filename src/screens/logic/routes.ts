@@ -30,7 +30,7 @@ export interface RoutePlan {
 export function gamePath(id: string, player: Player | null): string {
   const game = getGame(id);
   if (!game?.meta) return `/game/${id}`;
-  const level = currentLevel(game.meta, gameOf(player, game.id));
+  const level = currentLevel(game.meta, gameOf(player, game.id), player?.ageBand);
   return level === null ? `/game/${game.id}` : `/game/${game.id}/${level + 1}`;
 }
 
