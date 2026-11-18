@@ -8,6 +8,7 @@ import { STORAGE_KEY, hashOf, homeCard, passGrownUpCheck, recordSpeech, seed, st
 
 const SOON = 'Family accounts are coming soon.';
 const DISCOVERY = 'Discovery stickers are coming soon.';
+const DISCOVERY_SLOT = 'Discovery sticker, coming soon';
 
 /** Voice off in the saved settings, before the app reads them. Call after seed. */
 async function voiceOff(page: Page) {
@@ -56,6 +57,7 @@ async function atPlayAs(page: Page, players = MAYA) {
   await page.goto('/#/players');
   const play = page.getByRole('link', { name: 'Play as Maya' });
   await expect(play).toBeVisible();
+  await play.scrollIntoViewIfNeeded();
   await fontReady(page);
   return { ...(await middle(play)), after: await freezeClock(page) };
 }
@@ -200,6 +202,20 @@ test('Enter opens a card at once after a finger touched it and slid away with no
   await card.evaluate((el) => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' })));
   await card.focus();
   await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#\/game\/sorter\/\d+$/);
+});
+
+test('a click with no finger behind it opens a card at once, even just after a finger tap on it was held', async ({ page }) => {
+  const at = await atPlayAs(page);
+  await page.touchscreen.tap(at.x, at.y);
+  await expect(hello(page)).toBeVisible();
+  await at.after(100);
+  const card = homeCard(page, 'Shape Sorter');
+  await tapLink(page, card);
+  await page.waitForTimeout(500);
+  expect(hashOf(page)).toBe('#/');
+  // Assistive tech can send a click with no pointerdown first: the held finger must not count for it.
+  await card.evaluate((el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })));
   await expect(page).toHaveURL(/#\/game\/sorter\/\d+$/);
 });
 
@@ -353,8 +369,10 @@ function discoveryCases() {
     await page.getByRole('tab', { name: 'Discoveries' }).click();
     // The empty book's page line says the same.
     await expect(page.locator('.sc-album__line')).toHaveText(DISCOVERY);
-    const slots = page.getByRole('button', { name: /^Sticker not found yet, from Today's discovery/ });
+    // VoiceOver hears the same promise as the screen: nothing says Today's discovery gives a sticker.
+    const slots = page.getByRole('button', { name: DISCOVERY_SLOT, exact: true });
     await expect(slots).toHaveCount(12);
+    await expect(page.getByRole('button', { name: /Today's discovery/ })).toHaveCount(0);
     for (const i of [0, 11]) {
       await slots.nth(i).click();
       const dialog = page.getByRole('dialog');
@@ -371,6 +389,8 @@ function discoveryCases() {
     await seed(page, LEO);
     await page.goto('/#/stickers');
     await expect(page.locator('.sc-album__line')).toHaveText(/^\d+ of 28 on this page$/);
+    // A game's missing sticker still names the game that gives it.
+    await expect(page.getByRole('button', { name: /^Sticker not found yet, from Brick Escape$/ }).first()).toBeVisible();
     await page.getByRole('tab', { name: 'Discoveries' }).click();
     await expect(page.locator('.sc-album__line')).toHaveText(DISCOVERY);
   });
@@ -414,7 +434,7 @@ test('at ages 3 to 4, Hear how to get it on a Discoveries slot says Discovery st
   await seed(page, [{ id: 'kai', name: 'Kai', ageBand: '3-4' }]);
   await page.goto('/#/stickers');
   await page.getByRole('tab', { name: 'Discoveries' }).click();
-  await page.getByRole('button', { name: /^Sticker not found yet, from Today's discovery/ }).first().click();
+  await page.getByRole('button', { name: DISCOVERY_SLOT, exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('button')).toHaveText(['', 'Close']);
   await dialog.getByRole('button', { name: 'Hear how to get it' }).click();
@@ -477,10 +497,10 @@ function accountCases() {
     await openAccountScreen(page, '/signup');
     const answer = page.getByText('Tick the box above to create the account.');
     const box = page.getByRole('checkbox', { name: /I am a parent or guardian/ });
-    const body = page.locator('.sc-auth__body');
+    const heading = page.getByRole('heading', { level: 1 });
     for (const name of ['Continue with Google', 'Continue with Apple']) {
       // The notice pushes the box down, so from the providers the answer starts below the screen.
-      await body.evaluate((e) => e.scrollTo(0, 0));
+      await heading.evaluate((e) => e.scrollIntoView({ block: 'start' }));
       await page.getByRole('button', { name }).tap();
       await expect(answer, name).toBeInViewport({ ratio: 1 });
       await expect(box, name).toBeInViewport({ ratio: 1 });
@@ -489,6 +509,9 @@ function accountCases() {
     await box.check();
     await expect(answer).toHaveCount(0);
     await expect(box).toBeInViewport({ ratio: 1 });
+    // Unticking it is not a new ask: the answer waits until a button asks again.
+    await box.uncheck();
+    await expect(answer).toHaveCount(0);
   });
 
   for (const path of ['/signin', '/signup'] as const) {
@@ -507,6 +530,39 @@ function accountCases() {
       await page.getByLabel('Email').tap();
       await expect(soon).not.toBeFocused();
       expect(await ring()).toBe('none');
+    });
+
+    test(`${path}: the ring around the notice is whole, inside the form's side gutter`, async ({ page }) => {
+      await seed(page, MAYA);
+      await openAccountScreen(page, path);
+      if (path === '/signup') await page.getByRole('checkbox', { name: /I am a parent or guardian/ }).check();
+      await page.getByRole('button', { name: 'Continue with Google' }).tap();
+      const soon = page.locator('.sc-auth__soon');
+      await expect(soon).toBeFocused();
+      // The form scrolls, so it cuts off anything past its own edge. All in the app's own units (the tablet zooms 1.4).
+      const fit = await soon.evaluate((el) => {
+        const zoom = el.getBoundingClientRect().width / (el as HTMLElement).offsetWidth;
+        const form = el.closest('.sc-auth__body')!.getBoundingClientRect();
+        const box = el.getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return {
+          ring: parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset),
+          left: (box.left - form.left) / zoom,
+          right: (form.right - box.right) / zoom,
+        };
+      });
+      expect(fit.ring).toBeGreaterThan(0);
+      expect(fit.ring).toBeLessThanOrEqual(fit.left);
+      expect(fit.ring).toBeLessThanOrEqual(fit.right);
+    });
+
+    test(`${path}: a finger on the notice itself draws no ring, since the notice is not a control`, async ({ page }) => {
+      await seed(page, MAYA);
+      await openAccountScreen(page, path);
+      const soon = page.locator('.sc-auth__soon');
+      await soon.tap();
+      await expect(soon).not.toBeFocused();
+      expect(await soon.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe('none');
     });
   }
 
@@ -550,8 +606,8 @@ function accountCases() {
     await expect(soon).toBeFocused();
     await page.getByLabel('Email').fill('sam@example.com');
     await page.getByLabel('Password').fill('a-long-password');
-    await page.locator('.sc-auth__body').evaluate((e) => e.scrollTo(0, e.scrollHeight));
     const create = page.getByRole('button', { name: 'Create account' });
+    await create.evaluate((e) => e.scrollIntoView({ block: 'center' }));
     await expect(create).toBeInViewport({ ratio: 1 });
     await expect(soon).not.toBeFocused();
     await create.click();

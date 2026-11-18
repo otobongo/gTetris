@@ -14,12 +14,13 @@ type View = 'form' | 'reset' | 'resetSent' | 'done';
 
 /**
  * The coming-soon notice at the top of Sign in and Sign up while accounts are off (decision 31), so a
- * grown-up knows before typing anything. The ref takes focus when an answer repeats it.
+ * grown-up knows before typing anything. The ref takes focus when an answer repeats it; a finger or mouse
+ * on the notice itself does not, since it is not a control.
  */
 export function SoonNotice({ at }: { at: RefObject<HTMLDivElement | null> }) {
   if (ACCOUNTS_ACTIVE) return null;
   return (
-    <div ref={at} tabIndex={-1} className="sc-auth__soon">
+    <div ref={at} tabIndex={-1} className="sc-auth__soon" onMouseDown={(e) => e.preventDefault()}>
       <Notice notice={SOON} compact />
     </div>
   );

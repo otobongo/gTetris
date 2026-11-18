@@ -335,7 +335,7 @@ class Component extends DCLogic {
         got: got,
         isNew: fresh,
         name: st.name,
-        label: got ? st.name + (fresh ? ', new sticker' : '') : 'Sticker not found yet, from ' + w.game,
+        label: got ? st.name + (fresh ? ', new sticker' : '') : st.page === 'discoveries' ? 'Discovery sticker, coming soon' : 'Sticker not found yet, from ' + w.game,
         faceClass: got ? 'stk-face stk-got' + (fresh && !s.settled ? ' stk-settle' : '') : 'stk-face',
         face: got ? gotFace : missFace,
         mosaic: self.mosaic(px, 1),

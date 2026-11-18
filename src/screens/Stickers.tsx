@@ -15,6 +15,8 @@ const TABS: { key: StickerPage; label: string }[] = [
 
 /** Nothing awards discovery stickers yet (six-games 11.1-2), so their slots say so and send nowhere (decision 29). */
 const DISCOVERY_HOW = 'Discovery stickers are coming soon.';
+/** What VoiceOver says for a discovery slot with no sticker: the same promise as the screen. */
+const DISCOVERY_SLOT = 'Discovery sticker, coming soon';
 
 /** How to get a missing sticker, and where the green button goes; no button (cta null) for a discovery. */
 export function howToGet(st: Sticker): { line: string; cta: string | null; href: string; play: boolean; from: string } {
@@ -156,7 +158,7 @@ export default function Stickers() {
                   type="button"
                   className="sc-slot"
                   aria-haspopup="dialog"
-                  aria-label={got ? `${st.name}${neu ? ', new sticker' : ''}` : `Sticker not found yet, from ${src?.game ?? "Today's discovery"}`}
+                  aria-label={got ? `${st.name}${neu ? ', new sticker' : ''}` : src ? `Sticker not found yet, from ${src.game}` : DISCOVERY_SLOT}
                   onClick={() => setOpenId(st.id)}
                 >
                   <span className={`sc-face ${got ? 'sc-face--got' : 'sc-face--missing'}${neu ? ' sc-settle' : ''}`} aria-hidden="true">
