@@ -75,7 +75,8 @@ describe('Home', () => {
     for (const id of ['mixer', 'sorter', 'numbers']) {
       const g = GAMES.find((x) => x.id === id)!;
       expect(g.playable, id).toBe(true);
-      expect(html).toContain(`aria-label="${g.title}. ${g.sub}. Level 1."`);
+      // Usability decision 10: Maya is 7 to 8, so Shape Sorter opens at its band start, Level 4.
+      expect(html).toContain(`aria-label="${g.title}. ${g.sub}. Level ${(g.meta!.bandStart?.['7-8'] ?? 0) + 1}."`);
     }
     expect(GAMES.find((x) => x.id === 'mixer')!.sub).toBe('Mix two colors to make a new one');
     // Any registered game that is not built yet still says Coming soon (after batch 2 there is none; 3.5).

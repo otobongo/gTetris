@@ -30,7 +30,7 @@ export function GameApp({ game, params, play, finished }: GameAppProps) {
   const player = useActivePlayer();
   const path = params.join('/');
   const playerId = player?.id;
-  const live = routeFor(game.id, params, currentLevel(game.meta, gameOf(player, game.id)), game.meta.levelCount);
+  const live = routeFor(game.id, params, currentLevel(game.meta, gameOf(player, game.id), player?.ageBand), game.meta.levelCount);
   // Decided when the route (or the player) changes, never while a level is on screen.
   const entered = useMemo(() => live, [path, playerId]);
   const decision = entered.kind === 'play' ? entered : live;

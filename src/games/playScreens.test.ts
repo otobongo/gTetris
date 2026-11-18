@@ -2089,7 +2089,10 @@ describe('Number Line-up: the stairs (Level 1)', () => {
   });
 
   it('a forward swap is progress; a backward one is a slip, and every backward one counts (no key)', () => {
-    openNumbers(0, '9-10');
+    // Usability decision 10: a new 9-10 child starts at Level 9, so a grown-up picks Level 1 first.
+    child('9-10');
+    progressStore.pickLevel('numbers', 0, 12);
+    mount(createElement(NumbersApp, { params: ['1'] }));
     const before = row();
     const [a, b] = forwardSwap();
     swapTowers(a, b);
@@ -2767,7 +2770,10 @@ describe('Pattern Train: the level’s end and the finished state', () => {
   });
 
   it('five star slips on a level give 1 star', () => {
-    openPattern(0, '9-10');
+    // Usability decision 10: a new 9-10 child starts at Level 4, so a grown-up picks Level 1 first.
+    child('9-10');
+    progressStore.pickLevel('pattern', 0, 12);
+    openPatternAsIs();
     for (let n = 0; n < 4; n++) {
       const p = patternOnScreen();
       // Both wrong cars on the first two puzzles, one on the third: 5 star slips.

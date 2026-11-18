@@ -47,12 +47,14 @@ interface Setup {
   pick: (level: number) => void;
   /** Patch the stored current directly, as a broken or old record would hold it. */
   rawCurrent: (value: number) => void;
+  /** Where a new child of Maya's band starts (usability decision 10): the band start, else Level 1. */
+  start: number;
 }
 
 const FRONTIER = 5;
 
 const CASES: Case[] = [
-  { name: 'a new child', build: () => 0 },
+  { name: 'a new child', build: (s) => s.start },
   { name: 'a frontier child', build: (s) => (s.star(0, FRONTIER), FRONTIER) },
   { name: 'a stored pick of a finished level (replay)', build: (s) => (s.star(0, FRONTIER), s.pick(1), 1) },
   {
@@ -83,6 +85,7 @@ function childIn(game: GameEntry, c: Case, solved: 0 | 1): { game: GameEntry; pl
     rawCurrent: (value) => {
       raw = value;
     },
+    start: played.meta!.bandStart?.['7-8'] ?? 0,
   };
   const expected = c.build(setup, count);
   if (solved && expected !== null) {
@@ -107,7 +110,7 @@ describe.each(GAMES)('$title: every screen names the one current level', (base) 
         const progress = player.games[game.id] ?? { unlocked: 0, stars: {}, best: {} };
         const noun = game.noun;
         const lower = noun.toLowerCase();
-        expect(currentLevel(meta, progress)).toBe(expected);
+        expect(currentLevel(meta, progress, player.ageBand)).toBe(expected);
 
         const plan = planLevels(meta, progress, player.ageBand);
         const currentTiles = plan.chapters.flatMap((ch) => ch.tiles).filter((t) => t.state === 'current');

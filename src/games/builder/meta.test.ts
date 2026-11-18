@@ -97,13 +97,14 @@ describe('chapterOf', () => {
 });
 
 describe('the shared level rules on Picture Builder’s chapters', () => {
-  it('opens only Level 1 for a new child at ages 3 to 8', () => {
+  // Usability decision 10: ages 7 to 8 and 9 to 10 start at Level 3, which is open for them.
+  it('opens only Level 1 for a new child at ages 3 to 6, and Levels 1 and 3 at ages 7 to 8', () => {
     for (const band of ['3-4', '5-6', '7-8'] as const)
-      for (const l of LEVEL_IDS) expect(isLevelOpen(meta, fresh(), band, l), `${band} level ${l + 1}`).toBe(l === 0);
+      for (const l of LEVEL_IDS) expect(isLevelOpen(meta, fresh(), band, l), `${band} level ${l + 1}`).toBe(l === 0 || (band === '7-8' && l === 2));
   });
 
-  it('opens the first level of every chapter for a new child at ages 9 to 10: Levels 1, 6 and 10', () => {
-    for (const l of LEVEL_IDS) expect(isLevelOpen(meta, fresh(), '9-10', l), `level ${l + 1}`).toBe([0, 5, 9].includes(l));
+  it('opens the first level of every chapter and the start level for a new child at ages 9 to 10: Levels 1, 3, 6 and 10', () => {
+    for (const l of LEVEL_IDS) expect(isLevelOpen(meta, fresh(), '9-10', l), `level ${l + 1}`).toBe([0, 2, 5, 9].includes(l));
   });
 
   it('opens nothing outside the game’s levels', () => {

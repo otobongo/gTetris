@@ -6,7 +6,7 @@
  */
 import { currentLevel, isLevelOpen, type GameMeta } from '../../games/meta';
 import type { GameEntry } from '../../games/registry';
-import { SOLVES_PER_LEVEL, gameOf, runOf, solvedCount, totalStars, type AgeBand, type GameProgress, type Player } from '../../shared/progress';
+import { SOLVES_PER_LEVEL, emptyGame, gameOf, runOf, solvedCount, totalStars, type AgeBand, type GameProgress, type Player } from '../../shared/progress';
 
 export type TileState = 'done' | 'current' | 'open' | 'locked';
 
@@ -39,17 +39,18 @@ export interface LevelPlan {
 }
 
 /**
- * The picker's tiles. The current level is currentLevel's (a grown-up pick or a finish, else the
- * first level with no stars) and shows as current even when it already has stars. The rest are
- * done (stars), open or locked by the unlock rule: linear, as the games use it (a level opens once
- * the one before has a star), plus anything the store already marks open. Ages 9 to 10 also start
- * the first level of every chapter open (user decision 7).
+ * The picker's tiles. The current level is currentLevel's for the child's band (a grown-up pick or a
+ * finish, else the band's start level in a game never played, else the first level with no stars) and
+ * shows as current even when it already has stars. The rest are done (stars), open or locked by the
+ * unlock rule: linear, as the games use it (a level opens once the one before has a star), plus
+ * anything the store already marks open and the band's start level. Ages 9 to 10 also start the first
+ * level of every chapter open (user decision 7).
  */
 export function planLevels(meta: GameMeta, game: GameProgress, band: AgeBand): LevelPlan {
   const count = meta.levelCount;
   const starsOf = (i: number) => Math.max(0, Math.min(3, game.stars[i] ?? 0));
   const isOpen = (i: number) => isLevelOpen(meta, game, band, i);
-  const current = currentLevel(meta, game);
+  const current = currentLevel(meta, game, band);
 
   let stars = 0;
   const chapters = meta.chapters.map((c) => {
@@ -97,9 +98,9 @@ export function tileLabel(tile: LevelTile, noun: string, name?: string): string 
 }
 
 /** Home card pill: "Level 9", "Stage 4", or "All done" once currentLevel finds no level left (brief 7.2). */
-export function homePill(meta: GameMeta | null, game: GameProgress, _band: AgeBand, noun: string): string {
+export function homePill(meta: GameMeta | null, game: GameProgress, band: AgeBand, noun: string): string {
   if (!meta) return 'Coming soon';
-  const current = currentLevel(meta, game);
+  const current = currentLevel(meta, game, band);
   return current === null ? 'All done' : `${noun} ${current + 1}`;
 }
 
@@ -115,7 +116,7 @@ export interface LevelSpot {
 /** The child's current level in a game and how many of its puzzles are solved; null for a game that is not built. */
 export function levelSpot(game: GameEntry, player: Player | null): LevelSpot | null {
   if (!game.meta) return null;
-  const level = currentLevel(game.meta, gameOf(player, game.id));
+  const level = currentLevel(game.meta, gameOf(player, game.id), player?.ageBand);
   if (level === null) return { level, solved: 0, unit: 'puzzle' };
   return { level, solved: solvedCount(player, game.id, level), unit: game.unit(level) };
 }
@@ -184,9 +185,14 @@ export function pickerCopy(game: GameEntry, player: Player, active: boolean): Pi
     const run = runOf(player, game.id, picked);
     if (run) return `${head} ${name} goes on from ${game.unit(picked)} ${run.solved.length + 1}.`;
     if ((progress.stars[picked] ?? 0) > 0) return `${head} ${name} plays it again from ${game.unit(picked)} 1.`;
-    if (isLevelOpen(meta, progress, player.ageBand, picked)) return `${head} ${name} hasn’t played it yet.`;
+    // A level behind the current one with no run and no stars is one the band's start skipped (usability
+    // decision 10): the child has not played it, and it is not still ahead of them.
+    const behind = typeof spot?.level === 'number' && picked < spot.level;
+    if (behind || isLevelOpen(meta, progress, player.ageBand, picked)) return `${head} ${name} hasn’t played it yet.`;
     return `${head} ${name} hasn’t reached it yet.`;
   };
+  // Where the game starts again after "Start over": the band's start level, or Level 1 (usability decision 10).
+  const restart = `${noun} ${(meta ? (currentLevel(meta, emptyGame(), player.ageBand) ?? 0) : 0) + 1}`;
 
   return {
     sub: `${name} · ${totalStars(player, game.id)} of ${(meta?.levelCount ?? 0) * 3} stars`,
@@ -196,12 +202,12 @@ export function pickerCopy(game: GameEntry, player: Player, active: boolean): Pi
     toast: (level) => `${name} plays ${noun} ${level + 1} next in ${game.title}.`,
     reset: {
       heading: `Start ${game.title} over`,
-      helper: `${name}’s ${lower}s and stars in ${game.title} go back to ${noun} 1 on this device. Stickers stay in the sticker book.`,
+      helper: `${name}’s ${lower}s and stars in ${game.title} go back to ${restart} on this device. Stickers stay in the sticker book.`,
       button: `Reset ${game.title} for ${name}`,
       title: `Reset ${game.title} for ${name}?`,
-      body: `${noun}s and stars in ${game.title} go back to ${noun} 1 on this device. Stickers stay. This can’t be undone.`,
+      body: `${noun}s and stars in ${game.title} go back to ${restart} on this device. Stickers stay. This can’t be undone.`,
       go: `Reset ${game.title}`,
-      toast: `${game.title} starts again at ${noun} 1 for ${name}.`,
+      toast: `${game.title} starts again at ${restart} for ${name}.`,
     },
   };
 }
