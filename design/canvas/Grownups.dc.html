@@ -25,7 +25,7 @@
 <span></span>
 </div>
 
-<sc-if value="{{locked}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{holdLock}}" hint-placeholder-val="{{ false }}">
 <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; padding-bottom: 60px;">
 <div style="font-size: 22px; font-weight: 800;">This area is for grown-ups</div>
 <div style="font-size: 16px; font-weight: 600; color: #c9c2ff; max-width: 280px;">Press and hold the button for 2 seconds to open settings.</div>
@@ -34,6 +34,75 @@
 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
 </span>
 </button>
+</div>
+</sc-if>
+
+<sc-if value="{{pinGate}}" hint-placeholder-val="{{ false }}">
+<div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding-bottom: 60px;">
+<div style="font-size: 22px; font-weight: 800; text-align: center;">This area is for grown-ups</div>
+<section aria-labelledby="gu-gate-h" style="padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<h2 id="gu-gate-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Grown-up check</h2>
+<sc-if value="{{pinWrong}}" hint-placeholder-val="{{ false }}">
+<div id="gu-pin-err" role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+That PIN is not right.
+</div>
+</sc-if>
+<p style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Enter the family PIN.</p>
+<label for="gu-pin" style="font-size: 14px; font-weight: 800; color: #c9c2ff; margin-bottom: -4px;">Family PIN</label>
+<input id="gu-pin" name="family-pin" type="password" inputmode="numeric" pattern="[0-9][0-9][0-9][0-9]" autocomplete="off" maxlength="4" onKeyDown="{{pinKey}}" aria-invalid="{{pinWrongAttr}}" aria-describedby="{{pinDescribedBy}}" style="width: 160px; height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; letter-spacing: 4px; {{pinRing}}">
+<p id="gu-pin-line" role="status" style="margin: 0; min-height: 20px; font-size: 15px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums;">{{pinLine}}</p>
+<div style="display: flex; gap: 8px;">
+<button onClick="{{cancelGate}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{checkPin}}" disabled="{{pinLocked}}" aria-disabled="{{pinLocked}}" style="flex: 2; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26; {{checkDim}}">Check</button>
+</div>
+<button onClick="{{forgotPin}}" style="align-self: center; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; padding: 0 12px; border-radius: 12px; background: transparent; color: #c9c2ff; font-size: 15px; font-weight: 800; text-decoration: underline;">Forgot the PIN?</button>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{sumGate}}" hint-placeholder-val="{{ false }}">
+<div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding-bottom: 60px;">
+<div style="font-size: 22px; font-weight: 800; text-align: center;">This area is for grown-ups</div>
+<section aria-labelledby="gu-sum-h" style="padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<h2 id="gu-sum-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Grown-up check</h2>
+<sc-if value="{{sumWrong}}" hint-placeholder-val="{{ false }}">
+<div id="gu-sum-err" role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+That answer doesn't match. Try this new sum.
+</div>
+</sc-if>
+<p aria-hidden="true" style="margin: 0; font-size: 26px; font-weight: 800; line-height: 1.1;">{{sumText}}</p>
+<label for="gu-sum" style="font-size: 14px; font-weight: 800; color: #c9c2ff; margin-bottom: -4px;">Answer</label>
+<input id="gu-sum" name="gate-answer" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="3" value="{{sumAnswer}}" onChange="{{setSum}}" onKeyDown="{{sumKey}}" aria-label="{{sumSpoken}}" style="width: 160px; height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff;">
+<div style="display: flex; gap: 8px;">
+<button onClick="{{cancelGate}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{checkSum}}" style="flex: 2; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Check</button>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{clearGate}}" hint-placeholder-val="{{ false }}">
+<div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding-bottom: 60px;">
+<div style="font-size: 22px; font-weight: 800; text-align: center;">This area is for grown-ups</div>
+<section aria-labelledby="gu-clear-h" style="padding: 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<h2 id="gu-clear-h" style="margin: 0; font-size: 18px; font-weight: 800; line-height: 1.15;">Grown-up check</h2>
+<button id="gu-clear-btn" onPointerDown="{{clearStart}}" onPointerUp="{{clearEnd}}" onPointerLeave="{{clearEnd}}" onPointerCancel="{{clearEnd}}" onKeyDown="{{clearKeyDown}}" onKeyUp="{{clearKeyUp}}" aria-label="Hold to clear the PIN for 10 seconds" aria-describedby="gu-clear-status" style="position: relative; overflow: hidden; width: 100%; height: 54px; border: 0; cursor: pointer; font-family: inherit; padding: 0; border-radius: 16px; touch-action: none; background: #4b3eaa; box-shadow: 0 5px 0 #241a63;">
+<span aria-hidden="true" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; color: #ffffff;">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>
+Hold to clear the PIN
+</span>
+<span aria-hidden="true" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 800; color: #5a3500; background: #ffc21a; clip-path: inset(0 {{clearRest}}% 0 0); {{clearMotion}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg>
+Hold to clear the PIN
+</span>
+</button>
+<p id="gu-clear-status" role="status" style="margin: 0; min-height: 20px; font-size: 15px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums;">{{clearLine}}</p>
+<sc-if value="{{clearCancel}}" hint-placeholder-val="{{ true }}">
+<button onClick="{{cancelGate}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+</sc-if>
+</section>
 </div>
 </sc-if>
 
@@ -129,6 +198,9 @@ Add a child
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">{{kidName}}'s age</div>
+<label for="gu-kidname" style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Name</label>
+<input id="gu-kidname" name="child-rename" autocomplete="off" autocapitalize="words" maxlength="24" value="{{nameDraft}}" onChange="{{setDraft}}" onBlur="{{saveName}}" onKeyDown="{{nameKey}}" style="height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff;">
+<span style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Age</span>
 <div role="group" aria-label="{{kidName}}'s age" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;">
 <sc-for list="{{kidAges}}" as="a" hint-placeholder-count="4">
 <button onClick="{{a.pick}}" aria-pressed="{{a.on}}" aria-label="Ages {{a.label}}" style="border: 0; cursor: pointer; font-family: inherit; height: 44px; border-radius: 12px; font-size: 16px; font-weight: 800; white-space: nowrap; {{a.style}}">{{a.label}}</button>
@@ -185,7 +257,7 @@ Add a child
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 4px;">
 <div style="font-size: 16px; font-weight: 800; padding-bottom: 4px;">Sound and alerts</div>
-<sc-for list="{{toggles}}" as="t" hint-placeholder-count="4">
+<sc-for list="{{toggles}}" as="t" hint-placeholder-count="2">
 <button role="switch" aria-checked="{{t.checked}}" aria-labelledby="sw-{{t.key}}" aria-describedby="swd-{{t.key}}" onClick="{{t.flip}}" style="border: 0; cursor: pointer; font-family: inherit; color: #ffffff; background: transparent; width: 100%; min-height: 52px; padding: 4px 0; display: flex; align-items: center; gap: 12px; text-align: left; border-radius: 12px;">
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c9c2ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="{{t.icon}}"></path></svg>
 <span style="display: flex; flex-direction: column; line-height: 1.15; flex-grow: 1; min-width: 0;">
@@ -201,6 +273,49 @@ Add a child
 </button>
 </sc-for>
 </div>
+
+<section aria-labelledby="gu-pin-h" style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 10px;">
+<h2 id="gu-pin-h" style="margin: 0; font-size: 16px; font-weight: 800; line-height: 1.15;">Grown-up PIN</h2>
+<sc-if value="{{pinOff}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: #c9c2ff;">Ask for a PIN instead of the sum before Settings, levels and more play time.</p>
+<sc-if value="{{pinCleared}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: #c9c2ff;">{{clearedLine}}</p>
+</sc-if>
+<button onClick="{{openPinForm}}" style="align-self: flex-start; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px 28px; border-radius: 14px; background: #4b3eaa;">Set a PIN</button>
+</sc-if>
+<sc-if value="{{pinForm}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-wrap: wrap; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="gu-new-pin" style="font-size: 14px; font-weight: 800; color: #c9c2ff;">New PIN</label>
+<input id="gu-new-pin" name="new-pin" type="password" inputmode="numeric" pattern="[0-9][0-9][0-9][0-9]" autocomplete="off" maxlength="4" aria-describedby="{{formErrId}}" style="width: 160px; height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; letter-spacing: 4px; {{firstRing}}">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="gu-new-pin2" style="font-size: 14px; font-weight: 800; color: #c9c2ff;">Type it again</label>
+<input id="gu-new-pin2" name="new-pin-again" type="password" inputmode="numeric" pattern="[0-9][0-9][0-9][0-9]" autocomplete="off" maxlength="4" aria-describedby="{{formErrId}}" style="width: 160px; height: 48px; box-sizing: border-box; font-family: inherit; font-size: 18px; font-weight: 700; padding: 10px 14px; border-radius: 14px; border: 0; background: #1d1550; color: #ffffff; letter-spacing: 4px; {{secondRing}}">
+</div>
+</div>
+<sc-if value="{{formErr}}" hint-placeholder-val="{{ false }}">
+<div id="gu-form-err" role="alert" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; font-weight: 800; line-height: 1.3; color: #ff9fd4;">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px;"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5.5"></path><path d="M12 16.5h.01"></path></svg>
+{{formErrText}}
+</div>
+</sc-if>
+<div style="display: flex; gap: 8px;">
+<button onClick="{{closePinForm}}" style="flex: 1; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: #4b3eaa;">Cancel</button>
+<button onClick="{{savePin}}" style="flex: 2; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #063510; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 4px 0 #0f7a26;">Save</button>
+</div>
+</sc-if>
+<sc-if value="{{pinOn}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: #c9c2ff;">The PIN is on.</p>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button onClick="{{openPinForm}}" style="flex: 1 1 0; min-width: max-content; min-height: 44px; border: 0; cursor: pointer; font-family: inherit; color: #ffffff; font-size: 16px; font-weight: 800; padding: 10px 16px; border-radius: 14px; background: #4b3eaa;">Change PIN</button>
+<button onClick="{{askPinOff}}" style="flex: 1 1 0; min-width: max-content; min-height: 44px; border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 8px 16px; border-radius: 14px; background: transparent;">Turn off PIN</button>
+</div>
+</sc-if>
+<sc-if value="{{pinNoCrypto}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; font-size: 14px; font-weight: 700; line-height: 1.25; color: #c9c2ff;">A PIN needs a secure connection.</p>
+</sc-if>
+</section>
 
 <div style="padding: 12px 14px; border-radius: 20px; background: #30257a; display: flex; flex-direction: column; gap: 8px;">
 <div style="font-size: 16px; font-weight: 800;">Progress</div>
@@ -219,6 +334,7 @@ Add a child
 </sc-for>
 </div>
 <button onClick="{{askReset}}" style="border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">Reset {{kidName}}'s progress</button>
+<button onClick="{{askRemove}}" style="min-height: 44px; border: 2px solid #ff4d5e; cursor: pointer; font-family: inherit; color: #ff9fd4; font-size: 16px; font-weight: 800; padding: 10px; border-radius: 14px; background: transparent;">Remove {{kidName}}</button>
 <button onClick="{{askResetAll}}" style="border: 0; cursor: pointer; font-family: inherit; color: #c9c2ff; font-size: 14px; font-weight: 800; padding: 6px; border-radius: 12px; background: transparent; text-decoration: underline;">Reset every child's progress</button>
 </div>
 
@@ -262,7 +378,7 @@ Delete my account
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"account":{"editor":"enum","options":["signedIn","guest"],"default":"signedIn"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"account":{"editor":"enum","options":["signedIn","guest"],"default":"signedIn"},"gate":{"editor":"enum","options":["hold","open","pin","pinLocked","forgot","clearHold"],"default":"hold"},"pin":{"editor":"enum","options":["off","form","on","cleared","noCrypto"],"default":"off"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -270,6 +386,12 @@ class Component extends DCLogic {
       unlocked: false, hold: 0, kid: 0, adding: false, newName: '', newAge: 6,
       confirm: null, toast: '', syncing: false, syncedAgo: '2 min ago',
       acct: null, acctProp: null,
+      // Decision 14, the family PIN. The sample PIN is 2580. gate and pin follow their props until the board is used.
+      gate: null, gateProp: null, pin: null, pinProp: null,
+      pinWrong: false, fails: 0, lockEnd: 0, sumAsk: 0, sumAnswer: '', sumWrong: false,
+      clearMs: 0, clearHeld: false, clearLetGo: false, cleared: false, clearedOn: '', formErr: '',
+      // Decision 15: the Name field's draft; null shows the selected child's saved name.
+      draft: null,
       sound: { sounds: true, music: true, voice: true, alerts: false },
       kids: [
         // games: sample current level per game and puzzles solved in it (brief 2.6), matching Home, Break and the level picker.
@@ -278,7 +400,38 @@ class Component extends DCLogic {
       ]
     };
   }
-  componentWillUnmount() { clearInterval(this.holdT); clearTimeout(this.toastT); clearTimeout(this.syncT); }
+  componentWillUnmount() { clearInterval(this.holdT); clearTimeout(this.toastT); clearTimeout(this.syncT); clearInterval(this.lockT); clearInterval(this.clearT); clearTimeout(this.passT); }
+  reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  focusId(id) { setTimeout(function () { try { var el = document.getElementById(id); if (el) el.focus(); } catch (e) {} }, 0); }
+  readField(id) { try { var el = document.getElementById(id); var v = el ? String(el.value || '') : ''; if (el) el.value = ''; return v; } catch (e) { return ''; } }
+  // The gate on the board: the prop's moment until the board is used.
+  propGate() { var g = this.props.gate; return ['open', 'pin', 'pinLocked', 'forgot', 'clearHold'].indexOf(g) >= 0 ? g : 'hold'; }
+  gateNow() { var s = this.state; return s.gate && s.gateProp === this.propGate() ? s.gate : this.propGate(); }
+  setGate(g, extra) { this.setState(Object.assign({ gate: g, gateProp: this.propGate() }, extra || {})); }
+  propPin() { var p = this.props.pin; return ['form', 'on', 'cleared', 'noCrypto'].indexOf(p) >= 0 ? p : this.propGate() === 'pin' || this.propGate() === 'pinLocked' ? 'on' : 'off'; }
+  pinNow() { var s = this.state; return s.pin && s.pinProp === this.propPin() ? s.pin : this.propPin(); }
+  setPinState(p, extra) { this.setState(Object.assign({ pin: p, pinProp: this.propPin() }, extra || {})); }
+  // 30 s from the third wrong try in a row, doubling to 5 minutes (the app's logic/familyPin.ts).
+  lockSeconds(fails) { return fails < 3 ? 0 : Math.min(300, 30 * Math.pow(2, Math.min(fails - 3, 8))); }
+  // The pinLocked moment opens 30 s into a lock after three wrong tries; its end is kept on the instance, not in state.
+  lockEndNow() {
+    var s = this.state;
+    if (s.lockEnd || s.fails) return s.lockEnd || 0;
+    if (this.gateNow() !== 'pinLocked') return 0;
+    if (!this.momentLockEnd) { this.momentLockEnd = Date.now() + 30000; this.startLockTick(); }
+    return this.momentLockEnd;
+  }
+  lockLeft() { return Math.max(0, this.lockEndNow() - Date.now()); }
+  startLockTick() {
+    var self = this;
+    clearInterval(this.lockT);
+    this.lockT = setInterval(function () {
+      if (self.lockLeft() <= 0) clearInterval(self.lockT);
+      self.setState({ tick: Date.now() });
+    }, 1000);
+  }
+  // Sample sums for Forgot the PIN: the first is 23 + 19; a wrong answer moves on.
+  sums() { return [[23, 19, 'twenty-three plus nineteen'], [31, 14, 'thirty-one plus fourteen'], [17, 26, 'seventeen plus twenty-six']]; }
   // The app keeps an age band, never an exact age.
   bandLabel(age) { return age <= 4 ? '3 to 4' : age <= 6 ? '5 to 6' : age <= 8 ? '7 to 8' : '9 to 10'; }
   factor(age) { return age <= 4 ? 0 : age <= 6 ? 2 : age <= 8 ? 1.5 : 1; }
@@ -343,12 +496,65 @@ class Component extends DCLogic {
         self.showToast('Signed in with ' + name + '. Progress now syncs to all your devices.');
       };
     };
+    // Decision 20: Music and Notifications are hidden until those features exist; their values stay in state.sound.
     var toggleRows = [
       { key: 'sounds', label: 'Sounds', note: 'Taps and brick sounds', icon: 'M11 5L6 9H2v6h4l5 4V5z M15.5 8.5a5 5 0 0 1 0 7 M19 5a10 10 0 0 1 0 14' },
-      { key: 'music', label: 'Music', note: 'Background music in games', icon: 'M9 18V5l12-2v13 M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0 M15 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0' },
-      { key: 'voice', label: 'Voice', note: 'Reads letters and words aloud', icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z M8.5 10h7 M8.5 13.5h4.5' },
-      { key: 'alerts', label: 'Notifications', note: 'Reminders for grown-ups', icon: 'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0' }
+      { key: 'voice', label: 'Voice', note: 'Reads letters and words aloud', icon: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z M8.5 10h7 M8.5 13.5h4.5' }
     ];
+    var gate = this.gateNow();
+    var pinState = this.pinNow();
+    var lockMs = this.lockLeft();
+    var locked = lockMs > 0;
+    var lockS = Math.max(1, Math.ceil(lockMs / 1000));
+    var sum = this.sums()[s.sumAsk % this.sums().length];
+    var clearFraction = s.cleared ? 1 : this.reduced() ? Math.floor(s.clearMs / 1000) / 10 : s.clearMs / 10000;
+    // The sample PIN is 2580. The board reads the field at Check and empties it; nothing typed is kept.
+    var checkPin = function () {
+      if (self.lockLeft() > 0) return;
+      var v = self.readField('gu-pin');
+      if (v.trim() === '') { self.setState({ pinEmpty: true, pinWrong: false }); self.focusId('gu-pin'); return; }
+      if (v === '2580') { self.setState({ unlocked: true, fails: 0, lockEnd: 0, pinWrong: false, pinEmpty: false }); return; }
+      var fails = (s.fails || (self.momentLockEnd ? 3 : 0)) + 1;
+      var lock = self.lockSeconds(fails);
+      self.setState({ fails: fails, lockEnd: lock ? Date.now() + lock * 1000 : 0, pinWrong: true, pinEmpty: false });
+      if (lock) self.startLockTick();
+      self.focusId('gu-pin');
+    };
+    var checkSum = function () {
+      var v = String(self.state.sumAnswer || '').trim();
+      var cur = self.sums()[self.state.sumAsk % self.sums().length];
+      if (v === '') return;
+      if (/^[0-9]+$/.test(v) && parseInt(v, 10) === cur[0] + cur[1]) { self.setGate('clearHold', { sumAnswer: '', sumWrong: false, clearMs: 0, cleared: false }); self.focusId('gu-clear-btn'); return; }
+      self.setState({ sumAnswer: '', sumWrong: true, sumAsk: self.state.sumAsk + 1 });
+      self.focusId('gu-sum');
+    };
+    // Forgot the PIN: held for 10 s without letting go; letting go early starts again.
+    var clearStart = function () {
+      if (self.state.cleared || self.clearT) return;
+      var started = Date.now();
+      self.setState({ clearHeld: true, clearLetGo: false, clearMs: 0 });
+      self.clearT = setInterval(function () {
+        var ms = Date.now() - started;
+        if (ms >= 10000) {
+          clearInterval(self.clearT); self.clearT = null;
+          self.setPinState('cleared', { clearMs: 10000, clearHeld: false, cleared: true, clearedOn: '16 November', fails: 0, lockEnd: 0 });
+          self.passT = setTimeout(function () { self.setState({ unlocked: true }); }, 1500);
+        } else self.setState({ clearMs: ms });
+      }, 100);
+    };
+    var clearEnd = function () {
+      if (!self.clearT) return;
+      clearInterval(self.clearT); self.clearT = null;
+      self.setState({ clearMs: 0, clearHeld: false, clearLetGo: true });
+    };
+    // The Name field (decision 15): trimmed, single spaces, 24 letters at most; empty puts the saved name back.
+    var saveName = function () {
+      var d = self.state.draft;
+      if (d === null) return;
+      var name = String(d).replace(/\s+/g, ' ').trim().slice(0, 24);
+      if (name) self.updateKid({ name: name });
+      self.setState({ draft: null });
+    };
     return {
       w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
@@ -376,7 +582,64 @@ class Component extends DCLogic {
           }
         };
       }),
-      locked: !s.unlocked, open: s.unlocked,
+      holdLock: !s.unlocked && gate === 'hold', open: s.unlocked || gate === 'open',
+      pinGate: !s.unlocked && (gate === 'pin' || gate === 'pinLocked'),
+      sumGate: !s.unlocked && gate === 'forgot',
+      clearGate: !s.unlocked && gate === 'clearHold',
+      pinWrong: s.pinWrong && !locked,
+      pinWrongAttr: s.pinWrong && !locked ? 'true' : 'false',
+      pinDescribedBy: s.pinWrong && !locked ? 'gu-pin-err' : 'gu-pin-line',
+      pinRing: s.pinWrong && !locked ? 'box-shadow: 0 0 0 2px #ff4d5e;' : '',
+      pinLocked: locked,
+      checkDim: locked ? 'opacity: 0.45; cursor: default; box-shadow: none;' : '',
+      pinLine: locked ? 'Too many tries. Try again in ' + lockS + (lockS === 1 ? ' second.' : ' seconds.') : s.pinEmpty ? 'Type the PIN, then tap Check.' : '',
+      pinKey: function (e) { if (e && e.key === 'Enter') checkPin(); },
+      checkPin: checkPin,
+      cancelGate: function () { clearInterval(self.clearT); self.setGate('hold', { pinWrong: false, pinEmpty: false, sumWrong: false, sumAnswer: '', clearMs: 0, clearHeld: false, clearLetGo: false }); },
+      forgotPin: function () { self.setGate('forgot', { sumAnswer: '', sumWrong: false, sumAsk: 0 }); self.focusId('gu-sum'); },
+      sumText: 'What is ' + sum[0] + ' + ' + sum[1] + '?',
+      sumSpoken: 'Answer for ' + sum[2],
+      sumAnswer: s.sumAnswer,
+      setSum: function (e) { self.setState({ sumAnswer: e.target.value }); },
+      sumKey: function (e) { if (e && e.key === 'Enter') checkSum(); },
+      checkSum: checkSum,
+      sumWrong: s.sumWrong,
+      clearRest: Math.round((1 - clearFraction) * 1000) / 10,
+      clearMotion: this.reduced() ? '' : 'transition: clip-path 100ms linear;',
+      clearLine: s.cleared ? 'PIN cleared. The sum check is back.' : s.clearHeld ? 'Keep holding: ' + Math.ceil((10000 - s.clearMs) / 1000) : s.clearLetGo ? 'Keep holding for 10 seconds.' : '',
+      clearCancel: !s.cleared,
+      clearStart: clearStart,
+      clearEnd: clearEnd,
+      clearKeyDown: function (e) { if (e && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); if (!e.repeat) clearStart(); } },
+      clearKeyUp: function (e) { if (e && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); clearEnd(); } },
+      pinOff: pinState === 'off' || pinState === 'cleared',
+      pinCleared: pinState === 'cleared',
+      clearedLine: 'The PIN was cleared with Forgot the PIN on ' + (s.clearedOn || '16 November') + '.',
+      pinForm: pinState === 'form',
+      pinOn: pinState === 'on',
+      pinNoCrypto: pinState === 'noCrypto',
+      openPinForm: function () { self.setPinState('form', { formErr: '', pinWasOn: pinState === 'on' }); self.focusId('gu-new-pin'); },
+      closePinForm: function () { self.setPinState(s.pinWasOn ? 'on' : 'off', { formErr: '' }); },
+      savePin: function () {
+        var a = self.readField('gu-new-pin');
+        var b = self.readField('gu-new-pin2');
+        if (!/^[0-9]{4}$/.test(a)) { self.setState({ formErr: 'shape' }); self.focusId('gu-new-pin'); return; }
+        if (a !== b) { self.setState({ formErr: 'match' }); self.focusId('gu-new-pin2'); return; }
+        // The board keeps no PIN: in the app only a salted hash of it is stored.
+        self.setPinState('on', { formErr: '', fails: 0, lockEnd: 0 });
+        self.showToast('The PIN is on. Keep it somewhere safe.');
+      },
+      formErr: !!s.formErr,
+      formErrId: s.formErr ? 'gu-form-err' : '',
+      formErrText: s.formErr === 'match' ? 'The two PINs are not the same.' : 'Use 4 numbers.',
+      firstRing: s.formErr === 'shape' ? 'box-shadow: 0 0 0 2px #ff4d5e;' : '',
+      secondRing: s.formErr === 'match' ? 'box-shadow: 0 0 0 2px #ff4d5e;' : '',
+      askPinOff: function () { self.setState({ confirm: 'pinOff' }); },
+      nameDraft: s.draft === null ? k.name : s.draft,
+      setDraft: function (e) { self.setState({ draft: e.target.value }); },
+      saveName: saveName,
+      nameKey: function (e) { if (e && e.key === 'Enter') { e.preventDefault(); saveName(); } },
+      askRemove: function () { self.setState({ confirm: 'remove' }); },
       holddeg: Math.round(s.hold * 3.6),
       holdStart: function () {
         clearInterval(self.holdT);
@@ -399,7 +662,7 @@ class Component extends DCLogic {
         return {
           name: c.name, age: c.age, band: self.bandLabel(c.age), color: c.color, initial: c.name.charAt(0), on: i === s.kid,
           style: i === s.kid ? 'background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 0 0 3px #ffc21a;' : 'background: #30257a;',
-          pick: function () { self.setState({ kid: i, adding: false }); }
+          pick: function () { self.setState({ kid: i, adding: false, draft: null }); }
         };
       }),
       adding: s.adding,
@@ -412,11 +675,12 @@ class Component extends DCLogic {
         return { n: n, label: self.bandLabel(n), on: on, style: on ? 'background: #ffc21a; color: #5a3500;' : 'background: #1d1550; color: #c9c2ff;', pick: function () { self.setState({ newAge: n }); } };
       }),
       saveKid: function () {
-        var name = (s.newName || '').trim() || 'Child ' + (s.kids.length + 1);
+        var typed = (s.newName || '').trim();
+        var name = typed || 'Player ' + (s.kids.length + 1);
         var kid = { name: name, age: s.newAge, color: swatch[s.kids.length % swatch.length], mode: s.newAge <= 4 ? 'relaxed' : 'auto', limit: 20, stars: 0, skills: [0, 0, 0, 0, 0], games: self.freshGames() };
         var kids = s.kids.concat([kid]);
         self.setState({ kids: kids, kid: kids.length - 1, adding: false });
-        self.showToast(name + ' was added. They can now pick their brick on any of your devices.');
+        self.showToast(typed ? name + ' was added. They can now pick their brick on any of your devices.' : name + ' was added. You can change the name under Name.');
       },
       kidName: k.name,
       // The child's Age row (decision D2): the same four bands and style as Add a child.
@@ -445,17 +709,33 @@ class Component extends DCLogic {
       askResetAll: function () { self.setState({ confirm: 'all' }); },
       askDelete: function () { self.setState({ confirm: 'delete' }); },
       confirming: !!s.confirm,
-      confirmLabel: s.confirm === 'delete' ? 'Confirm account deletion' : 'Confirm reset',
-      confirmTitle: s.confirm === 'delete' ? 'Delete your family account?' : s.confirm === 'all' ? "Reset every child's progress?" : 'Reset ' + k.name + "'s progress?",
-      confirmBody: s.confirm === 'delete'
+      confirmLabel: s.confirm === 'remove' ? 'Remove ' + k.name + ' from this device?' : s.confirm === 'pinOff' ? 'Turn off the PIN?' : s.confirm === 'delete' ? 'Confirm account deletion' : 'Confirm reset',
+      confirmTitle: s.confirm === 'remove' ? 'Remove ' + k.name + ' from this device?' : s.confirm === 'pinOff' ? 'Turn off the PIN?' : s.confirm === 'delete' ? 'Delete your family account?' : s.confirm === 'all' ? "Reset every child's progress?" : 'Reset ' + k.name + "'s progress?",
+      confirmBody: s.confirm === 'remove'
+        ? "Their stars, levels and stickers go too. This can't be undone."
+        : s.confirm === 'pinOff'
+        ? 'The sum check comes back.'
+        : s.confirm === 'delete'
         ? "This deletes your family account and every child's stars, levels and stickers on every device. It can't be undone."
         : guest
           ? "Stars, levels and stickers go back to the start on this device. This can't be undone."
           : "Stars, levels and stickers go back to the start on every synced device. This can't be undone.",
-      keepLabel: s.confirm === 'delete' ? 'Keep my account' : 'Keep it',
-      goLabel: s.confirm === 'delete' ? 'Delete account' : 'Reset',
+      keepLabel: s.confirm === 'remove' ? 'Keep ' + k.name : s.confirm === 'delete' ? 'Keep my account' : 'Keep it',
+      goLabel: s.confirm === 'remove' ? 'Remove' : s.confirm === 'pinOff' ? 'Turn off' : s.confirm === 'delete' ? 'Delete account' : 'Reset',
       cancelReset: function () { self.setState({ confirm: null }); },
       doConfirm: function () {
+        if (s.confirm === 'remove') {
+          var left = s.kids.filter(function (c, i) { return i !== s.kid; });
+          // Removing the last child goes to the first-run form, as Delete does.
+          if (!left.length) { self.setState({ confirm: null }); try { window.location.href = tablet ? 'MainTablet.dc.html' : 'Main.dc.html'; } catch (e) {} return; }
+          self.setState({ kids: left, kid: 0, confirm: null, draft: null });
+          self.showToast(k.name + ' was removed from this device.');
+          return;
+        }
+        if (s.confirm === 'pinOff') {
+          self.setPinState('off', { confirm: null, fails: 0, lockEnd: 0 });
+          return;
+        }
         if (s.confirm === 'delete') {
           var cleared = s.kids.map(function (c) { return Object.assign({}, c, { stars: 0, skills: [0, 0, 0, 0, 0], games: self.freshGames() }); });
           self.setState({ kids: cleared, confirm: null, acct: 'guest', acctProp: propAcct });

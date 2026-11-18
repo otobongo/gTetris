@@ -59,3 +59,32 @@ export function checkGateAnswer(answer: string, sum: GateSum): GateResult {
   if (answer.trim() === '') return 'empty';
   return gateMatches(answer, sum) ? 'right' : 'wrong';
 }
+
+/* ---------- Family PIN mode (decision 14): copy and the Forgot the PIN hold ---------- */
+
+/** "Too many tries. Try again in 30 seconds." in whole seconds, rounded up. */
+export function pinLockLine(ms: number): string {
+  const s = Math.max(1, Math.ceil(ms / 1000));
+  return `Too many tries. Try again in ${s} ${s === 1 ? 'second' : 'seconds'}.`;
+}
+
+/** Settings' line after Forgot the PIN: "The PIN was cleared with Forgot the PIN on 16 November." */
+export function pinClearedLine(at: number): string {
+  const day = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long' }).format(new Date(at));
+  return `The PIN was cleared with Forgot the PIN on ${day}.`;
+}
+
+/** Forgot the PIN clears it only after the button is held down this long without letting go. */
+export const PIN_HOLD_MS = 10_000;
+
+/**
+ * Where a hold is after `elapsed` ms: whole seconds left (10 down to 0), how much of the bar is filled, and
+ * whether it is done. Under Reduce Motion the bar moves once a second, in step with the count.
+ */
+export function holdProgress(elapsed: number, reduced: boolean): { left: number; fraction: number; done: boolean } {
+  const ms = Math.min(Math.max(Number.isFinite(elapsed) ? elapsed : 0, 0), PIN_HOLD_MS);
+  const done = ms >= PIN_HOLD_MS;
+  const left = Math.ceil((PIN_HOLD_MS - ms) / 1000);
+  const shown = reduced ? Math.floor(ms / 1000) * 1000 : ms;
+  return { left, fraction: done ? 1 : shown / PIN_HOLD_MS, done };
+}

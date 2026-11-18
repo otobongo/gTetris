@@ -9,6 +9,13 @@ export const BAND_LABEL: Record<AgeBand, string> = { '3-4': '3 to 4', '5-6': '5 
 /** "Ages 7 to 8" */
 export const bandText = (band: AgeBand) => `Ages ${BAND_LABEL[band]}`;
 
+/** "Player N" for a child added with no name: N counts on from the family, past any name still in use after a child was removed. */
+export function unusedPlayerName(players: readonly { name: string }[]): string {
+  let n = players.length + 1;
+  while (players.some((p) => p.name === `Player ${n}`)) n += 1;
+  return `Player ${n}`;
+}
+
 /**
  * Add a child: first name and age band only (the Settings board's panel). The avatar colour is
  * the first one nobody in the family uses yet.
@@ -24,7 +31,8 @@ export function AddChild({
   primaryLabel = 'Add child',
   focusOnOpen = false,
 }: {
-  onAdded: (p: Player) => void;
+  /** `named` is false when no name was typed and the child got a "Player N" name. */
+  onAdded: (p: Player, named: boolean) => void;
   onCancel?: () => void;
   heading?: string;
   primaryLabel?: string;
@@ -51,8 +59,9 @@ export function AddChild({
       onSubmit={(e) => {
         e.preventDefault();
         sfx.tap();
-        const p = progressStore.addPlayer({ name: name.trim() || `Player ${players.length + 1}`, ageBand: band, color: nextAvatarColor(players) });
-        onAdded(p);
+        const named = name.trim() !== '';
+        const p = progressStore.addPlayer({ name: named ? name.trim() : unusedPlayerName(players), ageBand: band, color: nextAvatarColor(players) });
+        onAdded(p, named);
       }}
     >
       <h2 className="sc-panel__title">{heading}</h2>
