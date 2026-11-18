@@ -197,18 +197,19 @@ interface DemoGeometry {
 }
 
 /**
- * Where the practice demo runs: the tapped tray brick and its own place, measured as fly() measures a drop.
- * Screen offsets are divided by the tablet zoom, because the frame is scaled with CSS zoom and a translate
- * inside it is scaled again. The brick's box comes from its centre and its own size, so its tilt is kept.
+ * Where the practice demo runs: the tapped tray brick and its own place, in the view's own px. The tablet frame
+ * is scaled with CSS zoom, and browsers differ on whether a measured box already has that zoom taken out, so the
+ * scale is read from the view itself: its measured width over its own width. The brick's box comes from its
+ * centre and its own size, so its tilt is kept.
  */
-function demoGeometry(view: HTMLElement, tile: HTMLElement, place: HTMLElement, zoom: number, rot: number): DemoGeometry | null {
+function demoGeometry(view: HTMLElement, tile: HTMLElement, place: HTMLElement, rot: number): DemoGeometry | null {
   const v = view.getBoundingClientRect();
   const t = tile.getBoundingClientRect();
   const c = place.getBoundingClientRect();
   const w = tile.offsetWidth;
   const h = tile.offsetHeight;
-  if (!w || !h || !c.width) return null;
-  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  if (!w || !h || !c.width || !v.width || !view.offsetWidth) return null;
+  const z = v.width / view.offsetWidth;
   const local = (x: number, y: number) => ({ x: (x - v.left) / z, y: (y - v.top) / z });
   const tc = local(t.left + t.width / 2, t.top + t.height / 2);
   const cc = local(c.left + c.width / 2, c.top + c.height / 2);
@@ -252,7 +253,6 @@ function arrowPath(from: { x: number; y: number }, to: { x: number; y: number },
  * the help line carry the message. `onEnd` takes it away.
  */
 function DragDemo({ tile, place, ch, rot, onEnd }: { tile: () => HTMLElement | null; place: () => HTMLElement | null; ch: string; rot: number; onEnd: () => void }) {
-  const { zoom } = useLayout();
   const ref = useRef<HTMLSpanElement>(null);
   const [geo, setGeo] = useState<DemoGeometry | null>(null);
   const [still] = useState(reducedMotion);
@@ -263,7 +263,7 @@ function DragDemo({ tile, place, ch, rot, onEnd }: { tile: () => HTMLElement | n
     const view = ref.current?.parentElement;
     const t = tile();
     const c = place();
-    const g = view && t && c ? demoGeometry(view, t, c, zoom, rot) : null;
+    const g = view && t && c ? demoGeometry(view, t, c, rot) : null;
     if (!g) end.current();
     else setGeo(g);
     // Measured once, when the demo starts.
@@ -373,7 +373,17 @@ function HelpRow({ text, hint, offer, speech }: { text: string; hint: ReactNode;
       <p className="lb-help" role="status">
         {text}
       </p>
-      {speech && <button type="button" className="lb-help-tap" tabIndex={-1} aria-hidden="true" onClick={() => say(speech)} />}
+      {speech && (
+        <button
+          type="button"
+          className="lb-help-tap"
+          tabIndex={-1}
+          aria-hidden="true"
+          // A press never takes the focus: this button is hidden from VoiceOver, and the focus stays where the child left it.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => say(speech)}
+        />
+      )}
       <span className="lb-helprow__hint">{hint}</span>
       <span className="lb-helprow__offer">{offer}</span>
     </div>

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyGame, type GameProgress, type Player } from '../../shared/progress';
 import { STICKERS, stickerCells } from '../../screens/logic/stickers';
 import { CHAPTERS } from './levels';
-import { lettersCapped } from './logic';
+import { countedResults, lettersCapped } from './logic';
 import { levelSticker } from './LettersApp';
 
 describe('lettersCapped (decision 25: the capped-star mark beside the dots)', () => {
@@ -34,6 +34,30 @@ describe('lettersCapped (decision 25: the capped-star mark beside the dots)', ()
 
   it('reads a solved puzzle with no usedHint field as no hint', () => {
     expect(lettersCapped(false, false, [{}])).toBe(false);
+  });
+});
+
+describe('countedResults (decision 22: the practice level never caps)', () => {
+  const hinted = { puzzle: 0, count: 2, usedHint: true, outOfTime: false };
+  const clean = { puzzle: 1, count: 0, usedHint: false, outOfTime: false };
+
+  it('takes every saved hint off on the practice level, and keeps the slips', () => {
+    expect(countedResults(true, [hinted, clean])).toEqual([{ ...hinted, usedHint: false }, clean]);
+  });
+
+  it('keeps the results as saved on any other level', () => {
+    const results = [hinted, clean];
+    expect(countedResults(false, results)).toBe(results);
+  });
+
+  it('leaves the saved results themselves alone', () => {
+    const results = [hinted];
+    countedResults(true, results);
+    expect(results[0].usedHint).toBe(true);
+  });
+
+  it('gives nothing back for nothing solved', () => {
+    expect(countedResults(true, [])).toEqual([]);
   });
 });
 

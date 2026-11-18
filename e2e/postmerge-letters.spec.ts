@@ -5,7 +5,7 @@
  * - decision 25: the capped-star mark sits beside the dots once a counted hint is used (PuzzleDots `capped`).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { dots, levelCard, lettersWrongTap, savedState, seed, solveLettersPuzzle, starsUpTo, type Band } from './app';
+import { dots, levelCard, lettersWrongTap, savedState, seed, solveLettersPuzzle, starsUpTo, STORAGE_KEY, type Band } from './app';
 
 const offer = (page: Page) => page.getByRole('button', { name: 'New puzzle' });
 const hint = (page: Page, left: number) => page.getByRole('button', { name: `Hint (${left})` });
@@ -55,6 +55,29 @@ test('finishing the last level of the first chapter shows Big A on the card and 
   expect(described.split(' ')).toHaveLength(2);
   const state = await savedState(page);
   expect(Object.keys(state.players[0].stickers)).toEqual(['l1']);
+});
+
+test("the game's last level shows its chapter's sticker on the finished-game card", async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '9-10', games: { letters: { stars: starsUpTo(23) } } }]);
+  // The first three chapters' stickers are already in the book, so the last chapter's is the new one.
+  await page.addInitScript((key) => {
+    if (sessionStorage.getItem('e2e-stickers')) return;
+    sessionStorage.setItem('e2e-stickers', '1');
+    const state = JSON.parse(localStorage.getItem(key)!);
+    state.players[0].stickers = Object.fromEntries(['l1', 'l2', 'l3'].map((id) => [id, { earnedAt: 1, seen: true }]));
+    localStorage.setItem(key, JSON.stringify(state));
+  }, STORAGE_KEY);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/24$/);
+  for (let n = 0; n < 4; n++) {
+    await solveLettersPuzzle(page);
+    if (n === 3) break;
+    await page.getByRole('button', { name: 'Next word' }).click();
+  }
+  const card = levelCard(page);
+  await expect(card.getByRole('heading')).toHaveText('You finished every level!');
+  await expect(card).toContainText('New sticker: Pencil.');
+  expect(Object.keys((await savedState(page)).players[0].stickers).sort()).toEqual(['l1', 'l2', 'l3', 'l4']);
 });
 
 test('a level that finishes no chapter shows no sticker', async ({ page }) => {

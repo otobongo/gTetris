@@ -20,6 +20,7 @@ import {
   savedRun,
   seed,
   solveLettersPuzzle,
+  savedState,
   starsUpTo,
   STORAGE_KEY,
   type Band,
@@ -82,6 +83,7 @@ async function buildAndGoOn(page: Page, solvedBefore: number) {
 }
 
 const centre = async (el: Locator) => {
+  await el.scrollIntoViewIfNeeded();
   const b = (await el.boundingBox())!;
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 };
@@ -123,6 +125,100 @@ for (const [band, level] of [
   });
 }
 
+/** Put a solved first puzzle with a hint into the saved run, as a version from before decision 22 saved it, and load it. */
+async function loadHintSavedByAnOlderVersion(page: Page) {
+  const run = await savedRun(page, 'letters', 0);
+  await page.evaluate(
+    ({ key, puzzle }) => {
+      const state = JSON.parse(localStorage.getItem(key)!);
+      const saved = state.players[0].games.letters.runs['0'];
+      saved.solved = [{ puzzle, count: 0, usedHint: true, outOfTime: false }];
+      saved.queue = saved.queue.filter((p: number) => p !== puzzle);
+      localStorage.setItem(key, JSON.stringify(state));
+    },
+    { key: STORAGE_KEY, puzzle: run.queue[0] },
+  );
+  await page.reload();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+}
+
+test('practice Level 1 at ages 3 to 4: a hint saved by an older version does not cap the level either @phone-only', async ({ page }) => {
+  await open(page, '3-4');
+  await loadHintSavedByAnOlderVersion(page);
+  for (let n = 1; n < 4; n++) await buildAndGoOn(page, n);
+
+  const card = levelCard(page);
+  await expect(card.getByRole('img', { name: '3 of 3 stars' })).toBeVisible();
+  await expect(card).not.toContainText('Using a hint caps');
+  expect((await savedGame(page, 'letters'))?.stars['0']).toBe(3);
+});
+
+test('ages 5 to 6 on Level 1: a hint saved on a solved puzzle still caps the level @phone-only', async ({ page }) => {
+  await open(page, '5-6');
+  await loadHintSavedByAnOlderVersion(page);
+  for (let n = 1; n < 4; n++) await buildAndGoOn(page, n);
+
+  const card = levelCard(page);
+  await expect(card.getByRole('img', { name: '2 of 3 stars' })).toBeVisible();
+  await expect(card).toContainText('Using a hint caps the level at 2 stars.');
+  expect((await savedGame(page, 'letters'))?.stars['0']).toBe(2);
+});
+
+/* ---------- Decision 19: the sticker a finished chapter earns is saved once ---------- */
+
+/** Finish the level on screen: four puzzles built with the letter keys. */
+async function finishLevel(page: Page) {
+  for (let n = 0; n < 4; n++) await buildAndGoOn(page, n);
+  await expect(levelCard(page).getByRole('heading')).toBeVisible();
+}
+
+const savedStickers = async (page: Page) => (await savedState(page)).players[0].stickers as Record<string, { earnedAt: number }>;
+
+test("finishing the first chapter saves Big A once, and leaves another game's due sticker for Home @phone-only", async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '5-6', games: { letters: { stars: starsUpTo(6) }, escape: { stars: starsUpTo(30) } } }]);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/7$/);
+  await finishLevel(page);
+  await expect(levelCard(page).getByRole('heading')).toHaveText('You finished Level 7');
+
+  const first = await savedStickers(page);
+  expect(Object.keys(first)).toEqual(['l1']);
+
+  // Home then gives the other game its stickers and leaves this one as it was.
+  await levelCard(page).getByRole('link', { name: 'Back to games' }).click();
+  await expect(page).toHaveURL(/#\/$/);
+  await expect.poll(async () => Object.keys(await savedStickers(page)).length).toBeGreaterThan(1);
+  expect((await savedStickers(page)).l1.earnedAt).toBe(first.l1.earnedAt);
+});
+
+test("the game's last level saves its chapter's sticker with any still due @phone-only", async ({ page }) => {
+  await open(page, '9-10', 23);
+  await finishLevel(page);
+  await expect(levelCard(page).getByRole('heading')).toHaveText('You finished every level!');
+  expect(Object.keys(await savedStickers(page)).sort()).toEqual(['l1', 'l2', 'l3', 'l4']);
+});
+
+test('a level that finishes no chapter saves no sticker @phone-only', async ({ page }) => {
+  await open(page, '5-6');
+  await finishLevel(page);
+  expect(await savedStickers(page)).toEqual({});
+});
+
+test('a child saved before stickers existed still finishes a chapter and gets Big A @phone-only', async ({ page }) => {
+  await seed(page, [{ id: 'leo', name: 'Leo', ageBand: '5-6', games: { letters: { stars: starsUpTo(6) } } }]);
+  await page.addInitScript((key) => {
+    if (sessionStorage.getItem('e2e-old-player')) return;
+    sessionStorage.setItem('e2e-old-player', '1');
+    const state = JSON.parse(localStorage.getItem(key)!);
+    delete state.players[0].stickers;
+    localStorage.setItem(key, JSON.stringify(state));
+  }, STORAGE_KEY);
+  await page.goto('/#/game/letters');
+  await expect(page).toHaveURL(/#\/game\/letters\/7$/);
+  await finishLevel(page);
+  expect(Object.keys(await savedStickers(page))).toEqual(['l1']);
+});
+
 /* ---------- Decision 20: no speaker when Voice is off ---------- */
 
 for (const [band, level, what] of [
@@ -151,6 +247,29 @@ for (const [band, level, what] of [
   });
 }
 
+for (const [width, height] of [
+  [375, 667],
+  [1194, 834],
+  [844, 390],
+] as const) {
+  test.describe(`Voice off at ${width}x${height}`, () => {
+    test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+
+    test('no speaker, and the title stays where it is with Voice on @phone-only', async ({ page }) => {
+      await open(page, '3-4', 0, { voice: false });
+      await expect(topBarButtons(page)).toHaveCount(0);
+      const off = (await title(page).boundingBox())!;
+      await editSavedInAnotherTab(page, (state) => {
+        (state as unknown as { settings: { voice: boolean } }).settings.voice = true;
+      });
+      await expect(page.getByRole('button', { name: 'Hear it again' })).toBeVisible();
+      const on = (await title(page).boundingBox())!;
+      expect(Math.abs(on.x + on.width / 2 - (off.x + off.width / 2))).toBeLessThanOrEqual(1);
+      expect(Math.abs(on.y - off.y)).toBeLessThanOrEqual(1);
+    });
+  });
+}
+
 test('Voice off: the stuck offer brings no speaker either', async ({ page }) => {
   await open(page, '5-6', 0, { voice: false });
   for (let i = 0; i < 3; i++) await lettersWrongTap(page);
@@ -172,6 +291,7 @@ async function speakerSays(page: Page, spoken: () => Promise<string[]>): Promise
 
 /** Finger taps across the help line: its middle and both ends of its cell. */
 async function tapAcrossHelpLine(page: Page): Promise<{ x: number; y: number }[]> {
+  await helpTap(page).scrollIntoViewIfNeeded();
   const cell = (await helpTap(page).boundingBox())!;
   const y = cell.y + cell.height / 2;
   return [
@@ -205,6 +325,8 @@ function helpLineCases() {
       const box = (await overlay.boundingBox())!;
       const line = (await help(page).boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(44);
+      const cell = (await page.locator('.lb-helprow').boundingBox())!;
+      expect(Math.abs(box.height - cell.height)).toBeLessThanOrEqual(1);
       expect(box.x).toBeLessThanOrEqual(line.x + 0.5);
       expect(box.x + box.width).toBeGreaterThanOrEqual(line.x + line.width - 0.5);
       expect(box.y).toBeLessThanOrEqual(line.y + 0.5);
@@ -263,11 +385,52 @@ function helpLineCases() {
     await expect.poll(async () => (await spoken()).slice(before)).toEqual([OFFER_LINE]);
   });
 
-  test('Voice off: the help line has no tap overlay', async ({ page }) => {
+  test('Voice off: the help line has no tap overlay, and it comes back with Voice', async ({ page }) => {
     await open(page, '5-6', 0, { voice: false });
     await expect(help(page)).toBeVisible();
     await expect(helpTap(page)).toHaveCount(0);
+    await editSavedInAnotherTab(page, (state) => {
+      (state as unknown as { settings: { voice: boolean } }).settings.voice = true;
+    });
+    await expect(helpTap(page)).toHaveCount(1);
   });
+
+  test('a finger tap or a mouse click on the line leaves the keyboard focus where it was', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await open(page, '5-6');
+    const first = tray(page).getByRole('button').first();
+    await first.focus();
+    const [mid] = await tapAcrossHelpLine(page);
+    await page.touchscreen.tap(mid.x, mid.y);
+    await expect.poll(async () => (await spoken()).length).toBe(1);
+    await expect(first).toBeFocused();
+    await page.mouse.click(mid.x, mid.y);
+    await expect.poll(async () => (await spoken()).length).toBe(2);
+    await expect(first).toBeFocused();
+  });
+
+  for (const [band, level, what] of [
+    ['7-8', 7, 'Big and small'],
+    ['5-6', 11, 'first sounds'],
+    ['9-10', 15, 'spelling'],
+  ] as const) {
+    test(`ages ${band} on Level ${level + 1} (${what}): a tap on the line says what the top bar speaker says`, async ({ page }) => {
+      const spoken = await recordSpeech(page);
+      await open(page, band, level);
+      expect(await spoken()).toEqual([]);
+      expect(await elementAt(page, await centre(hint(page, 3)))).toBe('Hint (3)');
+      const [mid] = await tapAcrossHelpLine(page);
+      await page.touchscreen.tap(mid.x, mid.y);
+      await expect.poll(async () => (await spoken()).length).toBe(1);
+      const [heard] = await spoken();
+      if (what === 'Big and small') expect(heard).toBe('Match each big letter with its small letter.');
+      if (what === 'first sounds') expect(heard).toMatch(/^(\w+)\. What letter does \1 start with\?$/);
+      if (what === 'spelling') expect(heard.toUpperCase()).toBe((await lettersAnswer(page)).join(''));
+      expect(await speakerSays(page, spoken)).toBe(heard);
+      await expect(hint(page, 3)).toBeVisible();
+      await expect(dots(page)).toHaveAttribute('aria-label', /^(Puzzle|Word) 1 of 4\. 0 /);
+    });
+  }
 }
 
 helpLineCases();
@@ -277,6 +440,10 @@ test.describe('help line on a 375x667 phone', () => {
 });
 test.describe('help line on a 1194x834 iPad in landscape', () => {
   test.use({ viewport: { width: 1194, height: 834 }, isMobile: true, hasTouch: true });
+  helpLineCases();
+});
+test.describe('help line on an 844x390 iPhone in landscape', () => {
+  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
   helpLineCases();
 });
 
@@ -312,6 +479,9 @@ async function watchDemo(page: Page) {
         }
       }
     }).observe(document.body, { childList: true, subtree: true });
+    // While a glide is held for measuring, its safety timer (glide, fade and 100 ms) does not take it away.
+    const later = window.setTimeout;
+    window.setTimeout = ((fn: TimerHandler, ms?: number, ...rest: unknown[]) => (w.__demo.hold && ms === 980 ? 0 : later(fn, ms, ...rest))) as typeof window.setTimeout;
     const animate = Element.prototype.animate;
     Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
       const a = animate.apply(this, args);
@@ -331,18 +501,26 @@ async function watchDemo(page: Page) {
         const d = (window as unknown as { __demo: { anims: Animation[] } }).__demo;
         const a = d.anims.at(-1)!;
         a.currentTime = t;
-        const r = document.querySelector('.lb-demo-glide')!.getBoundingClientRect();
+        const el = document.querySelector('.lb-demo-glide')!;
+        const screenRect = (window as unknown as { __screenRect?: (e: Element) => DOMRect }).__screenRect;
+        const r = screenRect ? screenRect(el) : el.getBoundingClientRect();
         return { x: r.x, y: r.y, width: r.width, height: r.height, opacity: Number(getComputedStyle(document.querySelector('.lb-demo-glide')!).opacity) };
       }, ms),
     finish: () => page.evaluate(() => (window as unknown as { __demo: { anims: Animation[] } }).__demo.anims.at(-1)!.finish()),
   };
 }
 
-/** The tray tiles' boxes, letter by letter. */
+/** The tray tiles' boxes, letter by letter, measured from the view so a scroll on a short screen is not a move. */
 const trayBoxes = (page: Page) =>
   tray(page)
     .getByRole('button')
-    .evaluateAll((els) => els.map((el) => { const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map((v) => Math.round(v * 10) / 10); }));
+    .evaluateAll((els) =>
+      els.map((el) => {
+        const v = el.closest('.lb-view')!.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        return [r.x - v.x, r.y - v.y, r.width, r.height].map((n) => Math.round(n * 10) / 10);
+      }),
+    );
 
 function demoCases() {
   test.describe('with motion on', () => {
@@ -426,6 +604,44 @@ function demoCases() {
       await page.mouse.up();
       expect((await demo.seen()).filter((s) => s.cls === 'glide')).toHaveLength(1);
     });
+
+    test('practice Level 1: a tap during the glide starts it again from the newly tapped letter', async ({ page }) => {
+      await open(page, '3-4');
+      const demo = await watchDemo(page);
+      const answer = await lettersAnswer(page);
+      await page.waitForTimeout(400);
+      await trayTile(page, answer[0]).tap();
+      await demo.hold(true);
+      await trayTile(page, answer[1]).tap();
+      await expect(page.locator('.lb-demo-glide')).toHaveCount(1);
+
+      const from = (await trayTile(page, answer[3]).boundingBox())!;
+      await trayTile(page, answer[3]).tap();
+      await expect.poll(async () => (await demo.seen()).length).toBe(2);
+      await expect(page.locator('.lb-demo-glide')).toHaveCount(1);
+      const start = await demo.at(0);
+      expect(near(start, from, 2), `start ${JSON.stringify(start)} vs tile ${JSON.stringify(from)}`).toBe(true);
+      const goal = (await place(page, 3).boundingBox())!;
+      const end = await demo.at(600);
+      expect(near(end, goal, 2), `end ${JSON.stringify(end)} vs place ${JSON.stringify(goal)}`).toBe(true);
+    });
+
+    test('practice Level 1: a second finger tapping a letter during a drag brings no demo', async ({ page }) => {
+      await open(page, '3-4');
+      const demo = await watchDemo(page);
+      const answer = await lettersAnswer(page);
+      await trayTile(page, answer[0]).tap();
+      const held = await centre(trayTile(page, answer[3]));
+      const other = await centre(trayTile(page, answer[1]));
+      await page.mouse.move(held.x, held.y);
+      await page.mouse.down();
+      await page.mouse.move(held.x + 4, held.y - 30, { steps: 3 });
+      await expect(trayTile(page, answer[3])).toHaveClass(/is-dragging/);
+      await page.touchscreen.tap(other.x, other.y);
+      await page.waitForTimeout(200);
+      expect(await demo.seen()).toEqual([]);
+      await page.mouse.up();
+    });
   });
 
   test('practice Level 1 with Reduce Motion: the second tap shows a still arrow to the place for 1.5 s', async ({ page }) => {
@@ -481,6 +697,56 @@ function demoCases() {
     expect(await trayBoxes(page)).toEqual(tiles);
   });
 
+  test('practice Level 1: each new puzzle starts over, so its first tap shows no demo and its second does', async ({ page }) => {
+    await open(page, '3-4');
+    const first = await lettersAnswer(page);
+    await trayTile(page, first[0]).tap();
+    await trayTile(page, first[1]).tap();
+    await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+    await buildAndGoOn(page, 0);
+    await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+
+    const second = await lettersAnswer(page);
+    await trayTile(page, second[0]).tap();
+    await expect(help(page)).toHaveText(DRAG_NOTE);
+    await page.waitForTimeout(150);
+    await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+    await trayTile(page, second[1]).tap();
+    await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+  });
+
+  test('practice Level 1 with Voice off: the taps say nothing, and the second still shows the demo', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await open(page, '3-4', 0, { voice: false });
+    const answer = await lettersAnswer(page);
+    await trayTile(page, answer[0]).tap();
+    await expect(help(page)).toHaveText(DRAG_NOTE);
+    await trayTile(page, answer[1]).tap();
+    await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+    expect(await spoken()).toEqual([]);
+  });
+
+  test('practice Level 1: Enter on a letter places it, says no drag note, and takes the demo away', async ({ page }) => {
+    const spoken = await recordSpeech(page);
+    await open(page, '3-4');
+    const answer = await lettersAnswer(page);
+
+    // The keyboard has no drag to learn: Enter alone brings no demo and no note.
+    await trayTile(page, answer[0]).focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await row(page))[0]).toBe(answer[0]);
+    await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+    expect(await spoken()).toEqual([letterName(answer[0])]);
+
+    await trayTile(page, answer[1]).tap();
+    await trayTile(page, answer[2]).tap();
+    await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+    await trayTile(page, answer[2]).focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(async () => (await row(page))[2]).toBe(answer[2]);
+    await expect(page.locator('.lb-demo-arrow')).toHaveCount(0);
+  });
+
   for (const [band, level] of [
     ['5-6', 0],
     ['3-4', 1],
@@ -510,4 +776,92 @@ test.describe('demo on a 375x667 phone', () => {
 test.describe('demo on a 1194x834 iPad in landscape', () => {
   test.use({ viewport: { width: 1194, height: 834 }, isMobile: true, hasTouch: true });
   demoCases();
+});
+test.describe('demo on an 844x390 iPhone in landscape', () => {
+  test.use({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  demoCases();
+});
+
+/**
+ * Some browsers report a box inside a CSS-zoomed frame in the frame's own px rather than the screen's. The page
+ * then reads every box that way, and the test still measures on the screen through __screenRect.
+ */
+async function reportBoxesInFramePx(page: Page) {
+  await page.addInitScript(() => {
+    const real = Element.prototype.getBoundingClientRect;
+    (window as unknown as { __screenRect: (e: Element) => DOMRect }).__screenRect = (e) => real.call(e);
+    Element.prototype.getBoundingClientRect = function () {
+      const r = real.call(this);
+      const frame = this.closest('.bw-screen__frame');
+      const z = frame ? Number(getComputedStyle(frame).zoom) || 1 : 1;
+      return new DOMRect(r.x / z, r.y / z, r.width / z, r.height / z);
+    };
+  });
+}
+
+test.describe('demo on the zoomed tablet frame when boxes are reported in frame px', () => {
+  test.use({ viewport: { width: 834, height: 1194 }, isMobile: true, hasTouch: true });
+
+  test.describe('with motion on', () => {
+    test.use({ reducedMotion: 'no-preference' });
+
+    test('the ghost starts on the tapped tile and ends on its own place @phone-only', async ({ page }) => {
+      await reportBoxesInFramePx(page);
+      await open(page, '3-4');
+      const demo = await watchDemo(page);
+      const answer = await lettersAnswer(page);
+      await page.waitForTimeout(400);
+      await trayTile(page, answer[0]).tap();
+      await demo.hold(true);
+      await page.waitForTimeout(500);
+      const from = (await trayTile(page, answer[2]).boundingBox())!;
+      await trayTile(page, answer[2]).tap();
+      await expect(page.locator('.lb-demo-glide')).toHaveCount(1);
+      const start = await demo.at(0);
+      expect(near(start, from, 2), `start ${JSON.stringify(start)} vs tile ${JSON.stringify(from)}`).toBe(true);
+      const goal = (await place(page, 2).boundingBox())!;
+      const end = await demo.at(600);
+      expect(near(end, goal, 2), `end ${JSON.stringify(end)} vs place ${JSON.stringify(goal)}`).toBe(true);
+    });
+  });
+
+  test('with Reduce Motion the arrow runs from the tapped tile up to its own place @phone-only', async ({ page }) => {
+    await reportBoxesInFramePx(page);
+    await open(page, '3-4');
+    const answer = await lettersAnswer(page);
+    await trayTile(page, answer[0]).tap();
+    await trayTile(page, answer[3]).tap();
+    await expect(page.locator('.lb-demo-arrow')).toBeVisible();
+    const line = await page.locator('.lb-demo-arrow path').evaluate((el) => {
+      const r = (window as unknown as { __screenRect: (e: Element) => DOMRect }).__screenRect(el);
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
+    });
+    const tile = (await trayTile(page, answer[3]).boundingBox())!;
+    const goal = (await place(page, 3).boundingBox())!;
+    expect(Math.abs(line.bottom - tile.y)).toBeLessThanOrEqual(16);
+    expect(Math.abs(line.top - (goal.y + goal.height))).toBeLessThanOrEqual(16);
+    expect(line.left).toBeLessThanOrEqual(tile.x + tile.width);
+    expect(line.right).toBeGreaterThanOrEqual(goal.x);
+  });
+});
+
+/** Every call the game makes on the voice, in order: 'cancel', or the line it was asked to say. */
+async function recordVoiceCalls(page: Page): Promise<() => Promise<string[]>> {
+  await page.addInitScript(() => {
+    const calls: string[] = [];
+    (window as unknown as { __calls: string[] }).__calls = calls;
+    const voice = { speak: (u: { text: string }) => calls.push(u.text), cancel: () => calls.push('cancel'), getVoices: () => [], addEventListener: () => {} };
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => voice });
+  });
+  return () => page.evaluate(() => (window as unknown as { __calls: string[] }).__calls.slice());
+}
+
+test("practice Level 1: the drag note waits for the letter's name, and the next tap starts both again @phone-only", async ({ page }) => {
+  const calls = await recordVoiceCalls(page);
+  await open(page, '3-4');
+  const answer = await lettersAnswer(page);
+  await trayTile(page, answer[0]).tap();
+  await expect.poll(calls).toEqual(['cancel', letterName(answer[0]), DRAG_NOTE]);
+  await trayTile(page, answer[1]).tap();
+  await expect.poll(calls).toEqual(['cancel', letterName(answer[0]), DRAG_NOTE, 'cancel', letterName(answer[1]), DRAG_NOTE]);
 });

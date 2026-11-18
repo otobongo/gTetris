@@ -43,7 +43,7 @@ import {
   swapLine,
 } from './copy';
 import { LEVELS, isSpelling, makePuzzles, type Prompt } from './levels';
-import { LEVEL_RULE, isPracticeLevel, lettersCapped, readyAfter } from './logic';
+import { LEVEL_RULE, countedResults, isPracticeLevel, lettersCapped, readyAfter } from './logic';
 import { meta } from './meta';
 import { innerWidth } from './sizing';
 import { FillView, MatchView, SoundView } from './Views';
@@ -273,6 +273,8 @@ function Play({ level, player }: { level: number; player: Player | null }) {
   };
 
   const rules: PuzzleRules = { set, seed: run.seed, hintsLeft: HINTS_PER_RUN, keepSolved: true, levelCount, stars: lettersLevelStars };
+  // A hint saved on a practice puzzle never caps the level (decision 22).
+  if (practice) rules.stars = (results) => lettersLevelStars(countedResults(true, results));
 
   const solved = () => {
     const result: PuzzleResult = { puzzle, count: slipsRef.current, usedHint: usedHintRef.current, outOfTime: false };
@@ -283,7 +285,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
       const results = [...run.solved, result];
       outcome =
         results.length >= 4
-          ? { kind: 'finished', level, stars: lettersLevelStars(results), results, next: level + 1 < levelCount ? level + 1 : null }
+          ? { kind: 'finished', level, stars: rules.stars(results), results, next: level + 1 < levelCount ? level + 1 : null }
           : { kind: 'saved', run: { ...run, queue: run.queue.filter((x) => x !== puzzle), solved: results } };
     }
     if (outcome.kind === 'saved') {
@@ -427,7 +429,7 @@ function Play({ level, player }: { level: number; player: Player | null }) {
         />
       );
     }
-    const totals = levelTotals(finish.results);
+    const totals = levelTotals(countedResults(practice, finish.results));
     return (
       <LevelCard
         title={levelTitle(level + 1)}

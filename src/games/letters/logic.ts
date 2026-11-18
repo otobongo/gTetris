@@ -34,6 +34,14 @@ export function lettersCapped(practice: boolean, hintOnScreen: boolean, solved: 
   return !practice && (hintOnScreen || solved.some((r) => !!r.usedHint));
 }
 
+/**
+ * The solved puzzles as the level's stars and card count them. The practice level's hint never caps (decision 22),
+ * so a hint saved on one of its puzzles, by a version from before that rule or at another age band, is left out.
+ */
+export function countedResults<T extends { usedHint: boolean }>(practice: boolean, solved: readonly T[]): readonly T[] {
+  return practice ? solved.map((r) => ({ ...r, usedHint: false })) : solved;
+}
+
 /* ---------- Fill (train, missing letters, spelling) ---------- */
 
 export interface FillState {
