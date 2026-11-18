@@ -44,21 +44,24 @@ export interface SwapCueSpot {
  * The swap cue (decision 23): a still double arrow, in the hint arrow's yellow, from the middle of one
  * tower to the middle of the other, just above the tallest stack it passes over. Drawing only: the help
  * line already says "Drag or tap two towers to swap them." It never moves and lets every touch through.
+ * Where the well is too short to keep it off the number faces (a phone held sideways) only the rings show.
  */
 export function SwapCue({ lo, hi, studs }: SwapCueSpot) {
   return (
-    <span
-      className="num-swapcue"
-      aria-hidden="true"
-      style={{ '--num-cue-lo': lo, '--num-cue-hi': hi, '--num-cue-studs': studs } as CSSProperties}
-    >
-      <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
-        <path d="M14 10.25V3L1.5 17 14 31v-7.25" />
-      </svg>
-      <span className="num-swapcue__shaft" />
-      <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
-        <path d="M0 10.25V3l12.5 14L0 31v-7.25" />
-      </svg>
+    <span className="num-swapcue-room">
+      <span
+        className="num-swapcue"
+        aria-hidden="true"
+        style={{ '--num-cue-lo': lo, '--num-cue-hi': hi, '--num-cue-studs': studs } as CSSProperties}
+      >
+        <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
+          <path d="M14 10.25V3L1.5 17 14 31v-7.25" />
+        </svg>
+        <span className="num-swapcue__shaft" />
+        <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
+          <path d="M0 10.25V3l12.5 14L0 31v-7.25" />
+        </svg>
+      </span>
     </span>
   );
 }

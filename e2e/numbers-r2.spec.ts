@@ -53,6 +53,7 @@ async function cueLayout(page: Page) {
       rings: towers.flatMap((t, i) => (t.querySelector('.num-stack.is-cued') ? [i] : [])),
       ringShadow: towers.map((t) => getComputedStyle(t.querySelector('.num-stack')!).boxShadow),
       faces: towers.map((t) => rect(t.querySelector('.num-face'))),
+      stacks: towers.map((t) => rect(t.querySelector('.num-stack'))),
       towers: towers.map((t) => rect(t)),
       well: rect(document.querySelector('.num-well')),
       wide: document.documentElement.scrollWidth > document.documentElement.clientWidth,
@@ -255,6 +256,83 @@ test('a tap swap takes the cue away and it does not come back on that puzzle', {
   await expect(cued(page)).toHaveCount(0);
   await page.waitForTimeout(400);
   await expect(cue(page)).toHaveCount(0);
+});
+
+/* ---------- The cue on short screens, and the ways a child can reach it ---------- */
+
+test('on a phone held sideways there is no room for the arrow: the two rings show alone and every number stays clear', { tag: '@phone-only' }, async ({ page }) => {
+  await openLevel(page, '3-4');
+  for (const size of [{ width: 844, height: 390 }, { width: 667, height: 375 }]) {
+    await page.setViewportSize(size);
+    await page.reload();
+    await expect(numbersTowers(page)).toHaveCount(6);
+    const label = `${size.width} x ${size.height}`;
+    const step = (await numbersNextSwap(page))!;
+    await expect(cue(page), label).toBeHidden();
+    expect((await cueLayout(page)).rings, label).toEqual([Math.min(...step), Math.max(...step)]);
+  }
+  // turned upright with nothing picked, the arrow is there
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectCueOnRow(page, 'upright again');
+});
+
+test('the arrow covers no number and no brick of any tower, on both phones and the iPad both ways', { tag: '@phone-only' }, async ({ page }) => {
+  await openLevel(page, '3-4');
+  for (const size of SIZES) {
+    await page.setViewportSize(size);
+    await page.reload();
+    await expect(cue(page)).toBeVisible();
+    const at = await cueLayout(page);
+    const label = `${size.width} x ${size.height}`;
+    at.faces.forEach((face, spot) => expect(overlaps(at.arrow!, face!), `${label}: face ${spot}`).toBe(false));
+    at.stacks.forEach((stack, spot) => expect(overlaps(at.arrow!, stack!), `${label}: stack ${spot}`).toBe(false));
+  }
+});
+
+test('a tap on the arrow reaches the tower under it', async ({ page }) => {
+  await openLevel(page, '3-4');
+  const step = (await numbersNextSwap(page))!;
+  const lo = Math.min(...step);
+  const at = await cueLayout(page);
+  await page.touchscreen.tap(centreX(at.towers[lo]!) + 12, at.arrow!.y + at.arrow!.height / 2);
+  await expect(numbersTower(page, lo)).toHaveAttribute('aria-pressed', 'true');
+  await expect(cue(page)).toHaveCount(0);
+});
+
+test('a keyboard pick takes the cue away; moving focus or hearing the help line does not', { tag: '@phone-only' }, async ({ page }) => {
+  await openLevel(page, '3-4');
+  await numbersTower(page, 0).focus();
+  await page.getByRole('button', { name: 'Hear the help line' }).click();
+  await expect(cue(page)).toHaveCount(1);
+  await expect(cued(page)).toHaveCount(2);
+  await expect(hint(page)).toHaveAccessibleName('Hint, 3 left');
+
+  await numbersTower(page, 0).focus();
+  await page.keyboard.press('Enter');
+  await expect(numbersTower(page, 0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(cue(page)).toHaveCount(0);
+  await page.keyboard.press('Enter');
+  await expect(numbersTower(page, 0)).toHaveAttribute('aria-pressed', 'false');
+  await expect(cue(page)).toHaveCount(0);
+  await expect(cued(page)).toHaveCount(0);
+});
+
+test('New puzzle from the still-child offer takes the cue away, and the new puzzle never shows it', { tag: '@phone-only' }, async ({ page }) => {
+  await page.clock.install();
+  await openLevel(page, '3-4');
+  await expect(cue(page)).toHaveCount(1);
+  // ages 3 to 4: the offer comes after 45 still seconds (run.ts STUCK)
+  await page.clock.runFor(46_000);
+  const offer = page.getByRole('button', { name: 'New puzzle' });
+  await expect(offer).toBeVisible();
+  await offer.click();
+  await expect(help(page)).toHaveText('Here is a different puzzle.');
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
+  await expect(cue(page)).toHaveCount(0);
+  await expect(cued(page)).toHaveCount(0);
+  await page.clock.runFor(2_000);
+  await expect(cue(page)).toHaveCount(0);
+  await expect(cued(page)).toHaveCount(0);
 });
 
 /* ---------- Decision 37: a resting palm does not block a drag (takeover) ---------- */

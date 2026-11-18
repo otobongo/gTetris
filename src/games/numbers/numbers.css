@@ -172,18 +172,28 @@
 /* Ages 3 to 4, Level 1 puzzle 1, until the first pick: a still double arrow in the hint arrow's yellow,
    34 px high, from the middle of one tower's column to the middle of the other's, 8 px above the tallest
    stack it passes over (each stack is 44 px plus 24 px a stud; see .num-stack). Where the well is too short
-   for that it sits at the well's top, still clear of the number faces at the base. It has no motion at
-   all, so Reduce Motion needs nothing more, and it lets every touch through to the towers. */
+   for that it sits at the well's top, still clear of the number faces at the base. Shorter still (a phone
+   held sideways) it would cross the numbers, so it is not drawn and the two rings show the swap alone. It
+   has no motion at all, so Reduce Motion needs nothing more, and it lets every touch through to the towers. */
+.num-swapcue-room {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  container-type: size;
+  pointer-events: none;
+}
 .num-swapcue {
   --num-col: calc((100% - 5 * var(--num-gap, 6px)) / 6);
   position: absolute;
-  z-index: 1;
   left: calc(var(--num-cue-lo, 0) * (var(--num-col) + var(--num-gap, 6px)) + var(--num-col) / 2);
   width: calc((var(--num-cue-hi, 1) - var(--num-cue-lo, 0)) * (var(--num-col) + var(--num-gap, 6px)));
   bottom: min(calc(44px + var(--num-cue-studs, 0) * 24px + var(--bw-sp-3)), calc(100% - 34px));
   height: 34px;
   display: flex;
-  pointer-events: none;
+}
+/* Room for a number face (44 px), the 8 px gap and the arrow (34 px). */
+@container (max-height: 85.9px) {
+  .num-swapcue { display: none; }
 }
 .num-swapcue__head { flex: none; }
 .num-swapcue path {
