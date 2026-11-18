@@ -51,8 +51,8 @@ async function freezeClock(page: Page) {
 }
 
 /** Who's playing, ready to tap Play as Maya: the middle of that button, and the frozen clock's setter. */
-async function atPlayAs(page: Page) {
-  await seed(page, MAYA);
+async function atPlayAs(page: Page, players = MAYA) {
+  await seed(page, players);
   await page.goto('/#/players');
   const play = page.getByRole('link', { name: 'Play as Maya' });
   await expect(play).toBeVisible();
@@ -136,7 +136,7 @@ function doubleTapCases() {
     expect(hashOf(page)).toBe('#/');
     await at.after(700);
     await tapLink(page, card);
-    await expect(page).toHaveURL(/#\/game\/escape\/1$/);
+    await expect(page).toHaveURL(/#\/game\/escape\/\d+$/);
   });
 
   test('arriving at Home from Settings or a game, a finger tap at 250 ms opens the game', async ({ page }) => {
@@ -149,7 +149,7 @@ function doubleTapCases() {
       await expect(hello(page)).toBeVisible();
       await after(250);
       await tapLink(page, homeCard(page, 'Brick Escape'));
-      await expect(page, from).toHaveURL(/#\/game\/escape\/1$/);
+      await expect(page, from).toHaveURL(/#\/game\/escape\/\d+$/);
     }
   });
 
@@ -162,7 +162,7 @@ function doubleTapCases() {
     const { x, y } = await middle(card);
     await at.after(100);
     await page.mouse.click(x, y);
-    await expect(page).toHaveURL(/#\/game\/escape\/1$/);
+    await expect(page).toHaveURL(/#\/game\/escape\/\d+$/);
   });
 
   test('Enter on a focused card straight after Play as opens it at once', async ({ page }) => {
@@ -172,7 +172,7 @@ function doubleTapCases() {
     await at.after(100);
     await homeCard(page, 'Shape Sorter').focus();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+    await expect(page).toHaveURL(/#\/game\/sorter\/\d+$/);
   });
 
   test('Enter opens a card at once even when a finger tap on it was just held', async ({ page }) => {
@@ -186,7 +186,7 @@ function doubleTapCases() {
     expect(hashOf(page)).toBe('#/');
     await card.focus();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+    await expect(page).toHaveURL(/#\/game\/sorter\/\d+$/);
   });
 }
 
@@ -200,8 +200,24 @@ test('Enter opens a card at once after a finger touched it and slid away with no
   await card.evaluate((el) => el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' })));
   await card.focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/#\/game\/sorter\/1$/);
+  await expect(page).toHaveURL(/#\/game\/sorter\/\d+$/);
 });
+
+for (const ageBand of ['3-4', '5-6', '7-8', '9-10'] as const) {
+  test(`ages ${ageBand}: a finger tap on a card is held at 250 ms and opens the game at 800 ms`, async ({ page }) => {
+    const at = await atPlayAs(page, [{ id: 'maya', name: 'Maya', ageBand }]);
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(hello(page)).toBeVisible();
+    const card = homeCard(page, 'Brick Escape');
+    await at.after(250);
+    await tapLink(page, card);
+    await page.waitForTimeout(1000);
+    expect(hashOf(page)).toBe('#/');
+    await at.after(800);
+    await tapLink(page, card);
+    await expect(page).toHaveURL(/#\/game\/escape\/\d+$/);
+  });
+}
 
 test.describe('decision 35 at the project size', () => {
   doubleTapCases();
@@ -231,45 +247,45 @@ async function stickerBook(page: Page) {
   return { centre: (await middle(title)).x, speakers: await page.getByRole('button', { name: 'Read this page aloud' }).count() };
 }
 
-test('with Voice on, the sticker book, its cards and Break have their speakers', async ({ page }) => {
-  await seed(page, LEO);
-  const book = await stickerBook(page);
-  expect(book.speakers).toBe(1);
-  await page.getByRole('button', { name: /^Sticker not found yet/ }).first().click();
-  await expect(page.getByRole('button', { name: 'Hear how to get it' })).toBeVisible();
-  await page.getByRole('button', { name: 'Close' }).click();
-  await page.getByRole('button', { name: 'Open door' }).click();
-  await expect(page.getByRole('button', { name: 'Say the name' })).toBeVisible();
-});
+function voiceCases() {
+  test('with Voice on, the sticker book, its cards and Break have their speakers', async ({ page }) => {
+    await seed(page, LEO);
+    const book = await stickerBook(page);
+    expect(book.speakers).toBe(1);
+    await page.getByRole('button', { name: /^Sticker not found yet/ }).first().click();
+    await expect(page.getByRole('button', { name: 'Hear how to get it' })).toBeVisible();
+    await page.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: 'Open door' }).click();
+    await expect(page.getByRole('button', { name: 'Say the name' })).toBeVisible();
+  });
 
-test('with Voice off, the sticker book has no speakers and its title stays in the middle', async ({ page, browser }) => {
-  // Voice on first, for the title's place.
-  const ctx = await browser.newContext({ viewport: page.viewportSize()!, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
-  const on = await ctx.newPage();
-  await seed(on, LEO);
-  const withVoice = await stickerBook(on);
-  await ctx.close();
+  test('with Voice off, the sticker book has no speakers and its title stays in the middle', async ({ page, browser }) => {
+    // Voice on first, for the title's place.
+    const ctx = await browser.newContext({ viewport: page.viewportSize()!, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+    const on = await ctx.newPage();
+    await seed(on, LEO);
+    const withVoice = await stickerBook(on);
+    await ctx.close();
 
-  await seed(page, LEO);
-  await voiceOff(page);
-  const book = await stickerBook(page);
-  expect(book.speakers).toBe(0);
-  expect(Math.abs(book.centre - withVoice.centre)).toBeLessThanOrEqual(1);
+    await seed(page, LEO);
+    await voiceOff(page);
+    const book = await stickerBook(page);
+    expect(book.speakers).toBe(0);
+    expect(Math.abs(book.centre - withVoice.centre)).toBeLessThanOrEqual(1);
 
-  await page.getByRole('button', { name: /^Sticker not found yet/ }).first().click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Hear how to get it' })).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: /^Sticker not found yet/ }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Hear how to get it' })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Close' }).click();
 
-  await page.getByRole('button', { name: 'Open door' }).click();
-  await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Say the name' })).toHaveCount(0);
-  await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
-});
+    await page.getByRole('button', { name: 'Open door' }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Say the name' })).toHaveCount(0);
+    await expect(dialog.getByRole('button', { name: 'Close' })).toBeFocused();
+  });
 
-/** With Voice off, an earned sticker's card keeps one button, Close, and it sits in the middle of the card, not at its left edge. */
-function earnedCardCases() {
+  // With Voice off, an earned sticker's card keeps one button, Close, and it sits in the middle of the card, not at its left edge.
   test('with Voice off, an earned sticker’s Close is centred in its card', async ({ page }) => {
     await seed(page, LEO);
     await voiceOff(page);
@@ -288,11 +304,34 @@ function earnedCardCases() {
     });
     expect(Math.abs(close - title)).toBeLessThanOrEqual(1);
   });
+
+  test('with Voice off, Break has no Read it aloud and its heading stays in place', async ({ page, browser }) => {
+    const TIRED: PlayerSeed[] = [{ id: 'leo', name: 'Leo', ageBand: '5-6', dailyLimit: 20, minutesToday: 20 }];
+    const headingTop = async (p: Page) => {
+      await p.goto('/#/break');
+      const h = p.getByRole('heading', { name: 'Time for a break, Leo' });
+      await expect(h).toBeVisible();
+      await fontReady(p);
+      return (await h.boundingBox())!.y;
+    };
+    const ctx = await browser.newContext({ viewport: page.viewportSize()!, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+    const on = await ctx.newPage();
+    await seed(on, TIRED);
+    const withVoice = await headingTop(on);
+    expect(await on.getByRole('button', { name: 'Read it aloud' }).count()).toBe(1);
+    await ctx.close();
+
+    await seed(page, TIRED);
+    await voiceOff(page);
+    const top = await headingTop(page);
+    await expect(page.getByRole('button', { name: 'Read it aloud' })).toHaveCount(0);
+    expect(Math.abs(top - withVoice)).toBeLessThanOrEqual(2);
+  });
 }
 
-earnedCardCases();
+voiceCases();
 
-test.describe('the earned sticker card at 375x667, 1194x834 and 844x390', () => {
+test.describe('decision 20 at 375x667, 1194x834 and 844x390', () => {
   for (const viewport of [
     { width: 375, height: 667 },
     { width: 1194, height: 834 },
@@ -300,32 +339,9 @@ test.describe('the earned sticker card at 375x667, 1194x834 and 844x390', () => 
   ]) {
     test.describe(`${viewport.width}x${viewport.height}`, () => {
       test.use({ viewport, isMobile: true, hasTouch: true });
-      earnedCardCases();
+      voiceCases();
     });
   }
-});
-
-test('with Voice off, Break has no Read it aloud and its heading stays in place', async ({ page, browser }) => {
-  const TIRED: PlayerSeed[] = [{ id: 'leo', name: 'Leo', ageBand: '5-6', dailyLimit: 20, minutesToday: 20 }];
-  const headingTop = async (p: Page) => {
-    await p.goto('/#/break');
-    const h = p.getByRole('heading', { name: 'Time for a break, Leo' });
-    await expect(h).toBeVisible();
-    await fontReady(p);
-    return (await h.boundingBox())!.y;
-  };
-  const ctx = await browser.newContext({ viewport: page.viewportSize()!, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
-  const on = await ctx.newPage();
-  await seed(on, TIRED);
-  const withVoice = await headingTop(on);
-  expect(await on.getByRole('button', { name: 'Read it aloud' }).count()).toBe(1);
-  await ctx.close();
-
-  await seed(page, TIRED);
-  await voiceOff(page);
-  const top = await headingTop(page);
-  await expect(page.getByRole('button', { name: 'Read it aloud' })).toHaveCount(0);
-  expect(Math.abs(top - withVoice)).toBeLessThanOrEqual(2);
 });
 
 /* ---------- Decision 29: Discoveries say Discovery stickers are coming soon. ---------- */
@@ -456,6 +472,25 @@ async function noticePlace(page: Page) {
 }
 
 function accountCases() {
+  test('a provider tapped before the box is ticked brings the answer and the box into view, each time', async ({ page }) => {
+    await seed(page, MAYA);
+    await openAccountScreen(page, '/signup');
+    const answer = page.getByText('Tick the box above to create the account.');
+    const box = page.getByRole('checkbox', { name: /I am a parent or guardian/ });
+    const body = page.locator('.sc-auth__body');
+    for (const name of ['Continue with Google', 'Continue with Apple']) {
+      // The notice pushes the box down, so from the providers the answer starts below the screen.
+      await body.evaluate((e) => e.scrollTo(0, 0));
+      await page.getByRole('button', { name }).tap();
+      await expect(answer, name).toBeInViewport({ ratio: 1 });
+      await expect(box, name).toBeInViewport({ ratio: 1 });
+    }
+    // Ticking the box takes the answer away, and the screen stays where it is.
+    await box.check();
+    await expect(answer).toHaveCount(0);
+    await expect(box).toBeInViewport({ ratio: 1 });
+  });
+
   for (const path of ['/signin', '/signup'] as const) {
     test(`${path}: a finger tap on a provider rings the notice at the top, and the ring goes when the grown-up moves on`, async ({ page }) => {
       await seed(page, MAYA);

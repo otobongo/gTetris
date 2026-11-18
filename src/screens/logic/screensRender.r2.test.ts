@@ -94,6 +94,30 @@ describe('decision 20: speakers are hidden while Voice is off', () => {
   });
 });
 
+describe('decision 20 at every age band', () => {
+  for (const ageBand of ['3-4', '5-6', '7-8', '9-10'] as const) {
+    const young = ageBand === '3-4' || ageBand === '5-6';
+
+    it(`ages ${ageBand}: the book's speaker follows Voice, and only ages 3 to 6 have one`, () => {
+      progressStore.setActivePlayer(progressStore.addPlayer({ name: 'Ada', ageBand, color: 'blue' }).id);
+      expect(decode(renderAt('#/stickers')).includes('Read this page aloud')).toBe(young);
+      progressStore.setSetting('voice', false);
+      expect(decode(renderAt('#/stickers'))).not.toContain('Read this page aloud');
+    });
+
+    it(`ages ${ageBand}: Break reads aloud only with Voice on`, () => {
+      const ada = progressStore.addPlayer({ name: 'Ada', ageBand, color: 'blue' });
+      progressStore.setActivePlayer(ada.id);
+      progressStore.addMinutesPlayed(ada.dailyLimit);
+      expect(decode(renderAt('#/break'))).toContain('aria-label="Read it aloud"');
+      progressStore.setSetting('voice', false);
+      const off = decode(renderAt('#/break'));
+      expect(off).toContain('Time for a break, Ada');
+      expect(off).not.toContain('Read it aloud');
+    });
+  }
+});
+
 describe('decision 29: Discoveries say Discovery stickers are coming soon.', () => {
   it('gives every discovery sticker the coming-soon line and no button to go anywhere', () => {
     for (const st of STICKERS.filter((s) => s.page === 'discoveries')) {

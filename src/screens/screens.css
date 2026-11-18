@@ -638,6 +638,8 @@ button.sc-tile { cursor: pointer; }
 .sc-auth__top { display: grid; grid-template-columns: var(--bw-target-kid) minmax(0, 1fr) var(--bw-target-kid); align-items: center; gap: var(--bw-sp-4); flex-shrink: 0; }
 .sc-auth__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--bw-sp-5); padding-bottom: var(--bw-sp-2); margin: 0 -4px; padding-inline: 4px; }
 .sc-auth__body > * { flex-shrink: 0; }
+/* Scrolled to from a provider above it: keep a little air under the line at the screen's edge. */
+.sc-auth__body > .sc-error { scroll-margin-block: var(--bw-sp-5); }
 .sc-auth__head { text-align: center; }
 .sc-auth__head h1, .sc-auth__h1 { margin: 0; font-size: var(--bw-fs-screen); font-weight: 800; line-height: var(--bw-lh-screen); }
 .sc-auth__h1--big { font-size: 30px; margin-top: var(--bw-sp-4); }
