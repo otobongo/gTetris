@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { createProgressStore, findPlayer, type KeyValueStorage } from '../../shared/progress';
 import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
+import { getGame } from '../registry';
 import { meta as mixerMeta } from '../mixer/meta';
 import { meta as sorterMeta } from '../sorter/meta';
 import { claimLevelSticker } from './earnedSticker';
@@ -71,6 +72,15 @@ describe('claimLevelSticker (decision 19)', () => {
     store.recordStars('sorter', 1, 3, id);
     store.recordStars('sorter', 2, 0, id);
     expect(claimLevelSticker(store, id, 'sorter')).toBeUndefined();
+  });
+
+  it.each(['mixer', 'sorter', 'pattern', 'numbers', 'builder', 'math'] as const)('%s: its first chapter gives its own first sticker', (game) => {
+    const { store, id } = makeStore();
+    const ch = getGame(game)!.meta!.chapters[0];
+    for (let lv = ch.start; lv < ch.start + ch.count; lv++) store.recordStars(game, lv, 2, id);
+    const first = STICKERS.find((s) => s.game === game && s.chapter === 0)!;
+    expect(claimLevelSticker(store, id, game)).toEqual({ name: first.name, cells: stickerCells(first) });
+    expect(stickersOf(store, id)).toEqual([first.id]);
   });
 
   it('an unknown player gets nothing and nothing is awarded', () => {

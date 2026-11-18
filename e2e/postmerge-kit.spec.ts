@@ -11,7 +11,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import { STICKERS } from '../src/screens/logic/stickers';
 import { colorWord } from '../src/games/mixer/colors';
+import { LEVEL_COUNT as SORTER_LEVELS } from '../src/games/sorter/puzzles';
 import {
+  STORAGE_KEY,
   dots,
   levelCard,
   mixerOnScreen,
@@ -27,6 +29,13 @@ import {
 } from './app';
 
 const offerButton = (page: Page) => page.getByRole('button', { name: 'New puzzle' });
+
+/** The sizes beyond the phone and tablet projects: the small phone, the iPad on its side and the iPhone on its side. */
+const OTHER_SIZES = [
+  { width: 375, height: 667 },
+  { width: 1194, height: 834 },
+  { width: 844, height: 390 },
+];
 
 /** The app's own font has loaded (a fallback would measure differently). The app ships 600, 700 and 800 only; the h1 is 800. */
 async function realFont(page: Page) {
@@ -152,6 +161,15 @@ test.describe('decision 8: one chime and a 2 s ring on the offer at ages 3 to 4'
       await checkCue(page, GAMES[0]);
     });
   });
+
+  for (const { width, height } of OTHER_SIZES) {
+    test.describe(`at ${width} x ${height}`, () => {
+      test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+      test('pattern Level 1 at 3 to 4: the same ring, gone 2 s later', { tag: '@phone-only' }, async ({ page }) => {
+        await checkCue(page, GAMES[0]);
+      });
+    });
+  }
 });
 
 /* ---------- Decision 19: the new sticker on the level card ---------- */
@@ -210,6 +228,41 @@ test.describe('decision 19: the new sticker on the kit level card', () => {
       await checkStickerCard(page);
     });
   });
+
+  for (const { width, height } of OTHER_SIZES.slice(1)) {
+    test.describe(`at ${width} x ${height}`, () => {
+      test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+      test('Play Level 4 stays on screen and Back to games can be reached', { tag: '@phone-only' }, async ({ page }) => {
+        await checkStickerCard(page);
+        const back = levelCard(page).getByRole('link', { name: 'Back to games' });
+        await back.scrollIntoViewIfNeeded();
+        const box = (await back.boundingBox())!;
+        expect(box.y).toBeGreaterThanOrEqual(0);
+        expect(box.y + box.height).toBeLessThanOrEqual(height);
+      });
+    });
+  }
+
+  test('the last level of the game: the game-done card shows the last chapter’s sticker', { tag: '@phone-only' }, async ({ page }) => {
+    const stars = Object.fromEntries(Array.from({ length: SORTER_LEVELS - 1 }, (_, i) => [i, 3]));
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { sorter: { stars } } }]);
+    // the first two chapters were awarded on Home long ago
+    await page.addInitScript((key) => {
+      const state = JSON.parse(localStorage.getItem(key) ?? 'null');
+      if (!state || state.players[0].stickers.s1) return;
+      state.players[0].stickers = { s1: { earnedAt: 1, seen: true }, s2: { earnedAt: 1, seen: true } };
+      localStorage.setItem(key, JSON.stringify(state));
+    }, STORAGE_KEY);
+    await page.goto(`/#/game/sorter/${SORTER_LEVELS}`);
+    await realFont(page);
+    for (let n = 0; n < 4; n++) {
+      await sortShapes(page, 'tap');
+      if (n < 3) await page.getByRole('button', { name: 'Next puzzle' }).click();
+    }
+    const card = levelCard(page);
+    await expect(card.locator('.bw-levelcard__sticker')).toContainText('New sticker: Diamond.');
+    await expect(card.getByRole('link', { name: 'Back to games' })).toBeVisible();
+  });
 });
 
 /* ---------- Decision 25: the capped-star mark beside the dots ---------- */
@@ -233,3 +286,43 @@ test('Number Line-up Level 1: after Hint the capped-star mark sits beside the do
   expect(c.x).toBeGreaterThan(d.x + d.width);
   expect(Math.abs(c.y + c.height / 2 - (d.y + d.height / 2))).toBeLessThanOrEqual(2);
 });
+
+for (const band of ['3-4', '5-6', '9-10'] as const) {
+  test(`Number Line-up Level 1 at ${band}: the mark comes with the first hint and the dots keep their name`, { tag: '@phone-only' }, async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: band }]);
+    await page.goto('/#/game/numbers/1');
+    await realFont(page);
+    const [a, b] = await numbersBackwardSwap(page);
+    await swapTowers(page, a, b);
+    const label = await dots(page).getAttribute('aria-label');
+    await expect(page.locator('.bw-dots__cap')).toHaveCount(0);
+    await page.getByRole('button', { name: /^Hint, \d left$/ }).click();
+    await expect(page.locator('.bw-dots__cap')).toHaveAccessibleName('Hint used. Up to 2 stars.');
+    await expect(dots(page)).toHaveAttribute('aria-label', label!);
+  });
+}
+
+for (const { width, height } of [...OTHER_SIZES, { width: 834, height: 1194 }]) {
+  test.describe(`decision 25 at ${width} x ${height}`, () => {
+    test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+
+    test('the mark sits beside the dots, clear of the speaker, and the dots stay centred', { tag: '@phone-only' }, async ({ page }) => {
+      await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '7-8' }]);
+      await page.goto('/#/game/numbers/1');
+      await realFont(page);
+      const before = (await dots(page).boundingBox())!;
+      const [a, b] = await numbersBackwardSwap(page);
+      await swapTowers(page, a, b);
+      await page.getByRole('button', { name: /^Hint, \d left$/ }).click();
+      const cap = page.locator('.bw-dots__cap');
+      await expect(cap).toBeVisible();
+      const d = (await dots(page).boundingBox())!;
+      const c = (await cap.boundingBox())!;
+      const speaker = (await page.getByRole('button', { name: /^Hear the / }).boundingBox())!;
+      expect(Math.abs(d.x + d.width / 2 - (before.x + before.width / 2))).toBeLessThanOrEqual(1);
+      expect(c.x).toBeGreaterThan(d.x + d.width);
+      expect(c.x + c.width).toBeLessThan(speaker.x);
+      expect(Math.abs(c.y + c.height / 2 - (d.y + d.height / 2))).toBeLessThanOrEqual(2);
+    });
+  });
+}

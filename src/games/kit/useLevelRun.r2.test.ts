@@ -8,7 +8,7 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createProgressStore, findPlayer, type KeyValueStorage, type ProgressStore } from '../../shared/progress';
+import { createProgressStore, findPlayer, STORAGE_KEY, type KeyValueStorage, type ProgressStore } from '../../shared/progress';
 import { LEVEL_CARD_DELAY_MS } from '../../shared/ui/LevelCard';
 import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
 import { meta as sorterMeta } from '../sorter/meta';
@@ -152,6 +152,53 @@ describe('the new sticker on the level card (decision 19)', () => {
     finishLevel(h);
     expect(h.current.card).not.toBeNull();
     expect(Reflect.get(h.current.card!, 'sticker')).toBeUndefined();
+  });
+});
+
+describe('the sticker waits for the level to finish (review)', () => {
+  it('a chapter already due is not awarded by the first three solves, only by the fourth, and then shows on the card', () => {
+    const { store, id } = makeStore();
+    for (let lv = 0; lv < 3; lv++) store.recordStars('sorter', lv, 3, id);
+    const h = play(SORTER, 2, store);
+    for (let i = 0; i < 3; i++) {
+      tap(() => h.current.solve());
+      tap(() => h.current.next());
+      expect(Object.keys(findPlayer(store.getState(), id)!.stickers)).toEqual([]);
+    }
+    tap(() => h.current.solve());
+    wait(LEVEL_CARD_DELAY_MS);
+    expect(Object.keys(findPlayer(store.getState(), id)!.stickers)).toEqual(['s1']);
+    expect(h.current.card).toMatchObject({ sticker: sticker('s1') });
+  });
+});
+
+describe('saved data from before round 2 (review)', () => {
+  /** A store that opens on `saved`, as the app does on a device with an older record. */
+  const storeOn = (saved: unknown) => {
+    const data = new Map([[STORAGE_KEY, JSON.stringify(saved)]]);
+    const storage: KeyValueStorage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) };
+    return createProgressStore({ storage, now: () => NOW, newId: () => 'new-id', events: null });
+  };
+
+  it('a v2 record with no sticker list: finishing the chapter shows Star and saves it', () => {
+    const games = { sorter: { unlocked: 2, stars: { 0: 3, 1: 2 }, best: {} } };
+    const store = storeOn({ version: 2, players: [{ id: 'old', name: 'Maya', ageBand: '5-6', color: 'blue', games }], activePlayerId: 'old' });
+    const h = play(SORTER, 2, store);
+    finishLevel(h);
+    expect(h.current.card).toMatchObject({ title: levelDoneTitle(3), sticker: sticker('s1') });
+    expect(Object.keys(findPlayer(store.getState(), 'old')!.stickers)).toEqual(['s1']);
+  });
+
+  it.each([
+    [true, 'a solved puzzle that used a hint shows the mark from the start'],
+    [false, 'solved puzzles with no hint show none'],
+  ])('a saved Number Line-up run, usedHint %s: %s', (usedHint) => {
+    const run = { set: numbersSet('5-6'), seed: 31, queue: [1, 2, 3, 4, 5], solved: [{ puzzle: 0, count: 0, usedHint, outOfTime: false }], hintsLeft: 2, updatedAt: NOW };
+    const games = { numbers: { unlocked: 0, stars: {}, best: {}, runs: { 0: run } } };
+    const store = storeOn({ version: 3, players: [{ id: 'old', name: 'Maya', ageBand: '5-6', color: 'blue', games }], activePlayerId: 'old' });
+    const h = play(NUMBERS, 0, store);
+    expect(h.current.puzzleNo).toBe(1);
+    expect(h.current.hintCapped).toBe(usedHint);
   });
 });
 

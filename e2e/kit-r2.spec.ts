@@ -81,6 +81,31 @@ test.describe('decision 20: no speaker while Voice is off', () => {
   });
 });
 
+/* The other sizes the games ship at: the small phone, the iPad on its side and the iPhone on its side. */
+for (const { width, height } of [
+  { width: 375, height: 667 },
+  { width: 1194, height: 834 },
+  { width: 844, height: 390 },
+]) {
+  test.describe(`decision 20 at ${width} x ${height}`, () => {
+    test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+
+    test('Voice off: no kit game shows a speaker, the title stays centred and the page never scrolls sideways', { tag: '@phone-only' }, async ({ page }) => {
+      await seedVoiceOff(page);
+      for (const id of KIT_GAMES) {
+        await page.goto(`/#/game/${id}/1`);
+        await expect(page.getByRole('heading', { level: 1, name: 'Level 1' })).toBeVisible();
+        await realFont(page);
+        await expect(speakers(page), id).toHaveCount(0);
+        const { title, bar } = await titleCentre(page);
+        expect(Math.abs(title - bar), id).toBeLessThanOrEqual(1);
+        const sideways = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+        expect(sideways, id).toBeLessThanOrEqual(0);
+      }
+    });
+  });
+}
+
 test.describe('decision 38: a wrong choice fades over 150 ms under Reduce Motion', () => {
   test('Pattern Train: the wrong car’s transition is 0.15 s and moves nothing', async ({ page }) => {
     await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);

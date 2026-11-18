@@ -17,6 +17,7 @@ import {
   activePlayer,
   findPlayer,
   progressStore,
+  PUZZLES_PER_LEVEL,
   runOf,
   totalStars,
   type ProgressStore,
@@ -37,7 +38,7 @@ import {
   playLabel,
   slipFact,
 } from './copy';
-import { clearDraft, draftKey, loadDraft, saveDraft, sessionDrafts, type DraftStorage } from './draft';
+import { clearDraft, draftKey, loadDraft, saveDraft, sessionDrafts, type DraftPlace, type DraftStorage } from './draft';
 import { claimLevelSticker, type LevelSticker } from './earnedSticker';
 import {
   bandInit,
@@ -124,8 +125,8 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
 
     // The session draft (decision 13): only for a keepDraft game, and only for a saved player.
     const drafts = game.keepDraft === true ? (options.drafts !== undefined ? options.drafts : sessionDrafts()) : null;
-    const draftOf = (s: LevelRunState): string | null =>
-      drafts && hasPlayer() ? draftKey({ playerId: playerId(), game: game.id, level, set: s.run.set, seed: s.run.seed, puzzleNo: s.puzzleNo }) : null;
+    const placeOf = (s: LevelRunState): DraftPlace => ({ playerId: playerId(), game: game.id, level, set: s.run.set, seed: s.run.seed, puzzleNo: s.puzzleNo });
+    const draftOf = (s: LevelRunState): string | null => (drafts && hasPlayer() ? draftKey(placeOf(s)) : null);
 
     /** A band changed in Settings (or another tab) since the puzzle started: it applies at this boundary (D2). */
     const bandChange = (): BandChange | undefined => {
@@ -156,11 +157,14 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         const before = drafts ? runOf(findPlayer(store.getState(), pid.current), game.id, level) : null;
         dispatch({ type: 'stored', run: store.startRun(game.id, level, runInit(s.cfg, s.band, s.run.seed), pid.current) });
         // The puzzle the stored run put on screen may have a kept draft: its slips come back before the first input.
-        // A run that only starts now (none was saved, as after a progress reset) has no draft: one under its key is
-        // left from the old run, so it goes.
+        // A run that only starts now (none was saved, as after a progress reset) has no drafts: any kept for this
+        // level's puzzles are left from the old run, so they all go, or a later puzzle would bring back old slips.
         const key = draftOf(ref.current);
         if (!key) return;
-        if (!before) return clearDraft(drafts, key);
+        if (!before) {
+          for (let puzzleNo = 0; puzzleNo < PUZZLES_PER_LEVEL; puzzleNo++) clearDraft(drafts, draftKey({ ...placeOf(ref.current), puzzleNo }));
+          return;
+        }
         const kept = loadDraft(drafts, key);
         if (kept) dispatch({ type: 'restore', slips: kept.slips, wrongKeys: kept.wrongKeys });
       },

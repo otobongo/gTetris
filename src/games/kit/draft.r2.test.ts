@@ -10,7 +10,7 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createProgressStore, findPlayer, runOf, type KeyValueStorage, type ProgressStore } from '../../shared/progress';
+import { createProgressStore, findPlayer, runOf, STORAGE_KEY, type KeyValueStorage, type ProgressStore } from '../../shared/progress';
 import type { GameMeta } from '../meta';
 import { builderSet, mixerSet } from '../run';
 import { clearDraft, draftKey, loadDraft, saveDraft, type DraftStorage } from './draft';
@@ -394,6 +394,117 @@ describe('useLevelRun with keepDraft: slips survive leaving the puzzle', () => {
     const b = play(BUILDER, 0, store);
     expect(() => tap(() => b.current.slip('b'))).not.toThrow();
     expect(b.current.phase).toBe('play');
+  });
+});
+
+/* ---------- Review: the edges of the draft ---------- */
+
+describe('draft edges found in review', () => {
+  it('loadDraft counts a repeated key once', () => {
+    const { storage } = fakeStorage({ k: '{"v":1,"slips":2,"wrongKeys":["a","a"]}' });
+    expect(loadDraft(storage, 'k')).toEqual({ slips: 2, wrongKeys: ['a'] });
+  });
+
+  it('restore does nothing on a puzzle that already has a slip with no key', () => {
+    const open = initLevelRun({ game: BUILDER, level: 0, band: '5-6', stored: null, now: NOW });
+    const slipped = levelRunReducer(open, { type: 'slip' });
+    expect(slipped.wrongKeys).toEqual([]);
+    expect(levelRunReducer(slipped, { type: 'restore', slips: 3, wrongKeys: ['a'] })).toBe(slipped);
+  });
+
+  it('restore counts each key once and never gives fewer slips than keys', () => {
+    const open = initLevelRun({ game: BUILDER, level: 0, band: '5-6', stored: null, now: NOW });
+    const twice = levelRunReducer(open, { type: 'restore', slips: 1, wrongKeys: ['a', 'a'] });
+    expect(twice).toMatchObject({ slips: 1, wrongKeys: ['a'] });
+    const short = levelRunReducer(open, { type: 'restore', slips: 1, wrongKeys: ['a', 'b'] });
+    expect(short).toMatchObject({ slips: 2, wrongKeys: ['a', 'b'] });
+  });
+
+  it('a repeated wrong key changes nothing kept, so nothing is written again', () => {
+    const { store, ids } = makeStore();
+    const { storage, calls } = fakeStorage();
+    const h = play(BUILDER, 0, store, { drafts: storage });
+    const key = keyOn(ids[0], 0, h.current.puzzleNo);
+    tap(() => h.current.slip('a'));
+    tap(() => h.current.slip('a'));
+    tap(() => h.current.slip('a'));
+    expect(calls.filter((c) => c === `set ${key}`)).toHaveLength(1);
+  });
+
+  it('a swap the daily limit stops keeps the slips: the puzzle stays, so they still count', () => {
+    const { store, ids } = makeStore();
+    const { storage, data } = fakeStorage();
+    let limit = false;
+    const h = play(BUILDER, 0, store, { drafts: storage, breakBefore: () => limit });
+    const was = h.current.puzzleNo;
+    const key = keyOn(ids[0], 0, was);
+    tap(() => h.current.slip('a'));
+    tap(() => h.current.slip('b'));
+    tap(() => h.current.slip('c'));
+    expect(h.current.offer).toBe(true);
+    limit = true;
+    tap(() => h.current.swap());
+    expect(h.current.puzzleNo).toBe(was);
+    expect(data.get(key)).toBe(value(3, ['a', 'b', 'c']));
+    h.unmount();
+
+    limit = false;
+    const again = play(BUILDER, 0, store, { drafts: storage, breakBefore: () => limit });
+    tap(() => again.current.solve());
+    expect(runOf(findPlayer(store.getState(), ids[0]), 'builder', 0)!.solved.at(-1)).toMatchObject({ puzzle: was, count: 3 });
+  });
+
+  it('a player removed mid-level keeps no draft and nothing throws', () => {
+    const { store, ids } = makeStore();
+    const { storage, calls } = fakeStorage();
+    const h = play(BUILDER, 0, store, { drafts: storage });
+    store.removePlayer(ids[0]);
+    calls.length = 0;
+    expect(() => tap(() => h.current.slip('a'))).not.toThrow();
+    expect(calls).toEqual([]);
+  });
+
+  it('after a progress reset no puzzle of the level keeps an old draft, not only the first one on screen', () => {
+    const { store, ids } = makeStore();
+    const { storage, data } = fakeStorage();
+    const first = play(BUILDER, 0, store, { drafts: storage });
+    tap(() => first.current.solve());
+    tap(() => first.current.next());
+    const later = first.current.puzzleNo;
+    tap(() => first.current.slip('a'));
+    tap(() => first.current.slip('b'));
+    expect(data.has(keyOn(ids[0], 0, later))).toBe(true);
+    first.unmount();
+    store.resetPlayerProgress(ids[0]);
+
+    // the new run: the first puzzle solved, then the child leaves on the later puzzle without a slip
+    const fresh = play(BUILDER, 0, store, { drafts: storage });
+    tap(() => fresh.current.solve());
+    tap(() => fresh.current.next());
+    expect(fresh.current.puzzleNo).toBe(later);
+    fresh.unmount();
+
+    const back = play(BUILDER, 0, store, { drafts: storage });
+    expect(back.current.puzzleNo).toBe(later);
+    tap(() => back.current.solve());
+    expect(runOf(findPlayer(store.getState(), ids[0]), 'builder', 0)!.solved.at(-1)).toMatchObject({ puzzle: later, count: 0 });
+  });
+
+  it('a run saved before drafts existed opens where it was, with no slips and nothing written', () => {
+    const run = { set: builderSet(1), seed: 0, queue: [2, 3, 4, 5], solved: [0, 1].map((puzzle) => ({ puzzle, count: 1, usedHint: false, outOfTime: false })), updatedAt: NOW };
+    const games = { builder: { unlocked: 0, stars: {}, best: {}, runs: { 0: run } } };
+    const saved = { version: 3, players: [{ id: 'old', name: 'Maya', ageBand: '5-6', color: 'blue', games }], activePlayerId: 'old' };
+    const data = new Map([[STORAGE_KEY, JSON.stringify(saved)]]);
+    const kept: KeyValueStorage = { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) };
+    const store = createProgressStore({ storage: kept, now: () => NOW, newId: () => 'new-id', events: null });
+    const { storage, calls } = fakeStorage();
+
+    const h = play(BUILDER, 0, store, { drafts: storage });
+    expect(h.current.puzzleNo).toBe(2);
+    expect(h.current.dots).toEqual({ solved: 2, at: 3 });
+    expect(calls.filter((c) => c.startsWith('set'))).toEqual([]);
+    tap(() => h.current.solve());
+    expect(runOf(findPlayer(store.getState(), 'old'), 'builder', 0)!.solved.at(-1)).toMatchObject({ puzzle: 2, count: 0 });
   });
 });
 
