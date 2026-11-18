@@ -293,6 +293,26 @@ export function fits(piece: SorterPiece, hole: SorterPiece, colorMatters: boolea
 /** The key for `slip(key)` (3.1): the same wrong piece on the same wrong hole counts once for stars. */
 export const slipKey = (pieceId: string, holeId: string): string => `${pieceId}>${holeId}`;
 
+/**
+ * Slips with one piece, on any hole, before its own hole rings when the piece is picked or dragged again
+ * (sorter-numbers-7, ages 3 to 6 only).
+ */
+export const TARGET_AFTER_SLIPS = 2;
+
+/** Slips per piece id on the puzzle on screen, with one more for this piece. A new object; `slips` stays as it was. */
+export function countSlip(slips: Readonly<Record<string, number>>, pieceId: string): Record<string, number> {
+  return { ...slips, [pieceId]: (slips[pieceId] ?? 0) + 1 };
+}
+
+/**
+ * The hole that rings for the piece now picked or dragged (`active`): its own hole (a piece and its hole share
+ * an id) once that piece has slipped TARGET_AFTER_SLIPS times, at ages 3 to 6. Older bands never get it.
+ */
+export function targetHole(slips: Readonly<Record<string, number>>, active: string | null, band: AgeBand): string | null {
+  if (active === null || (band !== '3-4' && band !== '5-6')) return null;
+  return (slips[active] ?? 0) >= TARGET_AFTER_SLIPS ? active : null;
+}
+
 /** The name a child hears and a screen reader reads: "circle" on shape levels, "red circle" on colour levels. */
 export const pieceName = (p: SorterPiece, colorMatters: boolean): string => (colorMatters ? `${p.color} ${p.shape}` : p.shape);
 

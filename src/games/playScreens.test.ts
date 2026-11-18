@@ -1235,10 +1235,13 @@ describe('Color Mixer: Finish the mix (Level 1)', () => {
     expect(helpLine()).toBe(`Not ${colorWord(p.goal)} yet. Try another paint.`);
     // A slip is not a wrong-answer colour in the help style: the line keeps the help look.
     expect(doc.body.querySelector('[role="status"]')!.className).not.toContain('is-wrong');
-    // A second tap on the pot already in slot 2 changes nothing and is no new slip.
+    // A second tap on the pot already in slot 2 plays the wrong sound again and is no new slip.
     tap(pot(wrong));
-    expect(sounds).toEqual(['wrong']);
+    expect(sounds).toEqual(['wrong', 'wrong']);
     expect(spoken).toEqual([]);
+    // The slip count did not change: solving now stores one slip for this puzzle.
+    tap(pot(p.right));
+    expect(storedRun('mixer', 0)!.solved[0]).toMatchObject({ count: 1 });
   });
 
   it('the right paint solves: the dot fills, the line states the result, Next puzzle takes the shelf’s place and focus (board: solved)', () => {
@@ -1650,7 +1653,7 @@ describe('Shape Sorter: a shape level (Level 1)', () => {
     for (const p of pieces()) expect(pressed(p)).toBe('false');
     expect(openHoles().map(nameOf)).toEqual(board.holes.map((h) => `${h.shape} hole`));
     expect(factText()).toBe('Every shape has a home. Look at the corners.');
-    // The "?" badge before the first placement says nothing to a reader.
+    // The empty fact slot before the first placement says nothing to a reader.
     expect(doc.body.querySelector('.sort-fact__badge')!.getAttribute('aria-hidden')).toBe('true');
     expect(button('Hear the help line')).toBeTruthy();
     expect(spoken).toEqual([]);
@@ -1671,10 +1674,12 @@ describe('Shape Sorter: a shape level (Level 1)', () => {
     tap(b);
     expect(pressed(b)).toBe('false');
     expect(helpLine()).toBe('Drag each shape into its hole.');
-    // A hole with nothing picked does nothing: no slip, no sound.
+    // A hole with nothing picked is no slip: it answers with the tap sound and asks for a shape from the tray
+    // (sorter-numbers-9), naming no shape, so it never points at the piece that fits.
     tap(openHoles()[0]);
-    expect(sounds).toEqual(['tap', 'tap']);
-    expect(helpLine()).toBe('Drag each shape into its hole.');
+    expect(sounds).toEqual(['tap', 'tap', 'tap']);
+    expect(helpLine()).toBe('First pick a shape in the tray.');
+    expect(doc.body.querySelector('[role="status"]')!.className).not.toContain('is-wrong');
   });
 
   it('a wrong hole shakes red, names the shape it is for, sends the piece back and clears the pick (board: wrong)', () => {

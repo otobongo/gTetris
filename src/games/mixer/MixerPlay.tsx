@@ -4,6 +4,7 @@
    the kit plays the slip and the solve, this file plays tap and good. Speech only follows the speaker. */
 import { useEffect, useRef, useState } from 'react';
 import { sfx } from '../../shared/sound';
+import { cx } from '../../shared/ui';
 import { CHOICE_WRONG_MS, ChoiceRow } from '../kit/ChoiceRow';
 import { PlayScreen } from '../kit/PlayScreen';
 import { useLevelRun } from '../kit/useLevelRun';
@@ -62,9 +63,14 @@ export function MixerPlay({ level }: { level: number }) {
     if (!playing) return;
     const cur = current();
     const step = tapPaint(p, cur, paint);
-    // In Finish a tap on the pot already in slot 2 is the same wrong pair again. It changes nothing and
-    // is no new slip (no sound, no stuck count), but the slots take the wrong cue again, so it is answered.
-    if (p.form === 'finish' && cur.slots[1] === paint) return void cue(step.outcome.kind === 'slip');
+    // In Finish a tap on the pot already in slot 2 is the same wrong pair again. It changes nothing and is
+    // no new slip (never run.slip, so no stuck count), but it is answered: the wrong sound and the slots'
+    // wrong cue again, as the first time.
+    if (p.form === 'finish' && cur.slots[1] === paint) {
+      const slip = step.outcome.kind === 'slip';
+      if (slip) sfx.wrong();
+      return void cue(slip);
+    }
     if (step.state === cur) return;
     commit(step.state);
     cue(step.outcome.kind === 'slip');
@@ -132,7 +138,8 @@ export function MixerPlay({ level }: { level: number }) {
       </div>
       <Bowl color={view.bowl} name={bowlName(view.bowl)} />
       <div className="mix-result" aria-live="polite">
-        <div className="mix-result__name">{view.name}</div>
+        {/* Before a mix there is no colour to name, so the name is a quiet prompt and the help line leads. */}
+        <div className={cx('mix-result__name', view.text === null && 'is-empty')}>{view.name}</div>
         <div className="mix-result__text">{view.text}</div>
       </div>
     </>

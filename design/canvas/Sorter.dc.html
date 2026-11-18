@@ -9,10 +9,13 @@
 <x-dc>
 <helmet>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
-<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .sort-piece[data-drag="false"] { transform: none !important; transition: opacity 150ms linear !important; } .sort-hole { transform: none !important; } }</style>
+<style>body{margin:0} button:focus-visible, a:focus-visible { outline: 3px solid #ffc21a; outline-offset: 2px; } @keyframes bw-fade { from { opacity: 0; } } @keyframes bw-card-in { from { opacity: 0; transform: scale(0.96); } } .bw-appear { animation: bw-fade 150ms linear; } .bw-card { animation: bw-card-in 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot { transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .bw-dot-fill { transition: transform 350ms cubic-bezier(0.16,1,0.3,1); } @media (prefers-reduced-motion: reduce) { .bw-card { animation: bw-fade 150ms linear; } .bw-dot { transition: none; } .bw-dot-fill { transition: opacity 150ms linear; } .sort-piece[data-drag="false"] { transform: none !important; transition: opacity 150ms linear !important; } .sort-hole { transform: none !important; } .sort-well[data-pick-first="true"] { box-shadow: 0 0 0 4px #ffc21a, inset 0 4px 10px rgba(0,0,0,0.45) !important; } }</style>
 </helmet>
 <div style="width: {{w}}px; height: {{h}}px; overflow: hidden; background: radial-gradient(120% 80% at 50% 15%, #33278a, #1a1246); font-family: 'Baloo 2', system-ui, sans-serif; color: #ffffff;">
 <div style="zoom: {{z}}; width: {{iw}}px; height: {{ih}}px; box-sizing: border-box; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 14px; position: relative;">
+<sc-if value="{{showBoardNote}}" hint-placeholder-val="{{ false }}">
+<p data-board-note="true" aria-hidden="true" style="position: absolute; top: 2px; left: 0; right: 0; margin: 0; text-align: center; font-size: 11px; font-weight: 800; line-height: 16px; color: #ffc21a;">Board note. {{boardNote}}</p>
+</sc-if>
 
 <div style="width: 100%; display: grid; grid-template-columns: 54px 1fr 54px; align-items: center; gap: 10px;">
 <a href="{{hubHref}}" aria-label="Back to home" style="width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 5px 0 #241a63;">
@@ -42,7 +45,7 @@
 <p role="status" style="grid-column: 2; grid-row: 1; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.3; color: {{helpcolor}}; text-align: center; text-wrap: balance;">{{help}}</p>
 <div style="grid-column: 1; grid-row: 1; display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<button class="bw-appear" onClick="{{swap}}" aria-label="New puzzle" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26; {{cueStyle}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
@@ -52,24 +55,24 @@
 
 <div style="flex-grow: 1;"></div>
 
-<div role="group" aria-label="Holes" style="width: 100%; box-sizing: border-box; padding: 18px; border-radius: 30px; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
-<div style="display: grid; gap: 14px; justify-content: center; justify-items: center; {{holesbox}}">
+<div role="group" aria-label="Holes" style="width: 100%; box-sizing: border-box; padding: {{holesPad}}px; border-radius: 30px; background: linear-gradient(180deg, #4a3ca8, #30257a); box-shadow: inset 0 0 0 4px #5444b8, 0 8px 0 #241a63;">
+<div style="display: grid; gap: {{holesGap}}px; justify-content: center; justify-items: center; {{holesbox}}">
 <sc-for list="{{holes}}" as="h" hint-placeholder-count="5">
 <sc-if value="{{h.open}}" hint-placeholder-val="{{ true }}">
-<button class="sort-hole" onClick="{{h.tap}}" data-hole="{{h.key}}" aria-label="{{h.label}}" style="border: 0; padding: 0; cursor: pointer; width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; transition: box-shadow 200ms cubic-bezier(0.16,1,0.3,1), background 200ms cubic-bezier(0.16,1,0.3,1); {{h.wrap}}">
-<span style="width: 70px; height: 70px; {{h.style}}"></span>
+<button class="sort-hole" onClick="{{h.tap}}" data-hole="{{h.key}}" aria-label="{{h.label}}" style="border: 0; padding: 0; cursor: pointer; width: {{holeSize}}px; height: {{holeSize}}px; border-radius: 22px; display: grid; place-items: center; transition: box-shadow 200ms cubic-bezier(0.16,1,0.3,1), background 200ms cubic-bezier(0.16,1,0.3,1); {{h.wrap}}">
+<span style="width: {{holeShape}}px; height: {{holeShape}}px; {{h.style}}"></span>
 </button>
 </sc-if>
 <sc-if value="{{h.filled}}" hint-placeholder-val="{{ false }}">
-<div role="img" data-hole="{{h.key}}" aria-label="{{h.label}}" style="width: 92px; height: 92px; border-radius: 22px; display: grid; place-items: center; {{h.wrap}}">
-<span style="width: 70px; height: 70px; {{h.style}}"></span>
+<div role="img" data-hole="{{h.key}}" aria-label="{{h.label}}" style="width: {{holeSize}}px; height: {{holeSize}}px; border-radius: 22px; display: grid; place-items: center; {{h.wrap}}">
+<span style="width: {{holeShape}}px; height: {{holeShape}}px; {{h.style}}"></span>
 </div>
 </sc-if>
 </sc-for>
 </div>
 </div>
 
-<sc-if value="{{showPlayArea}}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{showFact}}" hint-placeholder-val="{{ true }}">
 <div style="width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 16px; border-radius: 18px; background: #30257a;">
 <sc-if value="{{showBadge}}" hint-placeholder-val="{{ true }}">
 <span role="img" aria-label="{{badgeName}}" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; background: #ffc21a; color: #5a3500; font-size: 22px; font-weight: 800;">{{badge}}</span>
@@ -84,7 +87,7 @@
 <div aria-hidden="true" style="width: 100%; height: 56px; flex-shrink: 0;"></div>
 </sc-if>
 
-<div style="width: 100%; box-sizing: border-box; padding: 18px 10px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
+<div class="sort-well" data-pick-first="{{pickFirstFlag}}" style="width: 100%; box-sizing: border-box; padding: 18px 10px; border-radius: 28px; background: #1d1550; box-shadow: inset 0 4px 10px rgba(0,0,0,0.45); display: flex; justify-content: center;">
 <div role="group" aria-label="Shapes to place" style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; {{traybox}}">
 <sc-if value="{{showTray}}" hint-placeholder-val="{{ true }}">
 <sc-for list="{{tray}}" as="t" hint-placeholder-count="5">
@@ -108,7 +111,7 @@
 
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="sort-card-title" aria-describedby="sort-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="sort-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="sort-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -118,6 +121,16 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="sort-card-sticker" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0 0 10px;">
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px; width: 69px; height: 69px; flex-shrink: 0;">
+<sc-for list="{{stickerCells}}" as="c" hint-placeholder-count="25">
+<span style="display: block; border-radius: 2px; {{c.style}}"></span>
+</sc-for>
+</div>
+<span style="font-size: 18px; font-weight: 800; line-height: 1.2; text-align: left;">New sticker: {{stickerName}}.</span>
+</div>
+</sc-if>
 <p id="sort-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -141,7 +154,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","3","5","7","9"],"default":"3"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","picked","wrong","solved","stuck","levelDone","gameDone"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","phoneShort","tablet"],"default":"phone"},"level":{"editor":"enum","options":["1","3","5","7","9"],"default":"3"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","pickFirst","picked","wrong","target","solved","stuck","levelDone","gameDone"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -204,6 +217,17 @@ class Component extends DCLogic {
         x2(['square', 'diamond', 'pentagon', 'hexagon'], 'purple', 'yellow'), x2(['rectangle', 'diamond', 'pentagon', 'hexagon'], 'red', 'yellow')] }
     };
   }
+  // Shape Sorter's first sticker, as src/screens/logic/stickers.ts draws it (25 squares, row by row).
+  firstSticker() {
+    var art = ['..y..', '.yyy.', 'yyyyy', '.yyy.', '.y.y.'];
+    var named = { y: 'yellow' };
+    return { name: 'Star', cells: art.join('').split('').map(function (ch) { return named[ch] || null; }) };
+  }
+  // A 13px mosaic brick: the --brick-* light, base and dark tones.
+  brickCell(c) {
+    var t = { yellow: ['#ffe266', '#ffc21a', '#d48a00'] }[c];
+    return 'background: linear-gradient(180deg, ' + t[0] + ', ' + t[1] + '); box-shadow: inset 0 -2px 0 ' + t[2] + ';';
+  }
   // Sample child for the stuck limits: Maya, ages 7 to 8 (brief 3.3: 4 slips, then 50 s with no right placement).
   limits() { return { count: 4, secs: 50 }; }
   levelOf(p) { return ['1', '3', '5', '7', '9'].indexOf(p.level) >= 0 ? parseInt(p.level, 10) : 3; }
@@ -224,7 +248,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     return [p.level, p.puzzle, p.moment].join('|');
   }
-  freshPuzzle() { return { picked: null, placed: {}, wrongHole: null, shake: 0, last: null, drag: null, wrongLine: null, seen: {}, wrongTaps: 0, idle: 0, offer: false, note: '' }; }
+  freshPuzzle() { return { picked: null, placed: {}, wrongHole: null, shake: 0, last: null, drag: null, wrongLine: null, seen: {}, wrongTaps: 0, idle: 0, offer: false, note: '', pickFirst: false, nudge: false, slipsBy: {} }; }
   name(pc, colorMatters) { return colorMatters ? pc.color + ' ' + pc.shape : pc.shape; }
   // The wrong line names what matched (brief 8.3).
   wrongLineFor(pc, hole, colorMatters) {
@@ -237,7 +261,7 @@ class Component extends DCLogic {
     var p = this.props || {};
     var level = this.levelOf(p);
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
-    var moment = ['play', 'picked', 'wrong', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
+    var moment = ['play', 'pickFirst', 'picked', 'wrong', 'target', 'solved', 'stuck', 'levelDone', 'gameDone'].indexOf(p.moment) >= 0 ? p.moment : 'play';
     if (moment === 'solved' && puzzle === 4) moment = 'levelDone';
     if (moment === 'levelDone' || moment === 'gameDone') puzzle = 4;
     var order = [0, 1, 2, 3, 4, 5];
@@ -246,8 +270,15 @@ class Component extends DCLogic {
     // One piece is already home, so its ghost and filled hole show; a two-piece board keeps both pieces out.
     var roomy = B.pieces.length > 2;
     var first = roomy ? B.tray[0] : null, second = roomy ? B.tray[1] : B.tray[0];
-    if (roomy && (moment === 'picked' || moment === 'wrong' || moment === 'stuck')) { s.placed[first.id] = true; s.last = first.id; }
+    if (roomy && (moment === 'picked' || moment === 'wrong' || moment === 'target' || moment === 'stuck')) { s.placed[first.id] = true; s.last = first.id; }
+    // Ages 3 to 6 (sorter-numbers-7): this piece has slipped twice, so picking it again rings its own hole. The
+    // sample child here is younger than Maya; every other moment keeps Maya, 7 to 8, who never gets the ring.
+    s.young = moment === 'target';
+    if (moment === 'target') { s.slipsBy[second.id] = 2; s.slips = 2; s.wrongTaps = 2; s.picked = second.id; }
     if (moment === 'picked') s.picked = second.id;
+    // A hole tapped with nothing picked: the line asks for a shape (with reduced motion, the tray well rings).
+    // The tray's 6px shared lift lasts 300ms, so this still frame shows the tray at rest; tap a hole to see it.
+    if (moment === 'pickFirst') s.pickFirst = true;
     if (moment === 'wrong') {
       // On colour levels the sample tries the hole of a same-shape piece; otherwise the next open hole.
       var open = B.holes.filter(function (h) { return h.id !== second.id && !s.placed[h.id]; });
@@ -288,7 +319,7 @@ class Component extends DCLogic {
       self.put({ idle: idle, offer: s.offer || idle === self.limits().secs });
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); (this.shakeT || []).forEach(clearTimeout); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.nudgeT); (this.shakeT || []).forEach(clearTimeout); }
   say(text) {
     try {
       var u = new SpeechSynthesisUtterance(text);
@@ -310,7 +341,7 @@ class Component extends DCLogic {
       var placed = Object.assign({}, cs.placed);
       placed[holeId] = true;
       var done = B.pieces.every(function (x) { return placed[x.id]; });
-      var patch = { placed: placed, picked: null, last: id, drag: null, wrongLine: null, wrongHole: null, idle: 0, offer: false, note: '' };
+      var patch = { placed: placed, picked: null, last: id, drag: null, wrongLine: null, wrongHole: null, idle: 0, offer: false, note: '', pickFirst: false, nudge: false };
       if (done) {
         patch.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
         if (cs.puzzle === 4) { clearTimeout(this.cardT); this.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
@@ -325,8 +356,10 @@ class Component extends DCLogic {
     var fresh = !seen[key];
     seen[key] = true;
     var wrongTaps = cs.wrongTaps + 1;
+    var slipsBy = Object.assign({}, cs.slipsBy);
+    slipsBy[id] = (slipsBy[id] || 0) + 1;
     this.put({
-      wrongHole: holeId, drag: null, picked: null, note: '',
+      wrongHole: holeId, drag: null, picked: null, note: '', pickFirst: false, nudge: false, slipsBy: slipsBy,
       wrongLine: this.wrongLineFor(pc, hole, B.colorMatters),
       seen: seen, slips: cs.slips + (fresh ? 1 : 0), wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= this.limits().count
     });
@@ -339,6 +372,8 @@ class Component extends DCLogic {
     var self = this;
     var s = this.st();
     var tablet = this.props.device === 'tablet';
+    // A short phone (375 x 667, iPhone SE): 76px holes with tighter gaps, and no fact bar on 8-piece boards.
+    var short = this.props.device === 'phoneShort';
     var Z = tablet ? 1.4 : 1;
     var S = this.shapes(), K = this.colors();
     var B = this.board(s.level, s.order[s.puzzle - 1]);
@@ -351,6 +386,11 @@ class Component extends DCLogic {
     B.pieces.forEach(function (pc) { byId[pc.id] = pc; });
     var last = s.last ? byId[s.last] : null;
     var dragging = s.drag && s.drag.moved ? s.drag.id : null;
+    // Ages 3 to 6: the ringed hole is the picked or dragged piece's own, once that piece has slipped twice.
+    var activeId = dragging || s.picked;
+    var targetId = playing && s.young && activeId && (s.slipsBy[activeId] || 0) >= 2 ? activeId : null;
+    var cue = playing && s.offer && m === 'play' && this.props.moment === 'stuck';
+    var bigBoard = B.holes.length > 6;
     var offerLine = 'This one is tricky. Want a different puzzle?';
     var help = solvedNow ? 'Every shape is home.'
       : s.offer ? offerLine
@@ -358,6 +398,7 @@ class Component extends DCLogic {
       : s.wrongLine ? s.wrongLine
       : dragging ? 'Drop the ' + this.name(byId[dragging], cm) + ' in its hole.'
       : s.picked ? 'Now tap the ' + this.name(byId[s.picked], cm) + ' hole.'
+      : s.pickFirst ? 'First pick a shape in the tray.'
       : cm ? 'Match the shape and the color.' : 'Drag each shape into its hole.';
     var fact = last ? S[last.shape].fact : cm ? 'Look closely: each hole has a color too.' : 'Every shape has a home. Look at the corners.';
 
@@ -379,7 +420,15 @@ class Component extends DCLogic {
     var pieceLook = function (pc) { return S[pc.shape].clip + ' background: ' + K[pc.color] + '; box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2), inset 0 4px 0 rgba(255,255,255,0.3);'; };
 
     return {
-      w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: Z, iw: tablet ? 596 : 390, ih: tablet ? 853 : 844,
+      w: tablet ? 834 : short ? 375 : 390, h: tablet ? 1194 : short ? 667 : 844, z: Z, iw: tablet ? 596 : short ? 375 : 390, ih: tablet ? 853 : short ? 667 : 844,
+      holeSize: short ? 76 : 92, holeShape: short ? 62 : 70, holesGap: short ? 10 : 14, holesPad: short ? 12 : 18,
+      showFact: !finished && !(short && bigBoard),
+      // Ages 3 to 4 (decision 8): one chime and a 4px ring on New puzzle for the first 2 s, drawn on the stuck board.
+      cueStyle: cue ? 'outline: 4px solid #ffc21a; outline-offset: 0;' : '',
+      showBoardNote: cue || !!targetId || (short && bigBoard && playing),
+      boardNote: cue ? 'Ages 3 to 4: one chime and this ring for the first 2 s'
+        : targetId ? 'Ages 3 to 6: after two slips with a shape, its own hole rings'
+        : 'Short phone: no fact bar here; the speaker still reads it',
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Shape Sorter' : 'Level ' + s.level,
       showDots: !finished, dots: dots,
@@ -407,7 +456,7 @@ class Component extends DCLogic {
       // Three columns across the panel; a board with one or two holes (Level 1) keeps the column width and
       // centres its holes over the tray, so no drag is from the far side. The finished state shows the empty
       // holes panel and tray.
-      holesbox: 'grid-template-columns: repeat(' + (finished ? 3 : Math.min(B.holes.length, 3)) + ', calc((100% - 28px) / 3));' +
+      holesbox: 'grid-template-columns: repeat(' + (finished ? 3 : Math.min(B.holes.length, 3)) + ', calc((100% - ' + (short ? 20 : 28) + 'px) / 3));' +
         (finished ? ' min-height: 198px;' : ''),
       holes: finished ? [] : B.holes.map(function (pc) {
         var filled = !!s.placed[pc.id];
@@ -418,15 +467,26 @@ class Component extends DCLogic {
           label: filled ? 'Filled ' + self.name(pc, cm) + ' hole' : self.name(pc, cm) + ' hole',
           wrap: wrong
             ? 'transform: translateX(' + s.shake + 'px); background: rgba(255,77,94,0.35); box-shadow: 0 0 0 4px #ff4d5e;'
+            : targetId === pc.id ? 'background: rgba(0,0,0,0.12); box-shadow: 0 0 0 4px #ffc21a;'
             : filled ? 'background: rgba(0,0,0,0.12); box-shadow: 0 0 0 3px rgba(255,255,255,0.6);' : 'background: rgba(0,0,0,0.12);',
           // A hole is drawn in its own colour, sunk in so it still reads as empty.
           style: filled ? pieceLook(pc) : S[pc.shape].clip + ' background: ' + hex + '; box-shadow: inset 0 10px 14px rgba(0,0,0,0.55), inset 0 -2px 0 rgba(255,255,255,0.25);',
-          tap: function () { var cs = self.st(); if (!cs.picked || cs.placed[pc.id]) return; self.tryPlace(cs.picked, pc.id); }
+          tap: function () {
+            var cs = self.st();
+            if (cs.moment !== 'play' || cs.placed[pc.id]) return;
+            if (cs.picked) { self.tryPlace(cs.picked, pc.id); return; }
+            // Nothing picked: the whole tray lifts 6px together for 300ms and the line asks for a shape.
+            // No piece is singled out (Sorter has no hint), and it is no slip.
+            self.put({ pickFirst: true, nudge: true, wrongLine: null, note: '' });
+            clearTimeout(self.nudgeT);
+            self.nudgeT = setTimeout(function () { self.put({ nudge: false }); }, 300);
+          }
         };
       }),
       showBadge: !!last, badge: last ? S[last.shape].badge : '', badgeName: last ? S[last.shape].badgeName : '',
       // Before the first placement the badge is an empty slot; the yellow fill is for earned badges only.
       showEmptyBadge: !last,
+      pickFirstFlag: s.pickFirst && playing ? 'true' : 'false',
       fact: fact,
       traybox: 'width: ' + (rowLen * 64 + (rowLen - 1) * 8) + 'px; min-height: ' + (finished ? 76 : trayMinH) + 'px;',
       showTray: !solvedNow,
@@ -437,7 +497,7 @@ class Component extends DCLogic {
         var isDrag = dragging === pc.id;
         var wrap;
         if (isDrag) wrap = 'z-index: 20; transition: none; transform: translate(' + (s.drag.dx / Z) + 'px, ' + (s.drag.dy / Z) + 'px) scale(1.18); cursor: grabbing;';
-        else wrap = 'transition: transform 200ms cubic-bezier(0.16,1,0.3,1); transform: ' + (on ? 'translateY(-12px) scale(1.12)' : 'rotate(' + (i % 2 ? 8 : -8) + 'deg)') + ';';
+        else wrap = 'transition: transform 200ms cubic-bezier(0.16,1,0.3,1); transform: ' + (on ? 'translateY(-12px) scale(1.12)' : (s.nudge ? 'translateY(-6px) ' : '') + 'rotate(' + (i % 2 ? 8 : -8) + 'deg)') + ';';
         return {
           live: !gone, ghost: gone,
           label: self.name(pc, cm), on: on ? 'true' : 'false', dragging: isDrag ? 'true' : 'false', wrap: wrap,
@@ -454,7 +514,7 @@ class Component extends DCLogic {
             if (!d || d.pid !== e.pointerId) return;
             var dx = e.clientX - d.x0, dy = e.clientY - d.y0;
             var moved = d.moved || Math.abs(dx) + Math.abs(dy) > 8;
-            self.put(Object.assign({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: moved }) }, moved && !d.moved ? { wrongLine: null, picked: null } : {}));
+            self.put(Object.assign({ drag: Object.assign({}, d, { dx: dx, dy: dy, moved: moved }) }, moved && !d.moved ? { wrongLine: null, picked: null, pickFirst: false, nudge: false } : {}));
           },
           up: function (e) {
             var d = self.st().drag;
@@ -487,7 +547,7 @@ class Component extends DCLogic {
             if (self.justDragged) { self.justDragged = false; return; }
             var cs = self.st();
             if (cs.moment !== 'play' || cs.placed[pc.id]) return;
-            self.put({ picked: cs.picked === pc.id ? null : pc.id, wrongLine: null, note: '' });
+            self.put({ picked: cs.picked === pc.id ? null : pc.id, wrongLine: null, note: '', pickFirst: false, nudge: false });
           }
         };
       }),
@@ -498,6 +558,11 @@ class Component extends DCLogic {
         self.put(Object.assign(self.freshPuzzle(), { puzzle: cs.puzzle + 1, moment: 'play' }));
       },
       cardOpen: m === 'levelDone' || finished,
+      // A level that earns a sticker shows it on the card (decision 19): Shape Sorter's first, from src/screens/logic/stickers.ts.
+      showSticker: m === 'levelDone' && this.props.sticker === 'new',
+      stickerName: this.firstSticker().name,
+      stickerCells: this.firstSticker().cells.map(function (c) { return { style: c ? self.brickCell(c) : 'background: transparent;' }; }),
+      cardDescribedBy: m === 'levelDone' && this.props.sticker === 'new' ? 'sort-card-fact sort-card-sticker' : 'sort-card-fact',
       cardTitle: finished || lastOfGame ? 'You finished every level!' : 'You finished Level ' + s.level,
       stars: finished ? [{ fill: '#ffb21f' }] : [0, 1, 2].map(function (i) { return { fill: i < starsWon ? '#ffb21f' : 'rgba(0,0,0,0.3)' }; }),
       starsLabel: finished ? '25 of 27 stars' : starsWon + ' of 3 stars',
