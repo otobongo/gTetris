@@ -5,8 +5,8 @@
  * (a11y-cross-10).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { colorWord } from '../src/games/mixer/colors';
-import { STORAGE_KEY, mixerOnScreen, mixerPot, seed, starsUpTo, type Band } from './app';
+import { SAME_TEXT, colorWord } from '../src/games/mixer/colors';
+import { STORAGE_KEY, mixerOnScreen, mixerPot, seed, solveMixerPuzzle, starsUpTo, type Band } from './app';
 
 const help = (page: Page) => page.locator('.bw-helprow__line');
 const resultName = (page: Page) => page.locator('.mix-result__name');
@@ -82,15 +82,21 @@ const nameStyle = (page: Page) =>
     const s = getComputedStyle(el);
     return `${s.fontSize} ${s.color}`;
   });
+/** The help line by its middle: a line that wraps to two rows grows around it, and that is no move. */
 const layoutNow = (page: Page) =>
-  page.evaluate(() => ({
-    help: document.querySelector('.bw-helprow__line')!.getBoundingClientRect().y,
-    result: document.querySelector('.mix-result')!.getBoundingClientRect().height,
-  }));
+  page.evaluate(() => {
+    const line = document.querySelector('.bw-helprow__line')!.getBoundingClientRect();
+    return {
+      help: line.y + line.height / 2,
+      row: document.querySelector('.bw-helprow')!.getBoundingClientRect().y,
+      shelf: document.querySelector('.mix-controls')!.getBoundingClientRect().y,
+      result: document.querySelector('.mix-result')!.getBoundingClientRect().height,
+    };
+  });
 
 /**
  * On Finish (Level 1): the quiet name before a mix, the full name after a wrong mix. Returns how far the help
- * line moved and how much the result block grew between the two states.
+ * line moved between the two states.
  */
 async function quietThenFull(page: Page) {
   await open(page, 1);
@@ -110,7 +116,7 @@ async function quietThenFull(page: Page) {
   await expect(resultName(page)).not.toHaveClass(/is-empty/);
   await expect.poll(() => nameStyle(page)).toBe(`28px ${TEXT}`);
   const after = await layoutNow(page);
-  return { help: after.help - before.help, result: after.result - before.result };
+  return { help: after.help - before.help };
 }
 
 test('Finish: before a mix the result name is 18px in the second text colour; after a mix 28px white, and the help line holds still', async ({ page }) => {
@@ -143,13 +149,63 @@ test.describe('tablet landscape 1194x834', () => {
 
 test.describe('short phone 375x667', () => {
   test.use({ viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true });
-  test('Finish: the quiet empty name and the full name after a mix; the name change itself moves nothing', { tag: '@phone-only' }, async ({ page }) => {
+  test('Finish: the quiet empty name, the full name after a mix, and the help line holds still', { tag: '@phone-only' }, async ({ page }) => {
     const moved = await quietThenFull(page);
-    // The help line moves exactly as much as the result block grows, and that block grows only when the
-    // recipe line wraps to two lines past its 64px, as it did before this change (28px name in both states).
-    expect(Math.abs(moved.help - moved.result)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(moved.help)).toBeLessThanOrEqual(0.5);
   });
 });
+
+test('Guess: the same quiet name until the colour is found, then the full name', async ({ page }) => {
+  await open(page, 2);
+  await page.goto('/#/game/mixer/2');
+  const p = await mixerOnScreen(page);
+  if (p.form !== 'guess') throw new Error('Level 2 is Guess');
+  await expect(resultName(page)).toHaveText('Pick a color');
+  await expect(resultName(page)).toHaveClass(/is-empty/);
+  await expect.poll(() => nameStyle(page)).toBe(`18px ${TEXT_2}`);
+  await solveMixerPuzzle(page);
+  await expect(resultName(page)).not.toHaveClass(/is-empty/);
+  await expect.poll(() => nameStyle(page)).toBe(`28px ${TEXT}`);
+});
+
+/* The longest result line runs to two rows on a phone. The block keeps its 64px all the same, so the help row
+   and the shelf under a child's finger never move, at any size. */
+for (const viewport of [
+  { width: 390, height: 844 },
+  { width: 375, height: 667 },
+  { width: 390, height: 664 },
+  { width: 360, height: 740 },
+  { width: 834, height: 1194 },
+  { width: 1194, height: 834 },
+]) {
+  test.describe(`${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport });
+    test('the longest result line moves nothing below it and stays clear of the help line', { tag: '@phone-only' }, async ({ page }) => {
+      await open(page, 3);
+      await page.goto('/#/game/mixer/3');
+      const p = await mixerOnScreen(page);
+      if (p.form !== 'make') throw new Error('Level 3 is Make it');
+      expect(await page.evaluate(() => document.fonts.ready.then(() => document.fonts.check('800 16px "Baloo 2"')))).toBe(true);
+      const before = await layoutNow(page);
+      // The same paint twice: the longest line the block ever shows.
+      await mixerPot(page, p.pair[0]).click();
+      await mixerPot(page, p.pair[0]).click();
+      await expect(page.locator('.mix-result__text')).toHaveText(SAME_TEXT);
+      await expect.poll(() => nameStyle(page)).toBe(`28px ${TEXT}`);
+      const after = await layoutNow(page);
+      expect(Math.abs(after.row - before.row), 'the help row holds still').toBeLessThanOrEqual(0.5);
+      expect(Math.abs(after.help - before.help), 'the help line holds still').toBeLessThanOrEqual(0.5);
+      expect(Math.abs(after.shelf - before.shelf), 'the shelf holds still').toBeLessThanOrEqual(0.5);
+      expect(Math.abs(after.result - before.result), 'the block keeps its height').toBeLessThanOrEqual(0.5);
+      const gap = await page.evaluate(() => {
+        const text = document.querySelector('.mix-result__text')!.getBoundingClientRect();
+        const line = document.querySelector('.bw-helprow__line')!.getBoundingClientRect();
+        return line.y - (text.y + text.height);
+      });
+      expect(gap, 'the result line stays clear of the help line').toBeGreaterThanOrEqual(0);
+    });
+  });
+}
 
 /* ---------- a11y-cross-10: the Reduce Motion fades keep their 150 ms ---------- */
 

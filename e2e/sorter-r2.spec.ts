@@ -94,6 +94,107 @@ for (const viewport of SHORT) {
   });
 }
 
+/** Every hole of the board on screen is whole, inside the panel, above the tray, and takes a finger anywhere on it. */
+async function expectHolesFit(page: Page, count: number) {
+  const holes = sorterHoles(page).getByRole('button');
+  await expect(holes).toHaveCount(count);
+  const panel = await box(page.locator('.sort-holes'));
+  const well = await box(page.locator('.sort-well'));
+  expect(panel.y + panel.height, 'holes panel bottom at or above the tray well').toBeLessThanOrEqual(well.y + 0.5);
+  for (let i = 0; i < count; i++) {
+    const hole = holes.nth(i);
+    const b = await box(hole);
+    expect(b.height, 'a hole is a finger wide').toBeGreaterThanOrEqual(54);
+    expect(b.y + b.height, 'hole inside the panel').toBeLessThanOrEqual(panel.y + panel.height + 0.5);
+    for (const at of [0.15, 0.5, 0.85]) {
+      const hit = await hole.evaluate((el, at) => {
+        const r = el.getBoundingClientRect();
+        return document.elementFromPoint(r.x + r.width / 2, r.y + r.height * at)?.closest('.sort-hole') === el;
+      }, at);
+      expect(hit, `hole ${i + 1} takes a finger at ${at * 100}% of its height`).toBe(true);
+    }
+  }
+}
+
+/** The fact bar is whole, between the holes panel and the tray well, with nothing over it. */
+async function expectFactWhole(page: Page) {
+  const fact = page.locator('.sort-fact');
+  await expect(fact).toBeVisible();
+  const panel = await box(page.locator('.sort-holes'));
+  const well = await box(page.locator('.sort-well'));
+  const f = await box(fact);
+  expect(f.y, 'fact bar under the holes panel').toBeGreaterThanOrEqual(panel.y + panel.height - 0.5);
+  expect(f.y + f.height, 'fact bar above the tray well').toBeLessThanOrEqual(well.y + 0.5);
+  const clear = await fact.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return [0.1, 0.5, 0.9].every((x) => [0.2, 0.8].every((y) => el.contains(document.elementFromPoint(r.x + r.width * x, r.y + r.height * y))));
+  });
+  expect(clear, 'nothing lies over the fact bar').toBe(true);
+}
+
+/* An 8-piece board on a phone needs 794 px at the full 92 px holes, so the short-phone sizes reach past 700 px
+   for that board alone: 76 px holes up to 793 px, and the fact bar goes only under 726 px, where it has no room. */
+const TALLER_PHONES = [
+  { width: 390, height: 701, fact: false },
+  { width: 390, height: 725, fact: false },
+  { width: 390, height: 726, fact: true },
+  { width: 414, height: 736, fact: true },
+  { width: 360, height: 740, fact: true },
+  { width: 390, height: 793, fact: true },
+];
+
+for (const { fact, ...viewport } of TALLER_PHONES) {
+  test.describe(`taller phone ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true });
+    test(`Level 7 (8 pieces): the holes fit above the tray and the fact bar is ${fact ? 'whole' : 'hidden'}`, { tag: '@phone-only' }, async ({ page }) => {
+      await openLevel(page, 7);
+      await expect.poll(() => page.evaluate(() => document.fonts.ready.then(() => document.fonts.check('800 16px "Baloo 2"')))).toBe(true);
+      await expectHolesFit(page, 8);
+      expect((await box(sorterHoles(page).getByRole('button').first())).width).toBe(76);
+      if (fact) await expectFactWhole(page);
+      else await expect(page.locator('.sort-fact')).toBeHidden();
+    });
+  });
+}
+
+test.describe('phone 390x701', () => {
+  test.use({ viewport: { width: 390, height: 701 }, isMobile: true, hasTouch: true });
+  test('a 6-piece board has the room: its holes stay 92 px with the fact bar whole', { tag: '@phone-only' }, async ({ page }) => {
+    await openLevel(page, 5);
+    await expectHolesFit(page, 6);
+    expect((await box(sorterHoles(page).getByRole('button').first())).width).toBe(92);
+    await expectFactWhole(page);
+  });
+});
+
+test.describe('phone 390x794', () => {
+  test.use({ viewport: { width: 390, height: 794 }, isMobile: true, hasTouch: true });
+  test('Level 7 (8 pieces) has the room for 92 px holes and the fact bar', { tag: '@phone-only' }, async ({ page }) => {
+    await openLevel(page, 7);
+    await expectHolesFit(page, 8);
+    expect((await box(sorterHoles(page).getByRole('button').first())).width).toBe(92);
+    await expectFactWhole(page);
+  });
+});
+
+/* A short wide screen (iPad mini sideways in Safari) has one tray row, so the biggest board keeps its fact bar
+   while there is room for it. */
+for (const { fact, ...viewport } of [
+  { width: 1133, height: 670, fact: true },
+  { width: 1024, height: 642, fact: true },
+  { width: 1024, height: 641, fact: false },
+]) {
+  test.describe(`wide short screen ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport, isMobile: false, hasTouch: true });
+    test(`Level 7 (8 pieces): the holes fit and the fact bar is ${fact ? 'whole' : 'hidden'}`, { tag: '@phone-only' }, async ({ page }) => {
+      await openLevel(page, 7);
+      await expectHolesFit(page, 8);
+      if (fact) await expectFactWhole(page);
+      else await expect(page.locator('.sort-fact')).toBeHidden();
+    });
+  });
+}
+
 test('at full height the holes stay 92 px and the biggest board keeps its fact bar', async ({ page }) => {
   await openLevel(page, 9);
   const zoom = page.viewportSize()!.width > 600 ? 1.4 : 1;
@@ -229,6 +330,86 @@ test('a new puzzle starts the count again', { tag: '@phone-only' }, async ({ pag
   await sorterPiece(page, c).click();
   await expect(sorterPiece(page, c)).toHaveAttribute('aria-pressed', 'true');
   await expect(targets(page)).toHaveCount(0);
+});
+
+test('a piece that comes back on the next board starts from no slips', { tag: '@phone-only' }, async ({ page }) => {
+  // Level 3's first two boards share the star, so a count carried over would ring its hole after one slip.
+  await openLevel(page, 3, '5-6');
+  const first = puzzle(2, 0).pieces.map((p) => pieceName(p, false));
+  const second = puzzle(2, 1).pieces.map((p) => pieceName(p, false));
+  const shared = 'star';
+  expect(first).toContain(shared);
+  expect(second).toContain(shared);
+  const wrong = (board: string[]) => board.find((name) => name !== shared)!;
+  await slip(page, shared, wrong(first));
+  await slip(page, shared, wrong(first));
+  await sorterPiece(page, shared).click();
+  await expect(targets(page)).toHaveCount(1);
+  for (const name of [shared, ...first.filter((n) => n !== shared)]) {
+    if ((await sorterPiece(page, name).getAttribute('aria-pressed')) !== 'true') await sorterPiece(page, name).click();
+    await sorterHole(page, name).click();
+  }
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(sorterPiece(page, second[0])).toBeVisible();
+  await slip(page, shared, wrong(second));
+  await sorterPiece(page, shared).click();
+  await expect(sorterPiece(page, shared)).toHaveAttribute('aria-pressed', 'true');
+  await expect(targets(page)).toHaveCount(0);
+});
+
+/* ---------- sorter-numbers-9: what counts as a hole tapped with nothing picked ---------- */
+
+const PICK_FIRST = 'First pick a shape in the tray.';
+
+test('a double tap on a wrong hole keeps the wrong line up while the hole is red; a later tap asks for a shape', { tag: '@phone-only' }, async ({ page }) => {
+  // The ring lasts 660 ms; a paused clock keeps it on screen until the test moves time on.
+  await page.clock.install();
+  const { a, b } = await level1(page, '3-4');
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+  await slip(page, a, b);
+  const wrongLine = await help(page).textContent();
+  await sorterHole(page, b).click();
+  await expect(help(page)).toHaveText(wrongLine!);
+  await expect(help(page)).toHaveClass(/is-wrong/);
+  await expect(sorterTray(page)).not.toHaveClass(/is-nudge/);
+  await expect(page.locator('.sort-well')).not.toHaveClass(/is-pick-first/);
+  // The ring has faded: the same hole tapped again is a hole with nothing picked.
+  await page.clock.runFor(700);
+  await expect(page.locator('.sort-hole.is-wrong')).toHaveCount(0);
+  await sorterHole(page, b).click();
+  await expect(help(page)).toHaveText(PICK_FIRST);
+});
+
+test('another hole tapped while the wrong hole is still red asks for a shape', { tag: '@phone-only' }, async ({ page }) => {
+  await page.clock.install();
+  await openLevel(page, 2, '3-4');
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
+  const [a, b, c] = puzzle(1, 0).pieces.map((p) => pieceName(p, false));
+  await slip(page, a, b);
+  await sorterHole(page, c).click();
+  await expect(help(page)).toHaveText(PICK_FIRST);
+});
+
+test('the click a browser sends after a drag is no tap on the hole under it', { tag: '@phone-only' }, async ({ page }) => {
+  const { a } = await level1(page, '3-4');
+  const line = await help(page).textContent();
+  // detail 1 with no press on the hole: what a pointer release over a hole can leave behind.
+  await sorterHole(page, a).evaluate((el) => el.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })));
+  await expect(help(page)).toHaveText(line!);
+  await expect(page.locator('.sort-well')).not.toHaveClass(/is-pick-first/);
+});
+
+test('a hole clicked by keyboard during a drag asks for nothing: the line stays on the drag', { tag: '@phone-only' }, async ({ page }) => {
+  const { a, b } = await level1(page, '3-4');
+  const from = await box(sorterPiece(page, a));
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 10, from.y + from.height / 2 - 10, { steps: 3 });
+  await expect(help(page)).toHaveText(`Drop the ${a} in its hole.`);
+  await sorterHole(page, b).evaluate((el) => (el as HTMLElement).click());
+  await expect(help(page)).toHaveText(`Drop the ${a} in its hole.`);
+  await expect(page.locator('.sort-well')).not.toHaveClass(/is-pick-first/);
+  await page.mouse.up();
 });
 
 /* ---------- a11y-cross-10: the hole's fade keeps its 150 ms under Reduce Motion ---------- */

@@ -216,6 +216,7 @@ export function Play({ level }: { level: number }) {
    * A hole's props: the kit's target, plus an answer when the hole is tapped with nothing picked. The tap
    * plays the tap sound, lifts the whole tray once (no piece singled out, as Sorter has no hint) and asks for
    * a shape. It is no slip. A drag dropped on a hole never gets here as a tap: its click has no press on the hole.
+   * Nor does the second tap of a double tap on a hole that just went red: the line saying why stays up.
    */
   const holeProps = (id: string) => {
     const target = drag.target(id);
@@ -227,7 +228,7 @@ export function Play({ level }: { level: number }) {
       onClick(e: MouseEvent<HTMLElement>) {
         const tapped = e.detail === 0 || holePress.current === id;
         holePress.current = null;
-        if (tapped && playing && drag.picked === null && drag.dragging === null) {
+        if (tapped && playing && drag.picked === null && drag.dragging === null && ref.current.wrongHole !== id) {
           sfx.tap();
           commit({ wrongLine: null, pickFirst: true, nudging: true, nudgeSeq: ref.current.nudgeSeq + 1 });
         }
@@ -288,7 +289,7 @@ export function Play({ level }: { level: number }) {
   const perRow = PER_ROW[layout.mode];
   const cols = Math.min(pieces.length, perRow);
   const rows = Math.ceil(pieces.length / perRow);
-  /** Rows of holes (3 columns): 3 on the 8-piece boards, which hide the fact bar on a short phone (sorter.css). */
+  /** Rows of holes (3 columns): 3 on the 8-piece boards, which need the short-screen sizes soonest (sorter.css). */
   const holeRows = Math.ceil(puzzle.holes.length / 3);
 
   const tray = (

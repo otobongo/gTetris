@@ -137,9 +137,11 @@
 }
 
 /* ---------- Result block ---------- */
+/* A set 64px, so the help row and the shelf under a child's finger never move. The longest line runs to two rows
+   on a phone, and its second row hangs into the 14px gap above the help row. */
 .mix-result {
   width: 100%;
-  min-height: 64px;
+  height: 64px;
   flex-shrink: 0;
   text-align: center;
 }

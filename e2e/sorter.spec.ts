@@ -554,7 +554,10 @@ test.describe('a hole tapped with nothing picked, with motion on', () => {
   test.use({ reducedMotion: 'no-preference' });
 
   test('(a) the line asks for a shape, the whole tray lifts as one, no piece is singled out and no hole is wrong', async ({ page }) => {
+    // The lift lasts 300 ms; a paused clock keeps it on screen until the test moves time on, so a busy machine never misses it.
+    await page.clock.install();
     await openLevel1Young(page);
+    await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
     const [first] = await sorterPieces(page);
     const before = await trayNow(page);
     await expect(help(page)).toHaveText('Drag each shape into its hole.');
@@ -571,6 +574,7 @@ test.describe('a hole tapped with nothing picked, with motion on', () => {
     await expect(help(page)).not.toHaveClass(/is-wrong/);
 
     // The lift is short; the line stays until the child picks.
+    await page.clock.runFor(300);
     await expect(sorterTray(page)).not.toHaveClass(/is-nudge/);
     expect((await trayNow(page)).pieces.map((p) => p.rest)).toEqual(before.pieces.map((p) => p.rest));
     await expect(help(page)).toHaveText(PICK_FIRST);

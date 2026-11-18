@@ -138,7 +138,7 @@ export function MixerPlay({ level }: { level: number }) {
       </div>
       <Bowl color={view.bowl} name={bowlName(view.bowl)} />
       <div className="mix-result" aria-live="polite">
-        {/* Before a mix the name is a quiet prompt, smaller than the help line's instruction is loud. */}
+        {/* Before a mix there is no colour to name, so the name is a quiet prompt and the help line leads. */}
         <div className={cx('mix-result__name', view.text === null && 'is-empty')}>{view.name}</div>
         <div className="mix-result__text">{view.text}</div>
       </div>
