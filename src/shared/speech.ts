@@ -15,6 +15,7 @@ try {
  */
 export function say(text: string, rate = 0.85, opts: { queue?: boolean } = {}) {
   if (!getProgress().settings.voice) return;
+  if (automatedRealVoice()) return;
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
@@ -35,4 +36,23 @@ export function say(text: string, rate = 0.85, opts: { queue?: boolean } = {}) {
 export function letterName(ch: string): string {
   const names: Record<string, string> = { A: 'ay', Z: 'zee' };
   return names[ch.toUpperCase()] ?? ch.toUpperCase();
+}
+
+/**
+ * True when automation drives the browser (Playwright sets navigator.webdriver) and the real voice is still in place.
+ * macOS speaks Web Speech lines through its own speech service, which the browser's --mute-audio does not reach, so
+ * test and check runs would talk through the machine's speakers. Journeys that swap speechSynthesis for a plain
+ * recording object still get every line.
+ */
+function automatedRealVoice(): boolean {
+  try {
+    return (
+      typeof navigator !== 'undefined' &&
+      navigator.webdriver === true &&
+      typeof SpeechSynthesis !== 'undefined' &&
+      window.speechSynthesis instanceof SpeechSynthesis
+    );
+  } catch {
+    return false;
+  }
 }
