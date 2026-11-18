@@ -12,6 +12,9 @@
   --esc-arrow-on-white: #6b6585;
   --esc-pad: 22px;
   align-items: center;
+  /* a door's tap target grows outward past the board, and a leaving brick slides out past it: neither may
+     make the screen scrollable, or a focused target would scroll the whole board out of place */
+  overflow: clip;
 }
 
 /* visually hidden, still read by VoiceOver: the clock's "Time left" and the move line (role=status) */
@@ -169,6 +172,55 @@
 /* dragged out through its door: it follows the finger with no lag, then springs back if let go too soon */
 .esc-brick.is-pulled { z-index: 3; transition: none; }
 .esc-brick.is-hinted { box-shadow: 0 0 0 4px var(--bw-text), 0 0 22px var(--bw-text); }
+/* picked with a tap (decision 1): the app's selection ring, above its neighbours */
+.esc-brick[aria-pressed='true'] { z-index: 3; box-shadow: var(--bw-ring), 0 3px 0 rgb(0 0 0 / 0.25); }
+
+/* each colour's mark (decision 2, marks.ts): one stud across, centred on the face between its lit top edge
+   and its 4px shaded bottom edge, with a 1px light top edge so it reads as moulded into the plastic */
+.esc-mark {
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 -1px 0 rgb(255 255 255 / 0.35));
+}
+.esc-brick__face .esc-mark {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 1px);
+  transform: translate(-50%, -50%);
+}
+/* an open door's mark beside its chevron; the chevron's 16px box has 4px of air each side, given back here */
+.esc-door__open { display: flex; align-items: center; gap: 2px; }
+.esc-door__open.is-upright { flex-direction: column; }
+.esc-door__open .esc-door__arrow { margin: 0 -4px; }
+.esc-door__open.is-upright .esc-door__arrow { margin: -4px 0; }
+
+/* where the picked brick can go: a faint ring inside the free squares, and the selection ring on its door.
+   Only in the page while a brick is picked; no motion, so Reduce Motion needs nothing more. */
+.esc-target {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.esc-target:not(.is-exit)::after,
+.esc-target__reach::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 3px solid color-mix(in srgb, var(--bw-accent) 60%, transparent);
+  border-radius: 8px;
+}
+.esc-target__door,
+.esc-target__reach { position: absolute; }
+.esc-target__door { border-radius: 8px; box-shadow: var(--bw-ring); }
+.esc-target:focus-visible { outline: var(--bw-focus); outline-offset: calc(-1 * var(--bw-focus-offset)); }
+.esc-target:active:not(.is-exit)::after,
+.esc-target:active .esc-target__reach::after { border-color: var(--bw-accent); }
 .esc-brick.is-exiting {
   z-index: 3;
   opacity: 0;
@@ -185,7 +237,13 @@
   font-weight: 700;
   line-height: var(--bw-lh-body);
   color: var(--bw-text-2);
+  display: grid;
 }
+/* the line on screen, and while a brick is picked the line it replaced, unseen and unread, in the same cell:
+   the help keeps its height, so the board above it stays put between the two taps */
+.esc-help__line,
+.esc-help[data-hold]::after { grid-area: 1 / 1; }
+.esc-help[data-hold]::after { content: attr(data-hold); visibility: hidden; }
 
 /* ---------- tools row: Undo and Hint centred, the stuck offer pinned right (brief 3.2, 7.1) ----------
    The row spans the screen and keeps its height, so the board never resizes when Next or the offer shows. */
@@ -202,12 +260,16 @@
 .esc-tools__centre { display: flex; justify-content: center; gap: var(--bw-sp-8); }
 .esc-tools__end { justify-self: end; display: flex; }
 .esc-tools .esc-tool { width: 58px; height: 58px; border-radius: 18px; }
+/* the speaker holds the row's left cell while Voice is on (decisions 17, 20); the centre group never moves */
+.esc-tools .esc-speaker { justify-self: start; }
 /* Next puzzle and Play Level take the tools' place: green, 220px wide at least, the row's 58px tall */
 .esc-tools .esc-next { min-width: 220px; min-height: 58px; border-radius: var(--bw-r-md); }
 
 @media (prefers-reduced-motion: reduce) {
-  /* no slides: the spring back from a door and the walk out are instant, only the fade stays */
+  /* no slides: the spring back from a door and the walk out are instant, only the fade stays. The global
+     0.01ms rule (global.css) would erase that fade too, so the leaving brick takes its 150ms back. */
   .esc-brick,
   .esc-brick.is-exiting { transition: opacity 150ms ease-out; }
+  .esc-brick.is-exiting { transition-duration: 150ms !important; }
   .esc-status__fill { transition: none; }
 }
