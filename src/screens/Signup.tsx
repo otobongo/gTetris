@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { auth } from '../shared/account';
 import { progressStore, useProgressState } from '../shared/progress';
 import { toHref } from '../shared/router';
@@ -10,7 +10,7 @@ import { AddChild } from './parts/AddChild';
 import { Avatar } from './parts/Art';
 import { Field } from './parts/Controls';
 import { Glyph } from './parts/Glyph';
-import { AuthTop } from './Signin';
+import { AuthTop, SoonNotice, answerNotice, pointAtSoon } from './Signin';
 import './screens.css';
 
 type Step = 0 | 1 | 2;
@@ -18,8 +18,9 @@ type Step = 0 | 1 | 2;
 /**
  * Sign up (design/canvas/Signup.dc.html): family account, then children, then done. Wired to the
  * AuthService (createAccount for email); the email, Apple, Google and Facebook paths all need the
- * parent or guardian box ticked first. While accounts are switched off every button shows the
- * coming-soon note and the steps after the first are not reached.
+ * parent or guardian box ticked first. While accounts are switched off the first step opens with the
+ * coming-soon note under its heading, every button answers by pointing at it, and the steps after the
+ * first are not reached.
  */
 export default function Signup() {
   const { players } = useProgressState();
@@ -28,19 +29,30 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [adult, setAdult] = useState(false);
-  const [needAdult, setNeedAdult] = useState(false);
+  // How many times a path has asked for the parent or guardian box since it was last changed.
+  const [adultAsks, setAdultAsks] = useState(0);
+  const needAdult = adultAsks > 0;
+  const adultNote = useRef<HTMLParagraphElement>(null);
   const [where, setWhere] = useState<'provider' | 'email'>('provider');
   const [notice, report] = useAuthNotice();
+  const soon = useRef<HTMLDivElement>(null);
+  // The top notice already says accounts are coming soon; answers add only what is new.
+  const formNotice = answerNotice(notice);
   const back = backTarget(['/settings', '/signin', '/help'], '/settings');
   const backLabel = back === '/signin' ? 'Back to sign in' : back === '/help' ? 'Back to support' : 'Back to settings';
 
   // Every path (email, Apple, Google, Facebook) needs the parent or guardian box first.
-  const needAdultBox = () => setNeedAdult(true);
+  const needAdultBox = () => setAdultAsks((n) => n + 1);
+  // The providers sit far above the box, so each ask brings its answer on screen: the tap must not look dead.
+  useEffect(() => {
+    if (adultAsks > 0) adultNote.current?.scrollIntoView({ block: 'nearest' });
+  }, [adultAsks]);
   const create = async () => {
     const r = await startSignup(adult, () => auth.createAccount(email.trim(), pw), needAdultBox);
     if (!r) return;
     setWhere('email');
     if (report('email', r)) setStep(1);
+    else pointAtSoon(soon, 'email', r);
   };
 
   return (
@@ -65,12 +77,14 @@ export default function Signup() {
             <h1>Create your family account</h1>
             <p>For a parent or guardian. Kids never need a password.</p>
           </div>
-          {notice && where === 'provider' && <Notice notice={notice} />}
+          <SoonNotice at={soon} />
+          {formNotice && where === 'provider' && <Notice notice={formNotice} />}
           <ProviderButtons
             start={(_, run) => startSignup(adult, run, needAdultBox)}
             onResult={(provider, r) => {
               setWhere('provider');
               if (report(provider, r)) setStep(1);
+              else pointAtSoon(soon, provider, r);
             }}
           />
           <OrDivider />
@@ -84,7 +98,7 @@ export default function Signup() {
               aria-describedby={needAdult && !adult ? 'su-adult' : undefined}
               onChange={(e) => {
                 setAdult(e.target.checked);
-                setNeedAdult(false);
+                setAdultAsks(0);
               }}
             />
             I am a parent or guardian, 18 or older, and I agree to the Terms of use and Privacy policy.
@@ -98,12 +112,12 @@ export default function Signup() {
             </a>
           </div>
           {needAdult && !adult && (
-            <p id="su-adult" role="alert" className="sc-error">
+            <p ref={adultNote} id="su-adult" role="alert" className="sc-error">
               <Glyph name="alert" size={20} />
               Tick the box above to create the account.
             </p>
           )}
-          {notice && where === 'email' && <Notice notice={notice} compact />}
+          {formNotice && where === 'email' && <Notice notice={formNotice} compact />}
           <div className="sc-spacer" />
           <PressButton type="submit" variant="green" size="lg" block>
             Create account

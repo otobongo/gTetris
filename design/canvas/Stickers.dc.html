@@ -128,19 +128,21 @@ Say the name
 </sc-if>
 
 <sc-if value="{{dlg.missing}}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{dlg.hasCta}}" hint-placeholder-val="{{ true }}">
 <a data-stk-first="1" href="{{dlg.href}}" class="stk-press stk-go" style="align-self: stretch; margin-top: 10px; min-height: 56px; display: flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; color: #063510; font-size: 20px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
 {{dlg.cta}}
 <sc-if value="{{dlg.playIcon}}" hint-placeholder-val="{{ true }}">
 <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z" fill="currentColor"></path></svg>
 </sc-if>
 </a>
+</sc-if>
 <div style="align-self: stretch; display: flex; gap: 10px; margin-top: 6px;">
 <sc-if value="{{dlg.young}}" hint-placeholder-val="{{ false }}">
 <button onClick="{{dlg.say}}" class="stk-press" aria-label="Hear how to get it" style="flex-shrink: 0; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #ffffff; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 9.5a3.5 3.5 0 0 1 0 5"></path><path d="M19 7a7 7 0 0 1 0 10"></path></svg>
 </button>
 </sc-if>
-<button onClick="{{closeDlg}}" class="stk-press" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; min-height: 54px; padding: 0 20px; color: #ffffff; font-size: 17px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Close</button>
+<button data-stk-close="1" onClick="{{closeDlg}}" class="stk-press" style="flex: 1; border: 0; cursor: pointer; font-family: inherit; min-height: 54px; padding: 0 20px; color: #ffffff; font-size: 17px; font-weight: 800; border-radius: 16px; background: linear-gradient(180deg, #6b5bd0, #4b3eaa); box-shadow: 0 5px 0 #241a63;">Close</button>
 </div>
 </sc-if>
 </div>
@@ -317,7 +319,8 @@ class Component extends DCLogic {
     var missFace = 'border: 2px dashed #6d5fd0; background: transparent;';
 
     var where = function (st) {
-      if (st.page === 'discoveries') return { from: "From Today's discovery", how: "Today's discovery on Home gives you a sticker. Try a new one each day.", href: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html', cta: 'Go to Home', play: false, game: "Today's discovery" };
+      // Nothing awards discovery stickers yet, so their slots say so and send nowhere (decision 29, 2026-11-16).
+      if (st.page === 'discoveries') return { from: "From Today's discovery", how: 'Discovery stickers are coming soon.', href: '', cta: '', play: false, game: "Today's discovery" };
       var g = G[st.game];
       var chap = g.chapters[st.ch];
       return { from: 'From ' + g.name + ' · ' + chap, how: 'Finish ' + chap + ' in ' + g.name + ' to get this sticker.', href: g.href[t], cta: 'Play ' + g.name, play: true, game: g.name };
@@ -332,7 +335,7 @@ class Component extends DCLogic {
         got: got,
         isNew: fresh,
         name: st.name,
-        label: got ? st.name + (fresh ? ', new sticker' : '') : 'Sticker not found yet, from ' + w.game,
+        label: got ? st.name + (fresh ? ', new sticker' : '') : st.page === 'discoveries' ? 'Discovery sticker, coming soon' : 'Sticker not found yet, from ' + w.game,
         faceClass: got ? 'stk-face stk-got' + (fresh && !s.settled ? ' stk-settle' : '') : 'stk-face',
         face: got ? gotFace : missFace,
         mosaic: self.mosaic(px, 1),
@@ -340,7 +343,8 @@ class Component extends DCLogic {
         open: function (e) {
           self.rootFrom(e);
           self.setState({ openId: st.id, settled: true });
-          self.focusLater('[data-stk-first]');
+          // The first action, or Close when a missing sticker has nowhere to send the child.
+          self.focusLater('[data-stk-first], [data-stk-close]');
         }
       };
     });
@@ -353,7 +357,7 @@ class Component extends DCLogic {
       self.setState({ openId: null });
       if (id) self.focusLater('[data-stk-slot="' + id + '"]');
     };
-    var dlg = { got: false, missing: false, title: '', line: '', face: missFace, mosaic: this.mosaic(24, 2), cells: [], href: '', cta: '', playIcon: false, young: young, say: function () {} };
+    var dlg = { got: false, missing: false, title: '', line: '', face: missFace, mosaic: this.mosaic(24, 2), cells: [], href: '', cta: '', hasCta: false, playIcon: false, young: young, say: function () {} };
     if (cur) {
       var cGot = has(cur);
       var cw = where(cur);
@@ -367,6 +371,7 @@ class Component extends DCLogic {
         cells: this.cells(cur.art, cGot, 24),
         href: cw.href,
         cta: cw.cta,
+        hasCta: !!cw.cta,
         playIcon: cw.play,
         young: young,
         say: function () { self.say(cGot ? cur.name : cw.how); }
@@ -375,7 +380,9 @@ class Component extends DCLogic {
 
     var tabDefs = [['games', 'Games'], ['discoveries', 'Discoveries']];
     var pageLine;
-    if (mode === 'empty') pageLine = tab === 'games' ? 'Each game chapter you finish adds a sticker here.' : "Today's discovery on Home gives you a sticker.";
+    // A Discoveries page with none on it says they are coming soon, also for a child with game stickers (decision 29, 2026-11-16).
+    if (tab === 'discoveries' && gotOnPage === 0) pageLine = 'Discovery stickers are coming soon.';
+    else if (mode === 'empty') pageLine = 'Each game chapter you finish adds a sticker here.';
     else if (pageDone) pageLine = 'You found every sticker on this page.';
     else pageLine = gotOnPage + ' of ' + onPage.length + ' on this page';
 

@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { auth } from '../shared/account';
+import { useRef, useState, type RefObject } from 'react';
+import { ACCOUNTS_ACTIVE, auth, type ProviderId, type Result } from '../shared/account';
 import { useProgressState } from '../shared/progress';
 import { toHref } from '../shared/router';
 import { IconButton, PressButton, Screen } from '../shared/ui';
+import { SOON, authNotice, type AuthNotice } from './logic/auth';
 import { backTarget } from './logic/session';
 import { LegalLinks, Notice, OrDivider, ProviderButtons, useAuthNotice } from './parts/Account';
 import { Avatar, Wordmark } from './parts/Art';
@@ -10,6 +11,35 @@ import { Field } from './parts/Controls';
 import './screens.css';
 
 type View = 'form' | 'reset' | 'resetSent' | 'done';
+
+/**
+ * The coming-soon notice at the top of Sign in and Sign up while accounts are off (decision 31), so a
+ * grown-up knows before typing anything. The ref takes focus when an answer repeats it; a finger or mouse
+ * on the notice itself does not, since it is not a control.
+ */
+export function SoonNotice({ at }: { at: RefObject<HTMLDivElement | null> }) {
+  if (ACCOUNTS_ACTIVE) return null;
+  return (
+    <div ref={at} tabIndex={-1} className="sc-auth__soon" onMouseDown={(e) => e.preventDefault()}>
+      <Notice notice={SOON} compact />
+    </div>
+  );
+}
+
+/**
+ * The notice to show for an AuthService answer: none when it is the coming-soon note the top notice
+ * already shows. Errors and the offline note still show where they always have.
+ */
+export function answerNotice(notice: AuthNotice | null): AuthNotice | null {
+  return notice && !ACCOUNTS_ACTIVE && notice.tone === 'soon' ? null : notice;
+}
+
+/** After a failed answer that is the coming-soon note, point at the top notice instead of adding a copy. */
+export function pointAtSoon<T>(at: RefObject<HTMLDivElement | null>, provider: ProviderId, r: Result<T>) {
+  if (ACCOUNTS_ACTIVE || r.ok || authNotice(r.reason, provider) !== SOON) return;
+  at.current?.focus();
+  at.current?.scrollIntoView?.({ block: 'nearest' });
+}
 
 /** Top row of the account screens: back, the wordmark, an empty slot. */
 export function AuthTop({ back, backLabel, onBack }: { back?: string; backLabel: string; onBack?: () => void }) {
@@ -24,8 +54,8 @@ export function AuthTop({ back, backLabel, onBack }: { back?: string; backLabel:
 
 /**
  * Sign in (design/canvas/Signin.dc.html, brief 3.1), wired to the AuthService. While accounts
- * are switched off every button answers with the calm coming-soon note, and Back always leads
- * out, so a child is never stuck here.
+ * are switched off the calm coming-soon note sits under the heading, every button answers by
+ * pointing at it, and Back always leads out, so a child is never stuck here.
  */
 export default function Signin() {
   const { players } = useProgressState();
@@ -36,6 +66,7 @@ export default function Signin() {
   const [busy, setBusy] = useState(false);
   const [where, setWhere] = useState<'provider' | 'email'>('provider');
   const [notice, report, clear] = useAuthNotice();
+  const soon = useRef<HTMLDivElement>(null);
   const back = backTarget(['/signup', '/settings', '/help'], '/settings');
   const backLabel = back === '/signup' ? 'Back to sign up' : back === '/help' ? 'Back to support' : 'Back to settings';
 
@@ -46,6 +77,7 @@ export default function Signin() {
     const r = await auth.signInWithEmail(email.trim(), pw);
     setBusy(false);
     if (report('email', r)) setView('done');
+    else pointAtSoon(soon, 'email', r);
   };
 
   const sendReset = async () => {
@@ -60,7 +92,9 @@ export default function Signin() {
   };
 
   const wrongCreds = notice?.title.startsWith('That email');
-  const emailNotice = notice && where === 'email' ? notice : null;
+  // On the form, the top notice already says accounts are coming soon; answers add only what is new.
+  const formNotice = answerNotice(notice);
+  const emailNotice = formNotice && where === 'email' ? formNotice : null;
 
   return (
     <Screen padding="roomy" gap={14}>
@@ -79,12 +113,14 @@ export default function Signin() {
             <h1>Welcome back</h1>
             <p>Sign in to your family account. Your children's stars, levels and stickers come with you.</p>
           </div>
+          <SoonNotice at={soon} />
 
-          {notice && where === 'provider' && <Notice notice={notice} />}
+          {formNotice && where === 'provider' && <Notice notice={formNotice} />}
           <ProviderButtons
             onResult={(provider, r) => {
               setWhere('provider');
               if (report(provider, r)) setView('done');
+              else pointAtSoon(soon, provider, r);
             }}
           />
           <OrDivider />
