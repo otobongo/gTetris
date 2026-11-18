@@ -36,6 +36,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     locale: 'en-GB',
     reducedMotion: 'reduce',
+    // Journeys run silently: no game sounds or spoken words through the machine's speakers.
+    launchOptions: { args: ['--mute-audio'] },
   },
   projects: [
     {
