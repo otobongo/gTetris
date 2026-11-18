@@ -43,7 +43,7 @@ export const questionText = (p: Pair): string => `${sumWords(p)}. How many?`;
 /** What the speaker reads once solved, and what a right = says: "3 plus 4 makes 7." */
 export const spokenSolved = solvedLine;
 
-/** What the speaker reads: the question, or once solved the solved line. */
+/** The sum on its own: the question, or once solved the solved line. The speaker button reads `spokenHelp`. */
 export const spokenText = (p: Pair & { answer: number }, solved: boolean): string => (solved ? solvedLine(p) : questionText(p));
 
 /** The third-digit line as the speaker says it: the = key is the green one (calc.css .calc-key--equals). */
