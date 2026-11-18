@@ -30,12 +30,15 @@ test.describe('a phone held sideways (844 x 390)', () => {
     expect(h.x).toBeGreaterThanOrEqual(well.x + well.width);
 
     // The screen scrolls at this height: a tap on the speaker reads the line and leaves the scroll where it is.
-    await help.scrollIntoViewIfNeeded();
     const scroller = page.locator('.bw-screen');
-    const top = await scroller.evaluate((el) => el.scrollTop);
+    await scroller.evaluate((el) => {
+      el.scrollTop = 0;
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
     await help.tap();
     await expect.poll(spoken).toEqual(['Press any button to start. New brick: Corner.']);
-    expect(await scroller.evaluate((el) => el.scrollTop)).toBe(top);
+    await expect(board).toBeFocused();
+    expect(await scroller.evaluate((el) => el.scrollTop)).toBe(0);
 
     await pad.getByRole('button', { name: 'Down', exact: true }).tap();
     await page.getByRole('button', { name: 'Pause', exact: true }).tap();
