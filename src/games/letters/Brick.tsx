@@ -30,6 +30,7 @@ export function LetterBrick({
   onTap,
   onPointerTap,
   onDrop,
+  onDragStart,
   dropByOverlap = false,
   onMiss,
   label,
@@ -45,6 +46,8 @@ export function LetterBrick({
   onTap?: () => void;
   onPointerTap?: () => void;
   onDrop?: (at: DropAt) => void;
+  /** A press has moved far enough to be a drag (practice stops its drag demo then). */
+  onDragStart?: () => void;
   dropByOverlap?: boolean;
   onMiss?: () => void;
   label?: string;
@@ -130,6 +133,7 @@ export function LetterBrick({
           const dx = e.clientX - d.x;
           const dy = e.clientY - d.y;
           if (!d.moved && Math.hypot(dx, dy) < 10) return;
+          if (!d.moved) onDragStart?.();
           d.moved = true;
           const el = e.currentTarget;
           el.classList.add('is-dragging');

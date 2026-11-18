@@ -25,6 +25,23 @@ export function lettersStars(slips: number, usedHint: boolean): number {
 /** Hints per level, shared across its puzzles: a hint spent on a puzzle later swapped away stays spent (brief 3.3). */
 export const HINTS_PER_LEVEL = HINTS_PER_RUN;
 
+/**
+ * Whether a counted hint caps the level now, so the capped-star mark shows beside the dots (decision 25): a
+ * hint used on the puzzle on screen, or on a solved puzzle of the level. Never on the practice level, whose
+ * hint does not cap (decision 22). A hint used on a puzzle that was then swapped away is not counted (3.3).
+ */
+export function lettersCapped(practice: boolean, hintOnScreen: boolean, solved: readonly { usedHint?: boolean }[]): boolean {
+  return !practice && (hintOnScreen || solved.some((r) => !!r.usedHint));
+}
+
+/**
+ * The solved puzzles as the level's stars and card count them. The practice level's hint never caps (decision 22),
+ * so a hint saved on one of its puzzles, by a version from before that rule or at another age band, is left out.
+ */
+export function countedResults<T extends { usedHint: boolean }>(practice: boolean, solved: readonly T[]): readonly T[] {
+  return practice ? solved.map((r) => ({ ...r, usedHint: false })) : solved;
+}
+
 /* ---------- Fill (train, missing letters, spelling) ---------- */
 
 export interface FillState {

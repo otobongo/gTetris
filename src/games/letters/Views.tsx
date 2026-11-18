@@ -3,6 +3,7 @@ import { letterName, say } from '../../shared/speech';
 import { sfx } from '../../shared/sound';
 import { useLayout } from '../../shared/ui';
 import { LetterBrick, StaticBrick, type DropAt } from './Brick';
+import { letterColor } from './data';
 import { DRAG_NOTE, MID_LINE, solvedLine } from './copy';
 import { WordPicture } from './Pictures';
 import type { FillPrompt, MatchPrompt, SoundPrompt, Tile } from './levels';
@@ -49,6 +50,11 @@ export interface ViewProps<P> {
   slot?: ReactNode;
   /** Practice (Level 1, ages 3 to 4, FillView only): a dropped letter goes to its own cell in any order, and a tap only says it. */
   practice?: boolean;
+  /**
+   * What a finger tap on the help line reads aloud: the top bar speaker's words at that moment (decision 21).
+   * Null or absent (Voice off) leaves the line as plain text.
+   */
+  helpSpeech?: string | null;
 }
 
 /** Smallest slot that can be a real button. Below it the answer row is a plain list. */
@@ -170,6 +176,160 @@ function fly(el: HTMLElement, at: DropAt, zoom: number) {
   a.oncancel = done;
 }
 
+/** Practice demo (decision 5): the glide to the brick's own place, then its fade. */
+export const DEMO_GLIDE_MS = 600;
+export const DEMO_FADE_MS = 280;
+/** Under Reduce Motion the demo is a still arrow, up this long. */
+export const DEMO_ARROW_MS = 1500;
+
+interface DemoGeometry {
+  /** The ghost brick: its box in the view (local px, the tablet zoom taken out), tilt, and the move to its place. */
+  left: number;
+  top: number;
+  rot: number;
+  dx: number;
+  dy: number;
+  sx: number;
+  sy: number;
+  /** The arrow, from the top of the brick up to the bottom of its place, in the view. */
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+}
+
+/**
+ * Where the practice demo runs: the tapped tray brick and its own place, in the view's own px. The tablet frame
+ * is scaled with CSS zoom, and browsers differ on whether a measured box already has that zoom taken out, so the
+ * scale is read from the view itself: its measured width over its own width. The brick's box comes from its
+ * centre and its own size, so its tilt is kept.
+ */
+function demoGeometry(view: HTMLElement, tile: HTMLElement, place: HTMLElement, rot: number): DemoGeometry | null {
+  const v = view.getBoundingClientRect();
+  const t = tile.getBoundingClientRect();
+  const c = place.getBoundingClientRect();
+  const w = tile.offsetWidth;
+  const h = tile.offsetHeight;
+  if (!w || !h || !c.width || !v.width || !view.offsetWidth) return null;
+  const z = v.width / view.offsetWidth;
+  const local = (x: number, y: number) => ({ x: (x - v.left) / z, y: (y - v.top) / z });
+  const tc = local(t.left + t.width / 2, t.top + t.height / 2);
+  const cc = local(c.left + c.width / 2, c.top + c.height / 2);
+  return {
+    left: tc.x - w / 2,
+    top: tc.y - h / 2,
+    rot,
+    dx: cc.x - tc.x,
+    dy: cc.y - tc.y,
+    sx: c.width / z / w,
+    sy: c.height / z / h,
+    from: local(t.left + t.width / 2, t.top),
+    to: local(c.left + c.width / 2, c.top + c.height),
+  };
+}
+
+/** The arrow's line and head, drawn in a box `pad` px around both ends. */
+function arrowPath(from: { x: number; y: number }, to: { x: number; y: number }, pad: number) {
+  const left = Math.min(from.x, to.x) - pad;
+  const top = Math.min(from.y, to.y) - pad;
+  const a = { x: from.x - left, y: from.y - top - 6 };
+  const b = { x: to.x - left, y: to.y - top + 8 };
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const u = { x: (b.x - a.x) / len, y: (b.y - a.y) / len };
+  const n = { x: -u.y, y: u.x };
+  const head = (side: number) => `${(b.x - u.x * 14 + n.x * 10 * side).toFixed(1)} ${(b.y - u.y * 14 + n.y * 10 * side).toFixed(1)}`;
+  const pt = (q: { x: number; y: number }) => `${q.x.toFixed(1)} ${q.y.toFixed(1)}`;
+  return {
+    left,
+    top,
+    width: Math.abs(from.x - to.x) + pad * 2,
+    height: Math.abs(from.y - to.y) + pad * 2,
+    d: `M ${pt(a)} L ${pt(b)} M ${head(1)} L ${pt(b)} L ${head(-1)}`,
+  };
+}
+
+/**
+ * Practice (decision 5): one demo of the drag the child is asked for. A see-through copy of the tapped brick
+ * glides from its tray place to its own place and fades; under Reduce Motion a still arrow points from the
+ * brick up to its place instead. Nothing here can be pressed or heard by VoiceOver: the tap's own speech and
+ * the help line carry the message. `onEnd` takes it away.
+ */
+function DragDemo({ tile, place, ch, rot, onEnd }: { tile: () => HTMLElement | null; place: () => HTMLElement | null; ch: string; rot: number; onEnd: () => void }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [geo, setGeo] = useState<DemoGeometry | null>(null);
+  const [still] = useState(reducedMotion);
+  const end = useRef(onEnd);
+  end.current = onEnd;
+
+  useLayoutEffect(() => {
+    const view = ref.current?.parentElement;
+    const t = tile();
+    const c = place();
+    const g = view && t && c ? demoGeometry(view, t, c, rot) : null;
+    if (!g) end.current();
+    else setGeo(g);
+    // Measured once, when the demo starts.
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!geo) return;
+    if (still) {
+      const id = window.setTimeout(() => end.current(), DEMO_ARROW_MS);
+      return () => window.clearTimeout(id);
+    }
+    const el = ref.current?.querySelector<HTMLElement>('.lb-demo-glide');
+    const total = DEMO_GLIDE_MS + DEMO_FADE_MS;
+    // The fallback ends it when the animation never reports back (no Web Animations, or a hidden tab).
+    const id = window.setTimeout(() => end.current(), total + 100);
+    if (!el || typeof el.animate !== 'function') return () => window.clearTimeout(id);
+    const at = `translate(${geo.dx}px, ${geo.dy}px) rotate(0deg) scale(${geo.sx}, ${geo.sy})`;
+    const a = el.animate(
+      [
+        { transform: `translate(0px, 0px) rotate(${geo.rot}deg) scale(1, 1)`, opacity: 0.5, easing: 'ease-in-out' },
+        { transform: at, opacity: 0.5, offset: DEMO_GLIDE_MS / total, easing: 'ease-out' },
+        { transform: at, opacity: 0 },
+      ],
+      { duration: total, fill: 'forwards' },
+    );
+    a.onfinish = () => end.current();
+    return () => {
+      window.clearTimeout(id);
+      a.onfinish = null;
+      a.cancel();
+    };
+  }, [geo, still]);
+
+  if (!geo) return <span ref={ref} className="lb-demo" aria-hidden="true" />;
+  if (still) {
+    const arrow = arrowPath(geo.from, geo.to, 14);
+    return (
+      <span ref={ref} className="lb-demo" aria-hidden="true">
+        <svg
+          className="lb-demo-arrow"
+          aria-hidden="true"
+          focusable="false"
+          width={arrow.width}
+          height={arrow.height}
+          viewBox={`0 0 ${arrow.width} ${arrow.height}`}
+          style={{ left: arrow.left, top: arrow.top }}
+        >
+          <path d={arrow.d} />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <span ref={ref} className="lb-demo" aria-hidden="true">
+      <span
+        className="lb-brick lb-brick--tile lb-demo-glide"
+        data-brick={letterColor(ch)}
+        aria-hidden="true"
+        style={{ left: geo.left, top: geo.top, '--rot': `${geo.rot}deg` } as CSSProperties}
+      >
+        <span className="lb-brick__ch">{ch}</span>
+      </span>
+    </span>
+  );
+}
+
 /* ---------- Pieces ---------- */
 
 const px = (n: number) => `${n}px`;
@@ -203,13 +363,27 @@ function trayVars(t: TraySize): CSSProperties {
 /**
  * The help line, with the hint button at its right edge and the stuck offer in the left slot. The
  * offer comes last in the markup, so it is last in the tab order, and CSS places it on the left (brief 10).
+ * With Voice on, a clear button lies over the line's cell so a child who cannot read yet can tap the line to
+ * hear it (decision 21). It is a pointer shortcut only: out of the tab order and hidden from VoiceOver, whose
+ * users have the top bar speaker, which says the same words.
  */
-function HelpRow({ text, hint, offer }: { text: string; hint: ReactNode; offer?: ReactNode }) {
+function HelpRow({ text, hint, offer, speech }: { text: string; hint: ReactNode; offer?: ReactNode; speech?: string | null }) {
   return (
     <div className="lb-helprow">
       <p className="lb-help" role="status">
         {text}
       </p>
+      {speech && (
+        <button
+          type="button"
+          className="lb-help-tap"
+          tabIndex={-1}
+          aria-hidden="true"
+          // A press never takes the focus: this button is hidden from VoiceOver, and the focus stays where the child left it.
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => say(speech)}
+        />
+      )}
       <span className="lb-helprow__hint">{hint}</span>
       <span className="lb-helprow__offer">{offer}</span>
     </div>
@@ -236,7 +410,7 @@ const rotFor = (i: number) => (i % 2 ? 3 : -3);
 
 /* ---------- Train, missing letters, spelling ---------- */
 
-export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot, practice = false }: ViewProps<FillPrompt>) {
+export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot, practice = false, helpSpeech }: ViewProps<FillPrompt>) {
   const later = useLater();
   const { zoom } = useLayout();
   const [fill, setFill] = useState(() => newFill(p));
@@ -253,6 +427,10 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
   const slotsRef = useRef<HTMLOListElement>(null);
   /** Practice: the cell a dropped brick just went into and where it was let go, for its flight after the render. */
   const flight = useRef<{ cell: number; at: DropAt } | null>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
+  /** Practice: pointer taps on the tray in this puzzle, and the drag demo on screen (decision 5). */
+  const practiceTaps = useRef(0);
+  const [demo, setDemo] = useState<{ id: string; cell: number; n: number } | null>(null);
 
   useLayoutEffect(() => {
     const f = flight.current;
@@ -286,16 +464,31 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
     if (done || !active) return;
     const r = placeOwn(p, fill, id);
     if (r.result === 'ignored') return;
+    setDemo(null);
     if (at) flight.current = { cell: r.cell, at };
     placeIn(r.state, r.cell);
   };
 
-  /** Practice: a pointer tap says the letter, nudges the brick and asks for a drag. Not a slip, not progress. */
+  /** Practice: the drag demo for one tray brick, to its own place. A new one replaces the last; none during a drag. */
+  const showDemo = (id: string) => {
+    if (viewRef.current?.querySelector('.is-dragging')) return;
+    const cell = placeOwn(p, fill, id).cell;
+    if (cell < 0) return;
+    setDemo((d) => ({ id, cell, n: (d?.n ?? 0) + 1 }));
+  };
+
+  /**
+   * Practice: a pointer tap says the letter, then the drag note, nudges the brick and shows the note. From the
+   * puzzle's second tap it also shows the drag once (decision 5). Not a slip, not progress.
+   */
   const sayOnly = (t: Tile) => {
     if (done || !active) return;
     say(letterName(t.ch));
+    say(DRAG_NOTE, undefined, { queue: true });
     bounce.hop(t.id);
     note.show(DRAG_NOTE, 2400);
+    practiceTaps.current += 1;
+    if (practiceTaps.current >= 2) showDemo(t.id);
   };
 
   const tap = (id: string) => {
@@ -336,7 +529,11 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
   const canPress = slots.w >= MIN_BUTTON;
 
   return (
-    <div className={`lb-view lb-fill lb-fill--${p.kind}${done ? ' is-done' : ''}`} style={{ ...slotVars(slots), ...trayVars(tray), '--lb-min': px(minViewHeight(slots.h, tray)) } as CSSProperties}>
+    <div
+      ref={viewRef}
+      className={`lb-view lb-fill lb-fill--${p.kind}${done ? ' is-done' : ''}`}
+      style={{ ...slotVars(slots), ...trayVars(tray), '--lb-min': px(minViewHeight(slots.h, tray)) } as CSSProperties}
+    >
       <div className="lb-top">
         {spelling ? (
           <button type="button" className="lb-picture" aria-label={`Picture of a ${word}, tap to hear it`} onClick={() => say(word)}>
@@ -382,7 +579,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
             );
           })}
         </ol>
-        <HelpRow text={help} hint={hint} offer={offer} />
+        <HelpRow text={help} hint={hint} offer={offer} speech={helpSpeech} />
       </div>
       <Well slot={slot}>
         {p.tray.map((t: Tile, i) =>
@@ -397,6 +594,7 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
               className={`${wiggling(t.id) ? 'is-wiggle ' : ''}${bounce.hopping(t.id) ? 'is-bounce ' : ''}${hinting.hinted(t.id) ? 'is-hint' : ''}`}
               onTap={() => tap(t.id)}
               onPointerTap={practice ? () => sayOnly(t) : undefined}
+              onDragStart={practice ? () => setDemo(null) : undefined}
               onDrop={practice ? (at) => placeOwnCell(t.id, at) : () => tap(t.id)}
               // Practice takes a drop wherever the brick sits on the train, and a miss still answers with a sound.
               dropByOverlap={practice}
@@ -405,13 +603,23 @@ export function FillView({ prompt: p, active, onSlip, onProgress, onDone, hintRe
           ),
         )}
       </Well>
+      {demo && (
+        <DragDemo
+          key={demo.n}
+          ch={p.tray.find((t) => t.id === demo.id)?.ch ?? ''}
+          rot={rotFor(p.tray.findIndex((t) => t.id === demo.id))}
+          tile={() => viewRef.current?.querySelector<HTMLElement>(`.lb-tray [data-id="${CSS.escape(demo.id)}"]`) ?? null}
+          place={() => (slotsRef.current?.children[demo.cell] as HTMLElement | undefined) ?? null}
+          onEnd={() => setDemo((d) => (d?.n === demo.n ? null : d))}
+        />
+      )}
     </div>
   );
 }
 
 /* ---------- Big and small ---------- */
 
-export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<MatchPrompt>) {
+export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot, helpSpeech }: ViewProps<MatchPrompt>) {
   const layout = useLayout();
   const [s, setS] = useState(newMatch);
   const { wiggling, nonce, wiggle } = useWiggle();
@@ -486,7 +694,7 @@ export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintR
 
   return (
     <div className={`lb-view lb-match${done ? ' is-done' : ''}`} style={trayVars(size)}>
-      <HelpRow text={help} hint={hint} offer={offer} />
+      <HelpRow text={help} hint={hint} offer={offer} speech={helpSpeech} />
       {row('upper', p.upper)}
       {row('lower', p.lower)}
     </div>
@@ -495,7 +703,7 @@ export function MatchView({ prompt: p, active, onSlip, onProgress, onDone, hintR
 
 /* ---------- First sounds ---------- */
 
-export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot }: ViewProps<SoundPrompt>) {
+export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, innerW, instruction, helpOverride, offer, slot, helpSpeech }: ViewProps<SoundPrompt>) {
   const [done, setDone] = useState(false);
   const [tried, setTried] = useState<string[]>([]);
   const { wiggling, nonce, wiggle } = useWiggle();
@@ -556,7 +764,7 @@ export function SoundView({ prompt: p, active, onSlip, onDone, hintRef, hint, in
             </>
           )}
         </p>
-        <HelpRow text={help} hint={hint} offer={offer} />
+        <HelpRow text={help} hint={hint} offer={offer} speech={helpSpeech} />
       </div>
       <Well slot={slot}>
         {p.options.map((t, i) => (

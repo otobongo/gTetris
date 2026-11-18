@@ -21,10 +21,20 @@
 <div style="text-align: center; line-height: 1.1; min-width: 0;">
 <div style="font-size: 24px; font-weight: 800;">{{title}}</div>
 <sc-if value="{{showDots}}" hint-placeholder-val="{{ true }}">
-<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px; margin-top: 4px;">
+<div style="display: flex; justify-content: center; align-items: center; margin-top: 4px;">
+<div role="img" aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 6px;">
 <sc-for list="{{dots}}" as="d" hint-placeholder-count="4">
 <span class="bw-dot" style="display: block; width: {{d.w}}px; height: 10px; border-radius: 999px; overflow: hidden; background: {{d.bg}}; box-shadow: {{d.ring}};"><span class="bw-dot-fill" style="display: block; width: 100%; height: 100%; background: #ffc21a; transform-origin: left center; transform: scaleX({{d.fill}}); opacity: {{d.fill}};"></span></span>
 </sc-for>
+</div>
+<!-- Once a counted hint caps the level, a small outline star with a 2 sits 8px right of the last dot (decision 25, 2026-11-16).
+     Its negative right margin cancels its width, so the dots stay centred under the title. Never on the practice level. -->
+<sc-if value="{{capped}}" hint-placeholder-val="{{ false }}">
+<span role="img" aria-label="Hint used. Up to 2 stars." style="position: relative; flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin: -5px -28px -5px 8px; color: #c9c2ff;">
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true" style="position: absolute; inset: 0;"><path d="M10 1.47L12.75 7.16L19 8.01L14.45 12.37L15.59 18.53L10 15.59L4.41 18.53L5.55 12.37L1 8.01L7.25 7.16Z"></path></svg>
+<span aria-hidden="true" style="position: relative; padding-top: 2px; font-size: 11px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">2</span>
+</span>
+</sc-if>
 </div>
 </sc-if>
 </div>
@@ -191,12 +201,18 @@
 <div style="width: 100%; display: grid; grid-template-columns: 54px minmax(0, 1fr) 54px; align-items: center; gap: 10px;">
 <div style="display: grid;">
 <sc-if value="{{showOffer}}" hint-placeholder-val="{{ false }}">
-<button class="bw-appear" onClick="{{swap}}" aria-label="{{offerName}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;">
+<!-- Ages 3 to 4: one chime and this ring for the first 2 s (decision 8, 2026-11-16). The ring is static: 4px accent outline, no offset. -->
+<button class="bw-appear" onClick="{{swap}}" aria-label="{{offerName}}" style="border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #063510; background: linear-gradient(180deg, #5fe06e, #1fb53c); box-shadow: 0 5px 0 #0f7a26;{{offerRing}}">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h12M13 5l3 3-3 3"></path><path d="M20 16H8M11 13l-3 3 3 3"></path></svg>
 </button>
 </sc-if>
 </div>
-<p role="status" style="margin: 0; font-size: 17px; font-weight: 700; line-height: 1.2; color: #c9c2ff; min-height: 24px; text-align: center; text-wrap: balance;">{{help}}</p>
+<!-- The help line is tappable to hear it (decision 21, 2026-11-16): a clear button over the whole cell reads the same words
+     as the top bar speaker. It is out of the tab order and hidden from VoiceOver, which keep the speaker. With Voice off it is not there. -->
+<div style="display: grid; align-self: stretch; align-items: center;">
+<p role="status" style="grid-area: 1 / 1; margin: 0; font-size: 17px; font-weight: 700; line-height: 1.2; color: #c9c2ff; min-height: 24px; text-align: center; text-wrap: balance;">{{help}}</p>
+<button onClick="{{speak}}" tabindex="-1" aria-hidden="true" style="grid-area: 1 / 1; align-self: stretch; min-height: 44px; margin: 0; padding: 0; border: 0; background: transparent; cursor: pointer;"></button>
+</div>
 <button onClick="{{hint}}" aria-label="Hint, {{hintsLeft}} left" aria-disabled="{{hintOff}}" style="position: relative; border: 0; cursor: pointer; width: 54px; height: 54px; border-radius: 16px; display: grid; place-items: center; color: #5a3500; background: linear-gradient(180deg, #ffe266, #ffc21a); box-shadow: 0 5px 0 #d48a00; opacity: {{hintopacity}};">
 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"></path><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"></path></svg>
 <span aria-hidden="true" style="position: absolute; right: -6px; bottom: -6px; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 8px; background: #d92f45; border: 2px solid #ffffff; color: #ffffff; font-size: 13px; line-height: 20px; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums;">{{hintsLeft}}</span>
@@ -223,9 +239,25 @@
 </div>
 </div>
 
+<!-- Practice, from the puzzle's second tap (decision 5, 2026-11-16): a see-through copy of the tapped brick glides from its tray
+     place to its own place over 600ms and fades in 280ms, drawn here half way. Under Reduce Motion (motion lever "reduced") a
+     still 4px accent arrow points from the brick up to its place for 1.5s instead. Neither can be pressed. -->
+<sc-if value="{{showGlide}}" hint-placeholder-val="{{ false }}">
+<div aria-hidden="true" style="position: absolute; pointer-events: none; display: grid; place-items: center; font-weight: 800; color: #ffffff; text-shadow: 0 2px 0 rgba(0,0,0,0.3); opacity: 0.5; z-index: 4; {{glideStyle}}">
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{glideStudL}}"></span>
+<span style="position: absolute; border-radius: 5px 5px 0 0; {{glideStudR}}"></span>
+{{glideCh}}
+</div>
+</sc-if>
+<sc-if value="{{showArrow}}" hint-placeholder-val="{{ false }}">
+<svg aria-hidden="true" width="{{iw}}" height="{{ih}}" viewBox="0 0 {{iw}} {{ih}}" style="position: absolute; left: 0; top: 0; pointer-events: none; z-index: 4;">
+<path d="{{arrowD}}" fill="none" stroke="#ffc21a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</sc-if>
+
 <sc-if value="{{cardOpen}}" hint-placeholder-val="{{ false }}">
 <div style="position: absolute; inset: 0; background: rgba(10,6,30,0.65); display: grid; place-items: center; padding: 16px;">
-<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="lb-card-title" aria-describedby="lb-card-fact" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
+<div class="bw-card" role="dialog" aria-modal="true" aria-labelledby="lb-card-title" aria-describedby="{{cardDescribedBy}}" style="width: 100%; max-width: 330px; box-sizing: border-box; text-align: center; padding: 24px 20px 20px; border-radius: 26px; background: linear-gradient(180deg, #5444b8, #3a2d8f); box-shadow: 0 8px 0 #241a63; color: #ffffff;">
 <h2 id="lb-card-title" style="margin: 0; font-size: 32px; font-weight: 800; line-height: 1.1; text-wrap: balance;">{{cardTitle}}</h2>
 <div role="img" aria-label="{{starsLabel}}" style="display: flex; justify-content: center; align-items: center; gap: {{starsgap}}px; margin: 10px 0;">
 <sc-for list="{{stars}}" as="s" hint-placeholder-count="3">
@@ -235,6 +267,18 @@
 <span aria-hidden="true" style="font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;">{{totalText}}</span>
 </sc-if>
 </div>
+<!-- A level that finishes a chapter shows its new sticker (decision 19, 2026-11-16): the 5x5 mosaic, 69px (13px cells, 1px gaps), and its name.
+     The card reads it with the fact line. Here Letter Builder's first sticker (src/screens/logic/stickers.ts l1), as sample data. -->
+<sc-if value="{{showSticker}}" hint-placeholder-val="{{ false }}">
+<div id="lb-card-sticker" style="display: flex; align-items: center; justify-content: center; gap: 14px; margin: 0 0 14px; text-align: left;">
+<span aria-hidden="true" style="display: grid; flex: none; grid-template-columns: repeat(5, 13px); grid-auto-rows: 13px; gap: 1px;">
+<sc-for list="{{stickerCells}}" as="c" hint-placeholder-count="25">
+<span style="display: block; width: 13px; height: 13px; border-radius: 2px; {{c.style}}"></span>
+</sc-for>
+</span>
+<p style="margin: 0; min-width: 0; font-size: 18px; font-weight: 800; line-height: 1.25; color: #ffffff; text-wrap: balance;">New sticker: {{stickerName}}.</p>
+</div>
+</sc-if>
 <p id="lb-card-fact" style="margin: 0; font-size: 16px; font-weight: 700; line-height: 1.35; text-wrap: balance;">{{cardFact}}</p>
 <sc-if value="{{showRule}}" hint-placeholder-val="{{ true }}">
 <p style="margin: 6px 0 0; font-size: 14px; font-weight: 700; line-height: 1.35; text-wrap: balance;">3 stars: 1 slip or none. 2 stars: 4 slips or fewer.</p>
@@ -261,7 +305,7 @@
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone","practice"],"default":"play"},"$preview":{"width":390,"height":844}}'>
+<script type="text/x-dc" data-dc-script data-props='{"device":{"editor":"enum","options":["phone","tablet"],"default":"phone"},"stage":{"editor":"enum","options":["starter","growing","advanced"],"default":"starter"},"puzzle":{"editor":"enum","options":["1","2","3","4"],"default":"3"},"moment":{"editor":"enum","options":["play","solved","stuck","levelDone","gameDone","practice","practiceDemo"],"default":"play"},"sticker":{"editor":"enum","options":["none","new"],"default":"none"},"motion":{"editor":"enum","options":["full","reduced"],"default":"full"},"$preview":{"width":390,"height":844}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -303,14 +347,24 @@ class Component extends DCLogic {
   reduced() { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
   leverKey() {
     var p = this.props || {};
-    return [this.stageOf(p), p.puzzle, p.moment].join('|');
+    return [this.stageOf(p), p.puzzle, p.moment, p.sticker, p.motion].join('|');
   }
   // A fresh word: the run's word order, solved count and hints stay with the caller.
-  freshWord() { return { filled: 0, used: {}, placed: {}, wrong: null, wrongTaps: 0, idle: 0, offer: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null }; }
+  freshWord() { return { filled: 0, used: {}, placed: {}, wrong: null, wrongTaps: 0, idle: 0, offer: false, cue: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null, taps: 0, demoIdx: null }; }
+  // The motion lever, or the viewer's own Reduce Motion setting.
+  still() { return (this.props || {}).motion === 'reduced' || this.reduced(); }
+  // The offer appeared: at ages 3 to 4 it rings for its first 2s (decision 8).
+  cueOffer(s) {
+    var self = this;
+    if (s.stage !== 'starter') return;
+    clearTimeout(this.cueT);
+    this.cueT = setTimeout(function () { self.put({ cue: false }); }, 2000);
+  }
   fromLever() {
     var p = this.props || {};
     // Practice is Level 1 for ages 3 to 4 only, so it always shows the starter child.
-    var practice = p.moment === 'practice';
+    var demo = p.moment === 'practiceDemo';
+    var practice = p.moment === 'practice' || demo;
     var stage = practice ? 'starter' : this.stageOf(p);
     var S = this.stages()[stage];
     var puzzle = Math.min(4, Math.max(1, parseInt(p.puzzle, 10) || 3));
@@ -320,7 +374,20 @@ class Component extends DCLogic {
     var s = Object.assign(this.freshWord(), { lever: this.leverKey(), stage: stage, level: S.level, puzzle: puzzle, moment: moment, order: [0, 1, 2, 3], shuffle: 0, slips: 1, hintsLeft: 3, usedHint: false });
     if (practice) Object.assign(s, { train: true, level: 1, slips: 0 });
     var word = this.wordOf(s);
-    if (practice) {
+    if (demo) {
+      // The puzzle's second tap: the help line shows the drag note and the demo runs for the letter tapped,
+      // the free letter whose own place is farthest from its tray place, as for the held letter below.
+      var dl = this.shuffled(word, 0);
+      s.note = 'Hold the letter and drag it up.';
+      s.taps = 2;
+      var farD = -1;
+      dl.forEach(function (ch, i) {
+        var j = word.indexOf(ch);
+        if (Math.abs(i - j) <= farD) return;
+        farD = Math.abs(i - j);
+        s.demoIdx = i;
+      });
+    } else if (practice) {
       // Mid-puzzle: the last letter is already in its own place while the first is still empty, and a
       // letter is held just above its own cell, the brick dipping onto the train, so the train's empty places
       // light up (is-over): let go here and it goes in. The held one is the free letter (not the first) whose
@@ -342,7 +409,7 @@ class Component extends DCLogic {
       s.filled = word.length;
       word.split('').forEach(function (ch, i) { s.used[i] = true; });
     }
-    if (moment === 'stuck') { s.moment = 'play'; s.filled = 1; s.wrongTaps = S.wrongLimit; s.slips = S.wrongLimit; s.offer = true; }
+    if (moment === 'stuck') { s.moment = 'play'; s.filled = 1; s.wrongTaps = S.wrongLimit; s.slips = S.wrongLimit; s.offer = true; s.cue = stage === 'starter'; }
     return s;
   }
   // The state to render: the last interaction, unless a lever changed since.
@@ -365,10 +432,12 @@ class Component extends DCLogic {
       var s = self.st();
       if (s.moment !== 'play') return;
       var idle = s.idle + 1;
-      self.put({ idle: idle, offer: s.offer || idle === self.stages()[s.stage].secsLimit });
+      var appears = !s.offer && idle === self.stages()[s.stage].secsLimit;
+      self.put({ idle: idle, offer: s.offer || appears, cue: s.cue || (appears && s.stage === 'starter') });
+      if (appears) self.cueOffer(s);
     }, 1000);
   }
-  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.hopT); clearTimeout(this.noteT); }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.cardT); clearTimeout(this.wrongT); clearTimeout(this.hopT); clearTimeout(this.noteT); clearTimeout(this.cueT); clearTimeout(this.demoT); }
   // One tile per letter of the word, shuffled the same way every time, never in spelling order.
   shuffled(word, extra) {
     var a = word.split('');
@@ -477,12 +546,58 @@ class Component extends DCLogic {
     var fact = s.slips === 0 ? '4 ' + noun + ', no slips.' : s.slips === 1 ? '4 ' + noun + ', 1 slip.' : '4 ' + noun + ', ' + s.slips + ' slips.';
     var trayMinH = z.rows * z.th + (z.rows - 1) * z.rowGap;
     var canHint = playing && s.hintsLeft > 0;
+    // The capped-star mark: a counted hint was used on this level (decision 25); the practice hint never counts (decision 22).
+    var capped = s.usedHint && !practice && !finished;
+    // The practice demo's two ends, in the frame's px: the tapped brick in the tray well and its own place on the train,
+    // measured as the held letter is (the train's top edge at 376).
+    var demoAt = null;
+    if (practice && playing && s.demoIdx !== null && !s.used[s.demoIdx]) {
+      var dch = trayLetters[s.demoIdx];
+      var dOwn = word.indexOf(dch);
+      var tx = IW / 2 + (z.rowW - z.tw) / -2 + s.demoIdx * (z.tw + z.gap) + z.tw / 2;
+      var ty = IH - 36 - z.th / 2;
+      var cx = IW / 2 + (z.slotRowW - z.sw) / -2 + dOwn * (z.sw + z.sGap) + z.sw / 2;
+      var cy = 376 + z.sh / 2;
+      demoAt = { ch: dch, tilt: s.demoIdx % 2 ? 3 : -3, tx: tx, ty: ty, cx: cx, cy: cy };
+    }
+    var still = this.still();
+    var glide = demoAt && !still ? (function () {
+      var p = self.pal()[self.colorOf(demoAt.ch)];
+      var mx = (demoAt.tx + demoAt.cx) / 2;
+      var my = (demoAt.ty + demoAt.cy) / 2;
+      var sx = (1 + z.sw / z.tw) / 2;
+      var sy = (1 + z.sh / z.th) / 2;
+      var stud = 'top: -' + (z.studH - 2) + 'px; width: ' + z.studW + 'px; height: ' + z.studH + 'px; background: ' + p[1] + ';';
+      return {
+        style: 'left: ' + Math.round(mx - z.tw / 2) + 'px; top: ' + Math.round(my - z.th / 2) + 'px; width: ' + z.tw + 'px; height: ' + z.th + 'px; border-radius: ' + z.tRad + 'px; font-size: ' + z.tFont + 'px; ' +
+          self.face(self.colorOf(demoAt.ch)) + ' box-shadow: none; transform: rotate(' + demoAt.tilt / 2 + 'deg) scale(' + sx.toFixed(3) + ', ' + sy.toFixed(3) + ');',
+        studl: stud + ' left: ' + z.studIn + 'px;',
+        studr: stud + ' right: ' + z.studIn + 'px;'
+      };
+    })() : null;
+    var arrowD = '';
+    if (demoAt && still) {
+      // From just above the brick to just under its place, with a chevron head at the place.
+      var ax = demoAt.tx, ay = demoAt.ty - z.th / 2 - 6, bx = demoAt.cx, by = 376 + z.sh + 8;
+      var len = Math.hypot(bx - ax, by - ay) || 1;
+      var ux = (bx - ax) / len, uy = (by - ay) / len, nx = -uy, ny = ux;
+      var hd = function (side) { return (bx - ux * 14 + nx * 10 * side).toFixed(1) + ' ' + (by - uy * 14 + ny * 10 * side).toFixed(1); };
+      arrowD = 'M ' + ax.toFixed(1) + ' ' + ay.toFixed(1) + ' L ' + bx.toFixed(1) + ' ' + by.toFixed(1) + ' M ' + hd(1) + ' L ' + bx.toFixed(1) + ' ' + by.toFixed(1) + ' L ' + hd(-1);
+    }
+    // The sticker lever: Letter Builder's first sticker, Big A (src/screens/logic/stickers.ts l1).
+    var showSticker = (this.props || {}).sticker === 'new' && !finished;
+    var stickerArt = ['.ooo.', 'o...o', 'ooooo', 'o...o', 'o...o'];
+    var codes = { r: 'red', y: 'yellow', g: 'green', b: 'blue', p: 'purple', o: 'orange', k: 'pink', t: 'teal' };
+    var stickerCells = stickerArt.join('').split('').map(function (code) {
+      var c = codes[code];
+      return { style: c ? self.face(c).replace('inset 0 -5px 0', 'inset 0 -2px 0').replace('0 4px 0 rgba(0,0,0,0.3)', '0 1px 0 rgba(0,0,0,0.3)') : 'background: transparent;' };
+    });
 
     return {
       w: tablet ? 834 : 390, h: tablet ? 1194 : 844, z: tablet ? 1.4 : 1, iw: IW, ih: IH,
       hubHref: tablet ? 'HubTablet.dc.html' : 'Hub.dc.html',
       title: finished ? 'Letter Builder' : 'Level ' + s.level,
-      showDots: !finished, dots: dots,
+      showDots: !finished, dots: dots, capped: capped,
       dotsLabel: built === 4 ? '4 of 4 ' + (spelling ? 'built.' : 'solved.') : (spelling ? 'Word ' : 'Puzzle ') + s.puzzle + ' of 4. ' + built + (spelling ? ' built.' : ' solved.'),
       showPlayArea: !finished,
       kidLine: S.kid, kidInitial: S.initial, kidcolor: S.color,
@@ -519,6 +634,7 @@ class Component extends DCLogic {
       }),
       help: helpText,
       showOffer: playing && s.offer,
+      offerRing: s.cue ? ' outline: 4px solid #ffc21a; outline-offset: 0;' : '',
       offerName: spelling ? 'New word' : 'New puzzle',
       swap: function () {
         var cs = self.st();
@@ -535,7 +651,8 @@ class Component extends DCLogic {
         var target = word.charAt(self.openCell(cs, word));
         var idx = trayLetters.findIndex(function (ch, i) { return !cs.used[i] && ch === target; });
         if (idx < 0) return;
-        self.put({ hintIdx: idx, hintsLeft: cs.hintsLeft - 1, usedHint: true });
+        // The practice hint glows and spends, but never caps the stars (decision 22).
+        self.put({ hintIdx: idx, hintsLeft: cs.hintsLeft - 1, usedHint: cs.usedHint || !practice });
       },
       traybox: 'width: ' + z.rowW + 'px; min-height: ' + trayMinH + 'px; column-gap: ' + z.gap + 'px; row-gap: ' + z.rowGap + 'px;',
       showTray: !solvedNow,
@@ -573,8 +690,13 @@ class Component extends DCLogic {
               // Enter and Space (a click with no pointer, detail 0) place it, since keyboard and switch users cannot drag.
               if (!(e && e.detail === 0)) {
                 var dragNote = 'Hold the letter and drag it up.';
+                // The letter, then the drag note after it (decision 5). From the second tap, the demo for this letter.
                 self.say(ch);
-                self.put({ note: dragNote, hopIdx: self.reduced() ? null : i, dragIdx: null });
+                try { window.speechSynthesis.speak(new SpeechSynthesisUtterance(dragNote)); } catch (err) {}
+                var taps = cs.taps + 1;
+                self.put({ note: dragNote, hopIdx: self.reduced() ? null : i, dragIdx: null, taps: taps, demoIdx: taps >= 2 ? i : null });
+                clearTimeout(self.demoT);
+                if (taps >= 2) self.demoT = setTimeout(function () { self.put({ demoIdx: null }); }, self.still() ? 1500 : 880);
                 clearTimeout(self.hopT);
                 self.hopT = setTimeout(function () { self.put({ hopIdx: null }); }, 450);
                 clearTimeout(self.noteT);
@@ -590,7 +712,7 @@ class Component extends DCLogic {
               var uu = Object.assign({}, cs.used);
               uu[i] = true;
               var all = cs.filled + 1 === word.length;
-              var step = { placed: pl, filled: cs.filled + 1, used: uu, idle: 0, offer: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null };
+              var step = { placed: pl, filled: cs.filled + 1, used: uu, idle: 0, offer: false, cue: false, note: '', hintIdx: null, hopIdx: null, dragIdx: null, demoIdx: null };
               if (all) step.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
               self.put(step);
               if (all && cs.puzzle === 4) { clearTimeout(self.cardT); self.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
@@ -603,13 +725,15 @@ class Component extends DCLogic {
               var filled = cs.filled + 1;
               var done = filled === word.length;
               // A right tap is progress: it hides the offer and resets the time signal (brief 3.2).
-              var patch = { filled: filled, used: u, wrong: null, idle: 0, offer: false, note: '', hintIdx: null };
+              var patch = { filled: filled, used: u, wrong: null, idle: 0, offer: false, cue: false, note: '', hintIdx: null };
               if (done) patch.moment = cs.puzzle < 4 ? 'solved' : 'lastSolved';
               self.put(patch);
               if (done && cs.puzzle === 4) { clearTimeout(self.cardT); self.cardT = setTimeout(function () { self.put({ moment: 'levelDone' }); }, 600); }
             } else {
               var wrongTaps = cs.wrongTaps + 1;
-              self.put({ wrong: i, slips: cs.slips + 1, wrongTaps: wrongTaps, offer: cs.offer || wrongTaps >= S.wrongLimit });
+              var appears = !cs.offer && wrongTaps >= S.wrongLimit;
+              self.put({ wrong: i, slips: cs.slips + 1, wrongTaps: wrongTaps, offer: cs.offer || appears, cue: cs.cue || (appears && cs.stage === 'starter') });
+              if (appears) self.cueOffer(cs);
               clearTimeout(self.wrongT);
               self.wrongT = setTimeout(function () { self.put({ wrong: null }); }, 400);
             }
@@ -631,6 +755,10 @@ class Component extends DCLogic {
       cardFact: finished || lastLevel ? '24 levels, 60 of 72 stars.' : fact,
       showRule: !finished && !lastLevel,
       showCap: !finished && !lastLevel && s.usedHint,
+      showSticker: showSticker, stickerCells: stickerCells, stickerName: 'Big A',
+      cardDescribedBy: showSticker ? 'lb-card-fact lb-card-sticker' : 'lb-card-fact',
+      showGlide: !!glide, glideStyle: glide ? glide.style : '', glideStudL: glide ? glide.studl : '', glideStudR: glide ? glide.studr : '', glideCh: demoAt ? demoAt.ch : '',
+      showArrow: !!arrowD, arrowD: arrowD,
       showNote: finished,
       showPlayNext: !finished && !lastLevel,
       showFinal: finished || lastLevel,
