@@ -210,10 +210,13 @@ for (const viewport of [
 /* ---------- a11y-cross-10: the Reduce Motion fades keep their 150 ms ---------- */
 
 test('with Reduce Motion the bowl and the slots still fade over 150 ms, and the slot tilt stays off', async ({ page }) => {
+  // The cue lasts 500 ms; a paused clock keeps it on screen while the test reads it, so a busy machine never misses it.
+  await page.clock.install();
   await open(page, 1);
   await page.goto('/#/game/mixer/1');
   const p = await mixerOnScreen(page);
   if (p.form !== 'finish') throw new Error('Level 1 is Finish the mix');
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 1_000);
   const duration = (selector: string) => page.locator(selector).first().evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(await duration('.mix-bowl__liquid')).toBe('0.15s');
   expect(await duration('.mix-slot')).toBe('0.15s');
