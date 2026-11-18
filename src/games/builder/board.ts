@@ -47,6 +47,9 @@ export interface Board {
   solved: boolean;
 }
 
+/** What a board remembers beyond its cells: the wrong bricks it has seen and the keys it gave the kit. */
+export type BoardMemory = Pick<Board, 'seen' | 'given'>;
+
 /** What one paint did to one square. */
 export type PaintResult =
   /** Nothing changed: locked, solved, no stroke, out of range, the same colour again, or the eraser on an empty square. */
@@ -80,17 +83,18 @@ export function newBoard(target: readonly Cell[], locked = false): Board {
 }
 
 /**
- * The board a kept draft brings back (decision 13): the same cells, with its wrong bricks remembered as seen, so
- * laying one again after an erase passes the key the kit already restored. Cells that do not fit the picture, or
- * that would already finish it, give a new empty board instead.
+ * The board a kept draft brings back (decision 13): the same cells and the same memory, so a wrong brick laid again
+ * adds no star slip after a reload, just as it adds none before one. A wrong brick on the board always counts as
+ * seen, also in a draft that kept no memory. Cells that do not fit the picture, or that would already finish it, give
+ * a new empty board instead.
  */
-export function restoreBoard(target: readonly Cell[], kept: readonly Cell[] | null, locked = false): Board {
+export function restoreBoard(target: readonly Cell[], kept: readonly Cell[] | null, locked = false, memory?: BoardMemory): Board {
   const board = newBoard(target, locked);
   if (!kept || kept.length !== target.length) return board;
   const restored: Board = { ...board, cells: kept.slice() };
   if (isSolved(restored)) return board;
-  const seen = kept.flatMap((c, i) => (c !== null && c !== target[i] ? [slipKey(i, c)] : []));
-  return { ...restored, seen };
+  const onBoard = kept.flatMap((c, i) => (c !== null && c !== target[i] ? [slipKey(i, c)] : []));
+  return { ...restored, seen: [...new Set([...(memory?.seen ?? []), ...onBoard])], given: memory?.given ?? [] };
 }
 
 /** Lock or unlock the board (a memory look or a Peek starts or ends). Locking ends any stroke without a slip check. */

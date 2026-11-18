@@ -7,7 +7,7 @@
  * reload, gone with the tab). Every access is wrapped: private browsing can throw, and then nothing is kept and the
  * game plays as it always did.
  */
-import type { Cell } from './board';
+import type { BoardMemory, Cell } from './board';
 import { BUILDER_COLORS } from './pictures';
 
 /** The part of Storage a draft needs. */
@@ -30,28 +30,53 @@ export const boardKey = (p: BoardPlace): string => `bw:draft:${p.playerId}:build
 
 const isCell = (c: unknown): c is Cell => c === null || (typeof c === 'string' && (BUILDER_COLORS as readonly string[]).includes(c));
 
-/** The board kept under `key` for an n by n puzzle, or null when there is none, it is not ours, or it cannot be read. */
-export function loadBoard(storage: DraftStorage | null, key: string, size: number): Cell[] | null {
+/** A wrong brick's slip key ("5:red") on a board of `squares` squares. */
+function isSlipKey(k: unknown, squares: number): k is string {
+  if (typeof k !== 'string') return false;
+  const [at, color, ...rest] = k.split(':');
+  return rest.length === 0 && /^\d+$/.test(at) && Number(at) < squares && isCell(color) && color !== null;
+}
+
+/** The valid slip keys of a stored list, each once. Anything else in it is left out. */
+const slipKeys = (list: unknown, squares: number): string[] =>
+  Array.isArray(list) ? [...new Set(list.filter((k): k is string => isSlipKey(k, squares)))] : [];
+
+/** The draft under `key` for an n by n puzzle, or null when there is none, it is not ours, or it cannot be read. */
+function readDraft(storage: DraftStorage | null, key: string, size: number): (BoardMemory & { cells: Cell[] }) | null {
   if (!storage) return null;
   try {
     const raw = storage.getItem(key);
     if (raw === null) return null;
     const d: unknown = JSON.parse(raw);
     if (typeof d !== 'object' || d === null || Array.isArray(d)) return null;
-    const { v, size: n, cells } = d as Record<string, unknown>;
+    const { v, size: n, cells, seen, given } = d as Record<string, unknown>;
     if (v !== 1 || n !== size || !Array.isArray(cells) || cells.length !== size * size || !cells.every(isCell)) return null;
-    return cells.slice();
+    return { cells: cells.slice(), seen: slipKeys(seen, size * size), given: slipKeys(given, size * size) };
   } catch {
     return null;
   }
 }
 
-/** Keep the board; an empty one is not kept, so its draft goes. */
-export function saveBoard(storage: DraftStorage | null, key: string, size: number, cells: readonly Cell[]): void {
+/** The board kept under `key` for an n by n puzzle, or null when there is none, it is not ours, or it cannot be read. */
+export const loadBoard = (storage: DraftStorage | null, key: string, size: number): Cell[] | null =>
+  readDraft(storage, key, size)?.cells ?? null;
+
+/** What the board under `key` remembers; nothing when it kept no memory or there is no usable draft. */
+export function loadMemory(storage: DraftStorage | null, key: string, size: number): BoardMemory {
+  const d = readDraft(storage, key, size);
+  return { seen: d?.seen ?? [], given: d?.given ?? [] };
+}
+
+/**
+ * Keep the board and what it remembers. A board with nothing on it and nothing to remember is not kept, so its draft
+ * goes; an erased board that still remembers a wrong brick stays, or laying that brick again would count as new.
+ */
+export function saveBoard(storage: DraftStorage | null, key: string, size: number, cells: readonly Cell[], memory?: BoardMemory): void {
   if (!storage) return;
-  if (cells.every((c) => c === null)) return clearBoard(storage, key);
+  const remembers = (memory?.seen.length ?? 0) > 0;
+  if (!remembers && cells.every((c) => c === null)) return clearBoard(storage, key);
   try {
-    storage.setItem(key, JSON.stringify({ v: 1, size, cells }));
+    storage.setItem(key, JSON.stringify(remembers ? { v: 1, size, cells, seen: memory?.seen, given: memory?.given } : { v: 1, size, cells }));
   } catch {
     // full or blocked: the board is simply not kept
   }

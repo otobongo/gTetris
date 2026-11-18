@@ -5,7 +5,7 @@
  * comes back but the slip does not, and these fail on the saved count only.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { builderBoard, builderPicture, builderSquare, builderSwatch, BUILDER_COLORS, homeCard, savedRun, seed } from './app';
+import { builderBoard, builderPicture, builderSquare, builderStroke, builderSwatch, BUILDER_COLORS, homeCard, savedRun, seed } from './app';
 
 const help = (page: Page) => page.locator('.bw-helprow__line');
 /** What the board holds, read from each square's brick (its name can carry ", not right" on a copy level). */
@@ -45,3 +45,69 @@ for (const how of ['back', 'reload'] as const) {
     expect(run.solved).toEqual([{ puzzle: 0, count: 1, usedHint: false, outOfTime: false }]);
   });
 }
+
+/** Lay every brick of the picture over whatever the board holds. */
+async function buildOver(page: Page, picture: { size: number; cells: (string | null)[] }) {
+  for (const color of BUILDER_COLORS) {
+    if (!picture.cells.includes(color)) continue;
+    await builderSwatch(page, color).click();
+    for (let i = 0; i < picture.cells.length; i++) if (picture.cells[i] === color) await builderSquare(page, picture.size, i).click();
+  }
+}
+
+/** Two wrong bricks in one drag: one star slip. Returns the picture and the colour laid. */
+async function dragTwoWrong(page: Page) {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6' }]);
+  await page.goto('/#/game/builder');
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+  const picture = await builderPicture(page);
+  const wrong = BUILDER_COLORS.find((c) => c !== picture.cells[0] && c !== picture.cells[1])!;
+  await builderSwatch(page, wrong).click();
+  await builderStroke(page, picture.size, [0, 1]);
+  await expect.poll(async () => (await boardBricks(page)).filter(Boolean).length).toBe(2);
+  return { picture, wrong };
+}
+
+test('a drag with two wrong bricks, a reload, and the second laid again: still 1 slip', async ({ page }) => {
+  const { picture, wrong } = await dragTwoWrong(page);
+  await page.reload();
+  await expect.poll(async () => (await boardBricks(page)).filter(Boolean).length).toBe(2);
+  await builderSwatch(page, 'eraser').click();
+  await builderSquare(page, picture.size, 1).click();
+  await builderSwatch(page, wrong).click();
+  await builderSquare(page, picture.size, 1).click();
+  await buildOver(page, picture);
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect((await savedRun(page, 'builder', 0)).solved[0].count).toBe(1);
+});
+
+test('a drag with two wrong bricks, both erased, a reload, and the second laid again: still 1 slip', async ({ page }) => {
+  const { picture, wrong } = await dragTwoWrong(page);
+  await builderSwatch(page, 'eraser').click();
+  await builderSquare(page, picture.size, 0).click();
+  await builderSquare(page, picture.size, 1).click();
+  await page.reload();
+  await expect(builderBoard(page).locator('[data-cell]').first()).toBeVisible();
+  await expect.poll(async () => (await boardBricks(page)).filter(Boolean).length).toBe(0);
+  await builderSwatch(page, wrong).click();
+  await builderSquare(page, picture.size, 1).click();
+  await buildOver(page, picture);
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect((await savedRun(page, 'builder', 0)).solved[0].count).toBe(1);
+});
+
+test('a child with no player yet: one wrong brick and a reload keep the brick and its slip together', async ({ page }) => {
+  await page.goto('/#/game/builder');
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+  const picture = await builderPicture(page);
+  const at = picture.cells.findIndex(Boolean);
+  const wrong = BUILDER_COLORS.find((c) => c !== picture.cells[at])!;
+  await builderSwatch(page, wrong).click();
+  await builderSquare(page, picture.size, at).click();
+  const kept = await boardBricks(page);
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(kept);
+  await buildOver(page, picture);
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect((await savedRun(page, 'builder', 0)).solved[0].count).toBe(1);
+});

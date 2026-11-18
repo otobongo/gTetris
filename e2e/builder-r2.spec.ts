@@ -10,13 +10,17 @@ import {
   builderBoard,
   builderPicture,
   builderSquare,
+  builderStroke,
   builderSwatch,
   BUILDER_COLORS,
   type BuilderCell,
+  buildPicture,
   dots,
   homeCard,
+  savedRun,
   seed,
   starsUpTo,
+  STORAGE_KEY,
 } from './app';
 
 const help = (page: Page) => page.locator('.bw-helprow__line');
@@ -109,6 +113,7 @@ for (const viewport of [
   { width: 375, height: 667 },
   { width: 1194, height: 834 },
   { width: 375, height: 548 },
+  { width: 844, height: 390 },
 ]) {
   test.describe(`empty squares at ${viewport.width}x${viewport.height}`, () => {
     test.use({ viewport, isMobile: true, hasTouch: true });
@@ -271,3 +276,217 @@ test('a memory level restores the board and runs its first look over it, locked'
   await expect(builderSquare(page, picture.size, i)).not.toHaveAttribute('aria-disabled', 'true');
   expect(await boardBricks(page)).toEqual(want);
 });
+
+/* ---------- Decision 13: the edges of the draft ---------- */
+
+/** The session's board drafts, by key. */
+const boardDrafts = (page: Page): Promise<string[]> =>
+  page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('bw:draft') && k.endsWith(':board')));
+const boardShows = (page: Page) => expect(builderBoard(page).locator('[data-cell]').first()).toBeVisible();
+
+test('a child with no player yet: the first board comes back after a reload', { tag: '@phone-only' }, async ({ page }) => {
+  await page.goto('/#/game/builder');
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+  await boardShows(page);
+  const built = await layBricks(page, 3);
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(built.cells);
+});
+
+test('after a progress reset no board of the old run comes back on a later puzzle', { tag: '@phone-only' }, async ({ page }) => {
+  await openBuilderLevel(page, 1);
+  await buildPicture(page, await builderPicture(page), 'tap');
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+  await layBricks(page, 2);
+  expect(await boardDrafts(page)).toHaveLength(1);
+
+  // A grown-up resets this child's progress in the same tab.
+  await page.evaluate((key) => {
+    const s = JSON.parse(localStorage.getItem(key)!);
+    s.players[0].games = {};
+    localStorage.setItem(key, JSON.stringify(s));
+  }, STORAGE_KEY);
+  await page.reload();
+  await boardShows(page);
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 1 of 4. 0 solved.');
+  expect(await boardDrafts(page)).toEqual([]);
+
+  await buildPicture(page, await builderPicture(page), 'tap');
+  await page.getByRole('button', { name: 'Next puzzle' }).click();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
+});
+
+test('a drag and the keyboard are both kept, and taking every brick away leaves an empty board', { tag: '@phone-only' }, async ({ page }) => {
+  await openBuilderLevel(page, 1);
+  const { size, cells } = await builderPicture(page);
+  // Right bricks only: a board with no wrong brick to remember keeps no draft once it is empty.
+  const color = cells.find(Boolean)!;
+  const spots = cells.map((c, i) => (c === color ? i : -1)).filter((i) => i >= 0);
+  await builderSwatch(page, color).click();
+  await builderStroke(page, size, [spots[0]]);
+  await expect.poll(async () => (await boardBricks(page)).filter(Boolean).length).toBe(1);
+  await builderSquare(page, size, spots[1]).focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await boardBricks(page)).filter(Boolean).length).toBe(2);
+  const built = await boardBricks(page);
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(built);
+
+  await builderSwatch(page, 'eraser').click();
+  await builderSquare(page, size, spots[0]).click();
+  await builderSquare(page, size, spots[1]).click();
+  expect(await boardDrafts(page)).toEqual([]);
+  await page.reload();
+  await boardShows(page);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
+});
+
+test('each child gets their own board back after the other played', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [
+    { id: 'maya', name: 'Maya', ageBand: '5-6' },
+    { id: 'sam', name: 'Sam', ageBand: '5-6' },
+  ]);
+  await page.goto('/#/game/builder');
+  await expect(page).toHaveURL(/#\/game\/builder\/1$/);
+  const maya = await layBricks(page, 3);
+  const playAs = (id: string) =>
+    page.evaluate(
+      ([key, who]) => {
+        const s = JSON.parse(localStorage.getItem(key)!);
+        s.activePlayerId = who;
+        localStorage.setItem(key, JSON.stringify(s));
+      },
+      [STORAGE_KEY, id],
+    );
+  await playAs('sam');
+  await page.reload();
+  await boardShows(page);
+  const sam = await layBricks(page, 1);
+  await playAs('maya');
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(maya.cells);
+  await playAs('sam');
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(sam.cells);
+});
+
+test('a draft that cannot be used opens an empty board that plays as usual', { tag: '@phone-only' }, async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await openBuilderLevel(page, 1);
+  const picture = await builderPicture(page);
+  const run = await savedRun(page, 'builder', 0);
+  const key = `bw:draft:maya:builder:0:${run.set}:0:${run.queue[0]}:board`;
+  const bad = [
+    '{',
+    'null',
+    '[]',
+    JSON.stringify({ v: 2, size: picture.size, cells: picture.cells }),
+    JSON.stringify({ v: 1, size: 9, cells: [] }),
+    JSON.stringify({ v: 1, size: picture.size, cells: picture.cells.map(() => 'purple') }),
+    // A kept board that would already be the finished picture.
+    JSON.stringify({ v: 1, size: picture.size, cells: picture.cells }),
+  ];
+  for (const raw of bad) {
+    await page.evaluate(([k, v]) => sessionStorage.setItem(k, v), [key, raw]);
+    await page.reload();
+    await boardShows(page);
+    expect((await boardBricks(page)).every((c) => c === null), raw).toBe(true);
+  }
+  await buildPicture(page, picture, 'tap');
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect(errors).toEqual([]);
+});
+
+test('a draft kept before the board remembered its slips still comes back', { tag: '@phone-only' }, async ({ page }) => {
+  await openBuilderLevel(page, 1);
+  const { size, cells } = await builderPicture(page);
+  const at = cells.findIndex(Boolean);
+  const kept = cells.map((_, i) => (i === at ? cells[at] : null));
+  const run = await savedRun(page, 'builder', 0);
+  const key = `bw:draft:maya:builder:0:${run.set}:0:${run.queue[0]}:board`;
+  await page.evaluate(([k, v]) => sessionStorage.setItem(k, v), [key, JSON.stringify({ v: 1, size, cells: kept })]);
+  await page.reload();
+  await expect.poll(() => boardBricks(page)).toEqual(kept);
+});
+
+test('with the session storage blocked nothing is kept and the puzzle plays to its end', { tag: '@phone-only' }, async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    for (const name of ['getItem', 'setItem', 'removeItem'] as const) {
+      const real = Storage.prototype[name] as (...a: string[]) => unknown;
+      Storage.prototype[name] = function (this: Storage, ...a: string[]) {
+        if (this === window.sessionStorage && a[0].startsWith('bw:draft')) throw new Error('blocked');
+        return real.apply(this, a);
+      } as never;
+    }
+  });
+  await openBuilderLevel(page, 1);
+  const picture = await builderPicture(page);
+  await layBricks(page, 2);
+  await page.reload();
+  await boardShows(page);
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
+  await buildPicture(page, picture, 'tap');
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect(errors).toEqual([]);
+});
+
+test('solved and then Back before Next: the next puzzle starts empty and nothing is kept', { tag: '@phone-only' }, async ({ page }) => {
+  await openBuilderLevel(page, 1);
+  const picture = await builderPicture(page);
+  await buildPicture(page, picture, 'tap');
+  await expect(help(page)).toHaveText(`You built the ${picture.name}.`);
+  expect(await boardDrafts(page)).toEqual([]);
+  await backHome(page);
+  await homeCard(page, 'Picture Builder').click();
+  await expect(dots(page)).toHaveAttribute('aria-label', 'Puzzle 2 of 4. 1 solved.');
+  expect((await boardBricks(page)).every((c) => c === null)).toBe(true);
+});
+
+/* Every other size the game is played at, and each kind of level: copy at every grid size, memory at ages 7 to 8. */
+for (const viewport of [
+  { width: 375, height: 667 },
+  { width: 1194, height: 834 },
+  { width: 844, height: 390 },
+]) {
+  test.describe(`the board comes back at ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport, isMobile: true, hasTouch: true });
+    for (const [level, band] of [
+      [1, '3-4'],
+      [4, '5-6'],
+      [10, '9-10'],
+    ] as const) {
+      test(`Level ${level}, ages ${band}`, { tag: '@phone-only' }, async ({ page }) => {
+        await openBuilderLevel(page, level, band);
+        await expectRealFont(page);
+        const built = await layBricks(page, 3);
+        await page.reload();
+        await expect.poll(() => boardBricks(page)).toEqual(built.cells);
+        await expect(matchBar(page)).toHaveAttribute('aria-label', /^2 of \d+ bricks right$/);
+      });
+    }
+
+    test('a memory level, ages 7-8: the first look runs over the kept board', { tag: '@phone-only' }, async ({ page }) => {
+      await page.clock.install();
+      await openBuilderLevel(page, 6, '7-8');
+      const picture = await builderPicture(page);
+      await page.clock.runFor(10_000);
+      await expect(pictureTitle(page)).toHaveText('Build it from memory.');
+      const i = picture.cells.findIndex(Boolean);
+      await builderSwatch(page, picture.cells[i]!).click();
+      await builderSquare(page, picture.size, i).click();
+      const want = await boardBricks(page);
+      await page.reload();
+      await expect(pictureTitle(page)).toHaveText('Look closely.');
+      await expect.poll(() => boardBricks(page)).toEqual(want);
+      await expect(builderSquare(page, picture.size, i)).toHaveAttribute('aria-disabled', 'true');
+      await page.clock.runFor(10_000);
+      await expect(pictureTitle(page)).toHaveText('Build it from memory.');
+      expect(await boardBricks(page)).toEqual(want);
+    });
+  });
+}

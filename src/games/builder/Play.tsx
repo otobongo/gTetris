@@ -8,7 +8,7 @@
    Nothing speaks unless the speaker is tapped. The half-built board of the puzzle on screen is kept for the session
    (draft.ts, decision 13), so a Back tap or a reload never loses it; the kit keeps its slips beside it. */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
-import { activePlayer, progressStore, runOf } from '../../shared/progress';
+import { activePlayer, progressStore, PUZZLES_PER_LEVEL, runOf } from '../../shared/progress';
 import { sfx } from '../../shared/sound';
 import { Icon, cx, useLayout } from '../../shared/ui';
 import { capturePointer, localPoint, type Point } from '../kit/dragToTarget';
@@ -50,7 +50,7 @@ import {
   titleLine,
   viewOf,
 } from './copy';
-import { boardKey, clearBoard, loadBoard, saveBoard, sessionDrafts, type DraftStorage } from './draft';
+import { boardKey, clearBoard, loadBoard, loadMemory, saveBoard, sessionDrafts, type DraftStorage } from './draft';
 import { GAME } from './game';
 import { BUILDER_COLORS } from './pictures';
 import { canPeek, firstLook, lookMs, pictureShows, type BuilderPuzzle, type LookKind } from './puzzles';
@@ -92,7 +92,7 @@ interface Ui {
 function fresh(round: number, p: BuilderPuzzle, draft: string | null = null, drafts: DraftStorage | null = null): Ui {
   const look = firstLook(p.mode);
   const kept = draft ? loadBoard(drafts, draft, p.size) : null;
-  const board = kept ? restoreBoard(p.target, kept, look !== null) : newBoard(p.target, look !== null);
+  const board = draft && kept ? restoreBoard(p.target, kept, look !== null, loadMemory(drafts, draft, p.size)) : newBoard(p.target, look !== null);
   return { round, board, look, lookSeq: 0, focus: 0, shown: '', draft };
 }
 
@@ -117,17 +117,22 @@ export function Play({ level }: { level: number }) {
   const [paint, setPaint] = useState<Paint>(FIRST_PAINT);
   /** The session's drafts (decision 13): window.sessionStorage, or null where it cannot be reached. */
   const [drafts] = useState(sessionDrafts);
-  /** The draft key of the puzzle a run puts on screen, for the player this level saves to; null keeps nothing. */
-  const draftOf = (r: LevelRunApi<BuilderPuzzle>): string | null => {
+  /** The draft key of a puzzle of this level, for the player it saves to; null keeps nothing. */
+  const keyOf = (band: LevelRunApi<BuilderPuzzle>['band'], puzzleNo: number): string | null => {
     const player = activePlayer(progressStore.getState());
-    return drafts && player ? boardKey({ playerId: player.id, level, set: GAME.set(r.band), puzzleNo: r.puzzleNo }) : null;
+    return drafts && player ? boardKey({ playerId: player.id, level, set: GAME.set(band), puzzleNo }) : null;
   };
+  const draftOf = (r: LevelRunApi<BuilderPuzzle>): string | null => keyOf(r.band, r.puzzleNo);
   const freshFor = (r: LevelRunApi<BuilderPuzzle>): Ui => fresh(r.round, r.puzzle, draftOf(r), drafts);
   const [held, setHeld] = useState<Ui>(() => {
-    // A level with no stored run starts a new one (as after a progress reset): a board kept under its key belongs to
-    // the old run, so it goes, as the kit drops that run's slips.
-    const key = draftOf(run);
-    if (key && !runOf(activePlayer(progressStore.getState()), GAME.id, level)) clearBoard(drafts, key);
+    // A level with no stored run starts a new one (as after a progress reset): every board kept for its puzzles belongs
+    // to the old run, so they all go, as the kit drops that run's slips. A later puzzle would bring its old board back.
+    if (!runOf(activePlayer(progressStore.getState()), GAME.id, level)) {
+      for (let n = 0; n < PUZZLES_PER_LEVEL; n++) {
+        const key = keyOf(run.band, n);
+        if (key) clearBoard(drafts, key);
+      }
+    }
     return freshFor(run);
   });
   const [visible, setVisible] = useState(pageVisible);
@@ -149,14 +154,19 @@ export function Play({ level }: { level: number }) {
     const r = live.current.run;
     return latest.current.round === r.round ? latest.current : freshFor(r);
   };
-  /** Keep the board when its cells change; a solved puzzle keeps nothing. An empty board keeps nothing either. */
+  /** Keep the board when its cells or its memory change; a solved puzzle keeps nothing. */
   const keep = (prev: Ui, next: Ui) => {
     if (!next.draft) return;
+    const { cells, seen, given } = next.board;
     if (next.board.solved) clearBoard(drafts, next.draft);
-    else if (prev.round !== next.round || prev.board.cells !== next.board.cells) saveBoard(drafts, next.draft, sizeOf(next.board), next.board.cells);
+    else if (prev.round !== next.round || prev.board.cells !== cells || prev.board.seen !== seen || prev.board.given !== given) {
+      saveBoard(drafts, next.draft, sizeOf(next.board), cells, next.board);
+    }
   };
-  const commit = (next: Ui) => {
+  const commit = (update: Ui) => {
     const prev = latest.current;
+    // A child's very first game has no player until the level has opened: the draft starts with the first touch.
+    const next = update.draft ? update : { ...update, draft: draftOf(live.current.run) };
     latest.current = next;
     setHeld(next);
     keep(prev, next);
