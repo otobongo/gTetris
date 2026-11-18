@@ -126,6 +126,13 @@ for (const viewport of [
 
 /* ---------- Decision 13: the half-built board stays for the session ---------- */
 
+/** Stop the page's clock before it opens: a look then lasts until the test runs it out, however busy the machine is. */
+async function freezeClock(page: Page) {
+  const start = new Date('2026-11-16T09:00:00');
+  await page.clock.install({ time: start });
+  await page.clock.pauseAt(new Date(start.getTime() + 1000));
+}
+
 /** Lay `count` bricks on the picture's bricks, the first one in a wrong colour. Returns what the board then holds. */
 async function layBricks(page: Page, count: number): Promise<{ cells: BuilderCell[]; size: number; name: string }> {
   const picture = await builderPicture(page);
@@ -254,7 +261,7 @@ test('solved, the next puzzle starts empty; a swap starts empty, and the swapped
 });
 
 test('a memory level restores the board and runs its first look over it, locked', { tag: '@phone-only' }, async ({ page }) => {
-  await page.clock.install();
+  await freezeClock(page);
   await openBuilderLevel(page, 6, '9-10');
   await expect(pictureTitle(page)).toHaveText('Look closely.');
   const picture = await builderPicture(page);
@@ -471,7 +478,7 @@ for (const viewport of [
     }
 
     test('a memory level, ages 7-8: the first look runs over the kept board', { tag: '@phone-only' }, async ({ page }) => {
-      await page.clock.install();
+      await freezeClock(page);
       await openBuilderLevel(page, 6, '7-8');
       const picture = await builderPicture(page);
       await page.clock.runFor(10_000);
