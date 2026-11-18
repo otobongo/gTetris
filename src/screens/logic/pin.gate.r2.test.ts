@@ -145,6 +145,6 @@ describe('grown-up check copy and timing helpers', () => {
   });
 
   it('uses no dashes in any of the new lines', () => {
-    for (const line of [pinLockLine(30_000), pinClearedLine(0)]) expect(line).not.toMatch(/[–—]/);
+    for (const line of [pinLockLine(30_000), pinClearedLine(0)]) expect(line).not.toMatch(/[\u2013\u2014]/);
   });
 });

@@ -295,3 +295,22 @@ for (const size of [
     journeys();
   });
 }
+
+for (const band of ['3-4', '5-6', '7-8', '9-10'] as const) {
+  test(`ages ${band}: a child can be renamed and removed, and the other child's age stays @phone-only`, async ({ page }) => {
+    await seed(page, [
+      { id: 'kid', name: 'Sam', ageBand: band },
+      { id: 'other', name: 'Ava', ageBand: '7-8' },
+    ]);
+    await openSettings(page);
+    await expect(nameField(page)).toHaveValue('Sam');
+    await nameField(page).fill('Samir');
+    await nameField(page).press('Enter');
+    await expect(chip(page, 'Samir')).toBeVisible();
+    await page.getByRole('button', { name: 'Remove Samir' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Remove', exact: true }).click();
+    await expect(chip(page, 'Ava')).toBeFocused();
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).players, STORAGE_KEY);
+    expect(saved.map((p: { name: string; ageBand: string }) => [p.name, p.ageBand])).toEqual([['Ava', '7-8']]);
+  });
+}

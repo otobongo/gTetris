@@ -480,6 +480,22 @@ test.describe('Forgot the PIN: what ends a hold', () => {
     expect((await storedPin(page)).hash).toBeTruthy();
   });
 
+  test('letting go early empties the bar, and the next hold starts from 10 again', async ({ page }) => {
+    const hold = await openHold(page);
+    const fill = hold.locator('.sc-hold__layer--fill');
+    const box = (await hold.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.clock.runFor(4_000);
+    await expect.poll(() => fill.evaluate((el) => (el as HTMLElement).style.clipPath)).toBe('inset(0px 60% 0px 0px)');
+    await page.mouse.up();
+    await expect(page.getByText('Keep holding for 10 seconds.')).toBeVisible();
+    await expect.poll(() => fill.evaluate((el) => (el as HTMLElement).style.clipPath)).toBe('inset(0px 100% 0px 0px)');
+    await page.mouse.down();
+    await expect(page.getByText('Keep holding: 10')).toBeVisible();
+    await page.mouse.up();
+  });
+
   test('sliding the mouse off the button lets go', async ({ page }) => {
     const hold = await openHold(page);
     const box = (await hold.boundingBox())!;
