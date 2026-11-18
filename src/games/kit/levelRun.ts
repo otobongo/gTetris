@@ -38,6 +38,11 @@ export interface KitGame<P> {
   keepSolved?: boolean;
   /** numbers only: 3 per level through spendHint. */
   hints?: boolean;
+  /**
+   * builder only (decision 13): keep the star slips of the puzzle on screen in the session (draft.ts),
+   * so leaving and coming back to the same puzzle never sheds a slip. Absent: nothing is kept.
+   */
+  keepDraft?: boolean;
   /** Puzzle `n` (0 to 5) of 0-based `level`. Throws when either is out of range. */
   puzzle: (level: number, n: number, ctx: { seed: number; band: AgeBand }) => P;
 }
@@ -76,10 +81,13 @@ export interface LevelRunApi<P> {
    * `finish` is the level's result once the fourth puzzle is solved.
    * `slot` says what the controls slot holds: the game's controls, Next puzzle, the level card's Play
    * Level button (after the card is closed with Escape or the scrim), Back to games, or nothing.
+   * `hintCapped` (decision 25): a counted hint caps this level (hintCappedOf), so the dots show the
+   * capped-star mark. useLevelRun always sets it; it is optional only so a hand-built run can leave it out.
    */
   round: number;
   finish: LevelFinish | null;
   slot: ControlsSlot;
+  hintCapped?: boolean;
 }
 
 /* ---------- State ---------- */
@@ -169,6 +177,8 @@ export type LevelRunAction =
   | { type: 'swap'; run: LevelRun | null; band?: BandChange; round?: number }
   /** The store's copy of the run once the level opened (startRun), when it differs from the one shown. */
   | { type: 'stored'; run: LevelRun }
+  /** A kept draft of the puzzle on screen (draft.ts): its slips and keys, before the first input. The stuck count starts over. */
+  | { type: 'restore'; slips: number; wrongKeys: readonly string[] }
   | { type: 'card'; to: 'open' | 'closed' }
   /** Play Level or Back to games was tapped. */
   | { type: 'leave' };
@@ -296,6 +306,14 @@ export function dotsOf(s: LevelRunState): { solved: number; at: number } {
   return { solved, at: s.phase === 'solved' ? Math.max(1, solved) : Math.min(SOLVES_PER_LEVEL, solved + 1) };
 }
 
+/**
+ * A counted hint caps this level (decision 25): one used on the puzzle on screen, or on a solved one.
+ * The same condition gives the level card its cap line. A hint on a puzzle swapped away does not count.
+ */
+export function hintCappedOf(s: LevelRunState): boolean {
+  return s.cfg.hints && (s.usedHint || s.run.solved.some((r) => r.usedHint));
+}
+
 export function slotOf(s: LevelRunState): ControlsSlot {
   if (s.phase === 'play') return 'controls';
   if (s.phase === 'solved') return 'next';
@@ -402,6 +420,14 @@ export function levelRunReducer(s: LevelRunState, a: LevelRunAction): LevelRunSt
       const hintsLeft = s.cfg.hints ? (a.run.hintsLeft ?? s.hintsLeft) : 0;
       if (puzzleOnScreen(a.run) === s.puzzleNo && a.run.seed === s.run.seed) return { ...s, run: a.run, hintsLeft };
       return { ...freshPuzzle(s, a.run, s.band), hintsLeft, swapped: false };
+    }
+    case 'restore': {
+      // Only onto a puzzle in play that has no slips yet, so a draft never adds to slips already counted.
+      if (!playing || s.slips > 0 || s.wrongKeys.length > 0) return s;
+      if (!Number.isInteger(a.slips) || a.slips < 0) return s;
+      const wrongKeys = [...new Set(a.wrongKeys)];
+      const slips = Math.max(a.slips, wrongKeys.length);
+      return slips === 0 ? s : { ...s, slips, wrongKeys };
     }
     case 'card': {
       if (s.phase !== 'done' || s.card === null || s.card === a.to) return s;

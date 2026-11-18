@@ -7,12 +7,17 @@
  *
  * When the store has no player to save to, its answers come back empty ('ignored', null) and the
  * reducer carries the level on in memory, as the built games do.
+ *
+ * Round 2: a level that finishes a chapter awards this game's sticker and shows it on the card
+ * (earnedSticker.ts), and a game with `keepDraft` keeps the slips of the puzzle on screen for the
+ * session (draft.ts).
  */
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   activePlayer,
   findPlayer,
   progressStore,
+  PUZZLES_PER_LEVEL,
   runOf,
   totalStars,
   type ProgressStore,
@@ -33,9 +38,12 @@ import {
   playLabel,
   slipFact,
 } from './copy';
+import { clearDraft, draftKey, loadDraft, saveDraft, sessionDrafts, type DraftPlace, type DraftStorage } from './draft';
+import { claimLevelSticker, type LevelSticker } from './earnedSticker';
 import {
   bandInit,
   dotsOf,
+  hintCappedOf,
   initLevelRun,
   isTicking,
   levelRunReducer,
@@ -69,6 +77,8 @@ export interface UseLevelRunOptions {
   breakBefore?: (path: string) => boolean;
   /** Navigation for Play Level and the finished card. Defaults to the router's go. */
   go?: (path: string) => void;
+  /** Where a keepDraft game keeps its slips. Defaults to window.sessionStorage; null keeps nothing. Never read without keepDraft. */
+  drafts?: DraftStorage | null;
 }
 
 const pageVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
@@ -94,6 +104,8 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
   const ref = useRef(state);
   /** The player this level saves to, set once it opens. */
   const pid = useRef<string | null>(null);
+  /** The sticker this level earned, taken when its last puzzle was saved (after the award it is no longer due). */
+  const sticker = useRef<LevelSticker | undefined>(undefined);
 
   // One set of actions for the life of the level: they read `ref`, never a stale render.
   const actions = useMemo(() => {
@@ -110,6 +122,11 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
     const hasPlayer = () => findPlayer(store.getState(), playerId()) !== null;
     const here = levelPath(game.id, level);
     const playing = () => ref.current.phase === 'play' && !ref.current.leaving;
+
+    // The session draft (decision 13): only for a keepDraft game, and only for a saved player.
+    const drafts = game.keepDraft === true ? (options.drafts !== undefined ? options.drafts : sessionDrafts()) : null;
+    const placeOf = (s: LevelRunState): DraftPlace => ({ playerId: playerId(), game: game.id, level, set: s.run.set, seed: s.run.seed, puzzleNo: s.puzzleNo });
+    const draftOf = (s: LevelRunState): string | null => (drafts && hasPlayer() ? draftKey(placeOf(s)) : null);
 
     /** A band changed in Settings (or another tab) since the puzzle started: it applies at this boundary (D2). */
     const bandChange = (): BandChange | undefined => {
@@ -137,12 +154,29 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         // Save the run this level continues from (new, or moved to a new set), for the active player.
         pid.current = store.ensureActivePlayer();
         const s = ref.current;
+        const before = drafts ? runOf(findPlayer(store.getState(), pid.current), game.id, level) : null;
         dispatch({ type: 'stored', run: store.startRun(game.id, level, runInit(s.cfg, s.band, s.run.seed), pid.current) });
+        // The puzzle the stored run put on screen may have a kept draft: its slips come back before the first input.
+        // A run that only starts now (none was saved, as after a progress reset) has no drafts: any kept for this
+        // level's puzzles are left from the old run, so they all go, or a later puzzle would bring back old slips.
+        const key = draftOf(ref.current);
+        if (!key) return;
+        if (!before) {
+          for (let puzzleNo = 0; puzzleNo < PUZZLES_PER_LEVEL; puzzleNo++) clearDraft(drafts, draftKey({ ...placeOf(ref.current), puzzleNo }));
+          return;
+        }
+        const kept = loadDraft(drafts, key);
+        if (kept) dispatch({ type: 'restore', slips: kept.slips, wrongKeys: kept.wrongKeys });
       },
       slip(key?: string) {
         if (!playing()) return;
         sfx.wrong();
+        const before = ref.current;
         dispatch(key === undefined ? { type: 'slip' } : { type: 'slip', key });
+        const after = ref.current;
+        if (after.slips === before.slips && after.wrongKeys === before.wrongKeys) return;
+        const at = draftOf(after);
+        if (at) saveDraft(drafts, at, { slips: after.slips, wrongKeys: [...after.wrongKeys] });
       },
       progress: () => dispatch({ type: 'progress' }),
       hold: (on: boolean) => dispatch({ type: 'hold', on }),
@@ -151,6 +185,10 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         const s = ref.current;
         const rules: PuzzleRules = { ...runInit(s.cfg, s.band, s.run.seed), levelCount: s.cfg.levelCount, stars: (r) => levelStars(s.cfg.game, r) };
         const outcome = store.recordPuzzle(game.id, level, solveResult(s), rules, playerId());
+        const key = draftOf(s);
+        if (key) clearDraft(drafts, key);
+        // The level is saved: a chapter it finished gives this game's sticker now, shown on the card.
+        if (outcome.kind === 'finished' && hasPlayer()) sticker.current = claimLevelSticker(store, playerId(), game.id);
         sfx.win();
         dispatch({ type: 'solve', outcome, round: s.round });
       },
@@ -160,6 +198,8 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         if (!offerShows(s)) return;
         // The daily limit first, as at every puzzle boundary; the swap waits until after Break.
         if (brk(here)) return;
+        const key = draftOf(s);
+        if (key) clearDraft(drafts, key);
         const saved = hasPlayer() ? store.swapPuzzle(game.id, level, playerId()) : null;
         dispatch({ type: 'swap', run: saved, band: bandChange(), round: s.round });
       },
@@ -237,6 +277,7 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
         fact: gameDoneFact(cfg.levelCount, actions.total()),
         primary: { label: BACK_TO_GAMES, href: toHref(HOME) },
         onClose: actions.closeCard,
+        sticker: sticker.current,
       };
     }
     const totals = levelTotals(finish.results);
@@ -249,6 +290,7 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
       primary: { label: playLabel(finish.next + 1), onClick: actions.next },
       secondary: { label: BACK_TO_GAMES, href: toHref(HOME) },
       onClose: actions.closeCard,
+      sticker: sticker.current,
     };
     // progress: the star total is read from the store when the card opens
   }, [state.card, state.finish, cfg, level, actions, progress]);
@@ -273,5 +315,6 @@ export function useLevelRun<P>(game: KitGame<P>, level: number, options: UseLeve
     round: state.round,
     finish: state.finish,
     slot: slotOf(state),
+    hintCapped: hintCappedOf(state),
   };
 }
