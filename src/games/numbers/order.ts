@@ -104,3 +104,12 @@ export function hintPath(row: readonly number[], dir: Dir): HintStep[] {
   }
   return steps;
 }
+
+/**
+ * The swap cue's two towers (decision 23): the two the hint would name, left one first, so the double
+ * arrow runs from one to the other. Null once the row is in order.
+ */
+export function swapCueSpots(row: readonly number[], dir: Dir): readonly [number, number] | null {
+  const step = hintStep(row, dir);
+  return step ? [Math.min(step.from, step.to), Math.max(step.from, step.to)] : null;
+}

@@ -1,5 +1,5 @@
 /* Number Line-up's pieces, drawn as the Numbers board draws them (brief 7.5): the goal strip, the
-   tower well with its right-spot marks, one tower, and the yellow Hint button with its badge. */
+   tower well with its right-spot marks and the swap cue, one tower, and the yellow Hint button with its badge. */
 import type { CSSProperties, ReactNode } from 'react';
 import { Brick, Icon, cx } from '../../shared/ui';
 import { FIRST_CONTROL } from '../kit/PlayScreen';
@@ -33,17 +33,53 @@ export function GoalStrip({ puzzle }: { puzzle: Pick<NumbersPuzzle, 'kind' | 'di
   );
 }
 
+/** Where the swap cue goes: the two spots it joins (left one first), and the most studs on a stack it passes over, to clear them. */
+export interface SwapCueSpot {
+  lo: number;
+  hi: number;
+  studs: number;
+}
+
+/**
+ * The swap cue (decision 23): a still double arrow, in the hint arrow's yellow, from the middle of one
+ * tower to the middle of the other, just above the tallest stack it passes over. Drawing only: the help
+ * line already says "Drag or tap two towers to swap them." It never moves and lets every touch through.
+ * Where the well is too short to keep it off the number faces (a phone held sideways) only the rings show.
+ */
+export function SwapCue({ lo, hi, studs }: SwapCueSpot) {
+  return (
+    <span className="num-swapcue-room">
+      <span
+        className="num-swapcue"
+        aria-hidden="true"
+        style={{ '--num-cue-lo': lo, '--num-cue-hi': hi, '--num-cue-studs': studs } as CSSProperties}
+      >
+        <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
+          <path d="M14 10.25V3L1.5 17 14 31v-7.25" />
+        </svg>
+        <span className="num-swapcue__shaft" />
+        <svg className="num-swapcue__head" width="14" height="34" viewBox="0 0 14 34" focusable="false">
+          <path d="M0 10.25V3l12.5 14L0 31v-7.25" />
+        </svg>
+      </span>
+    </span>
+  );
+}
+
 /**
  * The well: six tower columns, and under them the six marks, filled green where a tower stands in
  * its right spot and ringed where it does not. The marks are hidden from assistive tech: each
  * tower's name says whether it is in the right spot (9.2). `marks` null draws six empty ones (the
- * finished state's empty well).
+ * finished state's empty well). `cue` draws the swap cue over the towers.
  */
-export function TowerWell({ towers, marks }: { towers: ReactNode; marks: readonly boolean[] | null }) {
+export function TowerWell({ towers, marks, cue = null }: { towers: ReactNode; marks: readonly boolean[] | null; cue?: SwapCueSpot | null }) {
   const spots = marks ?? Array.from({ length: TOWERS }, () => false);
   return (
     <div className="num-well">
-      <div className="num-well__towers">{towers}</div>
+      <div className="num-well__towers">
+        {towers}
+        {cue && <SwapCue {...cue} />}
+      </div>
       <div className="num-well__marks" aria-hidden="true">
         {spots.map((right, i) => (
           <span key={i} className={cx('num-mark', right && 'is-right')} />
@@ -70,6 +106,8 @@ export interface TowerProps {
   lit: boolean;
   /** The hint's arrow, above the tower that belongs in the first wrong spot. */
   arrow: boolean;
+  /** One of the swap cue's two towers: the same ring as the hint's, round its stack. */
+  cued?: boolean;
   /**
    * A swap just put this tower here: for one frame it is drawn `shift` columns away (where it came
    * from), then it slides home. Null when it is not jumping.
@@ -85,7 +123,7 @@ export interface TowerProps {
 }
 
 /** One tower: a button the full column high, the number face at the base and its stud bricks above. */
-export function Tower({ value, color, studs, spot, right, picked, locked, lit, arrow, shift, wrong, moved, first, drag }: TowerProps) {
+export function Tower({ value, color, studs, spot, right, picked, locked, lit, arrow, cued = false, shift, wrong, moved, first, drag }: TowerProps) {
   const marker = first ? { [FIRST_CONTROL]: '' } : {};
   return (
     <button
@@ -99,7 +137,7 @@ export function Tower({ value, color, studs, spot, right, picked, locked, lit, a
       {...marker}
       {...drag}
     >
-      <span className={cx('num-stack', lit && 'is-lit')}>
+      <span className={cx('num-stack', lit && 'is-lit', cued && 'is-cued')}>
         <Brick color={color} width={48} height={40} radius={12} className="num-face">
           {value}
         </Brick>

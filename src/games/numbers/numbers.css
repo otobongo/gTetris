@@ -65,6 +65,8 @@
   box-shadow: inset 0 4px 10px rgb(0 0 0 / 0.45);
 }
 .num-well__towers {
+  /* the swap cue is placed over the columns */
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
@@ -135,7 +137,8 @@
   border-radius: 14px;
   transition: box-shadow var(--bw-base) var(--bw-ease);
 }
-.num-stack.is-lit { box-shadow: var(--bw-ring); }
+.num-stack.is-lit,
+.num-stack.is-cued { box-shadow: var(--bw-ring); }
 /* A slip: Shape Sorter's wrong ring (4 px of --bw-error-border) round both swapped towers for 660 ms, on at
    once. No shake: the towers have just slid, and the line in the help row says what went wrong. */
 .num-tower.is-wrong .num-stack { box-shadow: 0 0 0 4px var(--bw-error-border); transition: none; }
@@ -165,6 +168,53 @@
   stroke-linejoin: round;
 }
 
+/* ---------- The swap cue (decision 23) ---------- */
+/* Ages 3 to 4, Level 1 puzzle 1, until the first pick: a still double arrow in the hint arrow's yellow,
+   34 px high, from the middle of one tower's column to the middle of the other's, 8 px above the tallest
+   stack it passes over (each stack is 44 px plus 24 px a stud; see .num-stack). Where the well is too short
+   for that it sits at the well's top, still clear of the number faces at the base. Shorter still (a phone
+   held sideways) it would cross the numbers, so it is not drawn and the two rings show the swap alone. It
+   has no motion at all, so Reduce Motion needs nothing more, and it lets every touch through to the towers. */
+.num-swapcue-room {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  container-type: size;
+  pointer-events: none;
+}
+.num-swapcue {
+  --num-col: calc((100% - 5 * var(--num-gap, 6px)) / 6);
+  position: absolute;
+  left: calc(var(--num-cue-lo, 0) * (var(--num-col) + var(--num-gap, 6px)) + var(--num-col) / 2);
+  width: calc((var(--num-cue-hi, 1) - var(--num-cue-lo, 0)) * (var(--num-col) + var(--num-gap, 6px)));
+  bottom: min(calc(44px + var(--num-cue-studs, 0) * 24px + var(--bw-sp-3)), calc(100% - 34px));
+  height: 34px;
+  display: flex;
+}
+/* Room for a number face (44 px), the 8 px gap and the arrow (34 px). */
+@container (max-height: 85.9px) {
+  .num-swapcue { display: none; }
+}
+.num-swapcue__head { flex: none; }
+.num-swapcue path {
+  fill: var(--brick-yellow-light);
+  stroke: var(--bw-yellow-edge);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+/* The shaft carries the heads' 1.5 px edge along its top and bottom, so the arrow reads as one shape. */
+.num-swapcue__shaft {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 15px;
+  margin-top: 9.5px;
+  background: linear-gradient(
+    var(--bw-yellow-edge) 0 1.5px,
+    var(--brick-yellow-light) 1.5px calc(100% - 1.5px),
+    var(--bw-yellow-edge) calc(100% - 1.5px)
+  );
+}
+
 /* ---------- Footer slot: the legend during play ---------- */
 .num-legend {
   margin: 0;
@@ -189,10 +239,13 @@
 
 /* ---------- Reduced motion (brief 9.1) ---------- */
 /* The kit drops the lift and the slide; a picked tower keeps a plain outline instead, and the two
-   swapped towers fade in where they land. A slip's red ring stays, since it does not move. */
+   swapped towers fade in where they land. A slip's red ring stays, since it does not move. The 150ms
+   durations carry !important to get past the 0.01ms safety net in global.css (a11y-cross-10). */
 @keyframes num-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .num-tower.is-picked .num-stack { outline: 3px solid var(--bw-text); outline-offset: 2px; }
   .num-tower.is-moved .num-stack { animation: num-fade 150ms linear; }
   .num-stack { transition-duration: 150ms; transition-timing-function: linear; }
+  .num-tower.is-moved .num-stack { animation-duration: 150ms !important; }
+  .num-stack { transition-duration: 150ms !important; }
 }
