@@ -5,13 +5,15 @@
    looks, and passes what comes back to the kit: progress() on a new right brick, slip(key) when a stroke ends
    with a slip, solve() on the last right brick, hold(on) while the picture shows on a memory level.
    Sounds follow brief 3.1: tap on a palette pick, good on a right brick; the kit plays the slip and the solve.
-   Nothing speaks unless the speaker is tapped. */
+   Nothing speaks unless the speaker is tapped. The half-built board of the puzzle on screen is kept for the session
+   (draft.ts, decision 13), so a Back tap or a reload never loses it; the kit keeps its slips beside it. */
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type Ref } from 'react';
+import { activePlayer, progressStore, PUZZLES_PER_LEVEL, runOf } from '../../shared/progress';
 import { sfx } from '../../shared/sound';
 import { Icon, cx, useLayout } from '../../shared/ui';
 import { capturePointer, localPoint, type Point } from '../kit/dragToTarget';
 import { FIRST_CONTROL, PlayScreen } from '../kit/PlayScreen';
-import { useLevelRun } from '../kit/useLevelRun';
+import { useLevelRun, type LevelRunApi } from '../kit/useLevelRun';
 import {
   cancelStroke,
   endStroke,
@@ -20,6 +22,7 @@ import {
   newBoard,
   paintOnce,
   paintSquare,
+  restoreBoard,
   setLocked,
   squareAt,
   squaresAlong,
@@ -47,6 +50,7 @@ import {
   titleLine,
   viewOf,
 } from './copy';
+import { boardKey, clearBoard, loadBoard, loadMemory, saveBoard, sessionDrafts, type DraftStorage } from './draft';
 import { GAME } from './game';
 import { BUILDER_COLORS } from './pictures';
 import { canPeek, firstLook, lookMs, pictureShows, type BuilderPuzzle, type LookKind } from './puzzles';
@@ -77,12 +81,23 @@ interface Ui {
   focus: number;
   /** The visually hidden status line: "Picture shown." while a Peek runs, so it is announced once per Peek. */
   shown: string;
+  /** Where this puzzle's board is kept for the session, or null when nothing is kept (no player, no storage). */
+  draft: string | null;
 }
 
-function fresh(round: number, p: BuilderPuzzle): Ui {
+/**
+ * The puzzle's start: a new board, or the board its draft kept when there is one for this puzzle and size. A memory
+ * puzzle starts with its first look either way, locked.
+ */
+function fresh(round: number, p: BuilderPuzzle, draft: string | null = null, drafts: DraftStorage | null = null): Ui {
   const look = firstLook(p.mode);
-  return { round, board: newBoard(p.target, look !== null), look, lookSeq: 0, focus: 0, shown: '' };
+  const kept = draft ? loadBoard(drafts, draft, p.size) : null;
+  const board = draft && kept ? restoreBoard(p.target, kept, look !== null, loadMemory(drafts, draft, p.size)) : newBoard(p.target, look !== null);
+  return { round, board, look, lookSeq: 0, focus: 0, shown: '', draft };
 }
+
+/** The size of a board's square grid. */
+const sizeOf = (b: Board): number => Math.round(Math.sqrt(b.target.length));
 
 /** A pointer stroke under way: its pointer, the puzzle it began on, and where it was last seen in the grid. */
 interface StrokeTrack {
@@ -100,9 +115,28 @@ export function Play({ level }: { level: number }) {
   const playing = run.phase === 'play';
 
   const [paint, setPaint] = useState<Paint>(FIRST_PAINT);
-  const [held, setHeld] = useState<Ui>(() => fresh(run.round, p));
+  /** The session's drafts (decision 13): window.sessionStorage, or null where it cannot be reached. */
+  const [drafts] = useState(sessionDrafts);
+  /** The draft key of a puzzle of this level, for the player it saves to; null keeps nothing. */
+  const keyOf = (band: LevelRunApi<BuilderPuzzle>['band'], puzzleNo: number): string | null => {
+    const player = activePlayer(progressStore.getState());
+    return drafts && player ? boardKey({ playerId: player.id, level, set: GAME.set(band), puzzleNo }) : null;
+  };
+  const draftOf = (r: LevelRunApi<BuilderPuzzle>): string | null => keyOf(r.band, r.puzzleNo);
+  const freshFor = (r: LevelRunApi<BuilderPuzzle>): Ui => fresh(r.round, r.puzzle, draftOf(r), drafts);
+  const [held, setHeld] = useState<Ui>(() => {
+    // A level with no stored run starts a new one (as after a progress reset): every board kept for its puzzles belongs
+    // to the old run, so they all go, as the kit drops that run's slips. A later puzzle would bring its old board back.
+    if (!runOf(activePlayer(progressStore.getState()), GAME.id, level)) {
+      for (let n = 0; n < PUZZLES_PER_LEVEL; n++) {
+        const key = keyOf(run.band, n);
+        if (key) clearBoard(drafts, key);
+      }
+    }
+    return freshFor(run);
+  });
   const [visible, setVisible] = useState(pageVisible);
-  const ui = held.round === run.round ? held : fresh(run.round, p);
+  const ui = held.round === run.round ? held : freshFor(run);
 
   /** The latest of everything handlers read, so two events in one frame (or a timer) see each other's effect. */
   const latest = useRef(held);
@@ -118,11 +152,24 @@ export function Play({ level }: { level: number }) {
 
   const current = (): Ui => {
     const r = live.current.run;
-    return latest.current.round === r.round ? latest.current : fresh(r.round, r.puzzle);
+    return latest.current.round === r.round ? latest.current : freshFor(r);
   };
-  const commit = (next: Ui) => {
+  /** Keep the board when its cells or its memory change; a solved puzzle keeps nothing. */
+  const keep = (prev: Ui, next: Ui) => {
+    if (!next.draft) return;
+    const { cells, seen, given } = next.board;
+    if (next.board.solved) clearBoard(drafts, next.draft);
+    else if (prev.round !== next.round || prev.board.cells !== cells || prev.board.seen !== seen || prev.board.given !== given) {
+      saveBoard(drafts, next.draft, sizeOf(next.board), cells, next.board);
+    }
+  };
+  const commit = (update: Ui) => {
+    const prev = latest.current;
+    // A child's very first game has no player until the level has opened: the draft starts with the first touch.
+    const next = update.draft ? update : { ...update, draft: draftOf(live.current.run) };
     latest.current = next;
     setHeld(next);
+    keep(prev, next);
   };
   const canPaint = (b: Board) => live.current.run.phase === 'play' && !b.locked && !b.solved;
 
@@ -276,6 +323,15 @@ export function Play({ level }: { level: number }) {
     if (cur.round !== round || cur.lookSeq !== seq || cur.look === null) return;
     commit({ ...cur, look: null, board: setLocked(cur.board, false), shown: '' });
   };
+
+  // A new puzzle on screen (Next, a swap): the one it replaced keeps nothing, so a swapped-away puzzle starts empty
+  // when it comes back. A solved one was cleared at its solve already.
+  const shownDraft = useRef(ui.draft);
+  useEffect(() => {
+    const was = shownDraft.current;
+    shownDraft.current = ui.draft;
+    if (was && was !== ui.draft) clearBoard(drafts, was);
+  }, [ui.draft, drafts]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
