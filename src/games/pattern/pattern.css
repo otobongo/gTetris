@@ -9,10 +9,17 @@
 .pat .pat-prompt { margin-top: auto; }
 .pat .bw-helprow { margin-bottom: auto; }
 .pat .bw-play__body:empty { display: none; }
+/* On the narrowest phones some help lines take 3 lines and others 2. The row keeps the taller height, so the group
+   does not hop when the line changes. */
+@media (max-width: 339px) {
+  .pat .bw-helprow { min-height: calc(3 * 1.25 * var(--bw-fs-body)); }
+}
 
 /* ---------- Prompt line ---------- */
 .pat-prompt {
   flex-shrink: 0;
+  display: grid;
+  align-items: center;
   margin: 0;
   font-size: var(--bw-fs-section);
   font-weight: 800;
@@ -20,6 +27,10 @@
   text-align: center;
   text-wrap: balance;
 }
+/* On a narrow phone the question takes 2 lines and the solved line 1. The question stays in the row, unseen, so the
+   group keeps its height and the train does not hop when the last car fills. */
+.pat-prompt::before { content: attr(data-reserve); visibility: hidden; }
+.pat-prompt::before, .pat-prompt > span { grid-area: 1 / 1; }
 
 /* ---------- Shapes: one look on the rail and on the choices ---------- */
 /* An SVG in a 30 unit box (Train.tsx), filled in its colour with a --bw-purple-edge outline, so every shape reaches
@@ -44,13 +55,17 @@
 .pat-shape[data-color='pink'] { --pat-c: var(--brick-pink); }
 
 /* ---------- Train on its rail ---------- */
-/* The wrap clips the ghost as it leaves; 10px above the cars keeps the smoke stack and the lift of the arrival inside it. */
+/* The wrap clips the ghost as it leaves; 10px above the cars keeps the smoke stack and the lift of the arrival inside it.
+   Its clip sits 3px out in the frame's gutter, so a train that fills a narrow phone keeps the answer car's whole 3px ring. */
 .pat-rail-wrap {
+  --pat-ring-room: 3px;
   position: relative;
-  width: 100%;
+  width: calc(100% + 2 * var(--pat-ring-room));
+  margin-inline: calc(-1 * var(--pat-ring-room));
   flex-shrink: 0;
   box-sizing: border-box;
   padding-top: var(--bw-sp-4);
+  padding-inline: var(--pat-ring-room);
   overflow: hidden;
 }
 /* The zoom comes from the car count (PatternPlay sets --pat-train-zoom: 0.95 for 4 cars, 0.82 for 5, 1 on tablet);
@@ -154,11 +169,12 @@
 @keyframes pat-arrive {
   from { opacity: 0; }
 }
+/* The ghost's zoom scales its own top as well, so the offset is divided by it: it leaves from the height the train stood at. */
 .pat-ghost {
   position: absolute;
   left: 0;
   right: 0;
-  top: var(--bw-sp-4);
+  top: calc(var(--bw-sp-4) / var(--pat-train-zoom, 0.78));
   pointer-events: none;
   animation: pat-leave var(--bw-base) var(--bw-ease) forwards;
 }

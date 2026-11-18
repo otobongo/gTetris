@@ -56,7 +56,10 @@ export function PatternPlay({ level }: { level: number }) {
 
   const top = (
     <>
-      <p className="pat-prompt">{solved ? PROMPT_SOLVED : PROMPT}</p>
+      {/* data-reserve keeps the question's height once the shorter solved line shows, so the train holds still (pattern.css). */}
+      <p className="pat-prompt" data-reserve={PROMPT}>
+        <span>{solved ? PROMPT_SOLVED : PROMPT}</span>
+      </p>
       <Train slots={trainSlots(p, solved)} label={trainName(p.cars, solved ? p.answer : null)} ghost={ghost} zoom={zoom} />
     </>
   );

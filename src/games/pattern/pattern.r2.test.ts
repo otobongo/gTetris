@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { computeLayout } from '../../shared/ui/layout';
 import { ALL_CARS, CAR_COLORS, SHAPES, type Car } from './cars';
-import { LEVELS } from './levels';
+import { LEVELS, MAX_SHOWN } from './levels';
 import { TRAIN_ZOOM, trainZoom } from './play';
 import { Shape } from './Train';
 
@@ -135,5 +136,48 @@ describe('decision 16: the train zoom follows the car count', () => {
   it('pattern.css draws the car shape at 36 px and takes the zoom from --pat-train-zoom', () => {
     expect(css).toMatch(/\.pat-car__body\s*\{[^}]*--pat-shape:\s*36px/);
     expect(css).toMatch(/\.pat-train\s*\{[^}]*zoom:\s*var\(--pat-train-zoom,\s*0\.78\)/);
+  });
+});
+
+describe('decision 16: the fit on narrow phones, at its edges', () => {
+  /** The train's width at zoom 1, read from pattern.css and tokens.css: the locomotive, then each car after a gap. */
+  const px = (rule: RegExp) => Number(rule.exec(css)?.[1]);
+  const loco = px(/\.pat-loco\s*\{[^}]*?width:\s*(\d+)px/);
+  const car = px(/\.pat-car\s*\{[^}]*?width:\s*(\d+)px/);
+  const gap = Number(/--bw-sp-1:\s*(\d+)px/.exec(tokens)?.[1]);
+  const width = (shown: number) => loco + (shown + 1) * (car + gap);
+  const column = (w: number) => Math.min(w, 430) - 32;
+
+  it('rests on the sizes the CSS really draws', () => {
+    expect({ loco, car, gap }).toEqual({ loco: 70, car: 56, gap: 4 });
+    expect(tokens).toMatch(/--bw-phone-max:\s*430px/);
+    expect(read('../../shared/ui/ui.css')).toMatch(/\.bw-screen__frame--standard\s*\{\s*padding:\s*20px 16px 18px/);
+  });
+
+  it.each([4, 5])('with %i cars the train fits the column at every phone width, and never grows as the phone narrows', (shown) => {
+    let last = 0;
+    for (let w = 320; w < 744; w++) {
+      const z = trainZoom(computeLayout(w, 800), shown);
+      expect(width(shown) * z, `${w} px wide`).toBeLessThanOrEqual(column(w));
+      expect(z, `${w} px wide`).toBeGreaterThanOrEqual(last);
+      expect(z).toBeLessThanOrEqual(shown === 4 ? TRAIN_ZOOM.four : TRAIN_ZOOM.five);
+      last = z;
+    }
+  });
+
+  it('holds the brief value from the first width where it fits, and only lowers it under that', () => {
+    expect(trainZoom({ mode: 'phone', width: 384 }, 4)).toBe(0.95);
+    expect(trainZoom({ mode: 'phone', width: 383 }, 4)).toBe(0.94);
+    expect(trainZoom({ mode: 'phone', width: 385 }, 5)).toBe(0.82);
+    expect(trainZoom({ mode: 'phone', width: 384 }, 5)).toBe(0.81);
+  });
+
+  it('turns to the tablet value at the tablet width, not before', () => {
+    expect(trainZoom(computeLayout(743, 1133), 5)).toBe(TRAIN_ZOOM.five);
+    expect(trainZoom(computeLayout(744, 1133), 5)).toBe(TRAIN_ZOOM.tablet);
+  });
+
+  it('every level names a car count the zoom knows', () => {
+    expect(new Set(LEVELS.map((l) => l.shown))).toEqual(new Set([4, MAX_SHOWN]));
   });
 });

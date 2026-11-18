@@ -5,7 +5,7 @@
  * (decision 38). Measured with the real font (Baloo 2), in screen px, which are pt on an iPhone or iPad.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { patternTrain, patternTray, seed, solvePatternPuzzle, starsUpTo } from './app';
+import { patternCar, patternOnScreen, patternTrain, patternTray, seed, solvePatternPuzzle, starsUpTo } from './app';
 
 /** Open a level (1-based) as a child whose frontier it is, and wait for the real font. */
 async function openLevel(page: Page, level: number) {
@@ -177,3 +177,185 @@ for (const size of SIZES) {
     }
   });
 }
+
+/* ---------- Independent review: the edges the first pass left open ---------- */
+
+/** The solved train's parts: the answer car, its 3 px ring at the train's zoom, and the wrap that clips the row. */
+function answerRing(page: Page) {
+  return page.evaluate(() => {
+    const train = document.querySelector('.pat-train:not(.pat-ghost)')!;
+    const body = document.querySelector('.pat-car__body.is-answer')!.getBoundingClientRect();
+    const wrap = document.querySelector('.pat-rail-wrap')!.getBoundingClientRect();
+    const rail = document.querySelector('.pat-rail')!.getBoundingClientRect();
+    const ring = 3 * parseFloat(getComputedStyle(train).zoom);
+    return {
+      ringRight: body.right + ring,
+      ringTop: body.top - ring,
+      wrapRight: wrap.right,
+      wrapTop: wrap.top,
+      railLeft: rail.left,
+      railRight: rail.right,
+      pageScroll: document.documentElement.scrollWidth - window.innerWidth,
+    };
+  });
+}
+
+for (const [width, height] of [
+  [320, 568],
+  [360, 740],
+  [375, 667],
+  [390, 844],
+  [430, 932],
+] as const) {
+  test.describe(`solved at ${width}x${height}`, () => {
+    test.use({ viewport: { width, height }, isMobile: true, hasTouch: true });
+
+    for (const level of [1, 4]) {
+      test(`Level ${level}: the answer car's ring is whole and the rail keeps to the column`, { tag: '@phone-only' }, async ({ page }) => {
+        await openLevel(page, level);
+        await solvePatternPuzzle(page);
+        const m = await answerRing(page);
+        expect(m.ringRight, 'the ring ends inside the clipping wrap').toBeLessThanOrEqual(m.wrapRight);
+        expect(m.ringTop).toBeGreaterThanOrEqual(m.wrapTop);
+        // The rail stays on the frame's 16 px gutters, and the page gains no sideways scroll.
+        expect(m.railLeft).toBeCloseTo(16, 0);
+        expect(m.railRight).toBeCloseTo(width - 16, 0);
+        expect(m.pageScroll).toBeLessThanOrEqual(0);
+      });
+    }
+  });
+}
+
+/* The narrowest phone: the start line takes 3 lines there and the wrong line 2, so it is the hardest case for this check. */
+for (const size of [...SIZES, { name: 'iPhone 320x568', width: 320, height: 568, phone: true }]) {
+  test.describe(`${size.name}: the board holds still`, () => {
+    test.use(size.phone ? { viewport: { width: size.width, height: size.height }, isMobile: true, hasTouch: true } : { viewport: { width: size.width, height: size.height } });
+
+    for (const level of [1, 4]) {
+      test(`Level ${level}: a wrong car and the solve leave the train and the tray where they are`, { tag: '@phone-only' }, async ({ page }) => {
+        await openLevel(page, level);
+        const at = () =>
+          page.evaluate(() => ({
+            train: document.querySelector('.pat-train')!.getBoundingClientRect().top,
+            tray: document.querySelector('.pat-tray')!.getBoundingClientRect().top,
+          }));
+        const start = await at();
+        const p = await patternOnScreen(page);
+        await patternCar(page, p.wrong[0]).click();
+        await expect(page.locator('.bw-helprow__line')).toHaveText('Say the pattern out loud and try again.');
+        const wrong = await at();
+        expect(Math.abs(wrong.train - start.train), 'after a wrong car').toBeLessThanOrEqual(0.5);
+        await solvePatternPuzzle(page);
+        await expect(page.locator('.pat-prompt')).toHaveText('Pattern complete.');
+        const solved = await at();
+        expect(Math.abs(solved.train - start.train), 'after the solve').toBeLessThanOrEqual(0.5);
+        expect(Math.abs(solved.tray - start.tray)).toBeLessThanOrEqual(0.5);
+      });
+    }
+  });
+}
+
+test.describe('with motion on, the leaving train', () => {
+  test.use({ reducedMotion: 'no-preference' });
+
+  for (const [width, height, level] of [
+    [390, 844, 1],
+    [390, 844, 4],
+    [375, 667, 4],
+    [834, 1194, 4],
+  ] as const) {
+    test.describe(`${width}x${height}`, () => {
+      test.use({ viewport: { width, height } });
+
+      test(`Level ${level}: starts from the height the train stood at, with no hop up`, { tag: '@phone-only' }, async ({ page }) => {
+        await openLevel(page, level);
+        await solvePatternPuzzle(page);
+        const stood = await page.locator('.pat-train').evaluate((el) => el.getBoundingClientRect().top);
+        // Read in the frame the ghost is added, since it is gone 200 ms later.
+        const seen = page.evaluate(
+          () =>
+            new Promise<number>((done) => {
+              const look = new MutationObserver(() => {
+                const ghost = document.querySelector('.pat-ghost');
+                if (!ghost) return;
+                look.disconnect();
+                done(ghost.getBoundingClientRect().top);
+              });
+              look.observe(document.body, { childList: true, subtree: true });
+            }),
+        );
+        await page.getByRole('button', { name: 'Next puzzle' }).click();
+        expect(Math.abs((await seen) - stood)).toBeLessThanOrEqual(0.25);
+      });
+    });
+  }
+});
+
+test('the shape sits on the car face above its 5 px foot, with the whole edge inside the body', async ({ page }) => {
+  await openLevel(page, 4);
+  const cars = await page.locator('.pat-train .pat-car__body:not(.is-empty)').evaluateAll((els) =>
+    els.map((el) => {
+      const svg = el.querySelector('.pat-shape')!;
+      const body = el.getBoundingClientRect();
+      const shape = svg.getBoundingClientRect();
+      // On screen px: 36 CSS px of shape, so the scale takes in the train's zoom and the tablet frame's.
+      const scale = shape.width / 36;
+      // The edge is 2.5 of 30 units wide and half of it shows outside the shape: 1.5 px at 36 px.
+      const edge = 1.5 * scale;
+      return { top: shape.top - edge - body.top, foot: body.bottom - 5 * scale - (shape.bottom + edge), overflow: getComputedStyle(svg).overflow };
+    }),
+  );
+  expect(cars).toHaveLength(5);
+  for (const c of cars) {
+    expect(c.top).toBeGreaterThanOrEqual(0);
+    expect(c.foot).toBeGreaterThanOrEqual(0);
+    // Centred on the face: the same room above the edge as above the foot.
+    expect(Math.abs(c.top - c.foot)).toBeLessThanOrEqual(0.75);
+    // The outline runs past the 30 unit box, so the box must not cut it off.
+    expect(c.overflow).toBe('visible');
+  }
+});
+
+for (const [level, zoom] of [
+  [1, 0.95],
+  [3, 0.95],
+  [4, 0.82],
+  [12, 0.82],
+] as const) {
+  test(`Level ${level} draws its train at zoom ${zoom} on a 390 phone`, { tag: '@phone-only' }, async ({ page }) => {
+    await openLevel(page, level);
+    expect(await patternTrain(page).evaluate((el) => getComputedStyle(el).zoom)).toBe(String(zoom));
+  });
+}
+
+for (const ageBand of ['3-4', '5-6', '7-8', '9-10'] as const) {
+  test(`ages ${ageBand} get the same train on Level 4`, { tag: '@phone-only' }, async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand, games: { pattern: { stars: starsUpTo(3) } } }]);
+    await page.goto('/#/game/pattern/4');
+    await expect(patternTrain(page)).toBeVisible();
+    expect(await patternTrain(page).evaluate((el) => getComputedStyle(el).zoom)).toBe('0.82');
+    const shape = await page.locator('.pat-train .pat-shape').first().evaluate((el) => el.getBoundingClientRect().width);
+    expect(shape).toBeGreaterThanOrEqual(29);
+  });
+}
+
+test('the zoom follows the screen when it turns or resizes, with no reload', { tag: '@phone-only' }, async ({ page }) => {
+  await openLevel(page, 4);
+  const zoom = () => patternTrain(page).evaluate((el) => getComputedStyle(el).zoom);
+  expect(await zoom()).toBe('0.82');
+  await page.setViewportSize({ width: 375, height: 667 });
+  await expect.poll(zoom).toBe('0.79');
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await expect.poll(zoom).toBe('1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(zoom).toBe('0.82');
+});
+
+test('the finished game keeps the locomotive alone at the board zoom', { tag: '@phone-only' }, async ({ page }) => {
+  await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { pattern: { stars: starsUpTo(12) } } }]);
+  await page.goto('/#/game/pattern');
+  const train = page.locator('.pat-train');
+  await expect(train).toHaveCount(1);
+  expect(await train.evaluate((el) => getComputedStyle(el).zoom)).toBe('0.78');
+  await expect(page.locator('.pat-car')).toHaveCount(0);
+});
