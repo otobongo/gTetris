@@ -174,6 +174,18 @@ describe('tapMove: one tap, one move', () => {
     expect(tapMove(blocked, initialState(blocked), 0, t)).toBeNull();
   });
 
+  it('refuses a stale target that would take the brick out by another way than it says', () => {
+    // two red doors on one row: the target was for the far door, the brick now meets the near one
+    const two = fromSpec({ map: ['.A.'], colors: { A: 'red' }, gates: [{ side: 'left', at: 0, len: 1, color: 'red' }, { side: 'right', at: 0, len: 1, color: 'red' }] }, 1);
+    const left = exits(tapTargets(two, initialState(two), 0)).find((t) => t.dir[1] === -1)!;
+    expect(tapMove(two, initialState(two), 0, { ...left, gate: 1 })).toBeNull();
+    // a spot further on than the door: the slide would leave the board on its way there
+    const spot: TapTarget = { kind: 'slide', dir: [0, -1], steps: 3, at: [0, -2], cell: [0, -2], cells: [[0, -2]] };
+    expect(tapMove(two, initialState(two), 0, spot)).toBeNull();
+    // an exit target that stops short of the door's step
+    expect(tapMove(two, initialState(two), 0, { ...left, steps: 3 })).toBeNull();
+  });
+
   /** The fewest taps that solve `lvl` from its start, searching every tap the board draws; null if taps alone cannot. */
   function fewestTaps(lvl: Level, limit = 200_000): number | null {
     const start = initialState(lvl);

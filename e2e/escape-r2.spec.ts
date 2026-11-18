@@ -250,6 +250,79 @@ test.describe('decision 1: tap a brick, then tap where it should slide', () => {
     await expect(page.locator('.esc-help')).not.toHaveText(SELECT_LINE);
   });
 
+  test('a finger that wobbles toward the door still picks a brick that stands beside its own door', async ({ page }) => {
+    const { board } = await openLevel(page, 0);
+    const s = initialState(board);
+    const block = board.blocks.findIndex((_, b) => tapButtons(board, s, b).some((t) => t.kind === 'exit' && t.steps === 1));
+    expect(block, 'a brick beside its own door on Level 1').toBeGreaterThanOrEqual(0);
+    const { dir } = tapButtons(board, s, block).find((t) => t.kind === 'exit')!;
+    const b = brick(page, block);
+    const box = (await b.boundingBox())!;
+    const mid = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const press = async (px: number) => {
+      await page.mouse.move(mid.x, mid.y);
+      await page.mouse.down();
+      await page.mouse.move(mid.x + dir[1] * px, mid.y + dir[0] * px, { steps: 2 });
+      await page.mouse.up();
+    };
+    // every wobble under the 8 px limit is a tap, the last one right at the edge of it
+    for (const px of [1, 3, 7]) {
+      await press(px);
+      await expect(b, `${px} px toward the door picks the brick`).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.esc-brick.is-pulled')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(b).toHaveAttribute('aria-pressed', 'false');
+    }
+    // 8 px is a drag: it never picks the brick, and it is too short to take the brick out
+    await press(8);
+    await expect(b).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('.esc-brick')).toHaveCount(board.blocks.length);
+    await expect(page.locator('.esc-status__moves')).toHaveText('Moves 0');
+  });
+
+  test('after a finger drag, which sends no click, the next Enter or VoiceOver click still picks the brick', async ({ page }) => {
+    await openLevel(page, 0);
+    const b = brick(page, 0);
+    const cdp = await page.context().newCDPSession(page);
+    /** A real finger pushing the brick 40 px and lifting: the browser sends no click after it. */
+    const fingerDrag = async () => {
+      const box = (await b.boundingBox())!;
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      for (const dy of [14, 28, 40]) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + dy }] });
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    };
+    await fingerDrag();
+    await expect(b).toHaveAttribute('aria-pressed', 'false');
+    await b.focus();
+    await page.keyboard.press('Enter');
+    await expect(b, 'Enter after a finger drag').toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Escape');
+
+    await fingerDrag();
+    await expect(b).toHaveAttribute('aria-pressed', 'false');
+    await b.evaluate((el) => (el as HTMLElement).click());
+    await expect(b, 'a synthetic click after a finger drag').toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('keyboard and VoiceOver order: a picked brick’s targets come right after it, and Escape on a target goes back to the brick', async ({ page }) => {
+    const { board } = await openLevel(page, 0);
+    const s = initialState(board);
+    // the first brick in the page with a target, and bricks after it to step over
+    const block = board.blocks.findIndex((_, b) => tapButtons(board, s, b).length > 0);
+    expect(block).toBeLessThan(board.blocks.length - 1);
+    const b = brick(page, block);
+    await b.focus();
+    await page.keyboard.press('Enter');
+    await expect(b).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('Tab');
+    await expect(targets(page).first(), 'the next stop after the picked brick').toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(targets(page)).toHaveCount(0);
+    await expect(b, 'focus goes back to the brick when its target goes away').toBeFocused();
+  });
+
   test('Escape, a tap on the empty board, a tap on another brick, Undo, Restart and Hint all change or clear the selection', async ({ page }) => {
     const { board, state: s, moves, pick } = await openWithSlide(page);
     const a = brick(page, pick.block);

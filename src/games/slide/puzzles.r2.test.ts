@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { STICKERS, stickerCells, stickersDue } from '../../screens/logic/stickers';
 import { getGame } from '../registry';
 import { createProgressStore, type PuzzleResult } from '../../shared/progress';
+import { LEGACY_KEY, STORAGE_KEY } from '../../shared/progress/types';
 import { hintCapped, levelCard, levelSticker } from './puzzles';
 import { meta } from './meta';
 
@@ -88,5 +89,49 @@ describe('decision 19: the sticker a finished level earns', () => {
     expect(levelSticker(store, null)).toBeUndefined();
     expect(levelSticker(store, 'nobody')).toBeUndefined();
     expect(store.getState().players[0].stickers).toEqual({});
+  });
+});
+
+describe('decisions 19 and 25 on a save made before this release', () => {
+  const starred = (levels: number[]) => Object.fromEntries(levels.map((l) => [l, 3]));
+
+  /** A device's saved progress, as an older version of the app left it. */
+  function savedDevice(player: Record<string, unknown>) {
+    const data = new Map([[STORAGE_KEY, JSON.stringify({ version: 3, players: [{ id: 'maya', name: 'Maya', ageBand: '7-8', color: 'blue', dailyLimit: 20, timerMode: 'auto', createdAt: NOON, updatedAt: NOON, ...player }], activePlayerId: 'maya' })]]);
+    const open = () => createProgressStore({ storage: { getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) }, now: () => NOON, events: null });
+    return { open };
+  }
+
+  it('gives the sticker to a player saved with no sticker list at all, and it is still there after a reload', () => {
+    const device = savedDevice({ games: { escape: { unlocked: 8, stars: starred(chapter(0)), best: {} } } });
+    expect(levelSticker(device.open(), 'maya')?.name).toBe('Open door');
+    const again = device.open();
+    expect(Object.keys(again.getState().players[0].stickers)).toEqual(['e1']);
+    expect(levelSticker(again, 'maya')).toBeUndefined();
+  });
+
+  it('shows no new sticker when Home already gave it, and keeps the day it was earned', () => {
+    const earned = { earnedAt: NOON - 86_400_000, seen: true };
+    const device = savedDevice({ games: { escape: { unlocked: 8, stars: starred(chapter(0)), best: {} } }, stickers: { e1: earned } });
+    const store = device.open();
+    expect(levelSticker(store, 'maya')).toBeUndefined();
+    expect(store.getState().players[0].stickers.e1).toEqual(earned);
+  });
+
+  it('counts stars from the first version of the app, saved as slide:level, for the player they move to', () => {
+    const v1 = JSON.stringify({ stars: Object.fromEntries(chapter(0).map((l) => [`slide:${l}`, 3])) });
+    const store = createProgressStore({ storage: { getItem: (k) => (k === LEGACY_KEY ? v1 : null), setItem: () => {} }, now: () => NOON, newId: () => 'first', events: null });
+    expect(levelSticker(store, 'first')?.name).toBe('Open door');
+  });
+
+  it('survives a damaged sticker list', () => {
+    const device = savedDevice({ games: { escape: { unlocked: 8, stars: starred(chapter(0)), best: {} } }, stickers: 'oops' });
+    expect(levelSticker(device.open(), 'maya')?.name).toBe('Open door');
+  });
+
+  it('reads a solved puzzle saved without a hint flag as no hint', () => {
+    const old = [{ puzzle: 0, count: 5, par: 4 }] as PuzzleResult[];
+    expect(hintCapped(false, old)).toBe(false);
+    expect(hintCapped(true, old)).toBe(true);
   });
 });

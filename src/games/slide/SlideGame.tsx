@@ -1,4 +1,4 @@
-import { type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, Fragment, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { go, toHref } from '../../shared/router';
 import { sfx } from '../../shared/sound';
 import { say } from '../../shared/speech';
@@ -502,7 +502,8 @@ export default function SlideGame({ index }: { index: number }) {
     const left = follow(e, d);
     drag.current = null;
     setPull(null);
-    press.current = { block: d.block, tap: !left && !d.far && !d.moved && !d.pulled };
+    // a wobble toward an open door is still a tap: only the 8 px limit makes a press a drag
+    press.current = { block: d.block, tap: !left && !d.far && !d.moved };
     if (!left) sayWhereItWent(d);
     // pushed into a wall or another brick: a small nudge says it can not go there
     if (!left && !d.moved && !d.pulled && Math.hypot(e.clientX - d.x0, e.clientY - d.y0) > cell * 0.3) bump(d.block);
@@ -544,10 +545,11 @@ export default function SlideGame({ index }: { index: number }) {
    * ---------- tap: pick a brick, then tap where it should slide (decision 1) ----------
    * The click after a press that stayed under 8 px, a mouse click, and the synthetic click VoiceOver and Switch
    * Control send all pick the brick. A press that became a drag never does. A second tap on the picked brick
-   * lets it go, so a palm resting on the board never moves anything.
+   * lets it go, so a palm resting on the board never moves anything. Enter, Space and those synthetic clicks
+   * carry detail 0 and follow no press of their own: a finger drag sends no click, so what it left is not theirs.
    */
-  const onBrickClick = (block: number) => {
-    const p = press.current;
+  const onBrickClick = (block: number, e: MouseEvent<HTMLButtonElement>) => {
+    const p = e.detail === 0 ? null : press.current;
     press.current = null;
     if (busy || (p && (p.block !== block || !p.tap))) return;
     keySession.current = null;
@@ -585,7 +587,10 @@ export default function SlideGame({ index }: { index: number }) {
   useEffect(() => {
     if (selected === null) return;
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') setSelected(null);
+      if (e.key !== 'Escape') return;
+      // the target that had focus goes away with the selection: keyboard and VoiceOver users stay on the brick
+      if (document.activeElement instanceof HTMLElement && document.activeElement.classList.contains('esc-target')) focusLater(`.esc-brick[data-block="${selected}"]`);
+      setSelected(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -733,30 +738,32 @@ export default function SlideGame({ index }: { index: number }) {
             const p = state.pos[i];
             if (!p) return null;
             return (
-              <BrickPiece
-                key={`${puzzle}-${b.id}`}
-                index={i}
-                block={b}
-                at={p}
-                cell={cell}
-                exiting={exiting?.block === i ? exiting.side : null}
-                pull={pull?.block === i ? pull : null}
-                hinted={hintBlock === i}
-                selected={picked === i}
-                bumped={bumped === i}
-                onClick={() => onBrickClick(i)}
-                onPointerDown={(e) => onPointerDown(e, i)}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerCancel}
-                onKeyDown={(e) => onKeyDown(e, i)}
-              />
+              <Fragment key={`${puzzle}-${b.id}`}>
+                <BrickPiece
+                  index={i}
+                  block={b}
+                  at={p}
+                  cell={cell}
+                  exiting={exiting?.block === i ? exiting.side : null}
+                  pull={pull?.block === i ? pull : null}
+                  hinted={hintBlock === i}
+                  selected={picked === i}
+                  bumped={bumped === i}
+                  onClick={(e) => onBrickClick(i, e)}
+                  onPointerDown={(e) => onPointerDown(e, i)}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerCancel}
+                  onKeyDown={(e) => onKeyDown(e, i)}
+                />
+                {/* right after the picked brick, so the next stop for Tab, VoiceOver and Switch Control is where it can go */}
+                {picked === i &&
+                  pickedTargets.map((t) => (
+                    <Target key={t.kind === 'exit' ? `x${t.gate}` : `s${t.at[0]}-${t.at[1]}`} level={level} block={i} target={t} cell={cell} onTap={() => onTarget(i, t)} />
+                  ))}
+              </Fragment>
             );
           })}
-          {picked !== null &&
-            pickedTargets.map((t) => (
-              <Target key={t.kind === 'exit' ? `x${t.gate}` : `s${t.at[0]}-${t.at[1]}`} level={level} block={picked} target={t} cell={cell} onTap={() => onTarget(picked, t)} />
-            ))}
         </Tray>
       </div>
 
@@ -902,7 +909,7 @@ function BrickPiece({
   hinted: boolean;
   selected: boolean;
   bumped: boolean;
-  onClick: () => void;
+  onClick: (e: MouseEvent<HTMLButtonElement>) => void;
   onPointerDown: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (e: PointerEvent<HTMLButtonElement>) => void;
   onPointerUp: (e: PointerEvent<HTMLButtonElement>) => void;

@@ -5,7 +5,7 @@
  * into a square of the tray, and is 44 px across both ways with the squares it reaches into.
  */
 import { describe, expect, it } from 'vitest';
-import { type Level, type State, initialState, isSolved, withMove } from './engine';
+import { type Level, type State, fromSpec, initialState, isSolved, withMove } from './engine';
 import { PUZZLE_LEVELS } from './puzzles';
 import { type Box, MIN_HIT, cellsBox, doorBox, exitHit, tapButtons, tapMove } from './tap';
 
@@ -75,6 +75,40 @@ describe('a door target’s hit area', () => {
     const door = doorBox(level, gate, 30);
     expect(door).toEqual({ left: -20, top: 34, width: 18, height: 22 });
     expect(exitHit(level, gate, 30)).toEqual({ left: -46, top: 23, width: 44, height: 44 });
+  });
+});
+
+describe('a door set in a notch of the board', () => {
+  /** Row 0 has squares beside the notch over column 1; the door stands on top of row 1, in the notch. */
+  const notched = (top: string) => fromSpec({ map: [top, '...'], colors: {}, gates: [{ side: 'top', at: 1, len: 1, color: 'red' }] }, 1);
+  const size = 30;
+  const squares = (level: Level) =>
+    level.void.flatMap((row, r) => row.flatMap((v, c) => (v ? [] : [{ left: c * size, top: r * size, width: size, height: size }])));
+
+  it('grows along the door only the way that stays off the squares: right when a square stands on its left', () => {
+    const level = notched('.##');
+    const door = doorBox(level, level.gates[0], size);
+    const hit = exitHit(level, level.gates[0], size);
+    expect(hit.left).toBe(door.left);
+    expect(hit.width).toBe(MIN_HIT);
+    for (const sq of squares(level)) expect(overlaps(hit, sq)).toBe(false);
+  });
+
+  it('grows left when a square stands on its right', () => {
+    const level = notched('##.');
+    const door = doorBox(level, level.gates[0], size);
+    const hit = exitHit(level, level.gates[0], size);
+    expect(hit.left + hit.width).toBe(door.left + door.width);
+    expect(hit.width).toBe(MIN_HIT);
+    for (const sq of squares(level)) expect(overlaps(hit, sq)).toBe(false);
+  });
+
+  it('stays as long as the door when squares stand on both sides', () => {
+    const level = notched('.#.');
+    const door = doorBox(level, level.gates[0], size);
+    const hit = exitHit(level, level.gates[0], size);
+    expect({ left: hit.left, width: hit.width }).toEqual({ left: door.left, width: door.width });
+    for (const sq of squares(level)) expect(overlaps(hit, sq)).toBe(false);
   });
 });
 
