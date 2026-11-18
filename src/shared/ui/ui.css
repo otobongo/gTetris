@@ -63,11 +63,22 @@
    board, tray or hole is clipped or covered. Boards keep their own touch-action: none, so a stroke or a
    drag on them never scrolls; pinch zoom is untouched. Home keeps the viewport height: its list scrolls. */
 .bw-screen--short { --bw-short-floor: 667px; }
-.bw-screen--short.bw-screen--fit-viewport { overflow-x: hidden; overflow-y: auto; }
+/* Positioned, so a visually hidden line stays inside the screen and never gives the page behind it a scroll. */
+.bw-screen--short.bw-screen--fit-viewport { position: relative; overflow-x: hidden; overflow-y: auto; }
 /* The frame never scrolls itself here (a game's short-phone rule may make it a scroller): one scroller,
-   the screen, so a finger anywhere off a board scrolls the page. */
-.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame { height: auto; min-height: max(100dvh, var(--bw-short-floor)); overflow: visible; }
+   the screen, so a finger anywhere off a board scrolls the page. max-content, because auto would stretch it
+   to exactly the floor in the screen's row and a taller board would run out past its bottom padding. */
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame { height: max-content; min-height: max(100dvh, var(--bw-short-floor)); overflow: visible; }
 .bw-screen--short.bw-screen--fit-viewport .bw-screen__frame--home { height: 100dvh; min-height: 0; }
+/* Picture Builder sizes its board from its stage's height (a container query), which needs a frame of a set
+   height; its board already fits the floor. */
+.bw-screen--short.bw-screen--fit-viewport .bw-screen__frame.pb-screen { height: var(--bw-short-floor); }
+/* A play area keeps its full height and the frame grows past the floor, so a board never runs under the
+   controls below it. */
+.bw-screen--short .bw-play__body { flex-shrink: 0; }
+/* A list inside the frame passes a finger's swipe on to the screen at its end, so the part of the frame below
+   the phone's edge can be reached from anywhere on the list. */
+.bw-screen--short .sc-scroll { overscroll-behavior: auto; }
 /* The column is centred in a wide screen, so its margin already clears a side inset (a notch); the
    frame adds only what the margin leaves. 100% here is the screen's width, min(...) the column's. */
 .bw-screen--short .bw-screen__frame--standard,
@@ -136,6 +147,7 @@
 .bw-iconbtn.is-cue {
   outline: 4px solid var(--bw-accent);
   outline-offset: 0;
+  scroll-margin: var(--bw-sp-4); /* a phone held sideways brings the button into view with its ring */
 }
 .bw-press:focus-visible,
 .bw-iconbtn:focus-visible {

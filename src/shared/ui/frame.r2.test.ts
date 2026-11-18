@@ -54,9 +54,17 @@ describe('short screens get the phone frame at a 667px floor (decision 4)', () =
   });
 
   it('a fit-viewport frame grows to its content from that floor, so nothing in it clips', () => {
-    expect(value(FRAME, 'height')).toBe('auto');
+    // Not auto: the screen's row would stretch an auto frame to exactly the floor, and a taller board (Brick
+    // Calculator, an 8-piece Shape Sorter) would run on past the frame's bottom padding.
+    expect(value(FRAME, 'height')).toBe('max-content');
     expect(value(FRAME, 'min-height')).toBe('max(100dvh, var(--bw-short-floor))');
+    // align-items: flex-start would grow it too, but a board sized by a container query (Picture Builder) collapses.
+    expect(body(MAIN)).not.toMatch(/align-items/);
     expect(body(FRAME)).not.toMatch(/overflow\s*:\s*hidden/);
+  });
+
+  it('Picture Builder keeps a frame of a set height, since its board sizes itself from the height it is given', () => {
+    expect(value(`${FRAME}.pb-screen`, 'height')).toBe('var(--bw-short-floor)');
   });
 
   it('the frame is never a scroller of its own there, so a finger off a board scrolls the screen', () => {
@@ -68,6 +76,19 @@ describe('short screens get the phone frame at a 667px floor (decision 4)', () =
   it('the screen itself is the vertical scroller and never scrolls sideways', () => {
     expect(value(MAIN, 'overflow-y')).toBe('auto');
     expect(value(MAIN, 'overflow-x')).toBe('hidden');
+  });
+
+  it('the screen holds what is drawn in it, so a read-aloud line never stretches the page behind it', () => {
+    // A visually hidden line is placed from the nearest positioned box; without one it counts on the page.
+    expect(value(MAIN, 'position')).toBe('relative');
+  });
+
+  it('a list hands a swipe on to the screen when it reaches its end, so a finger on it gets to the bottom', () => {
+    expect(value('.bw-screen--short .sc-scroll', 'overscroll-behavior')).toBe('auto');
+  });
+
+  it('a play area never shrinks under its content: the frame grows and the screen scrolls', () => {
+    expect(value('.bw-screen--short .bw-play__body', 'flex-shrink')).toBe('0');
   });
 
   it('Home keeps the viewport height, so its own list still scrolls', () => {

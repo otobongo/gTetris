@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { sfx } from '../sound';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
+import { SHORT_MAX_HEIGHT } from './layout';
 import type { PressVariant } from './PressButton';
 
 export interface IconButtonProps {
@@ -22,7 +23,8 @@ export interface IconButtonProps {
   /**
    * Ages 3 to 4, the stuck offer's New puzzle button (decision 8): when the button mounts with this on, it
    * plays one short chime and shows a static ring for CUE_MS. Only the mount counts: turning it on later
-   * does nothing, and each new appearance of the button cues once. It never moves focus or the button.
+   * does nothing, and each new appearance of the button cues once. It never moves focus or the button; on a
+   * phone held sideways, where the screen scrolls, it brings the button into view so the ring can be seen.
    */
   cue?: boolean;
   className?: string;
@@ -35,7 +37,7 @@ const tone = (v: IconButtonProps['variant']): PressVariant => (v === 'warm' ? 'y
 
 /** 54px raised icon button (radius 16, 26px icon, stroke 2.8), as in every top bar. */
 export function IconButton({ icon, label, href, onClick, badge, disabled, variant, pressed, cue, className }: IconButtonProps) {
-  const ring = useCue(cue);
+  const [ring, cueRef] = useCue(cue);
   const classes = cx('bw-iconbtn', pressed && 'is-pressed', ring && 'is-cue', className);
   const inner = (
     <>
@@ -51,6 +53,7 @@ export function IconButton({ icon, label, href, onClick, badge, disabled, varian
   if (href !== undefined && !disabled) {
     return (
       <a
+        ref={cueRef}
         className={classes}
         data-tone={tone(variant)}
         href={href}
@@ -67,6 +70,7 @@ export function IconButton({ icon, label, href, onClick, badge, disabled, varian
   }
   return (
     <button
+      ref={cueRef}
       type="button"
       className={classes}
       data-tone={tone(variant)}
@@ -88,18 +92,23 @@ export function IconButton({ icon, label, href, onClick, badge, disabled, varian
  * The cue, read once at mount: true until CUE_MS has passed. The chime plays once per mount; the ref keeps
  * StrictMode's second effect run from playing it again (React keeps refs across that run).
  */
-function useCue(cue: boolean | undefined): boolean {
+function useCue(cue: boolean | undefined): [boolean, (el: HTMLElement | null) => void] {
   const atMount = useRef(!!cue);
   const chimed = useRef(false);
+  const button = useRef<HTMLElement | null>(null);
+  const cueRef = useCallback((el: HTMLElement | null) => {
+    button.current = el;
+  }, []);
   const [ring, setRing] = useState(atMount.current);
   useEffect(() => {
     if (!atMount.current) return;
     if (!chimed.current) {
       chimed.current = true;
       sfx.offer();
+      if (window.innerHeight < SHORT_MAX_HEIGHT) button.current?.scrollIntoView({ block: 'nearest' });
     }
     const t = setTimeout(() => setRing(false), CUE_MS);
     return () => clearTimeout(t);
   }, []);
-  return ring;
+  return [ring, cueRef];
 }

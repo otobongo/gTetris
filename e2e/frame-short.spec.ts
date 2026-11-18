@@ -141,6 +141,17 @@ const unreachable = (page: Page) =>
     return { count: found.length, bad };
   });
 
+/** Buttons, bricks, tiles and squares that are drawn but too small for a finger. */
+const squashed = (page: Page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('main button, main [role="button"]')]
+      .filter((e) => e.checkVisibility() && !e.closest('[inert], [aria-hidden="true"]'))
+      .flatMap((e) => {
+        const r = e.getBoundingClientRect();
+        return r.width < 24 || r.height < 24 ? [`${e.getAttribute('aria-label') ?? e.className} ${Math.round(r.width)}x${Math.round(r.height)}`] : [];
+      }),
+  );
+
 const boxOf = async (el: Locator) => {
   const b = await el.boundingBox();
   if (!b) throw new Error('Not on screen');
@@ -148,6 +159,39 @@ const boxOf = async (el: Locator) => {
 };
 const overlap = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/**
+ * Every line of words on screen, each scrolled into view: the ones something else is drawn over (a keypad
+ * over the help line). The boxes of a shrunken play area can stay apart while its content runs under the
+ * controls, so this looks at what is painted.
+ */
+const coveredWords = (page: Page) =>
+  page.evaluate(async () => {
+    const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
+    const main = document.querySelector('main.bw-screen')!;
+    const walk = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+    const bad: string[] = [];
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      const words = (n.textContent ?? '').trim();
+      const el = n.parentElement;
+      if (!words || !el || el.closest('[inert]')) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility !== 'visible' || cs.pointerEvents === 'none' || Number(cs.opacity) === 0) continue;
+      const range = document.createRange();
+      range.selectNodeContents(n);
+      if (el.getBoundingClientRect().height < 4) continue; // read aloud only: a 1px visually hidden line
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      await frame();
+      for (const r of range.getClientRects()) {
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        // Its own widget (a tile's label beside its value) is not something drawn over it.
+        if (!hit || hit === el || hit.contains(el) || el.parentElement?.contains(hit)) continue;
+        bad.push(`"${words.slice(0, 30)}" under ${hit.tagName.toLowerCase()}.${String((hit as HTMLElement).className).split(' ')[0]}`);
+        break;
+      }
+    }
+    return bad;
+  });
 
 /* ---------- Touch input ---------- */
 
@@ -171,6 +215,17 @@ const swipe = (cdp: CDPSession, from: { x: number; y: number }, dy: number) =>
   cdp.send('Input.synthesizeScrollGesture', { x: Math.round(from.x), y: Math.round(from.y), yDistance: dy, gestureSourceType: 'touch', speed: 800 });
 
 const scrolled = (page: Page) => page.evaluate(() => (document.querySelector('main.bw-screen')?.scrollTop ?? 0) + (document.scrollingElement?.scrollTop ?? 0));
+/** Where the screen comes to rest: a finger lifted mid-swipe leaves it gliding for a moment. */
+async function settled(page: Page): Promise<number> {
+  let was = await scrolled(page);
+  for (let i = 0; i < 40; i++) {
+    await page.waitForTimeout(150);
+    const now = await scrolled(page);
+    if (now === was) return now;
+    was = now;
+  }
+  throw new Error('The screen never came to rest');
+}
 /** A swipe that can move the screen from scroll position `top`: down from the top, up otherwise. */
 const dy0 = (top: number) => (top > 0 ? 100 : -100);
 const centre = async (el: Locator) => {
@@ -201,6 +256,8 @@ for (const size of SIZES) {
         const { count, bad } = await unreachable(page);
         expect(count, 'controls found').toBeGreaterThan(0);
         expect(bad, at).toEqual([]);
+        // A board that lost its height still has its squares in the page: none may be squashed to nothing.
+        expect(await squashed(page), 'controls too small to press').toEqual([]);
 
         expect(await page.evaluate(() => document.documentElement.scrollWidth), 'no sideways scroll').toBeLessThanOrEqual(size.width);
         expect(await main.evaluate((m) => m.scrollWidth - m.clientWidth), 'nothing cut off at the sides').toBeLessThanOrEqual(0);
@@ -211,7 +268,15 @@ for (const size of SIZES) {
           const a = await boxOf(page.locator(controls).first());
           const b = await boxOf(page.locator(body).first());
           expect(overlap(a, b), `${controls} and ${body}`).toBe(false);
+          // The play area holds all it draws: nothing of it runs on under the controls.
+          expect(await page.locator(body).first().evaluate((e) => e.scrollHeight - e.clientHeight), `${body} holds its content`).toBeLessThanOrEqual(1);
         }
+        expect(await coveredWords(page), 'words something is drawn over').toEqual([]);
+        // The frame grows with what it holds, so its bottom padding (and a phone's home bar) stays under the last control.
+        expect(await page.locator('.bw-screen__frame').evaluate((f) => f.scrollHeight - f.clientHeight), 'the frame holds its content').toBeLessThanOrEqual(1);
+
+        // One scroller: the page behind the screen has nothing to scroll (a read-aloud line must not stretch it).
+        expect(await page.evaluate(() => document.scrollingElement!.scrollHeight - innerHeight), 'the page itself never scrolls').toBeLessThanOrEqual(0);
 
         // Where the screen is taller than the phone, a finger swipe off the boards (on the heading) scrolls it.
         const scroller = await main.evaluate((m) => ({ scrolls: m.scrollHeight > m.clientHeight, top: m.scrollTop }));
@@ -225,6 +290,89 @@ for (const size of SIZES) {
     }
   });
 }
+
+/* ---------- A finger in a list reaches the end of the screen ---------- */
+
+/** The screen's last control, and whether it is fully on the phone now. */
+const lastControl = (page: Page) =>
+  page.evaluate(() => {
+    const all = [...document.querySelectorAll<HTMLElement>('main button, main a[href], main input')].filter((e) => {
+      const r = e.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && !e.closest('[inert]');
+    });
+    const e = all[all.length - 1];
+    const r = e.getBoundingClientRect();
+    return { name: e.getAttribute('aria-label') ?? (e.textContent ?? '').trim(), seen: r.top >= 0 && r.bottom <= innerHeight };
+  });
+
+const LISTS: { name: string; open: (page: Page) => Promise<void> }[] = [
+  { name: "Who's playing with six children", open: async (page) => { await page.goto('/#/players'); await expect(page.locator('.sc-player').first()).toBeVisible(); } },
+  {
+    name: 'Settings',
+    open: async (page) => {
+      await page.goto('/#/');
+      await page.getByRole('link', { name: 'Settings for grown-ups' }).click();
+      await page.locator('.sc-gate__sum').scrollIntoViewIfNeeded();
+      await passGrownUpCheck(page);
+      await expect(page.getByRole('heading', { name: 'Progress', exact: true })).toBeAttached();
+    },
+  },
+  { name: 'Help', open: async (page) => { await page.goto('/#/help'); await expect(page.locator('.sc-help')).toBeVisible(); } },
+  { name: 'the terms', open: async (page) => { await page.goto('/#/help/terms'); await expect(page.locator('.sc-doc')).toBeVisible(); } },
+  { name: 'the sticker book', open: async (page) => { await page.goto('/#/stickers'); await expect(page.getByRole('button', { name: /^Sticker/ }).first()).toBeVisible(); } },
+];
+
+for (const size of SIZES) {
+  test.describe(`a finger on a list at ${size.width}x${size.height} @phone-only`, () => {
+    test.use({ viewport: size, isMobile: true, hasTouch: true });
+
+    for (const list of LISTS) {
+      test(`${list.name}: swiping in the middle of the column reaches the last control and comes back`, async ({ page }) => {
+        const kids = Array.from({ length: 6 }, (_, i) => ({ id: `kid${i}`, name: `Kid ${i + 1}`, ageBand: '5-6' as const }));
+        await seed(page, kids);
+        await list.open(page);
+        const cdp = await page.context().newCDPSession(page);
+        const finger = { x: Math.round(size.width / 2), y: Math.round(size.height * 0.75) };
+        for (let i = 0; i < 16 && !(await lastControl(page)).seen; i++) await swipe(cdp, finger, -220);
+        expect(await lastControl(page), 'the last control is on the phone').toMatchObject({ seen: true });
+
+        for (let i = 0; i < 16 && (await scrolled(page)) > 0; i++) await swipe(cdp, { x: finger.x, y: Math.round(size.height * 0.25) }, 220);
+        expect(await scrolled(page), 'back at the top').toBe(0);
+      });
+    }
+  });
+}
+
+/* ---------- A level card taller than the phone ---------- */
+
+test.describe('a level card taller than the phone @phone-only', () => {
+  test.use({ viewport: { width: 568, height: 320 }, isMobile: true, hasTouch: true });
+
+  test('scrolls inside its backdrop: the title and the button can both be reached, and nothing is cut off', async ({ page }) => {
+    await seed(page, [{ id: 'maya', name: 'Maya', ageBand: '5-6', games: { escape: { stars: starsUpTo(999) } } }]);
+    await page.goto('/#/game/escape');
+    const card = page.getByRole('dialog');
+    await expect(card).toBeVisible();
+    const scrim = page.locator('.bw-levelcard-scrim');
+    expect(await scrim.evaluate((e) => e.scrollHeight - e.clientHeight), 'the card is taller than the phone').toBeGreaterThan(0);
+
+    // Focus starts on the green button, so it is on the phone from the first moment.
+    const primary = card.getByRole('link', { name: 'Back to games' });
+    await expect(primary).toBeFocused();
+    const onPhone = (e: Element) => {
+      const r = e.getBoundingClientRect();
+      return r.top >= 0 && r.bottom <= innerHeight;
+    };
+    expect(await primary.evaluate(onPhone), 'the button').toBe(true);
+
+    // A finger on the card brings the title back, whole.
+    const cdp = await page.context().newCDPSession(page);
+    const box = await boxOf(card);
+    await swipe(cdp, { x: box.x + box.width / 2, y: 160 }, 400);
+    await expect.poll(() => scrim.evaluate((e) => e.scrollTop)).toBe(0);
+    expect(await card.getByRole('heading').evaluate(onPhone), 'the title').toBe(true);
+  });
+});
 
 /* ---------- Touches on a board never scroll the page ---------- */
 
@@ -251,8 +399,9 @@ test.describe('at 844x390 a stroke or a drag on a board never scrolls the page @
     await fingerDrag(cdp, [model, { x: model.x, y: model.y - 120 }]);
     await expect.poll(() => scrolled(page)).toBeGreaterThan(before);
 
+    await settled(page);
     await top.scrollIntoViewIfNeeded();
-    const still = await scrolled(page);
+    const still = await settled(page);
     await fingerDrag(cdp, [await centre(top), await centre(bottom)]);
     await page.waitForTimeout(300);
     expect(await scrolled(page)).toBe(still);

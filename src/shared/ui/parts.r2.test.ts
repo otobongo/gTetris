@@ -109,6 +109,44 @@ describe('IconButton cue (decision 8)', () => {
     expect(css.indexOf('.bw-iconbtn.is-cue')).toBeLessThan(css.indexOf('.bw-iconbtn:focus-visible'));
   });
 
+  it('sfx.offer plays its two rising notes after the slip, and nothing with Sounds off', () => {
+    const notes: { freq: number; at: number; type: string }[] = [];
+    class FakeAudio {
+      state = 'running';
+      currentTime = 10;
+      destination = {};
+      createGain() {
+        const param = { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} };
+        return { gain: param, connect: (d: unknown) => d };
+      }
+      createOscillator() {
+        const note = { freq: 0, at: 0, type: '' };
+        return {
+          set type(v: string) { note.type = v; },
+          frequency: { setValueAtTime(f: number) { note.freq = f; } },
+          connect: (d: unknown) => d,
+          start(t: number) { note.at = t; notes.push(note); },
+          stop() {},
+        };
+      }
+    }
+    vi.stubGlobal('AudioContext', FakeAudio);
+    try {
+      progressStore.setSetting('sound', false);
+      sfx.offer();
+      expect(notes).toEqual([]);
+
+      progressStore.setSetting('sound', true);
+      sfx.offer();
+      expect(notes.map((n) => n.freq)).toEqual([988, 1319]);
+      expect(notes.map((n) => n.type)).toEqual(['sine', 'sine']);
+      expect(notes[0].at).toBeCloseTo(10.3);
+      expect(notes[1].at).toBeCloseTo(10.42);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('sfx.offer is a chime that never throws, with Sounds off or on and no audio in the page', () => {
     expect(typeof sfx.offer).toBe('function');
     progressStore.setSetting('sound', false);
@@ -138,6 +176,7 @@ interface Node0 {
 function makePage() {
   const listeners = { addEventListener() {}, removeEventListener() {} };
   const focused: Node0[] = [];
+  const scrolledTo: unknown[] = [];
   const doc: Record<string, unknown> = { ...listeners, activeElement: null, defaultView: null, body: null, documentElement: null };
   const node = (nodeType: number, name: string, ns = 'http://www.w3.org/1999/xhtml'): Node0 => {
     const style = { setProperty(k: string, v: string) { (style as Record<string, unknown>)[k] = v; }, removeProperty(k: string) { delete (style as Record<string, unknown>)[k]; } } as Node0['style'];
@@ -154,6 +193,7 @@ function makePage() {
       style,
       textContent: '',
       focus() { focused.push(n); },
+      scrollIntoView(how: unknown) { scrolledTo.push(how); },
       setAttribute(k: string, v: unknown) { n.attrs.set(k, String(v)); },
       removeAttribute(k: string) { n.attrs.delete(k); },
       getAttribute(k: string) { return n.attrs.get(k) ?? null; },
@@ -184,7 +224,7 @@ function makePage() {
   };
   doc.defaultView = win;
   const container = node(1, 'div');
-  return { doc, win, container, focused };
+  return { doc, win, container, focused, scrolledTo };
 }
 
 describe('the cue in a running app (decision 8)', () => {
@@ -257,6 +297,28 @@ describe('the cue in a running app (decision 8)', () => {
     expect(page.focused).toEqual([]);
   });
 
+  it('on a phone held sideways the offer is brought into view once, so the ring can be seen', () => {
+    Object.assign(page.win, { innerWidth: 844, innerHeight: 390 });
+    mount(createElement(StrictMode, null, offer(true)));
+    expect(page.scrolledTo).toEqual([{ block: 'nearest' }]);
+    act(() => void vi.advanceTimersByTime(CUE_MS));
+    expect(page.scrolledTo).toHaveLength(1);
+    expect(page.focused).toEqual([]);
+  });
+
+  it.each([[390, 844], [375, 667], [834, 1194], [1194, 834], [844, 500]])('at %i x %i the screen does not scroll, so nothing moves', (innerWidth, innerHeight) => {
+    Object.assign(page.win, { innerWidth, innerHeight });
+    mount(offer(true));
+    expect(page.scrolledTo).toEqual([]);
+  });
+
+  it('without the cue, or with the cue turning on later, a sideways phone stays where it is', () => {
+    Object.assign(page.win, { innerWidth: 844, innerHeight: 390 });
+    const plain = mount(offer(false));
+    plain.render(offer(true));
+    expect(page.scrolledTo).toEqual([]);
+  });
+
   it('a button that unmounts mid-ring leaves no timer behind', () => {
     const m = mount(offer(true));
     m.unmount();
@@ -323,6 +385,18 @@ describe('PuzzleDots capped (decision 25)', () => {
 });
 
 /* ---------- Decision 19: the new sticker on the level card ---------- */
+
+describe('PuzzleDots capped keeps the dots where they were (decision 25)', () => {
+  it('the mark sits 8px after the last dot, and its margins cancel its own size so the row centres the dots alone', () => {
+    const cap = rule(css, '.bw-dots__cap');
+    expect(cap).toMatch(/width:\s*20px/);
+    expect(cap).toMatch(/height:\s*20px/);
+    // Left: the 8px gap. Right: minus its 20px and that gap. Top and bottom: the 5px by which 20 passes the dots' 10.
+    expect(cap).toMatch(/margin:\s*-5px calc\(-1 \* \(20px \+ var\(--bw-sp-3\)\)\) -5px var\(--bw-sp-3\)/);
+    expect(rule(css, '.bw-dots-row')).toMatch(/justify-content:\s*center/);
+    expect(rule(css, '.bw-dots-row > .bw-dots')).toMatch(/margin-top:\s*0/);
+  });
+});
 
 describe('LevelCard sticker (decision 19)', () => {
   it('without a sticker the markup is exactly what it was', () => {
